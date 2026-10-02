@@ -414,7 +414,7 @@ def claude_usage():
                   {"Authorization": "Bearer " + o["accessToken"], "anthropic-beta": "oauth-2025-04-20"})
     windows = []
     week = 7 * 86400
-    for key, label, secs in (("five_hour", "5 ч", 5 * 3600), ("seven_day", "неделя", week),
+    for key, label, secs in (("seven_day", "неделя", week),
                              ("seven_day_opus", "неделя Opus", week), ("seven_day_sonnet", "неделя Sonnet", week)):
         w = d.get(key)
         if w and w.get("utilization") is not None:
