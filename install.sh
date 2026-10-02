@@ -8,7 +8,8 @@
 #   sudo TS_AUTHKEY=tskey-... ./install.sh     # join the tailnet without the interactive login link
 #   sudo DEV_USER=alice MEM_MAX=8G CPU_QUOTA=200% ./install.sh
 #   sudo WITH_DOCKER=0 WITH_CODEX=0 ./install.sh   # skip rootless Docker / Codex CLI
-#   sudo PUBLIC_DOMAIN=cli.example.com ./install.sh  # also publish via Dokploy's Traefik with Let's Encrypt
+#   sudo PUBLIC_DOMAIN=cli.example.com ./install.sh  # also publish at https://<domain> (Let's Encrypt):
+#                                                     # via Dokploy's Traefik if present, else via Caddy
 #
 # Re-running is safe: code and unit files are updated, the panel and ttyd are restarted,
 # the tmux server (and every running Claude session) is left alone.
@@ -24,6 +25,7 @@ WITH_DOCKER=${WITH_DOCKER:-1}
 WITH_CODEX=${WITH_CODEX:-1}
 TS_AUTHKEY=${TS_AUTHKEY:-}
 PUBLIC_DOMAIN=${PUBLIC_DOMAIN:-}
+PUBLIC_PROXY=${PUBLIC_PROXY:-auto}   # auto | traefik | caddy
 TRAEFIK_DYNAMIC=${TRAEFIK_DYNAMIC:-/etc/dokploy/traefik/dynamic}
 TTYD_VERSION=1.7.7
 PREFIX=/opt/cc-panel
@@ -80,8 +82,9 @@ for _ in $(seq 20); do [ -S "/run/user/$UID_/bus" ] && break; sleep 0.5; done
 as_user() { sudo -u "$DEV_USER" -H env XDG_RUNTIME_DIR="/run/user/$UID_" DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$UID_/bus" "$@"; }
 
 say "panel code -> $PREFIX"
-install -d -m 755 "$PREFIX"
-find "$SRC/panel" -maxdepth 1 -type f -exec install -m 644 {} "$PREFIX"/ \;
+# owned by the panel user: the panel runs as that user anyway, and ./deploy.sh can update it without root
+install -d -m 755 -o "$DEV_USER" -g "$DEV_USER" "$PREFIX"
+find "$SRC/panel" -maxdepth 1 -type f -exec install -m 644 -o "$DEV_USER" -g "$DEV_USER" {} "$PREFIX"/ \;
 
 say "config"
 install -d -o "$DEV_USER" -g "$DEV_USER" -m 700 "$H/.config/cc-panel"
@@ -184,18 +187,50 @@ sleep 1
 as_user systemctl --user is-active -q cc-tmux cc-ttyd cc-panel || die "a service failed: journalctl --user -M $DEV_USER@ -n 50"
 
 if [ -n "$PUBLIC_DOMAIN" ]; then
-    say "public HTTPS: $PUBLIC_DOMAIN via Traefik"
-    [ -d "$TRAEFIK_DYNAMIC" ] || die "$TRAEFIK_DYNAMIC not found: PUBLIC_DOMAIN needs Dokploy's Traefik (or set TRAEFIK_DYNAMIC)"
-    ip=$(getent ahostsv4 "$PUBLIC_DOMAIN" | awk 'NR==1{print $1}')
-    [ -n "$ip" ] || echo "    warning: $PUBLIC_DOMAIN does not resolve yet; Let's Encrypt will fail until it does (see README)"
-    sed -e "s|__DOMAIN__|$PUBLIC_DOMAIN|g" -e "s|__BACKEND__|http://$BIND_HOST:$PANEL_PORT|g" \
-        "$SRC/deploy/traefik-dokploy.yml" > "$TRAEFIK_DYNAMIC/cc-panel.yml.new"
-    if ! cmp -s "$TRAEFIK_DYNAMIC/cc-panel.yml.new" "$TRAEFIK_DYNAMIC/cc-panel.yml"; then
-        install -m 644 "$TRAEFIK_DYNAMIC/cc-panel.yml.new" "$TRAEFIK_DYNAMIC/cc-panel.yml"
-    fi
-    rm -f "$TRAEFIK_DYNAMIC/cc-panel.yml.new"
+    [ "$PUBLIC_PROXY" != auto ] || { [ -d "$TRAEFIK_DYNAMIC" ] && PUBLIC_PROXY=traefik || PUBLIC_PROXY=caddy; }
+    say "public HTTPS: $PUBLIC_DOMAIN via $PUBLIC_PROXY"
+    [ -n "$(getent ahostsv4 "$PUBLIC_DOMAIN")" ] \
+        || echo "    warning: $PUBLIC_DOMAIN does not resolve yet; the certificate will fail until it does (see README)"
+    render() { sed -e "s|__DOMAIN__|$PUBLIC_DOMAIN|g" -e "s|__BACKEND__|http://$BIND_HOST:$PANEL_PORT|g" \
+                   -e "s|__UPSTREAM__|$BIND_HOST:$PANEL_PORT|g" "$1"; }
+    case "$PUBLIC_PROXY" in
+    traefik)
+        [ -d "$TRAEFIK_DYNAMIC" ] || die "$TRAEFIK_DYNAMIC not found (Dokploy's Traefik); use PUBLIC_PROXY=caddy or set TRAEFIK_DYNAMIC"
+        render "$SRC/deploy/traefik-dokploy.yml" > "$TRAEFIK_DYNAMIC/cc-panel.yml.new"
+        cmp -s "$TRAEFIK_DYNAMIC/cc-panel.yml.new" "$TRAEFIK_DYNAMIC/cc-panel.yml" \
+            || install -m 644 "$TRAEFIK_DYNAMIC/cc-panel.yml.new" "$TRAEFIK_DYNAMIC/cc-panel.yml"
+        rm -f "$TRAEFIK_DYNAMIC/cc-panel.yml.new"
+        ;;
+    caddy)
+        busy=$(ss -ltnpH '( sport = :80 or sport = :443 )' | grep -v '"caddy"' || true)
+        [ -z "$busy" ] || die "ports 80/443 are taken by another process; free them or use PUBLIC_PROXY=traefik:
+$busy"
+        if ! apt-cache policy caddy | grep -q 'Candidate: [0-9]'; then
+            # official Caddy apt repository (Ubuntu 22.04 has no caddy package)
+            apt-get install -y -q debian-keyring debian-archive-keyring apt-transport-https gnupg >/dev/null
+            curl -1sLf https://dl.cloudsmith.io/public/caddy/stable/gpg.key \
+                | gpg --dearmor --yes -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+            curl -1sLf https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt > /etc/apt/sources.list.d/caddy-stable.list
+            apt-get update -q >/dev/null
+        fi
+        apt-get install -y -q caddy >/dev/null
+        install -d /etc/caddy/sites
+        render "$SRC/deploy/Caddyfile.cc-panel" > /etc/caddy/sites/cc-panel.caddy
+        if ! grep -q '^import sites/\*' /etc/caddy/Caddyfile 2>/dev/null; then
+            if grep -q 'root \* /usr/share/caddy' /etc/caddy/Caddyfile 2>/dev/null; then
+                cp /etc/caddy/Caddyfile /etc/caddy/Caddyfile.orig      # package default "welcome" site
+                echo 'import sites/*.caddy' > /etc/caddy/Caddyfile
+            else
+                printf '\nimport sites/*.caddy\n' >> /etc/caddy/Caddyfile
+            fi
+        fi
+        caddy validate --adapter caddyfile --config /etc/caddy/Caddyfile >/dev/null || die "caddy config is invalid"
+        systemctl enable -q --now caddy && systemctl reload caddy
+        if ufw status 2>/dev/null | grep -q 'Status: active'; then ufw allow 80/tcp >/dev/null; ufw allow 443/tcp >/dev/null; fi
+        ;;
+    *) die "PUBLIC_PROXY must be auto, traefik or caddy" ;;
+    esac
 fi
-
 echo
 say "done: http://$BIND_HOST:$PANEL_PORT  (user: $DEV_USER)"
 [ -z "$PUBLIC_DOMAIN" ] || echo "    public: https://$PUBLIC_DOMAIN"

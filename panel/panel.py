@@ -549,7 +549,8 @@ class Handler(BaseHTTPRequestHandler):
             addr = ipaddress.ip_address(self.client_address[0])
         except ValueError:
             return False
-        return any(addr in net for net in TRUSTED_PROXIES)
+        # a proxy on this host (Caddy) connects from our own Tailscale address; tailnet peers have other IPs
+        return any(addr in net for net in TRUSTED_PROXIES) or self.client_address[0] == BIND_HOST
 
     def client_ip(self):
         """Real client IP; behind a trusted proxy take the address the proxy appended (rightmost XFF)."""

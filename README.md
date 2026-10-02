@@ -40,6 +40,11 @@ sudo ./install.sh
 The script is idempotent: run it again after `git pull` to upgrade. It never restarts the tmux
 server, so running sessions are not interrupted.
 
+Day-to-day changes to the panel need no root: as the panel user (e.g. from a terminal session in the
+panel itself) run `./deploy.sh`. It copies `panel/` to `/opt/cc-panel` (owned by that user), refreshes the
+user units / `tmux.conf` / Claude hook and restarts the panel and ttyd; sessions keep running.
+Root (`sudo ./install.sh`) is only needed for system-level things: packages, users, Traefik / Caddy.
+
 | Variable      | Default            | Meaning                                                        |
 |---------------|--------------------|----------------------------------------------------------------|
 | `DEV_USER`    | `dev`              | Unprivileged user that owns tmux, Claude and the panel         |
@@ -51,7 +56,8 @@ server, so running sessions are not interrupted.
 | `WITH_CODEX`  | `1`                | Codex CLI via `chatgpt.com/codex/install.sh`                   |
 | `MEM_MAX`     | —                  | e.g. `8G`: memory cap for everything the user runs             |
 | `CPU_QUOTA`   | —                  | e.g. `200%`: CPU cap (two cores)                               |
-| `PUBLIC_DOMAIN` | —                | Also publish at `https://<domain>` via Dokploy's Traefik       |
+| `PUBLIC_DOMAIN` | —                | Also publish at `https://<domain>` (Let's Encrypt)             |
+| `PUBLIC_PROXY`  | `auto`           | `traefik` (Dokploy), `caddy` (plain VPS); auto-detected        |
 
 After install:
 
@@ -61,7 +67,7 @@ After install:
 3. Click **Connect** next to GitHub.
 4. On a phone: Share → *Add to Home Screen*.
 
-## Public HTTPS (optional, Dokploy / Traefik)
+## Public HTTPS (optional)
 
 By default the panel is reachable only inside the tailnet. To open it from anywhere with a real
 certificate (also enables the browser Clipboard API and a proper home-screen app):
@@ -69,23 +75,42 @@ certificate (also enables the browser Clipboard API and a proper home-screen app
 1. Create a DNS **A record** `cli.example.com -> <server public IP>` and wait until it resolves.
 2. `sudo PUBLIC_DOMAIN=cli.example.com ./install.sh`
 
-This renders [`deploy/traefik-dokploy.yml`](deploy/traefik-dokploy.yml) into
+The panel itself keeps listening only on the Tailscale IP; a reverse proxy on the same host terminates
+TLS. Which one is picked automatically:
+
+**A. Server with Dokploy (Traefik already owns :80/:443)** — `PUBLIC_PROXY=traefik`.
+[`deploy/traefik-dokploy.yml`](deploy/traefik-dokploy.yml) is rendered into
 `/etc/dokploy/traefik/dynamic/cc-panel.yml`. Traefik picks it up immediately (watched directory), gets a
-Let's Encrypt certificate via HTTP-01 on port 80 on the first request, stores it in `acme.json` and
-**renews it automatically** ~30 days before expiry. HTTP redirects to HTTPS. Traefik's container reaches
-the panel on the Tailscale IP through the host, so the panel itself still listens only there.
+Let's Encrypt certificate via HTTP-01 on the first request, stores it in `acme.json` and **renews it
+automatically** ~30 days before expiry. HTTP redirects to HTTPS. Traefik's container reaches the panel on
+the Tailscale IP through the host.
+
+**B. Dedicated development VPS (nothing on :80/:443)** — `PUBLIC_PROXY=caddy`.
+Caddy is installed from its official apt repository (works on Ubuntu 22.04 and 24.04) and
+[`deploy/Caddyfile.cc-panel`](deploy/Caddyfile.cc-panel) goes to `/etc/caddy/sites/cc-panel.caddy`
+(imported from `/etc/caddy/Caddyfile`; the package's default welcome site is replaced, any other config
+is kept). Caddy obtains the certificate on start and **renews it automatically**; HTTP redirects to HTTPS;
+websockets need no extra config. If `ufw` is active, 80/443 are opened. The installer refuses to run if
+another process already listens on 80/443. Logs: `journalctl -u caddy`.
+
+On a fresh VPS the whole setup is one command:
+
+```bash
+gh repo clone matacoder/tmux && cd tmux
+sudo PUBLIC_DOMAIN=cli.example.com TS_AUTHKEY=tskey-... MEM_MAX=12G ./install.sh
+```
 
 **Brand-new DNS records:** if the certificate is requested before Let's Encrypt can see the record, the
 log shows `acme: error ... NXDOMAIN` and resolvers cache that negative answer for the zone's SOA minimum
-(often 5–15 min, `dig SOA <zone>`). Wait that long, then make Traefik retry by touching the file
-(re-run `install.sh` or add a comment line to `cc-panel.yml`). Check:
-`docker logs dokploy-traefik 2>&1 | grep <domain>` and
+(often 5–15 min, `dig SOA <zone>`). Wait that long, then retry: Traefik — touch the file (add a comment line to `cc-panel.yml`);
+Caddy retries by itself with backoff (or `systemctl reload caddy`). Check:
+`docker logs dokploy-traefik 2>&1 | grep <domain>` / `journalctl -u caddy | grep <domain>` and
 `echo | openssl s_client -connect <domain>:443 -servername <domain> | openssl x509 -noout -issuer -enddate`.
 
 **Security:** this exposes a web terminal to the internet. Whoever logs in gets the `DEV_USER` shell, its
 GitHub token and the Claude / Codex subscriptions. Keep the generated password, consider a Traefik
 `ipAllowList` middleware or an SSO forward-auth in front. Behind the proxy the panel takes the client IP
-from `X-Forwarded-For` (only from private-network proxies) so the login rate limit stays per client, and
+from `X-Forwarded-For` (only from private-network proxies or a proxy on the same host) so the login rate limit stays per client, and
 sets the session cookie `Secure` on HTTPS.
 
 ## How it works

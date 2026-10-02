@@ -1,0 +1,10 @@
+# Public HTTPS for the panel on a dedicated VPS (no Dokploy): Caddy on :80/:443.
+# install.sh renders it to /etc/caddy/sites/cc-panel.caddy when PUBLIC_DOMAIN is set and there is no Traefik.
+#   __DOMAIN__    public host name, DNS A record -> this server's public IP
+#   __UPSTREAM__  <BIND_HOST>:<PANEL_PORT>
+# Caddy obtains the Let's Encrypt certificate on start and renews it automatically; websockets
+# (the terminal) are proxied as is; X-Forwarded-For / -Proto are set for the panel.
+__DOMAIN__ {
+	encode zstd gzip
+	reverse_proxy __UPSTREAM__
+}
