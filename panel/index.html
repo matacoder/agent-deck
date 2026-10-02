@@ -61,6 +61,11 @@ aside{width:240px;flex:none;background:var(--side);border-right:1px solid var(--
 .uw .pc{font-family:var(--mono);color:var(--fg);min-width:30px;text-align:right}
 .uw .rs{grid-column:1/-1;font-size:10.5px;color:var(--dim);margin-top:-3px}
 .usage .err{font-size:11px;color:var(--dim)}
+.ihead{display:flex;align-items:center;gap:10px;width:100%;padding:7px 10px;font-size:11.5px;color:var(--mut);text-align:left}
+.ihead:hover{background:var(--side2)}.ihead.open{border-bottom:1px solid var(--bd)}
+.ihead .sum{display:inline-flex;align-items:center;gap:4px;white-space:nowrap;color:var(--fg)}
+.ihead .sum .good{color:var(--ok)}.ihead .sum .over{color:var(--warn)}.ihead .sum .crit{color:var(--bad)}.ihead .sum .dim{color:var(--dim)}
+.ihead .chev{margin-left:auto;color:var(--dim);font-size:10px}
 #integ{margin:0 8px 8px;border:1px solid var(--bd);border-radius:8px;overflow:hidden}
 .irow{display:flex;align-items:center;gap:8px;padding:7px 10px;border-bottom:1px solid var(--bd)}
 .irow:last-child{border-bottom:0}
@@ -100,6 +105,8 @@ main{flex:1;min-width:0;display:flex;flex-direction:column;background:var(--bg)}
 #pre{flex:1;overflow:auto;padding:10px 12px;font:12px/1.4 var(--mono);color:var(--fg);white-space:pre-wrap;word-break:break-word;-webkit-overflow-scrolling:touch}
 #pre .ln{min-height:1.4em}
 #pre .hr{height:1px;background:var(--bd);margin:.65em 0}
+#pre .hrl{display:flex;align-items:center;gap:8px;margin:.4em 0;color:var(--mut);font-size:11px}
+#pre .hrl::before{content:"";flex:1;height:1px;background:var(--bd)}
 #pre a{color:#4da3ff;text-decoration:underline;word-break:break-all}
 .composer{flex:none;border-top:1px solid var(--bd);background:var(--side);padding:8px 8px calc(8px + var(--sab))}
 .keys{display:flex;gap:6px;overflow-x:auto;padding-bottom:8px;scrollbar-width:none}
@@ -176,6 +183,10 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
   .dot{width:10px;height:10px}
   .side-gh{margin:0 12px 10px;padding:12px;font-size:15px;border-radius:10px}
   #integ{margin:0 12px 10px;border-radius:10px}
+  aside{overflow-y:auto;-webkit-overflow-scrolling:touch}
+  aside>*{flex-shrink:0}
+  #tabs{flex:none;overflow:visible}
+  .ihead{padding:12px;font-size:14px;gap:14px}.ihead .chev{font-size:12px}
   #srv{font-size:13px;padding:12px 14px 0}#srv .fl{font-size:16px}
   .usage{padding:0 12px 10px 40px;gap:7px}.uw{font-size:12.5px}.uw .rs,.uw .pace{font-size:12px}.uw .bar{height:6px}
   .irow{padding:10px 12px;gap:10px}.irow .nm{font-size:15px}
@@ -436,6 +447,7 @@ function show(){
 function setMode(m){mode=m;try{localStorage.setItem("cc.mode."+(isMobile()?"m":"d"),m)}catch(e){}show()}
 
 const URL_RE=/https?:\/\/[^\s"'<>│]+/g;
+const BOX_CHARS=/[─━═╌┄┈╍▔▁]/g;
 const BOX_LINE=/^[\s─━═╌┄┈╍▔▁-]*[─━═╌┄┈╍▔▁][\s─━═╌┄┈╍▔▁-]*$/;
 /* Claude hard-wraps long URLs: glue a URL at line end with following space-free lines */
 function unwrapUrls(text){
@@ -458,7 +470,11 @@ function updateScreen(s,force){
     p.dataset.raw=text;p.replaceChildren();
     for(const raw of text.split("\n")){
       const line=raw.replace(/\s+$/,"");
-      if(line.length>=8&&BOX_LINE.test(line)){p.append(el("div","hr"));continue}
+      if(line.length>=8&&BOX_LINE.test(line)){if(!(p.lastChild&&p.lastChild.className==="hr"))p.append(el("div","hr"));continue}
+      const boxN=(line.match(BOX_CHARS)||[]).length;
+      if(line.length>=20&&boxN/line.length>=0.8){     // "──── label ──" (e.g. Claude's input box title)
+        p.append(el("div","hrl",line.replace(BOX_CHARS,"").trim()));continue;
+      }
       const d=el("div","ln");let i=0;
       for(const m of line.matchAll(URL_RE)){
         const u=cleanUrl(m[0]);d.append(line.slice(i,m.index));
@@ -607,8 +623,33 @@ function usageBlock(u){
   if(u.stale)box.append(el("div","err","данные могут быть устаревшими"));
   return box;
 }
+let integOpen=(()=>{try{const v=localStorage.getItem("cc.integ."+(isMobile()?"m":"d"));return v===null?!isMobile():v==="1"}catch(e){return !isMobile()}})();
+function toggleInteg(){integOpen=!integOpen;try{localStorage.setItem("cc.integ."+(isMobile()?"m":"d"),integOpen?"1":"0")}catch(e){}renderInteg()}
+function integSummary(){
+  const head=el("button","ihead"+(integOpen?" open":""));head.type="button";head.onclick=toggleInteg;
+  head.title=integOpen?"Свернуть":"Лимиты и аккаунты";
+  for(const a of["claude","codex"]){
+    const st=lastAg[a]||{},u=usageData[a],sum=el("span","sum");
+    const g=el("span","ag "+a,AGENTS[a].glyph);sum.append(g);
+    if(!st.installed||!st.logged_in){sum.append(el("span","dim",st.installed?"войти":"нет"))}
+    else{
+      const w=u&&(u.windows||[]).find(x=>x.secs>=86400)||(u&&(u.windows||[])[0]);
+      if(w){
+        const pc=pace(w),p=Math.round(w.percent||0);
+        const cls=!pc||pc.diff===undefined?"":pc.diff<=3?"good":pc.hitAt?"crit":"over";
+        sum.append(el("span","",p+"%"));
+        if(cls)sum.append(el("span",cls,cls==="good"?"✓":"▲"));
+      }else sum.append(el("span","dim","—"));
+    }
+    head.append(sum);
+  }
+  const gh=el("span","sum");gh.innerHTML=GH_ICON;gh.append(el("span",ghLogin?"good":"dim",ghLogin?"✓":"—"));
+  head.append(gh,el("span","chev",integOpen?"▾":"▸"));
+  return head;
+}
 function renderInteg(){
-  const blocks=[];
+  if(!integOpen){$("integ").replaceChildren(integSummary());return}
+  const blocks=[integSummary()];
   for(const a of["claude","codex"]){
     const st=lastAg[a]||{},glyph=`<span class="ag ${a}">${AGENTS[a].glyph}</span>`,right=[];
     if(!st.installed)right.push(btn("Установить","go",()=>agentAction("install",a)));
