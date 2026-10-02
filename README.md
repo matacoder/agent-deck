@@ -149,6 +149,15 @@ systemd --user (linger):  cc-tmux  (owns the tmux server: restarts of the panel 
 - `gh` login grants access to all your repositories. For tighter scope, log in with a fine-grained
   token instead: `gh auth login --with-token`.
 
+## Subscription limits: how they are read
+
+The weekly limits in the sidebar come from the same places the agents use for `/usage` (Claude Code) and
+`/status` (Codex): `api.anthropic.com/api/oauth/usage` and `chatgpt.com/backend-api/wham/usage`, called with
+the agents' own login tokens from `~/.claude/.credentials.json` and `~/.codex/auth.json`. These endpoints are
+**not documented** and may change; the panel then just shows "no data". Tokens are only read, never
+refreshed (the agents rotate refresh tokens; a second refresher would log them out) and never leave the box
+except to those two hosts.
+
 ## Useful commands
 
 ```bash
@@ -158,3 +167,7 @@ sudo -u dev XDG_RUNTIME_DIR=/run/user/$(id -u dev) systemctl --user status cc-pa
 sudo journalctl _UID=$(id -u dev) -f                  # logs
 python3 panel/make_icons.py                           # re-render icons
 ```
+
+## License
+
+[MIT](LICENSE)
