@@ -6,6 +6,8 @@
 - tmux sessions are named cc-<name>; each stores its Claude session id in @cc_sid
 - sessions are persisted to ~/.config/cc-panel/sessions.json and restored after a reboot
 """
+import base64
+import binascii
 import hashlib
 import hmac
 import json
@@ -37,6 +39,9 @@ GIT_RE = re.compile(r"^(https://|ssh://|git@)[\w.@:/~+-]+$")
 BRANCH_RE = re.compile(r"^[\w][\w./-]{0,63}$")
 COOKIE = "cc_auth"
 COOKIE_DAYS = 90
+MAX_IMAGE_BYTES = 8 * 1024 * 1024
+UPLOAD_DIR = os.path.expanduser("~/.config/cc-panel/uploads")
+ATTACHMENT_RE = re.compile(r"^[0-9a-f]{32}\.(png|jpg|webp|gif)$")
 HERE = os.path.dirname(os.path.abspath(__file__))
 STATIC = {"/icon-180.png": "image/png", "/icon-192.png": "image/png", "/icon-512.png": "image/png",
           "/manifest.webmanifest": "application/manifest+json"}
@@ -98,7 +103,8 @@ def list_sessions():
         if not sname.startswith(PREFIX):
             continue
         name = sname[len(PREFIX):]
-        preview = tmux("capture-pane", "-p", "-J", "-t", f"={sname}:", "-S", "-40", check=False).rstrip().splitlines()
+        preview_ansi = tmux("capture-pane", "-p", "-e", "-J", "-t", f"={sname}:", "-S", "-200", check=False)
+        preview = re.sub(r"\x1b\[[0-?]*[ -/]*[@-~]", "", preview_ansi).rstrip().splitlines()
         rel = os.path.relpath(path, PROJECTS) if path.startswith(PROJECTS + os.sep) else path
         group = rel.split(os.sep)[0].removesuffix(".worktrees") if not rel.startswith("/") else "другое"
         agent = opt(name, "@cc_agent") or "claude"
@@ -107,7 +113,7 @@ def list_sessions():
             "activity": int(activity or 0), "group": group, "agent": agent,
             "path": path, "running": is_running(agent, cmd), "command": cmd,
             "sid": opt(name, "@cc_sid"), "skip": opt(name, "@cc_skip") == "1",
-            "preview": "\n".join(preview[-25:]),
+            "preview": "\n".join(preview[-200:]), "preview_ansi": preview_ansi,
         })
     return sorted(result, key=lambda s: (s["group"], s["name"]))
 
@@ -264,6 +270,67 @@ def action_kill(d):
         tmux("kill-session", "-t", f"={PREFIX}{name}:")
 
 
+def attachment_dir(name):
+    if not isinstance(name, str) or not NAME_RE.fullmatch(name):
+        raise ValueError("неверное имя сессии")
+    return os.path.join(UPLOAD_DIR, name)
+
+
+def action_upload(d):
+    name = d.get("name", "")
+    folder = attachment_dir(name)
+    if not session_exists(name):
+        raise ValueError("нет такой сессии")
+    if (opt(name, "@cc_agent") or "claude") == "shell":
+        raise ValueError("изображения можно приложить к Claude или Codex")
+    encoded = d.get("data", "")
+    if not isinstance(encoded, str) or len(encoded) > ((MAX_IMAGE_BYTES + 2) // 3) * 4:
+        raise ValueError("изображение слишком большое (максимум 8 МБ)")
+    try:
+        image = base64.b64decode(encoded, validate=True)
+    except (ValueError, binascii.Error):
+        raise ValueError("неверные данные изображения") from None
+    if not image or len(image) > MAX_IMAGE_BYTES:
+        raise ValueError("изображение слишком большое или пустое")
+    if image.startswith(b"\x89PNG\r\n\x1a\n"):
+        ext = "png"
+    elif image.startswith(b"\xff\xd8\xff"):
+        ext = "jpg"
+    elif image.startswith((b"GIF87a", b"GIF89a")):
+        ext = "gif"
+    elif image.startswith(b"RIFF") and image[8:12] == b"WEBP":
+        ext = "webp"
+    else:
+        raise ValueError("нужен PNG, JPEG, WebP или GIF")
+    os.makedirs(folder, mode=0o700, exist_ok=True)
+    attachment = uuid.uuid4().hex + "." + ext
+    fd = os.open(os.path.join(folder, attachment), os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    with os.fdopen(fd, "wb") as f:
+        f.write(image)
+    return {"attachment": attachment}
+
+
+def attachment_paths(name, attachments):
+    if not isinstance(attachments, list) or len(attachments) > 4:
+        raise ValueError("можно приложить до 4 изображений")
+    folder = attachment_dir(name)
+    paths = []
+    for attachment in attachments:
+        if not isinstance(attachment, str) or not ATTACHMENT_RE.fullmatch(attachment):
+            raise ValueError("неверное вложение")
+        path = os.path.join(folder, attachment)
+        if not os.path.isfile(path) or os.path.islink(path):
+            raise ValueError("вложение не найдено; приложите изображение заново")
+        paths.append(path)
+    return paths
+
+
+def paste_to_tmux(name, text):
+    # Codex recognizes an image path through its bracketed-paste handler.
+    tmux("send-keys", "-t", f"={PREFIX}{name}:", "-l", "\x1b[200~" + text + "\x1b[201~")
+    time.sleep(0.2)
+
+
 def action_send(d):
     name = d.get("name", "")
     if not session_exists(name):
@@ -275,9 +342,25 @@ def action_send(d):
         tmux("send-keys", "-t", f"={PREFIX}{name}:", "-l", key)
     else:
         text = d.get("text", "")
-        if text:
-            tmux("send-keys", "-t", f"={PREFIX}{name}:", "-l", text)
-            time.sleep(0.15)
+        if not isinstance(text, str):
+            raise ValueError("неверный текст сообщения")
+        paths = attachment_paths(name, d.get("attachments", []))
+        agent = opt(name, "@cc_agent") or "claude"
+        if paths and agent == "shell":
+            raise ValueError("изображения можно приложить к Claude или Codex")
+        if paths and agent == "codex":
+            for path in paths:
+                paste_to_tmux(name, path)
+            if text:
+                paste_to_tmux(name, text)
+        else:
+            if paths:
+                text = (text + "\n\nПосмотри приложенные изображения:\n" + "\n".join(paths)).lstrip()
+            if paths:
+                paste_to_tmux(name, text)
+            elif text:
+                tmux("send-keys", "-t", f"={PREFIX}{name}:", "-l", text)
+                time.sleep(0.15)
         tmux("send-keys", "-t", f"={PREFIX}{name}:", "Enter")
 
 
@@ -448,7 +531,7 @@ def usage():
     return out
 
 
-ACTIONS = {"agent_install": action_agent_install, "agent_login": action_agent_login, "github_login": action_github_login, "new": action_new, "restart": action_restart, "kill": action_kill, "send": action_send}
+ACTIONS = {"agent_install": action_agent_install, "agent_login": action_agent_login, "github_login": action_github_login, "new": action_new, "restart": action_restart, "kill": action_kill, "send": action_send, "upload": action_upload}
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -528,7 +611,15 @@ class Handler(BaseHTTPRequestHandler):
         if self.path.startswith("/t/") or self.path == "/t":
             return self.proxy_tty()
         if self.path in ("/", "/index.html"):
-            return self.send_body(200, open(PAGE_FILE, "rb").read(), "text/html; charset=utf-8")
+            with open(PAGE_FILE, "rb") as f:
+                page = f.read()
+            revision = hashlib.sha256(page).hexdigest().encode()
+            page = page.replace(b"__PANEL_REVISION__", revision)
+            return self.send_body(200, page, "text/html; charset=utf-8")
+        if self.path == "/api/ui-version":
+            with open(PAGE_FILE, "rb") as f:
+                revision = hashlib.sha256(f.read()).hexdigest()
+            return self.send_json(200, {"revision": revision})
         if self.path == "/api/sessions":
             return self.send_json(200, {"sessions": list_sessions()})
         if self.path == "/api/usage":
@@ -562,9 +653,15 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_json(404, {"error": "not found"})
         try:
             length = int(self.headers.get("Content-Length") or 0)
-            data = json.loads(self.rfile.read(min(length, 1_000_000)) or b"{}")
-            ACTIONS[m.group(1)](data)
-            self.send_json(200, {"ok": True})
+            limit = 12 * 1024 * 1024 if m.group(1) == "upload" else 1_000_000
+            if length < 0 or length > limit:
+                self.close_connection = True
+                return self.send_json(413, {"error": "файл или сообщение слишком большое"})
+            data = json.loads(self.rfile.read(length) or b"{}")
+            if not isinstance(data, dict):
+                raise ValueError("неверный запрос")
+            result = ACTIONS[m.group(1)](data)
+            self.send_json(200, {"ok": True, **(result or {})})
         except (ValueError, RuntimeError, subprocess.TimeoutExpired) as e:
             self.send_json(400, {"error": str(e)})
 

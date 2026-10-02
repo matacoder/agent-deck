@@ -3,9 +3,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content">
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="apple-mobile-web-app-title" content="Claude">
-<meta name="theme-color" content="#1e1e1e">
+<meta name="theme-color" content="#252526">
 <link rel="apple-touch-icon" href="/icon-180.png"><link rel="icon" href="/icon-192.png"><link rel="manifest" href="/manifest.webmanifest">
 <title>Claude Sessions</title>
 <style>
@@ -13,7 +13,7 @@
   --bg:#1e1e1e;--side:#252526;--side2:#2d2d30;--sel:#37373d;--bd:#333336;--fg:#d4d4d4;--fg2:#ececec;--mut:#8a8a8e;--dim:#5f5f63;
   --acc:#0a84ff;--ok:#32d74b;--warn:#ffd60a;--bad:#ff453a;--orange:#e07a55;
   --mono:ui-monospace,"SF Mono",Menlo,Monaco,Consolas,monospace;
-  --sat:env(safe-area-inset-top);--sab:env(safe-area-inset-bottom);--app-h:100dvh;
+  --sat:env(safe-area-inset-top);--sab:env(safe-area-inset-bottom);--app-h:100dvh;--app-top:0px;--sal:env(safe-area-inset-left);--sar:env(safe-area-inset-right);
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;margin:0;background:var(--bg);color:var(--fg);font:13px/1.35 -apple-system,BlinkMacSystemFont,system-ui,sans-serif;overflow:hidden;overscroll-behavior:none}
@@ -85,7 +85,7 @@ aside{width:240px;flex:none;background:var(--side);border-right:1px solid var(--
 .side-foot button{color:var(--mut);font-size:11px}.side-foot button:hover{color:var(--fg)}
 
 /* ---------- main ---------- */
-main{flex:1;min-width:0;display:flex;flex-direction:column;background:var(--bg)}
+main{flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;background:var(--bg)}
 .bar{flex:none;display:flex;align-items:center;gap:4px;padding:0 6px 0 10px;height:36px;border-bottom:1px solid var(--bd);background:var(--side)}
 .m-only{display:none!important}
 #title{flex:1;min-width:0;text-align:center;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -102,23 +102,47 @@ main{flex:1;min-width:0;display:flex;flex-direction:column;background:var(--bg)}
 /* screen view (preview + composer) */
 #screen{position:absolute;inset:0;display:none;flex-direction:column}
 #screen.on{display:flex}
-#pre{flex:1;overflow:auto;padding:10px 12px;font:12px/1.4 var(--mono);color:var(--fg);white-space:pre-wrap;word-break:break-word;-webkit-overflow-scrolling:touch}
+#pre{flex:1;min-height:0;min-width:0;overflow:auto;padding:10px 12px;font:12px/1.4 var(--mono);color:var(--fg);white-space:pre-wrap;word-break:break-word;-webkit-overflow-scrolling:touch}
 #pre .ln{min-height:1.4em}
+#pre.no-wrap{white-space:pre;word-break:normal;overflow-wrap:normal}
+#pre.no-wrap a{word-break:normal}
+.key[aria-pressed="true"]{border-color:var(--acc);color:var(--acc)}
 #pre .hr{height:1px;background:var(--bd);margin:.65em 0}
 #pre .hrl{display:flex;align-items:center;gap:8px;margin:.4em 0;color:var(--mut);font-size:11px}
 #pre .hrl::before{content:"";flex:1;height:1px;background:var(--bd)}
 #pre a{color:#4da3ff;text-decoration:underline;word-break:break-all}
-.composer{flex:none;border-top:1px solid var(--bd);background:var(--side);padding:8px 8px calc(8px + var(--sab))}
-.keys{display:flex;gap:6px;overflow-x:auto;padding-bottom:8px;scrollbar-width:none}
+.composer{flex:none;border-top:1px solid var(--bd);background:var(--side);padding:8px 8px max(8px,var(--sab))}
+.keys-row{display:flex;gap:8px;align-items:flex-start}
+.keyboard-hide{display:none;flex:none;height:36px;padding:0 10px;border:1px solid var(--bd);border-radius:9px;background:var(--side2);color:var(--fg2);font-size:12px}
+.keys{flex:1;min-width:0;display:flex;gap:6px;overflow-x:auto;padding-bottom:8px;scrollbar-width:none}
 .keys::-webkit-scrollbar{display:none}
 .key{flex:none;background:var(--side2);border:1px solid var(--bd);border-radius:8px;min-width:38px;height:32px;padding:0 10px;font:12.5px var(--mono);color:var(--fg)}
 .key:active{background:var(--sel)}
 .key.num{color:var(--orange)}
 .inrow{display:flex;gap:8px;align-items:flex-end}
-#msg{flex:1;min-height:40px;max-height:160px;resize:none;background:var(--bg);border:1px solid var(--bd);border-radius:20px;color:var(--fg2);font-size:15px;line-height:1.35;padding:10px 14px;outline:none}
+#msg{flex:1;min-width:0;min-height:40px;max-height:160px;resize:none;background:var(--bg);border:1px solid var(--bd);border-radius:20px;color:var(--fg2);font-size:15px;line-height:1.35;padding:10px 14px;outline:none}
 #msg:focus{border-color:var(--acc)}
 .sendbtn{width:40px;height:40px;border-radius:50%;background:var(--acc);color:#fff;display:grid;place-items:center;flex:none}
 .sendbtn:active{opacity:.8}
+.sendbtn:disabled,.attachbtn:disabled{opacity:.45;cursor:default}
+.attachbtn{flex:none;width:40px;height:40px;border:1px solid var(--bd);border-radius:12px;background:var(--side2);display:grid;place-items:center;color:var(--fg2)}
+#attachments{display:flex;gap:8px;overflow-x:auto;padding-bottom:8px}
+#attachments:empty{display:none}
+.attachment{display:flex;align-items:center;gap:8px;flex:none;max-width:220px;background:var(--bg);border:1px solid var(--bd);border-radius:10px;padding:6px}
+.attachment img{width:44px;height:44px;object-fit:cover;border-radius:5px}
+.attachment span{font-size:12px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.attachment button{flex:none;width:32px;height:36px;font-size:20px;color:var(--mut)}
+.send-state{min-height:1.35em;margin:6px 4px 0;font-size:12px;color:var(--mut)}
+.send-state.error{color:var(--bad)}
+#pre .preview-empty{color:var(--mut);white-space:normal;padding:16px 0}
+
+#quick_tabs{display:none}
+.quick-tab{flex:none;display:flex;align-items:center;gap:7px;min-height:40px;padding:0 12px;border:1px solid var(--bd);border-radius:10px;background:var(--side2);color:var(--mut);white-space:nowrap;font-size:13px}
+.quick-tab.on{border-color:var(--acc);background:var(--sel);color:var(--fg2)}
+.quick-tab .label{max-width:160px;overflow:hidden;text-overflow:ellipsis}
+.quick-tab .dot{width:7px;height:7px}
+.quick-tab .bell{width:6px;height:6px}
+#quick_tabs::-webkit-scrollbar{display:none}
 
 /* toast */
 #toast.info{background:#1d2a3a;color:#cfe3ff;border-color:#2c4a6e}
@@ -166,9 +190,16 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 
 /* ---------- mobile ---------- */
 @media (max-width:760px){
+  html,body{position:fixed;inset:0;width:100%;height:100%;}
   body{font-size:15px}
+  #quick_tabs:not(:empty){display:flex;position:relative;flex:none;gap:8px;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none;-webkit-overflow-scrolling:touch;background:var(--side);border-top:1px solid var(--bd);padding:6px 8px max(6px,var(--sab))}
+  body.has-quick-tabs .composer{padding-bottom:8px}
+  body.keyboard-open #quick_tabs{padding-bottom:6px}
+  #app{position:fixed;top:var(--app-top);left:0;right:0;padding-left:var(--sal);padding-right:var(--sar)}
+  body.keyboard-open .composer{padding-bottom:8px}
+  body.message-focused .keyboard-hide{display:inline-flex;align-items:center;justify-content:center}
   .m-only{display:inline-grid!important}.d-only{display:none!important}
-  aside{position:fixed;top:0;bottom:0;left:0;width:min(340px,88vw);height:var(--app-h);z-index:30;transform:translateX(-102%);transition:transform .22s ease;box-shadow:0 0 40px rgba(0,0,0,.6);padding-top:var(--sat)}
+  aside{position:fixed;top:var(--app-top);bottom:0;left:0;width:min(340px,88vw);height:var(--app-h);z-index:30;transform:translateX(-102%);transition:transform .22s ease;box-shadow:0 0 40px rgba(0,0,0,.6);padding-top:var(--sat);padding-left:var(--sal)}
   body.drawer aside{transform:none}
   #scrim{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:20}
   body.drawer #scrim{display:block}
@@ -196,7 +227,11 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
   .side-foot{padding:10px 14px calc(10px + var(--sab));font-size:12.5px}
   .side-foot button{font-size:13px}
 
-  .bar{height:calc(52px + var(--sat));padding:var(--sat) 6px 0 4px;gap:2px}
+  /* Keep controls below the progressive status-bar blur in installed iOS apps. */
+  .bar{height:calc(68px + var(--sat));padding:calc(var(--sat) + 12px) 6px 0 4px;gap:2px;background:#252526;isolation:isolate;position:sticky;top:0;z-index:2}
+  .bar #title{color:#d4d4d4}
+  .bar #title b{color:#fff}
+  .bar #title .st{color:#b8b8bc}
   .bar .iconbtn{min-width:44px;height:44px;font-size:21px;color:var(--fg)}
   #title{text-align:left;padding-left:4px;line-height:1.2}
   #title b{font-size:16.5px;font-weight:600;display:block;overflow:hidden;text-overflow:ellipsis}
@@ -208,7 +243,12 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
   #menuBadge{position:absolute;top:7px;right:7px;min-width:16px;height:16px;border-radius:8px;background:var(--acc);color:#fff;font-size:10.5px;font-weight:700;display:none;place-items:center;padding:0 4px}
   #menuBadge.on{display:grid}
 
-  #pre{font-size:12.5px;padding:12px 12px}
+  #pre{font-size:13px;line-height:1.5;padding:12px}
+  .composer{padding-top:10px}
+  .keys{gap:8px}
+  .seg{flex:none}
+  .seg button{padding:8px}
+  body.keyboard-open #msg{max-height:96px}
   #msg{font-size:16px}
   .key{height:36px;min-width:44px;font-size:14px;border-radius:9px}
 
@@ -255,23 +295,32 @@ body.is-shell .agent-only{display:none!important}
       <button class="iconbtn m-only" onclick="sheet(true)" aria-label="Действия">⋯</button>
     </div>
     <div id="stage">
-      <div id="empty">Выберите сессию слева<br>или создайте новую: ＋</div>
+      <div id="empty">Загружаю сессии…</div>
       <div id="screen">
         <div id="pre"></div>
         <div class="composer">
+          <div class="keys-row">
           <div class="keys">
             <button class="key num" onclick="key('1')">1</button><button class="key num" onclick="key('2')">2</button><button class="key num" onclick="key('3')">3</button>
             <button class="key" onclick="key('Escape')">Esc</button><button class="key" onclick="key('Up')">↑</button><button class="key" onclick="key('Down')">↓</button>
             <button class="key" onclick="key('Enter')">⏎</button><button class="key" onclick="key('BTab')">⇧Tab</button><button class="key" onclick="key('Tab')">Tab</button>
             <button class="key" onclick="key('C-c')">^C</button>
+            <button class="key" id="b_wrap" onclick="toggleWrap()" aria-pressed="true">Перенос</button>
           </div>
+          <button class="keyboard-hide" id="b_keyboard" onpointerdown="event.preventDefault()" onclick="hideKeyboard()" aria-label="Скрыть клавиатуру">Скрыть клавиатуру</button>
+          </div>
+          <div id="attachments" aria-label="Приложенные изображения"></div>
+          <input type="file" id="image_files" accept="image/*" multiple hidden>
           <div class="inrow">
-            <textarea id="msg" rows="1" placeholder="Сообщение в Claude…" enterkeyhint="send"></textarea>
-            <button class="sendbtn" onclick="send()" aria-label="Отправить"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>
+            <button class="attachbtn agent-only" id="b_attach" onclick="chooseImages()" aria-label="Приложить скриншот" title="Приложить изображение"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5l-8.5 8.5a6 6 0 0 1-8.5-8.5L13 3a4 4 0 0 1 5.7 5.7l-9 9a2 2 0 0 1-2.8-2.8l8.5-8.5"/></svg></button>
+            <textarea id="msg" rows="1" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" placeholder="Сообщение агенту…" enterkeyhint="send"></textarea>
+            <button class="sendbtn" id="b_send" onclick="send()" aria-label="Отправить"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>
           </div>
+          <div id="send_state" class="send-state" role="status" aria-live="polite">Enter — новая строка · ↑ — отправить</div>
         </div>
       </div>
     </div>
+    <nav id="quick_tabs" aria-label="Быстрое переключение сессий"></nav>
   </main>
 </div>
 
@@ -283,6 +332,7 @@ body.is-shell .agent-only{display:none!important}
   <button class="agent-only" onclick="sheet(false);restart('new')"><span class="i">✚</span>Перезапустить с новым разговором</button>
   <button onclick="sheet(false);popout()"><span class="i">↗</span>Терминал в новой вкладке</button>
   <button class="dng" onclick="sheet(false);kill()"><span class="i">✕</span>Закрыть сессию</button>
+  <button onclick="refreshInterface()"><span class="i">↻</span>Обновить интерфейс</button>
   <button onclick="sheet(false)"><span class="i"></span>Отмена</button>
 </div></div>
 <div id="toast"></div>
@@ -316,15 +366,31 @@ body.is-shell .agent-only{display:none!important}
 <script>
 const $=id=>document.getElementById(id);
 const BUSY_SEC=6;
+const UI_REVISION="__PANEL_REVISION__";
 const isMobile=()=>matchMedia("(max-width:760px)").matches;
 let sessions=[],active=null,mode=null,clockSkew=0;
 const frames=new Map(),wasBusy=new Map(),attention=new Set();
 try{active=localStorage.getItem("cc.active");mode=localStorage.getItem("cc.mode."+(isMobile()?"m":"d"))}catch(e){}
 if(location.hash.length>1)active=decodeURIComponent(location.hash.slice(1));
+try{
+  const draft=JSON.parse(sessionStorage.getItem("cc.reload-draft")||"null");
+  if(draft&&draft.name===active){$("msg").value=draft.text;sessionStorage.removeItem("cc.reload-draft")}
+}catch(e){}
 
 /* keep layout glued to the visible area when the iOS keyboard opens */
-function fitViewport(){const vv=window.visualViewport;if(vv){document.documentElement.style.setProperty("--app-h",vv.height+"px");window.scrollTo(0,0)}}
+function fitViewport(){
+  const vv=window.visualViewport;if(!vv)return;
+  const root=document.documentElement;
+  const keyboard=isMobile()&&Math.abs(vv.scale-1)<0.01&&root.clientHeight-vv.height>150;
+  // Use the dynamic layout viewport normally: iOS can leave visualViewport
+  // shorter than the screen after dismissing the keyboard in a home-screen app.
+  root.style.setProperty("--app-h",keyboard?vv.height+"px":"100dvh");
+  root.style.setProperty("--app-top",keyboard?vv.offsetTop+"px":"0px");
+  document.body.classList.toggle("keyboard-open",keyboard);
+}
 if(window.visualViewport){visualViewport.addEventListener("resize",fitViewport);visualViewport.addEventListener("scroll",fitViewport);fitViewport()}
+addEventListener("pageshow",fitViewport);
+addEventListener("orientationchange",()=>requestAnimationFrame(fitViewport));
 
 async function api(path,body){
   const r=await fetch(path,body?{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}:{cache:"no-store"});
@@ -392,8 +458,47 @@ function sheet(on){
   $("sheet").classList.toggle("on",on);
 }
 const cur=()=>sessions.find(x=>x.name===active);
+const messageDrafts=new Map();
+try{
+  for(const [name,text] of JSON.parse(sessionStorage.getItem("cc.session-drafts")||"[]"))
+    if(typeof name==="string"&&typeof text==="string")messageDrafts.set(name,text);
+  sessionStorage.removeItem("cc.session-drafts");
+  if(active&&!$("msg").value)$("msg").value=messageDrafts.get(active)||"";
+}catch(e){}
+if(active&&$("msg").value)messageDrafts.set(active,$("msg").value);
+let quickSignature=null,quickActive=null;
+const quickButtons=new Map();
+function renderQuickTabs(){
+  const box=$("quick_tabs"),signature=JSON.stringify(sessions.map(s=>[s.name,agentOf(s)]));
+  if(signature!==quickSignature){
+    const left=box.scrollLeft;box.replaceChildren();quickButtons.clear();
+    for(const s of sessions){
+      const button=el("button","quick-tab",el("span","dot"),el("span","ag "+agentOf(s),AGENTS[agentOf(s)].glyph),el("span","label",s.name),el("span","bell"));
+      button.type="button";button.setAttribute("aria-label","Открыть сессию "+s.name);
+      button.onclick=()=>select(s.name);box.append(button);quickButtons.set(s.name,button);
+    }
+    box.scrollLeft=left;quickSignature=signature;
+  }
+  document.body.classList.toggle("has-quick-tabs",sessions.length>0);
+  for(const s of sessions){
+    const button=quickButtons.get(s.name);button.classList.toggle("on",s.name===active);
+    button.setAttribute("aria-pressed",String(s.name===active));button.title=s.name+" · "+stateText(s);
+    button.children[0].className="dot "+state(s);button.children[3].style.display=attention.has(s.name)?"":"none";
+  }
+  if(active!==quickActive&&isMobile()){
+    const safelySelected=active,button=quickButtons.get(active);
+    if(button)requestAnimationFrame(()=>{
+      if(active!==safelySelected||!button.isConnected)return;
+      const left=button.offsetLeft,right=left+button.offsetWidth;
+      if(left<box.scrollLeft)box.scrollTo({left:Math.max(0,left-8),behavior:"smooth"});
+      else if(right>box.scrollLeft+box.clientWidth)box.scrollTo({left:right-box.clientWidth+8,behavior:"smooth"});
+    });
+  }
+  quickActive=active;
+}
 
 function renderTabs(){
+  renderQuickTabs();
   const q=$("q").value.trim().toLowerCase(),box=$("tabs");
   const list=sessions.filter(s=>!q||(s.name+" "+s.group+" "+s.path).toLowerCase().includes(q));
   box.replaceChildren();let grp=null,i=0;
@@ -418,6 +523,7 @@ function renderTabs(){
 function renderTitle(){
   const s=cur(),t=$("title");t.replaceChildren();
   document.body.classList.toggle("is-shell",!!s&&agentOf(s)==="shell");
+  $("msg").placeholder=s?"Сообщение в "+AGENTS[agentOf(s)].label+"…":"Сообщение агенту…";
   if(!s){t.textContent=isMobile()?"Claude":"—";return}
   const st=state(s);
   t.append(el("b","",s.name),el("span","path"," — "+s.path.replace(/^\/home\/[^/]+/,"~")),el("span","st",stateText(s)+" · "+shortPath(s.path)));
@@ -435,7 +541,8 @@ function frameFor(name){
 function show(){
   const s=cur(),m=curMode();
   $("empty").style.display=s?"none":"grid";
-  renderTitle();
+  if(!s)$("empty").textContent=load.done?"Нет сессий. Создайте новую через меню ☰ → ＋.":"Загружаю сессии…";
+  renderTitle();renderSendState();renderAttachments();
   $("b_mode").textContent=m==="term"?"⌨ Экран":"▣ Терминал";
   for(const b of $("seg").children)b.classList.toggle("on",b.dataset.m===m);
   for(const[n,f]of frames)f.classList.toggle("on",!!s&&m==="term"&&n===active);
@@ -446,9 +553,20 @@ function show(){
 }
 function setMode(m){mode=m;try{localStorage.setItem("cc.mode."+(isMobile()?"m":"d"),m)}catch(e){}show()}
 
+let wrapPreview=true;
+try{wrapPreview=localStorage.getItem("cc.wrap")!=="0"}catch(e){}
+function applyWrap(){
+  $("pre").classList.toggle("no-wrap",!wrapPreview);
+  $("b_wrap").setAttribute("aria-pressed",String(wrapPreview));
+}
+function toggleWrap(){
+  wrapPreview=!wrapPreview;
+  try{localStorage.setItem("cc.wrap",wrapPreview?"1":"0")}catch(e){}
+  applyWrap();
+}
+applyWrap();
+
 const URL_RE=/https?:\/\/[^\s"'<>│]+/g;
-const BOX_CHARS=/[─━═╌┄┈╍▔▁]/g;
-const BOX_LINE=/^[\s─━═╌┄┈╍▔▁-]*[─━═╌┄┈╍▔▁][\s─━═╌┄┈╍▔▁-]*$/;
 /* Claude hard-wraps long URLs: glue a URL at line end with following space-free lines */
 function unwrapUrls(text){
   const L=text.split("\n"),out=[];
@@ -464,29 +582,115 @@ const cleanUrl=u=>u.replace(/[.,;)\]]+$/,"");
 function lastUrl(s){const m=unwrapUrls(s&&s.preview||"").match(URL_RE);return m?cleanUrl(m[m.length-1]):null}
 function updateLink(){$("b_link").style.display=lastUrl(cur())?"":"none"}
 function openLink(){const u=lastUrl(cur());if(u)window.open(u,"_blank","noopener")}
-function updateScreen(s,force){
-  const p=$("pre"),stick=force||p.scrollTop+p.clientHeight>=p.scrollHeight-40,text=unwrapUrls(s.preview||"");
-  if(p.dataset.raw!==text){
-    p.dataset.raw=text;p.replaceChildren();
-    for(const raw of text.split("\n")){
-      const line=raw.replace(/\s+$/,"");
-      if(line.length>=8&&BOX_LINE.test(line)){if(!(p.lastChild&&p.lastChild.className==="hr"))p.append(el("div","hr"));continue}
-      const boxN=(line.match(BOX_CHARS)||[]).length;
-      if(line.length>=20&&boxN/line.length>=0.8){     // "──── label ──" (e.g. Claude's input box title)
-        p.append(el("div","hrl",line.replace(BOX_CHARS,"").trim()));continue;
+const ANSI_PALETTE=["#2e3436","#cc0000","#4e9a06","#c4a000","#3465a4","#75507b","#06989a","#d3d7cf","#555753","#ef2929","#8ae234","#fce94f","#729fcf","#ad7fa8","#34e2e2","#eeeeec"];
+function ansiColor(n){
+  if(!Number.isInteger(n)||n<0||n>255)return null;
+  if(n<16)return ANSI_PALETTE[n];
+  if(n>=232){const v=8+(n-232)*10;return `rgb(${v},${v},${v})`}
+  n-=16;const level=v=>v===0?0:55+40*v;
+  return `rgb(${level(Math.floor(n/36))},${level(Math.floor(n/6)%6)},${level(n%6)})`;
+}
+function ansiLines(text){
+  let style={},line=[],lines=[];
+  const write=t=>{
+    const parts=t.replace(/\r/g,"").split("\n");
+    parts.forEach((part,i)=>{if(i){lines.push(line);line=[]}if(part)line.push({text:part,style:{...style}})});
+  };
+  const sgr=params=>{
+    const codes=params.split(";").flatMap(p=>{
+      const c=p.split(":");
+      if(c[0]==="4"&&c.length>1)return [c[1]==="0"?24:4];
+      if(c.length>=5&&(c[0]==="38"||c[0]==="48")&&c[1]==="2")return [c[0],c[1],...c.slice(-3)].map(Number);
+      return c.filter((v,i)=>v!==""||i===0).map(Number);
+    });
+    for(let i=0;i<codes.length;i++){
+      const c=codes[i];
+      if(c===0)style={};
+      else if(c===1)style.bold=true;
+      else if(c===2)style.dim=true;
+      else if(c===3)style.italic=true;
+      else if(c===4||c===21)style.underline=true;
+      else if(c===7)style.inverse=true;
+      else if(c===8)style.hidden=true;
+      else if(c===9)style.strike=true;
+      else if(c===22){delete style.bold;delete style.dim}
+      else if(c===23)delete style.italic;
+      else if(c===24)delete style.underline;
+      else if(c===27)delete style.inverse;
+      else if(c===28)delete style.hidden;
+      else if(c===29)delete style.strike;
+      else if(c===39)delete style.fg;
+      else if(c===49)delete style.bg;
+      else if(c>=30&&c<=37)style.fg=ansiColor(c-30);
+      else if(c>=90&&c<=97)style.fg=ansiColor(c-90+8);
+      else if(c>=40&&c<=47)style.bg=ansiColor(c-40);
+      else if(c>=100&&c<=107)style.bg=ansiColor(c-100+8);
+      else if(c===38||c===48){
+        const key=c===38?"fg":"bg",mode=codes[++i];let color=null;
+        if(mode===5)color=ansiColor(codes[++i]);
+        else if(mode===2){const rgb=codes.slice(i+1,i+4);i+=3;if(rgb.length===3&&rgb.every(v=>Number.isInteger(v)&&v>=0&&v<=255))color=`rgb(${rgb.join(",")})`}
+        if(color)style[key]=color;
       }
+    }
+  };
+  const escapes=/\x1b\[[0-?]*[ -/]*[@-~]|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)/g;
+  let start=0;
+  for(const m of text.matchAll(escapes)){
+    write(text.slice(start,m.index));
+    if(m[0].startsWith("\x1b[")&&m[0].endsWith("m"))sgr(m[0].slice(2,-1));
+    start=m.index+m[0].length;
+  }
+  write(text.slice(start));lines.push(line);
+  // Parse before trimming so styles spanning lines remain intact.
+  while(lines.length&&!lines[lines.length-1].some(r=>r.text.trim()))lines.pop();
+  return lines.slice(-200);
+}
+function styledText(text,s){
+  const span=el("span","",text);
+  if(s.inverse){span.style.color=s.bg||"var(--bg)";span.style.backgroundColor=s.fg||"var(--fg)"}
+  else{if(s.fg)span.style.color=s.fg;if(s.bg)span.style.backgroundColor=s.bg}
+  if(s.bold)span.style.fontWeight="700";
+  if(s.dim)span.style.opacity="0.65";
+  if(s.italic)span.style.fontStyle="italic";
+  const decorations=[];if(s.underline)decorations.push("underline");if(s.strike)decorations.push("line-through");
+  if(decorations.length)span.style.textDecoration=decorations.join(" ");
+  if(s.hidden)span.style.visibility="hidden";
+  return span;
+}
+function appendStyledRange(node,runs,from,to){
+  let offset=0;
+  for(const run of runs){
+    const end=offset+run.text.length;
+    if(end>from&&offset<to)node.append(styledText(run.text.slice(Math.max(0,from-offset),Math.min(run.text.length,to-offset)),run.style));
+    offset=end;if(offset>=to)break;
+  }
+}
+function updateScreen(s,force){
+  const p=$("pre"),stick=force||p.scrollTop+p.clientHeight>=p.scrollHeight-40;
+  const raw=s.preview_ansi??unwrapUrls(s.preview||"");
+  if(p.dataset.raw!==raw){
+    p.dataset.raw=raw;p.replaceChildren();
+    const lines=ansiLines(raw);
+    if(!lines.length)p.append(el("div","preview-empty","В tmux пока нет текста. Можно переключиться в «Терм» и проверить сессию."));
+    for(const runs of lines){
+      const line=runs.map(r=>r.text).join("").trimEnd();
       const d=el("div","ln");let i=0;
       for(const m of line.matchAll(URL_RE)){
-        const u=cleanUrl(m[0]);d.append(line.slice(i,m.index));
-        const a=document.createElement("a");a.href=u;a.target="_blank";a.rel="noopener";a.textContent=u;d.append(a);i=m.index+u.length;
+        const u=cleanUrl(m[0]);appendStyledRange(d,runs,i,m.index);
+        const a=document.createElement("a");a.href=u;a.target="_blank";a.rel="noopener";
+        appendStyledRange(a,runs,m.index,m.index+u.length);d.append(a);i=m.index+u.length;
       }
-      d.append(line.slice(i));p.append(d);
+      appendStyledRange(d,runs,i,line.length);p.append(d);
     }
   }
   if(stick)p.scrollTop=p.scrollHeight;
 }
 function select(name){
+  if(name===active){drawer(false);return}
+  if(active)messageDrafts.set(active,$("msg").value);
   active=name;attention.delete(name);
+  $("msg").value=messageDrafts.get(name)||"";$("msg").style.height="";
+  $("msg").dispatchEvent(new Event("input"));
   try{localStorage.setItem("cc.active",name)}catch(e){}
   history.replaceState(null,"","#"+encodeURIComponent(name));
   drawer(false);$("pre").dataset.raw="";renderTabs();show();
@@ -502,14 +706,18 @@ async function load(){
     }
     const names=new Set(list.map(s=>s.name));
     for(const[n,f]of frames)if(!names.has(n)){f.remove();frames.delete(n);attention.delete(n)}
-    const first=!sessions.length&&!load.done;load.done=true;
+    const first=!load.done,previousActive=active;load.done=true;
     sessions=list;
     if(active&&!names.has(active))active=null;
-    if(!active&&sessions.length&&!isMobile())active=sessions[0].name;
+    if(!active&&sessions.length){
+      active=sessions.reduce((latest,s)=>Number(s.activity)>Number(latest.activity)?s:latest).name;
+      try{localStorage.setItem("cc.active",active)}catch(e){}
+      history.replaceState(null,"","#"+encodeURIComponent(active));
+    }
     if(first&&!active&&isMobile())drawer(true);
     renderTabs();renderTitle();updateLink();
     const s=cur(),m=curMode();
-    if(!s||(m==="term"&&!frames.has(active)))show();
+    if(first||active!==previousActive||!s||(m==="term"&&!frames.has(active)))show();
     else if(m==="screen")updateScreen(s);
   }catch(e){toast(e.message)}
 }
@@ -533,14 +741,121 @@ async function kill(){
   if(await post("/api/kill",{name:n},`Закрыть сессию «${n}»? Claude будет остановлен.`)){active=null;show()}
 }
 function popout(){if(active)window.open("/t/?arg="+encodeURIComponent("cc-"+active),"_blank")}
-async function send(){
-  const t=$("msg");if(!active||!t.value.trim())return;
-  const text=t.value;t.value="";t.style.height="";
-  if(!await post("/api/send",{name:active,text})){t.value=text}
-  $("pre").scrollTop=$("pre").scrollHeight;
+let uploading=false,choosingImages=false;
+const imageAttachments=new Map();
+const attachmentsFor=name=>imageAttachments.get(name)||[];
+try{
+  const draft=JSON.parse(sessionStorage.getItem("cc.reload-images")||"null");
+  if(Array.isArray(draft)){
+    for(const [name,images] of draft)if(typeof name==="string"&&Array.isArray(images))imageAttachments.set(name,images.slice(0,4));
+  }else if(draft&&draft.name===active&&Array.isArray(draft.images))imageAttachments.set(active,draft.images.slice(0,4));
+  sessionStorage.removeItem("cc.reload-images");
+}catch(e){}
+function renderAttachments(){
+  const list=$("attachments");list.replaceChildren();
+  for(const entry of attachmentsFor(active)){
+    const chip=el("div","attachment");
+    if(entry.preview){const img=document.createElement("img");img.src=entry.preview;img.alt="";chip.append(img)}
+    chip.append(el("span","",entry.label));
+    const remove=el("button","","×");remove.type="button";
+    remove.setAttribute("aria-label","Убрать "+entry.label);remove.disabled=sending||uploading;
+    remove.onclick=()=>{
+      imageAttachments.set(active,attachmentsFor(active).filter(x=>x!==entry));
+      if(entry.preview)URL.revokeObjectURL(entry.preview);renderAttachments();
+    };
+    chip.append(remove);list.append(chip);
+  }
+  $("b_attach").disabled=!active||sending||uploading;
+  $("b_send").disabled=sending||uploading;
 }
-function key(k){if(active)post("/api/send",{name:active,key:k})}
+function chooseImages(){
+  if(!active||sending||uploading)return;
+  choosingImages=true;
+  $("image_files").click();
+}
+function readImageData(file){
+  return new Promise((resolve,reject)=>{
+    const reader=new FileReader();reader.onload=()=>resolve(String(reader.result).split(",")[1]);
+    reader.onerror=()=>reject(new Error("Не удалось прочитать изображение"));reader.readAsDataURL(file);
+  });
+}
+async function prepareImage(file){
+  if(["image/png","image/jpeg","image/webp","image/gif"].includes(file.type))return file;
+  // Safari can decode some photo formats that the terminal agents do not accept.
+  const url=URL.createObjectURL(file),img=new Image();
+  try{
+    await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=()=>reject(new Error("Выберите PNG или JPEG: этот формат не удалось открыть"));img.src=url});
+    const scale=Math.min(1,4096/Math.max(img.naturalWidth,img.naturalHeight));
+    const canvas=document.createElement("canvas");canvas.width=Math.max(1,Math.round(img.naturalWidth*scale));canvas.height=Math.max(1,Math.round(img.naturalHeight*scale));
+    const ctx=canvas.getContext("2d");ctx.fillStyle="#fff";ctx.fillRect(0,0,canvas.width,canvas.height);ctx.drawImage(img,0,0,canvas.width,canvas.height);
+    return await new Promise((resolve,reject)=>canvas.toBlob(blob=>blob?resolve(blob):reject(new Error("Не удалось подготовить изображение")),"image/jpeg",0.9));
+  }finally{URL.revokeObjectURL(url)}
+}
+async function uploadImages(files){
+  if(!active||sending||uploading||!files.length)return;
+  const name=active;
+  if(agentOf(cur())==="shell"){toast("Выберите сессию Claude или Codex");return}
+  if(attachmentsFor(name).length+files.length>4){toast("Можно приложить до 4 изображений");return}
+  uploading=true;renderAttachments();
+  sendStates.set(name,{text:"Загружаю изображения…"});renderSendState();
+  let failed=false;
+  for(const file of files){
+    try{
+      if(file.size>8*1024*1024)throw new Error("Изображение слишком большое: максимум 8 МБ");
+      const image=await prepareImage(file),data=await readImageData(image);
+      const result=await api("/api/upload",{name,data});
+      imageAttachments.set(name,[...attachmentsFor(name),{attachment:result.attachment,label:file.name||"Скриншот",preview:URL.createObjectURL(image)}]);
+    }catch(e){failed=true;toast(e.message);sendStates.set(name,{text:"Не удалось приложить: "+e.message,error:true})}
+  }
+  uploading=false;
+  if(!failed)sendStates.set(name,{text:"Изображения приложены · нажмите ↑ для отправки"});
+  renderAttachments();renderSendState();
+}
+$("image_files").addEventListener("cancel",()=>{choosingImages=false});
+$("image_files").addEventListener("change",e=>{choosingImages=false;const files=Array.from(e.target.files||[]);e.target.value="";uploadImages(files)});
+$("msg").addEventListener("paste",e=>{
+  const files=Array.from(e.clipboardData&&e.clipboardData.files||[]).filter(f=>f.type.startsWith("image/"));
+  if(files.length){e.preventDefault();uploadImages(files)}
+});
+
+let sending=false;
+const sendStates=new Map();
+function renderSendState(){
+  const status=sendStates.get(active),d=$("send_state");
+  d.textContent=status?status.text:"Enter — новая строка · ↑ — отправить";
+  d.classList.toggle("error",!!status&&status.error);
+}
+async function send(){
+  const t=$("msg");if(sending||uploading||!active||(!t.value.trim()&&!attachmentsFor(active).length))return;
+  const name=active,text=t.value,images=attachmentsFor(active).slice();
+  sending=true;renderAttachments();
+  sendStates.set(name,{text:"Отправляю…"});renderSendState();
+  try{
+    await api("/api/send",{name,text,attachments:images.map(x=>x.attachment)});
+    imageAttachments.set(name,attachmentsFor(name).filter(x=>!images.includes(x)));
+    for(const image of images)if(image.preview)URL.revokeObjectURL(image.preview);
+    if(messageDrafts.get(name)===text)messageDrafts.delete(name);
+    if(active===name&&t.value===text){t.value="";t.style.height=""}
+    sendStates.set(name,{text:"Отправлено в "+AGENTS[agentOf(sessions.find(s=>s.name===name))].label+" · "+new Date().toLocaleTimeString("ru-RU",{hour:"2-digit",minute:"2-digit"})});
+    await load();
+    if(active===name)$("pre").scrollTop=$("pre").scrollHeight;
+  }catch(e){
+    sendStates.set(name,{text:"Не отправлено: "+e.message,error:true});
+  }finally{
+    sending=false;renderAttachments();renderSendState();
+  }
+}
+function key(k){if(active&&!sending&&!uploading)post("/api/send",{name:active,key:k})}
 async function logout(){await fetch("/logout",{method:"POST"});location.href="/login"}
+function hideKeyboard(){
+  const focused=document.activeElement;
+  if(focused&&typeof focused.blur==="function")focused.blur();
+  document.body.classList.remove("message-focused");
+  requestAnimationFrame(fitViewport);
+}
+$("msg").addEventListener("focus",()=>document.body.classList.add("message-focused"));
+$("msg").addEventListener("blur",()=>document.body.classList.remove("message-focused"));
+
 $("msg").addEventListener("input",e=>{e.target.style.height="";e.target.style.height=Math.min(e.target.scrollHeight,160)+"px"});
 $("msg").addEventListener("keydown",e=>{
   if(e.key==="Enter"&&!e.shiftKey&&(isMobile()?false:true)&&!e.isComposing){e.preventDefault();send()}
@@ -744,10 +1059,42 @@ addEventListener("keydown",hotkeys,true);
 let lastMobile=isMobile();
 addEventListener("resize",()=>{if(isMobile()!==lastMobile){lastMobile=isMobile();try{mode=localStorage.getItem("cc.mode."+(lastMobile?"m":"d"))}catch(e){mode=null}show()}});
 
+/* Update installed home-screen pages too, without interrupting input. */
+let checkingVersion=false;
+function refreshInterface(){
+  if(sending||uploading||choosingImages)return;
+  if(active)messageDrafts.set(active,$("msg").value);
+  try{sessionStorage.setItem("cc.session-drafts",JSON.stringify([...messageDrafts]));sessionStorage.setItem("cc.reload-images",JSON.stringify([...imageAttachments].map(([name,images])=>[name,images.map(x=>({attachment:x.attachment,label:x.label}))])));sessionStorage.setItem("cc.reload-draft",JSON.stringify({name:active,text:$("msg").value}))}catch(e){
+    if($("msg").value||attachmentsFor(active).length){toast("Не удалось сохранить черновик. Очистите поле перед обновлением.");return}
+  }
+  location.reload();
+}
+function canAutoRefresh(){
+  return !document.hidden&&!sending&&!uploading&&!choosingImages&&!Array.from(imageAttachments.values()).some(images=>images.length)&&!Array.from(messageDrafts.values()).some(Boolean)&&!$("msg").value&&!$("dlg").open&&
+    !$("sheet").classList.contains("on")&&!document.body.classList.contains("drawer")&&
+    (!cur()||(curMode()==="screen"&&$("pre").scrollTop+$("pre").clientHeight>=$("pre").scrollHeight-40))&&
+    !String(window.getSelection())&&
+    !["INPUT","TEXTAREA"].includes(document.activeElement&&document.activeElement.tagName);
+}
+async function checkInterfaceVersion(){
+  if(checkingVersion||document.hidden)return;
+  checkingVersion=true;
+  const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),10000);
+  try{
+    const response=await fetch("/api/ui-version",{cache:"no-store",signal:controller.signal});
+    if(!response.ok)return;
+    const data=await response.json();
+    if(typeof data.revision==="string"&&data.revision!==UI_REVISION&&canAutoRefresh())refreshInterface();
+  }catch(e){/* A temporary disconnect should leave the current interface usable. */}
+  finally{clearTimeout(timeout);checkingVersion=false}
+}
+setInterval(checkInterfaceVersion,30000);
+checkInterfaceVersion();
+
 checkGithubFoot(true);setInterval(checkGithubFoot,5000);
 loadUsage();setInterval(loadUsage,60000);
 loadServer();setInterval(loadServer,3600000);
-document.addEventListener("visibilitychange",()=>{if(!document.hidden){checkGithubFoot(true);loadUsage();load()}});
+document.addEventListener("visibilitychange",()=>{if(!document.hidden){checkGithubFoot(true);loadUsage();load();checkInterfaceVersion()}});
 load();setInterval(load,2500);
 </script>
 </body></html>

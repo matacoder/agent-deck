@@ -21,8 +21,13 @@ Everything is reachable only over [Tailscale](https://tailscale.com); nothing li
   current across `/clear` and `/resume`.
 - **GitHub**: one-click device login (`gh`), repo picker with search, clone into `~/projects`,
   optional **git worktree per session** (many Claudes on one repo, one branch each).
-- **Mobile**: installable to the home screen (icon + manifest), session screen with clickable links,
-  message box and keys `1 2 3 Esc ↑ ↓ ⏎ ⇧Tab ^C` for answering Claude prompts.
+- **Mobile**: installable to the home screen (icon + manifest), session screen with terminal colors, bold/italic/underline, and clickable links,
+  message box, screenshot attachments (up to four images, 8 MB each), and keys
+  `1 2 3 Esc ↑ ↓ ⏎ ⇧Tab ^C` for answering agent prompts. Uploads stay on the server;
+  Codex receives image attachments in its current conversation.
+- **Interface updates**: checks for a new UI every 30 s and on return from the background;
+  reloads when the screen is idle with no draft or attachments. The mobile action menu
+  also has **Обновить интерфейс**, which preserves the current draft and uploaded attachments.
 - **Login form** with password-manager support; signed HttpOnly cookie, 90 days.
 
 ## Install (clean Ubuntu 22.04 / 24.04)
