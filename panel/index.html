@@ -52,7 +52,10 @@ aside{width:240px;flex:none;background:var(--side);border-right:1px solid var(--
 .iblk{border-bottom:1px solid var(--bd)}.iblk:last-child{border-bottom:0}.iblk .irow{border-bottom:0}
 .usage{padding:0 10px 8px 34px;display:grid;gap:5px}
 .uw{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:7px;font-size:11px;color:var(--mut)}
-.uw .bar{height:5px;border-radius:3px;background:var(--side2);overflow:hidden}
+.uw .bar{height:5px;border-radius:3px;background:var(--side2);overflow:hidden;position:relative}
+.uw .bar b{position:absolute;top:-2px;bottom:-2px;width:2px;margin-left:-1px;background:var(--fg);opacity:.75;border-radius:1px}
+.uw .pace{grid-column:1/-1;font-size:10.5px;margin-top:-3px}
+.uw .pace.good{color:var(--ok)}.uw .pace.over{color:var(--warn)}.uw .pace.crit{color:var(--bad)}
 .uw .bar i{display:block;height:100%;border-radius:3px;background:var(--acc)}
 .uw .bar i.warn{background:var(--warn)}.uw .bar i.bad{background:var(--bad)}
 .uw .pc{font-family:var(--mono);color:var(--fg);min-width:30px;text-align:right}
@@ -174,7 +177,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
   .side-gh{margin:0 12px 10px;padding:12px;font-size:15px;border-radius:10px}
   #integ{margin:0 12px 10px;border-radius:10px}
   #srv{font-size:13px;padding:12px 14px 0}#srv .fl{font-size:16px}
-  .usage{padding:0 12px 10px 40px;gap:7px}.uw{font-size:12.5px}.uw .rs{font-size:12px}.uw .bar{height:6px}
+  .usage{padding:0 12px 10px 40px;gap:7px}.uw{font-size:12.5px}.uw .rs,.uw .pace{font-size:12px}.uw .bar{height:6px}
   .irow{padding:10px 12px;gap:10px}.irow .nm{font-size:15px}
   .irow button{font-size:13.5px;padding:7px 11px;border-radius:8px}
   .agsel button{padding:10px 6px;font-size:15px}
@@ -561,13 +564,45 @@ function fmtReset(ts){
   const abs=m<1440&&d.getDate()===new Date().getDate()?hm:d.toLocaleDateString("ru-RU",{weekday:"short",day:"numeric",month:"short"})+" "+hm;
   return `сброс через ${rel} · ${abs}`;
 }
+/* pace: compare used % with the share of the window that has already elapsed */
+function pace(w){
+  if(!w.resets_at||!w.secs)return null;
+  const now=Date.now()/1000,left=w.resets_at-now,elapsed=Math.min(Math.max(1-left/w.secs,0),1);
+  if(elapsed<0.03||left<=0)return {elapsed};             // too early to judge
+  const used=w.percent||0,norm=elapsed*100,diff=Math.round(used-norm);
+  const res={elapsed,norm:Math.round(norm),diff};
+  if(used>0){
+    const rate=used/(w.secs*elapsed);                       // % per second so far
+    const hitAt=now+(100-used)/rate;                        // when 100% is reached at this pace
+    res.forecast=Math.round(used/elapsed);                  // projected % at reset
+    if(hitAt<w.resets_at&&elapsed>=0.1)res.hitAt=hitAt;   // early in the window the forecast is noise
+  }
+  return res;
+}
+function fmtWhen(ts){
+  const d=new Date(ts*1000),hm=d.toLocaleTimeString("ru-RU",{hour:"2-digit",minute:"2-digit"});
+  return d.toDateString()===new Date().toDateString()?"сегодня "+hm:d.toLocaleDateString("ru-RU",{weekday:"short"})+" "+hm;
+}
 function usageBlock(u){
   const box=el("div","usage");
   if(!u)return null;
   if(u.error&&!(u.windows||[]).length){box.append(el("div","err",u.error));return box}
   for(const w of u.windows||[]){
     const p=Math.round(w.percent||0),fill=el("i",p>=90?"bad":p>=70?"warn":"");fill.style.width=Math.min(p,100)+"%";
-    box.append(el("div","uw",el("span","",w.label),el("span","bar",fill),el("span","pc",p+"%"),el("span","rs",fmtReset(w.resets_at))));
+    const pc=pace(w),bar=el("span","bar",fill),row=el("div","uw",el("span","",w.label),bar,el("span","pc",p+"%"));
+    if(pc&&pc.norm!==undefined){
+      const tick=el("b","");tick.style.left=(pc.elapsed*100)+"%";tick.title=`норма к этому моменту: ${pc.norm}%`;bar.append(tick);
+      let cls,txt;
+      if(pc.diff<=0){cls="good";txt=`✓ запас ${-pc.diff}% · норма ${pc.norm}% · прогноз к сбросу ${pc.forecast??0}%`}
+      else if(pc.diff<=3){cls="good";txt=`≈ в темпе · норма ${pc.norm}%`}
+      else{
+        cls=pc.hitAt?"crit":"over";
+        txt=`▲ перерасход ${pc.diff}% · норма ${pc.norm}%`+(pc.hitAt?` · закончится ~${fmtWhen(pc.hitAt)}`:` · прогноз ${pc.forecast}%, хватит`);
+      }
+      row.append(el("span","pace "+cls,txt));
+    }
+    row.append(el("span","rs",fmtReset(w.resets_at)));
+    box.append(row);
   }
   if(u.stale)box.append(el("div","err","данные могут быть устаревшими"));
   return box;

@@ -413,11 +413,13 @@ def claude_usage():
     d = http_json("https://api.anthropic.com/api/oauth/usage",
                   {"Authorization": "Bearer " + o["accessToken"], "anthropic-beta": "oauth-2025-04-20"})
     windows = []
-    for key, label in (("five_hour", "5 ч"), ("seven_day", "неделя"),
-                       ("seven_day_opus", "неделя Opus"), ("seven_day_sonnet", "неделя Sonnet")):
+    week = 7 * 86400
+    for key, label, secs in (("five_hour", "5 ч", 5 * 3600), ("seven_day", "неделя", week),
+                             ("seven_day_opus", "неделя Opus", week), ("seven_day_sonnet", "неделя Sonnet", week)):
         w = d.get(key)
         if w and w.get("utilization") is not None:
-            windows.append({"label": label, "percent": w["utilization"], "resets_at": _epoch(w.get("resets_at"))})
+            windows.append({"label": label, "percent": w["utilization"], "resets_at": _epoch(w.get("resets_at")),
+                            "secs": secs})
     return {"plan": o.get("subscriptionType"), "windows": windows}
 
 
