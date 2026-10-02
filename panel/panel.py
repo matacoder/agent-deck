@@ -344,14 +344,22 @@ def action_agent_login(d):
     run_in_session(f"{agent}-login", LOGINS[agent])
 
 
+_version_cache = {}
+
+
 def agent_status(agent):
     home = os.path.expanduser("~")
     path = os.path.join(home, ".local", "bin", agent)
     installed = os.path.exists(path)
     version = None
     if installed:
-        r = subprocess.run([path, "--version"], capture_output=True, text=True, timeout=10)
-        version = (r.stdout.strip().split() or [None])[-1] if agent == "codex" else (r.stdout.split() or [None])[0]
+        real = os.path.realpath(path)
+        key = (real, os.path.getmtime(real))
+        if _version_cache.get(agent, (None,))[0] != key:  # re-run --version only after an install/update
+            r = subprocess.run([path, "--version"], capture_output=True, text=True, timeout=10)
+            v = (r.stdout.strip().split() or [None])[-1] if agent == "codex" else (r.stdout.split() or [None])[0]
+            _version_cache[agent] = (key, v)
+        version = _version_cache[agent][1]
     auth = {"claude": os.path.join(home, ".claude", ".credentials.json"),
             "codex": os.path.join(home, ".codex", "auth.json")}[agent]
     return {"installed": installed, "version": version, "logged_in": os.path.exists(auth)}

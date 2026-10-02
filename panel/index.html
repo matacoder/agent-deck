@@ -530,10 +530,11 @@ function irow(glyphHtml,name,ver,right){
   r.append(g,nm,...right);return r;
 }
 function btn(label,cls,fn,title){const b=el("button",cls||"",label);b.onclick=fn;if(title)b.title=title;return b}
-async function checkGithubFoot(){
+let lastGh=0;
+async function checkGithubFoot(force){
   const box=$("integ");let ag={};
   try{ag=await api("/api/agents")}catch(e){}
-  await ghStatus();
+  if(force===true||Date.now()-lastGh>30000||sessions.some(s=>s.name==="github-login")){await ghStatus();lastGh=Date.now()}
   const rows=[];
   for(const a of["claude","codex"]){
     const st=ag[a]||{},glyph=`<span class="ag ${a}">${AGENTS[a].glyph}</span>`,right=[];
@@ -617,7 +618,8 @@ addEventListener("keydown",hotkeys,true);
 let lastMobile=isMobile();
 addEventListener("resize",()=>{if(isMobile()!==lastMobile){lastMobile=isMobile();try{mode=localStorage.getItem("cc.mode."+(lastMobile?"m":"d"))}catch(e){mode=null}show()}});
 
-checkGithubFoot();setInterval(checkGithubFoot,30000);
+checkGithubFoot(true);setInterval(checkGithubFoot,5000);
+document.addEventListener("visibilitychange",()=>{if(!document.hidden){checkGithubFoot(true);load()}});
 load();setInterval(load,2500);
 </script>
 </body></html>
