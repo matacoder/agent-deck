@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="ru"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Claude">
+<meta name="theme-color" content="#1e1e1e">
+<link rel="apple-touch-icon" href="/icon-180.png"><link rel="icon" href="/icon-192.png"><link rel="manifest" href="/manifest.webmanifest">
+<title>Claude · вход</title>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:#1e1e1e;color:#d4d4d4;font:15px/1.4 -apple-system,BlinkMacSystemFont,system-ui,sans-serif}
+body{display:flex;align-items:center;justify-content:center;min-height:100dvh;padding:24px 16px;padding-top:max(24px,env(safe-area-inset-top))}
+.box{width:100%;max-width:340px}
+.logo{width:64px;height:64px;border-radius:15px;display:block;margin:0 auto 18px;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+h1{font-size:20px;font-weight:600;text-align:center;margin:0 0 24px;color:#ececec}
+label{display:block;font-size:13px;color:#8a8a8e;margin:0 0 6px}
+input{width:100%;font:inherit;font-size:16px;padding:12px 14px;border-radius:10px;border:1px solid #38383d;background:#252526;color:#ececec;outline:none;margin-bottom:14px;-webkit-appearance:none}
+input:focus{border-color:#0a84ff}
+button{width:100%;font:inherit;font-size:16px;font-weight:600;padding:13px;border:0;border-radius:10px;background:#0a84ff;color:#fff;margin-top:6px;cursor:pointer}
+button:active{opacity:.85}
+.err{min-height:20px;color:#ff6b61;font-size:13px;text-align:center;margin-bottom:10px}
+</style></head><body>
+<form class="box" method="post" action="/login">
+  <img class="logo" src="/icon-180.png" alt="">
+  <h1>Claude Sessions</h1>
+  <div class="err">{{ERROR}}</div>
+  <label for="u">Логин</label>
+  <input id="u" name="username" type="text" value="{{USER}}" autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false" required>
+  <label for="p">Пароль</label>
+  <input id="p" name="password" type="password" autocomplete="current-password" required autofocus>
+  <button type="submit">Войти</button>
+</form>
+</body></html>

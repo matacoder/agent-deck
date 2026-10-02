@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+env
+!config/env.example
+sessions.json
+secret

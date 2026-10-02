@@ -1,0 +1,15 @@
+[Unit]
+Description=Claude sessions web panel
+After=cc-ttyd.service cc-tmux.service
+Wants=cc-tmux.service
+
+[Service]
+EnvironmentFile=%h/.config/cc-panel/env
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=/usr/bin/python3 /opt/cc-panel/panel.py
+Restart=always
+RestartSec=5
+KillMode=process
+
+[Install]
+WantedBy=default.target

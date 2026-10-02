@@ -1,0 +1,12 @@
+[Unit]
+Description=tmux server for Claude sessions (independent of panel/ttyd restarts)
+
+[Service]
+Type=forking
+ExecStart=/usr/bin/tmux new-session -d -s _keep
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=default.target
