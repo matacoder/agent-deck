@@ -17,7 +17,9 @@ spec.loader.exec_module(updater)
 
 class UpdaterTests(unittest.TestCase):
     def setUp(self):
-        self.directory = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.directory = Path(temporary.name)
         self.target = self.directory / "runtime"
         self.target.mkdir()
         self.state = self.directory / "state.json"
