@@ -10,6 +10,7 @@ import base64
 import binascii
 import hashlib
 import hmac
+import ipaddress
 import json
 import os
 import re
@@ -37,6 +38,8 @@ NAME_RE = re.compile(r"^[A-Za-z0-9_-]{1,32}$")
 PROJ_RE = re.compile(r"^[A-Za-z0-9_][A-Za-z0-9_.-]{0,63}$")
 GIT_RE = re.compile(r"^(https://|ssh://|git@)[\w.@:/~+-]+$")
 BRANCH_RE = re.compile(r"^[\w][\w./-]{0,63}$")
+# requests from these networks are a local reverse proxy (e.g. Traefik in Docker): trust X-Forwarded-*
+TRUSTED_PROXIES = [ipaddress.ip_network(n) for n in ("127.0.0.0/8", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16")]
 COOKIE = "cc_auth"
 COOKIE_DAYS = 90
 MAX_IMAGE_BYTES = 8 * 1024 * 1024
@@ -539,7 +542,22 @@ class Handler(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
 
     def log_message(self, fmt, *args):
-        print(f"{self.client_address[0]} {fmt % args}", flush=True)
+        print(f"{self.client_ip()} {fmt % args}", flush=True)
+
+    def via_proxy(self):
+        try:
+            addr = ipaddress.ip_address(self.client_address[0])
+        except ValueError:
+            return False
+        return any(addr in net for net in TRUSTED_PROXIES)
+
+    def client_ip(self):
+        """Real client IP; behind a trusted proxy take the address the proxy appended (rightmost XFF)."""
+        xff = self.headers.get("X-Forwarded-For", "") if self.via_proxy() else ""
+        return xff.split(",")[-1].strip() or self.client_address[0]
+
+    def is_https(self):
+        return self.via_proxy() and self.headers.get("X-Forwarded-Proto", "").lower() == "https"
 
     def authorized(self):
         cookie = SimpleCookie(self.headers.get("Cookie", ""))
@@ -565,7 +583,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_body(200 if not error else 401, html.encode(), "text/html; charset=utf-8")
 
     def do_login(self):
-        ip = self.client_address[0]
+        ip = self.client_ip()
         count, last = failed_logins.get(ip, (0, 0))
         if count >= 5 and time.time() - last < 60:
             return self.login_page("Слишком много попыток. Подождите минуту.")
@@ -578,7 +596,8 @@ class Handler(BaseHTTPRequestHandler):
             time.sleep(1)
             return self.login_page("Неверный логин или пароль")
         failed_logins.pop(ip, None)
-        self.redirect("/", f"{COOKIE}={make_token()}; Path=/; Max-Age={COOKIE_DAYS * 86400}; HttpOnly; SameSite=Lax")
+        secure = "; Secure" if self.is_https() else ""
+        self.redirect("/", f"{COOKIE}={make_token()}; Path=/; Max-Age={COOKIE_DAYS * 86400}; HttpOnly; SameSite=Lax{secure}")
 
     def serve_static(self):
         with open(os.path.join(HERE, self.path.lstrip("/")), "rb") as f:

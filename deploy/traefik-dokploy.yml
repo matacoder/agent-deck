@@ -1,0 +1,33 @@
+# Public HTTPS for the panel through Dokploy's Traefik (file provider, watched directory).
+# install.sh renders it to /etc/dokploy/traefik/dynamic/cc-panel.yml when PUBLIC_DOMAIN is set.
+#   __DOMAIN__   public host name, DNS A record -> this server's public IP
+#   __BACKEND__  http://<BIND_HOST>:<PANEL_PORT> (Traefik's container reaches the Tailscale IP via the host)
+# Let's Encrypt (resolver "letsencrypt", HTTP-01 on :80) issues the certificate on first request and
+# Traefik renews it automatically ~30 days before expiry.
+http:
+  routers:
+    cc-panel-http:
+      rule: Host(`__DOMAIN__`)
+      entryPoints:
+      - web
+      middlewares:
+      - cc-panel-redirect
+      service: cc-panel
+    cc-panel-https:
+      rule: Host(`__DOMAIN__`)
+      entryPoints:
+      - websecure
+      service: cc-panel
+      tls:
+        certResolver: letsencrypt
+  services:
+    cc-panel:
+      loadBalancer:
+        servers:
+        - url: __BACKEND__
+        passHostHeader: true
+  middlewares:
+    cc-panel-redirect:
+      redirectScheme:
+        scheme: https
+        permanent: true

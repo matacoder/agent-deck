@@ -8,6 +8,7 @@
 #   sudo TS_AUTHKEY=tskey-... ./install.sh     # join the tailnet without the interactive login link
 #   sudo DEV_USER=alice MEM_MAX=8G CPU_QUOTA=200% ./install.sh
 #   sudo WITH_DOCKER=0 WITH_CODEX=0 ./install.sh   # skip rootless Docker / Codex CLI
+#   sudo PUBLIC_DOMAIN=cli.example.com ./install.sh  # also publish via Dokploy's Traefik with Let's Encrypt
 #
 # Re-running is safe: code and unit files are updated, the panel and ttyd are restarted,
 # the tmux server (and every running Claude session) is left alone.
@@ -22,6 +23,8 @@ CPU_QUOTA=${CPU_QUOTA:-}      # e.g. 200% -> two cores
 WITH_DOCKER=${WITH_DOCKER:-1}
 WITH_CODEX=${WITH_CODEX:-1}
 TS_AUTHKEY=${TS_AUTHKEY:-}
+PUBLIC_DOMAIN=${PUBLIC_DOMAIN:-}
+TRAEFIK_DYNAMIC=${TRAEFIK_DYNAMIC:-/etc/dokploy/traefik/dynamic}
 TTYD_VERSION=1.7.7
 PREFIX=/opt/cc-panel
 SRC=$(cd "$(dirname "$0")" && pwd)
@@ -180,8 +183,22 @@ as_user systemctl --user restart cc-ttyd.service cc-panel.service
 sleep 1
 as_user systemctl --user is-active -q cc-tmux cc-ttyd cc-panel || die "a service failed: journalctl --user -M $DEV_USER@ -n 50"
 
+if [ -n "$PUBLIC_DOMAIN" ]; then
+    say "public HTTPS: $PUBLIC_DOMAIN via Traefik"
+    [ -d "$TRAEFIK_DYNAMIC" ] || die "$TRAEFIK_DYNAMIC not found: PUBLIC_DOMAIN needs Dokploy's Traefik (or set TRAEFIK_DYNAMIC)"
+    ip=$(getent ahostsv4 "$PUBLIC_DOMAIN" | awk 'NR==1{print $1}')
+    [ -n "$ip" ] || echo "    warning: $PUBLIC_DOMAIN does not resolve yet; Let's Encrypt will fail until it does (see README)"
+    sed -e "s|__DOMAIN__|$PUBLIC_DOMAIN|g" -e "s|__BACKEND__|http://$BIND_HOST:$PANEL_PORT|g" \
+        "$SRC/deploy/traefik-dokploy.yml" > "$TRAEFIK_DYNAMIC/cc-panel.yml.new"
+    if ! cmp -s "$TRAEFIK_DYNAMIC/cc-panel.yml.new" "$TRAEFIK_DYNAMIC/cc-panel.yml"; then
+        install -m 644 "$TRAEFIK_DYNAMIC/cc-panel.yml.new" "$TRAEFIK_DYNAMIC/cc-panel.yml"
+    fi
+    rm -f "$TRAEFIK_DYNAMIC/cc-panel.yml.new"
+fi
+
 echo
 say "done: http://$BIND_HOST:$PANEL_PORT  (user: $DEV_USER)"
+[ -z "$PUBLIC_DOMAIN" ] || echo "    public: https://$PUBLIC_DOMAIN"
 if [ -n "$NEW_PASS" ]; then
     echo "    password: $NEW_PASS"
 else

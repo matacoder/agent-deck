@@ -51,6 +51,7 @@ server, so running sessions are not interrupted.
 | `WITH_CODEX`  | `1`                | Codex CLI via `chatgpt.com/codex/install.sh`                   |
 | `MEM_MAX`     | —                  | e.g. `8G`: memory cap for everything the user runs             |
 | `CPU_QUOTA`   | —                  | e.g. `200%`: CPU cap (two cores)                               |
+| `PUBLIC_DOMAIN` | —                | Also publish at `https://<domain>` via Dokploy's Traefik       |
 
 After install:
 
@@ -59,6 +60,33 @@ After install:
 2. In the sidebar, click **Log in** next to Claude / Codex (once per agent).
 3. Click **Connect** next to GitHub.
 4. On a phone: Share → *Add to Home Screen*.
+
+## Public HTTPS (optional, Dokploy / Traefik)
+
+By default the panel is reachable only inside the tailnet. To open it from anywhere with a real
+certificate (also enables the browser Clipboard API and a proper home-screen app):
+
+1. Create a DNS **A record** `cli.example.com -> <server public IP>` and wait until it resolves.
+2. `sudo PUBLIC_DOMAIN=cli.example.com ./install.sh`
+
+This renders [`deploy/traefik-dokploy.yml`](deploy/traefik-dokploy.yml) into
+`/etc/dokploy/traefik/dynamic/cc-panel.yml`. Traefik picks it up immediately (watched directory), gets a
+Let's Encrypt certificate via HTTP-01 on port 80 on the first request, stores it in `acme.json` and
+**renews it automatically** ~30 days before expiry. HTTP redirects to HTTPS. Traefik's container reaches
+the panel on the Tailscale IP through the host, so the panel itself still listens only there.
+
+**Brand-new DNS records:** if the certificate is requested before Let's Encrypt can see the record, the
+log shows `acme: error ... NXDOMAIN` and resolvers cache that negative answer for the zone's SOA minimum
+(often 5–15 min, `dig SOA <zone>`). Wait that long, then make Traefik retry by touching the file
+(re-run `install.sh` or add a comment line to `cc-panel.yml`). Check:
+`docker logs dokploy-traefik 2>&1 | grep <domain>` and
+`echo | openssl s_client -connect <domain>:443 -servername <domain> | openssl x509 -noout -issuer -enddate`.
+
+**Security:** this exposes a web terminal to the internet. Whoever logs in gets the `DEV_USER` shell, its
+GitHub token and the Claude / Codex subscriptions. Keep the generated password, consider a Traefik
+`ipAllowList` middleware or an SSO forward-auth in front. Behind the proxy the panel takes the client IP
+from `X-Forwarded-For` (only from private-network proxies) so the login rate limit stays per client, and
+sets the session cookie `Secure` on HTTPS.
 
 ## How it works
 
