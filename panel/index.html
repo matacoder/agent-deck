@@ -47,6 +47,17 @@ aside{width:240px;flex:none;background:var(--side);border-right:1px solid var(--
 .ag{font:600 11px var(--mono);width:16px;text-align:center;flex:none}
 .ag.claude{color:var(--orange)}.ag.codex{color:#5ac8c8}.ag.shell{color:var(--mut)}
 .dot.sh{background:var(--dim)}
+#srv{display:flex;align-items:center;gap:6px;padding:10px 12px 0;font-size:11.5px;color:var(--mut);white-space:nowrap;overflow:hidden;cursor:default}
+#srv .fl{font-size:14px;line-height:1}#srv .ip{font-family:var(--mono);color:var(--fg)}#srv .hn{overflow:hidden;text-overflow:ellipsis}
+.iblk{border-bottom:1px solid var(--bd)}.iblk:last-child{border-bottom:0}.iblk .irow{border-bottom:0}
+.usage{padding:0 10px 8px 34px;display:grid;gap:5px}
+.uw{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:7px;font-size:11px;color:var(--mut)}
+.uw .bar{height:5px;border-radius:3px;background:var(--side2);overflow:hidden}
+.uw .bar i{display:block;height:100%;border-radius:3px;background:var(--acc)}
+.uw .bar i.warn{background:var(--warn)}.uw .bar i.bad{background:var(--bad)}
+.uw .pc{font-family:var(--mono);color:var(--fg);min-width:30px;text-align:right}
+.uw .rs{grid-column:1/-1;font-size:10.5px;color:var(--dim);margin-top:-3px}
+.usage .err{font-size:11px;color:var(--dim)}
 #integ{margin:0 8px 8px;border:1px solid var(--bd);border-radius:8px;overflow:hidden}
 .irow{display:flex;align-items:center;gap:8px;padding:7px 10px;border-bottom:1px solid var(--bd)}
 .irow:last-child{border-bottom:0}
@@ -162,6 +173,8 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
   .dot{width:10px;height:10px}
   .side-gh{margin:0 12px 10px;padding:12px;font-size:15px;border-radius:10px}
   #integ{margin:0 12px 10px;border-radius:10px}
+  #srv{font-size:13px;padding:12px 14px 0}#srv .fl{font-size:16px}
+  .usage{padding:0 12px 10px 40px;gap:7px}.uw{font-size:12.5px}.uw .rs{font-size:12px}.uw .bar{height:6px}
   .irow{padding:10px 12px;gap:10px}.irow .nm{font-size:15px}
   .irow button{font-size:13.5px;padding:7px 11px;border-radius:8px}
   .agsel button{padding:10px 6px;font-size:15px}
@@ -203,6 +216,7 @@ body.is-shell .agent-only{display:none!important}
 </style></head><body>
 <div id="app">
   <aside>
+    <div id="srv"></div>
     <div class="side-top">
       <input id="q" class="search" placeholder="Поиск…" autocomplete="off" autocapitalize="off" spellcheck="false">
       <button class="iconbtn" title="Новая сессия (⌥T)" onclick="openNew()">＋</button>
@@ -530,23 +544,59 @@ function irow(glyphHtml,name,ver,right){
   r.append(g,nm,...right);return r;
 }
 function btn(label,cls,fn,title){const b=el("button",cls||"",label);b.onclick=fn;if(title)b.title=title;return b}
-let lastGh=0;
+let lastGh=0,lastAg={},usageData={};
 async function checkGithubFoot(force){
-  const box=$("integ");let ag={};
-  try{ag=await api("/api/agents")}catch(e){}
+  try{lastAg=await api("/api/agents")}catch(e){}
   if(force===true||Date.now()-lastGh>30000||sessions.some(s=>s.name==="github-login")){await ghStatus();lastGh=Date.now()}
-  const rows=[];
+  renderInteg();
+}
+async function loadUsage(){try{usageData=await api("/api/usage")}catch(e){}renderInteg()}
+
+function fmtReset(ts){
+  if(!ts)return"";
+  const ms=ts*1000-Date.now();if(ms<=0)return"сбрасывается…";
+  const m=Math.round(ms/60000),d=new Date(ts*1000);
+  const rel=m<60?`${m} мин`:m<1440?`${Math.floor(m/60)} ч ${m%60} мин`:`${Math.floor(m/1440)} д ${Math.floor(m%1440/60)} ч`;
+  const hm=d.toLocaleTimeString("ru-RU",{hour:"2-digit",minute:"2-digit"});
+  const abs=m<1440&&d.getDate()===new Date().getDate()?hm:d.toLocaleDateString("ru-RU",{weekday:"short",day:"numeric",month:"short"})+" "+hm;
+  return `сброс через ${rel} · ${abs}`;
+}
+function usageBlock(u){
+  const box=el("div","usage");
+  if(!u)return null;
+  if(u.error&&!(u.windows||[]).length){box.append(el("div","err",u.error));return box}
+  for(const w of u.windows||[]){
+    const p=Math.round(w.percent||0),fill=el("i",p>=90?"bad":p>=70?"warn":"");fill.style.width=Math.min(p,100)+"%";
+    box.append(el("div","uw",el("span","",w.label),el("span","bar",fill),el("span","pc",p+"%"),el("span","rs",fmtReset(w.resets_at))));
+  }
+  if(u.stale)box.append(el("div","err","данные могут быть устаревшими"));
+  return box;
+}
+function renderInteg(){
+  const blocks=[];
   for(const a of["claude","codex"]){
-    const st=ag[a]||{},glyph=`<span class="ag ${a}">${AGENTS[a].glyph}</span>`,right=[];
+    const st=lastAg[a]||{},glyph=`<span class="ag ${a}">${AGENTS[a].glyph}</span>`,right=[];
     if(!st.installed)right.push(btn("Установить","go",()=>agentAction("install",a)));
     else{
       right.push(st.logged_in?el("span","ok","✓"):btn("Войти","go",()=>agentAction("login",a)));
       right.push(btn("⟳","ic",()=>agentAction("install",a),"Обновить официальным установщиком"));
     }
-    rows.push(irow(glyph,AGENTS[a].label,st.version||"",right));
+    const u=usageData[a],ver=[st.version,u&&u.plan].filter(Boolean).join(" · ");
+    const blk=el("div","iblk",irow(glyph,AGENTS[a].label,ver,right));
+    const ub=st.logged_in&&usageBlock(u);if(ub)blk.append(ub);
+    blocks.push(blk);
   }
-  rows.push(irow(GH_ICON,ghLogin||"GitHub","",[ghLogin?btn("Репозитории","",openNew):btn("Подключить","go",ghConnect)]));
-  box.replaceChildren(...rows);
+  blocks.push(el("div","iblk",irow(GH_ICON,ghLogin||"GitHub","",[ghLogin?btn("Репозитории","",openNew):btn("Подключить","go",ghConnect)])));
+  $("integ").replaceChildren(...blocks);
+}
+async function loadServer(){
+  try{
+    const s=await api("/api/server"),box=$("srv");box.replaceChildren();
+    const cc=(s.country||"").toUpperCase();
+    if(/^[A-Z]{2}$/.test(cc))box.append(el("span","fl",String.fromCodePoint(...[...cc].map(c=>0x1F1A5+c.charCodeAt(0)))));
+    box.append(el("span","ip",s.ip||s.tailscale_ip||"?"),el("span","hn","· "+s.hostname));
+    box.title=[s.city&&`${s.city}, ${cc}`,s.org,`Tailscale: ${s.tailscale_ip}`].filter(Boolean).join("\n");
+  }catch(e){}
 }
 async function loadGithub(){
   const body=$("gh_body");body.replaceChildren();$("gh_refresh").style.display="none";$("gh_state").textContent="GitHub: проверяю…";
@@ -619,7 +669,9 @@ let lastMobile=isMobile();
 addEventListener("resize",()=>{if(isMobile()!==lastMobile){lastMobile=isMobile();try{mode=localStorage.getItem("cc.mode."+(lastMobile?"m":"d"))}catch(e){mode=null}show()}});
 
 checkGithubFoot(true);setInterval(checkGithubFoot,5000);
-document.addEventListener("visibilitychange",()=>{if(!document.hidden){checkGithubFoot(true);load()}});
+loadUsage();setInterval(loadUsage,60000);
+loadServer();setInterval(loadServer,3600000);
+document.addEventListener("visibilitychange",()=>{if(!document.hidden){checkGithubFoot(true);loadUsage();load()}});
 load();setInterval(load,2500);
 </script>
 </body></html>

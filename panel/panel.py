@@ -14,6 +14,8 @@ import re
 import select
 import signal
 import socket
+import urllib.request
+from datetime import datetime
 import subprocess
 import threading
 import time
@@ -365,6 +367,85 @@ def agent_status(agent):
     return {"installed": installed, "version": version, "logged_in": os.path.exists(auth)}
 
 
+# ---- server info & subscription limits ---------------------------------------------------
+_cache = {}
+
+
+def cached(key, ttl, fn):
+    """Return fn() cached for ttl seconds; on failure keep serving the last good value (marked stale)."""
+    hit = _cache.get(key)
+    if hit and time.time() - hit[0] < ttl:
+        return hit[1]
+    try:
+        val = fn()
+    except Exception as e:  # network/auth errors must not break the panel
+        if hit and "error" not in hit[1]:
+            return {**hit[1], "stale": True}
+        val = {"error": str(e)[:200]}
+    _cache[key] = (time.time(), val)
+    return val
+
+
+def http_json(url, headers=None, timeout=10):
+    req = urllib.request.Request(url, headers={"User-Agent": "cc-panel", **(headers or {})})
+    with urllib.request.urlopen(req, timeout=timeout) as r:
+        return json.load(r)
+
+
+def server_info():
+    def fetch():
+        geo = http_json("https://ipinfo.io/json", timeout=6)
+        return {"ip": geo.get("ip"), "country": geo.get("country"), "city": geo.get("city"), "org": geo.get("org")}
+    info = dict(cached("geo", 6 * 3600, fetch))
+    info.update(hostname=socket.gethostname(), tailscale_ip=BIND_HOST)
+    return info
+
+
+def _epoch(iso):
+    return int(datetime.fromisoformat(iso).timestamp()) if iso else None
+
+
+def claude_usage():
+    o = json.load(open(os.path.expanduser("~/.claude/.credentials.json"))).get("claudeAiOauth") or {}
+    if (o.get("expiresAt") or 0) / 1000 < time.time():
+        # never refresh here: Claude rotates refresh tokens, a second refresher would log it out
+        return {"plan": o.get("subscriptionType"), "error": "токен истёк — запустите Claude, он обновит его"}
+    d = http_json("https://api.anthropic.com/api/oauth/usage",
+                  {"Authorization": "Bearer " + o["accessToken"], "anthropic-beta": "oauth-2025-04-20"})
+    windows = []
+    for key, label in (("five_hour", "5 ч"), ("seven_day", "неделя"),
+                       ("seven_day_opus", "неделя Opus"), ("seven_day_sonnet", "неделя Sonnet")):
+        w = d.get(key)
+        if w and w.get("utilization") is not None:
+            windows.append({"label": label, "percent": w["utilization"], "resets_at": _epoch(w.get("resets_at"))})
+    return {"plan": o.get("subscriptionType"), "windows": windows}
+
+
+def codex_usage():
+    t = json.load(open(os.path.expanduser("~/.codex/auth.json"))).get("tokens") or {}
+    if not t.get("access_token"):
+        return {"error": "Codex вошёл по API-ключу: лимитов подписки нет"}
+    d = http_json("https://chatgpt.com/backend-api/wham/usage",
+                  {"Authorization": "Bearer " + t["access_token"], "ChatGPT-Account-Id": t.get("account_id", "")})
+    windows = []
+    for w in ((d.get("rate_limit") or {}).get("primary_window"), (d.get("rate_limit") or {}).get("secondary_window")):
+        if not w:
+            continue
+        secs = w.get("limit_window_seconds") or 0
+        label = {18000: "5 ч", 604800: "неделя"}.get(secs, f"{round(secs / 3600)} ч")
+        windows.append({"label": label, "percent": w.get("used_percent"), "resets_at": w.get("reset_at"), "secs": secs})
+    windows.sort(key=lambda w: w["secs"])
+    return {"plan": d.get("plan_type"), "windows": windows}
+
+
+def usage():
+    out = {}
+    for agent, fn in (("claude", claude_usage), ("codex", codex_usage)):
+        if agent_status(agent)["logged_in"]:
+            out[agent] = cached(f"usage-{agent}", 60, fn)
+    return out
+
+
 ACTIONS = {"agent_install": action_agent_install, "agent_login": action_agent_login, "github_login": action_github_login, "new": action_new, "restart": action_restart, "kill": action_kill, "send": action_send}
 
 
@@ -448,6 +529,10 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_body(200, open(PAGE_FILE, "rb").read(), "text/html; charset=utf-8")
         if self.path == "/api/sessions":
             return self.send_json(200, {"sessions": list_sessions()})
+        if self.path == "/api/usage":
+            return self.send_json(200, usage())
+        if self.path == "/api/server":
+            return self.send_json(200, server_info())
         if self.path == "/api/agents":
             return self.send_json(200, {a: agent_status(a) for a in INSTALLERS})
         if self.path == "/api/github/status":
