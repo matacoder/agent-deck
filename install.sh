@@ -16,6 +16,15 @@
 # the tmux server (and every running Claude session) is left alone.
 set -euo pipefail
 
+# Install options are remembered: a later run (e.g. via update.sh) reuses them unless overridden in env.
+CONF=/etc/agent-deck/install.conf
+CONF_KEYS="DEV_USER DEV_UID PANEL_PORT BIND_HOST MEM_MAX CPU_QUOTA WITH_DOCKER WITH_CODEX PUBLIC_DOMAIN PUBLIC_PROXY TRAEFIK_DYNAMIC"
+if [ -f "$CONF" ]; then
+    while IFS='=' read -r k v; do
+        case " $CONF_KEYS " in *" $k "*) [ -n "${!k+x}" ] || export "$k=$v" ;; esac
+    done < "$CONF"
+fi
+
 DEV_USER=${DEV_USER:-dev}
 DEV_UID=${DEV_UID:-2600}
 PANEL_PORT=${PANEL_PORT:-8790}
@@ -106,6 +115,8 @@ if [ -f "$H/.tmux.conf" ] && ! cmp -s "$H/.tmux.conf" "$SRC/config/tmux.conf"; t
     cp "$H/.tmux.conf" "$H/.tmux.conf.bak.$(date +%s)"
 fi
 install -o "$DEV_USER" -g "$DEV_USER" -m 644 "$SRC/config/tmux.conf" "$H/.tmux.conf"
+# the panel shows this path in the "update available" hint
+if grep -q '^CHECKOUT=' "$ENV"; then sed -i "s|^CHECKOUT=.*|CHECKOUT=$SRC|" "$ENV"; else echo "CHECKOUT=$SRC" >> "$ENV"; fi
 install -d -o "$DEV_USER" -g "$DEV_USER" "$H/projects" "$H/.config" "$H/.config/systemd" "$H/.config/systemd/user" "$H/.claude"
 install -o "$DEV_USER" -g "$DEV_USER" -m 644 "$SRC"/systemd/*.service "$H/.config/systemd/user/"
 sed -i "s|/usr/bin/ttyd|$TTYD_BIN|" "$H/.config/systemd/user/cc-ttyd.service"
@@ -232,8 +243,11 @@ $busy"
     *) die "PUBLIC_PROXY must be auto, traefik or caddy" ;;
     esac
 fi
+install -d -m 755 /etc/agent-deck
+for k in $CONF_KEYS; do echo "$k=${!k}"; done > "$CONF"
+
 echo
-say "done: http://$BIND_HOST:$PANEL_PORT  (user: $DEV_USER)"
+say "Agent Deck v$(cat "$SRC/panel/VERSION") — done: http://$BIND_HOST:$PANEL_PORT  (user: $DEV_USER)"
 [ -z "$PUBLIC_DOMAIN" ] || echo "    public: https://$PUBLIC_DOMAIN"
 if [ -n "$NEW_PASS" ]; then
     echo "    password: $NEW_PASS"

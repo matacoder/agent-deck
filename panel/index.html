@@ -83,6 +83,8 @@ aside{width:240px;flex:none;background:var(--side);border-right:1px solid var(--
 .side-gh:hover{background:var(--side2)}.side-gh.need{border-color:var(--acc);color:var(--acc)}
 .side-gh svg{flex:none}.side-gh span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .side-foot{border-top:1px solid var(--bd);padding:8px 12px;color:var(--dim);font-size:11px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+#ver{margin-left:auto;font:10.5px var(--mono);color:var(--dim);white-space:nowrap}
+#ver a{color:var(--acc);text-decoration:none;font-weight:600;cursor:pointer}
 .side-foot button{color:var(--mut);font-size:11px}.side-foot button:hover{color:var(--fg)}
 
 /* ---------- main ---------- */
@@ -278,7 +280,7 @@ body.is-shell .agent-only{display:none!important}
     </div>
     <div id="tabs"></div>
     <div id="integ"></div>
-    <div class="side-foot"><span id="foot"></span><button onclick="logout()">Выйти</button></div>
+    <div class="side-foot"><span id="foot"></span><span id="ver"></span><button onclick="logout()">Выйти</button></div>
   </aside>
   <div id="scrim" onclick="drawer(false)"></div>
   <main>
@@ -991,6 +993,18 @@ function renderInteg(){
   blocks.push(el("div","iblk",irow(GH_ICON,ghLogin||"GitHub","",[ghLogin?btn("Репозитории","",openNew):btn("Подключить","go",ghConnect)])));
   $("integ").replaceChildren(...blocks);
 }
+async function loadVersion(){
+  try{
+    const v=await api("/api/version"),box=$("ver");box.replaceChildren("v"+v.version);
+    box.title=v.latest?`последний релиз: v${v.latest}`:"";
+    if(v.update){
+      const cmd=(v.checkout?`cd ${v.checkout} && `:"")+"sudo ./update.sh";
+      const a=el("a",""," ↑ v"+v.latest);a.title="Доступно обновление — нажмите";
+      a.onclick=()=>{toast(`Доступна v${v.latest}. На сервере: ${cmd}`,true,{label:"Что нового",run:()=>window.open(v.url,"_blank","noopener")})};
+      box.append(a);
+    }
+  }catch(e){}
+}
 async function loadServer(){
   try{
     const s=await api("/api/server"),box=$("srv");box.replaceChildren();
@@ -1105,6 +1119,7 @@ checkInterfaceVersion();
 checkGithubFoot(true);setInterval(checkGithubFoot,5000);
 loadUsage();setInterval(loadUsage,60000);
 loadServer();setInterval(loadServer,3600000);
+loadVersion();setInterval(loadVersion,3600000);
 document.addEventListener("visibilitychange",()=>{if(!document.hidden){checkGithubFoot(true);loadUsage();load();checkInterfaceVersion()}});
 load();setInterval(load,2500);
 </script>

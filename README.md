@@ -75,6 +75,21 @@ After install:
 3. Click **Connect** next to GitHub.
 4. On a phone: Share → *Add to Home Screen*.
 
+## Versions and updates
+
+Releases are git tags `vX.Y.Z` with notes in [CHANGELOG.md](CHANGELOG.md). The panel shows its version
+in the sidebar footer and, once a newer GitHub release exists (checked every 6 h; `UPDATE_REPO=` in
+`~/.config/cc-panel/env` disables it), a "↑ vX.Y.Z" link with the update command:
+
+```bash
+cd agent-deck && sudo ./update.sh          # latest release; or: sudo ./update.sh v0.2.0 / main
+```
+
+`update.sh` checks out the version and re-runs `install.sh` with the options remembered from the first
+install (`/etc/agent-deck/install.conf`), so domain, user, port and limits are kept; running sessions
+are not interrupted. Maintainers: add a `## X.Y.Z` section to the changelog, then `./release.sh X.Y.Z`
+(bumps `panel/VERSION`, tags, pushes, creates the GitHub release).
+
 ## Public HTTPS (optional)
 
 By default the panel is reachable only inside the tailnet. To open it from anywhere with a real

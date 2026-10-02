@@ -46,6 +46,12 @@ MAX_IMAGE_BYTES = 8 * 1024 * 1024
 UPLOAD_DIR = os.path.expanduser("~/.config/cc-panel/uploads")
 ATTACHMENT_RE = re.compile(r"^[0-9a-f]{32}\.(png|jpg|webp|gif)$")
 HERE = os.path.dirname(os.path.abspath(__file__))
+try:
+    VERSION = open(os.path.join(HERE, "VERSION")).read().strip()
+except OSError:
+    VERSION = "dev"
+UPDATE_REPO = os.environ.get("UPDATE_REPO", "matacoder/agent-deck")   # "" disables the update check
+CHECKOUT = os.environ.get("CHECKOUT", "")                             # where install.sh ran from
 STATIC = {"/icon-180.png": "image/png", "/icon-192.png": "image/png", "/icon-512.png": "image/png",
           "/manifest.webmanifest": "application/manifest+json"}
 
@@ -478,6 +484,27 @@ def http_json(url, headers=None, timeout=10):
         return json.load(r)
 
 
+def _semver(v):
+    m = re.match(r"^v?(\d+)\.(\d+)\.(\d+)", v or "")
+    return tuple(map(int, m.groups())) if m else None
+
+
+def version_info():
+    info = {"version": VERSION, "checkout": CHECKOUT, "repo": UPDATE_REPO}
+    if not UPDATE_REPO:
+        return info
+
+    def fetch():
+        r = http_json(f"https://api.github.com/repos/{UPDATE_REPO}/releases/latest",
+                      {"Accept": "application/vnd.github+json"}, timeout=8)
+        return {"latest": (r.get("tag_name") or "").lstrip("v"), "url": r.get("html_url")}
+    rel = cached("release", 6 * 3600, fetch)
+    if rel.get("latest"):
+        cur, new = _semver(VERSION), _semver(rel["latest"])
+        info.update(latest=rel["latest"], url=rel["url"], update=bool(cur and new and new > cur))
+    return info
+
+
 def server_info():
     def fetch():
         geo = http_json("https://ipinfo.io/json", timeout=6)
@@ -644,6 +671,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_json(200, {"sessions": list_sessions()})
         if self.path == "/api/usage":
             return self.send_json(200, usage())
+        if self.path == "/api/version":
+            return self.send_json(200, version_info())
         if self.path == "/api/server":
             return self.send_json(200, server_info())
         if self.path == "/api/agents":
