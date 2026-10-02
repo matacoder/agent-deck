@@ -51,13 +51,14 @@ aside{width:240px;flex:none;background:var(--side);border-right:1px solid var(--
 #srv .fl{font-size:14px;line-height:1}#srv .ip{font-family:var(--mono);color:var(--fg)}#srv .hn{overflow:hidden;text-overflow:ellipsis}
 .iblk{border-bottom:1px solid var(--bd)}.iblk:last-child{border-bottom:0}.iblk .irow{border-bottom:0}
 .usage{padding:0 10px 8px 34px;display:grid;gap:5px}
-.uw{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:7px;font-size:11px;color:var(--mut)}
-.uw .bar{height:5px;border-radius:3px;background:var(--side2);overflow:hidden;position:relative}
-.uw .bar b{position:absolute;top:-2px;bottom:-2px;width:2px;margin-left:-1px;background:var(--fg);opacity:.75;border-radius:1px}
+.uw{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:7px;font-size:11px;color:var(--mut)}
+.uw .usage-meter{grid-column:1/-1;width:100%;height:5px;border-radius:3px;background:var(--side2);overflow:hidden;position:relative}
+.uw .usage-meter b{position:absolute;top:-2px;bottom:-2px;width:2px;margin-left:-1px;background:var(--fg);opacity:.75;border-radius:1px}
 .uw .pace{grid-column:1/-1;font-size:10.5px;margin-top:-3px}
 .uw .pace.good{color:var(--ok)}.uw .pace.over{color:var(--warn)}.uw .pace.crit{color:var(--bad)}
-.uw .bar i{display:block;height:100%;border-radius:3px;background:var(--acc)}
-.uw .bar i.warn{background:var(--warn)}.uw .bar i.bad{background:var(--bad)}
+.uw .usage-meter i{display:block;height:100%;border-radius:3px;background:var(--acc)}
+.uw .usage-meter i.warn{background:var(--warn)}.uw .usage-meter i.bad{background:var(--bad)}
+.uw .forecast{grid-column:1/-1;font-size:10.5px;color:var(--mut);margin-top:-3px}
 .uw .pc{font-family:var(--mono);color:var(--fg);min-width:30px;text-align:right}
 .uw .rs{grid-column:1/-1;font-size:10.5px;color:var(--dim);margin-top:-3px}
 .usage .err{font-size:11px;color:var(--dim)}
@@ -219,7 +220,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
   #tabs{flex:none;overflow:visible}
   .ihead{padding:12px;font-size:14px;gap:14px}.ihead .chev{font-size:12px}
   #srv{font-size:13px;padding:12px 14px 0}#srv .fl{font-size:16px}
-  .usage{padding:0 12px 10px 40px;gap:7px}.uw{font-size:12.5px}.uw .rs,.uw .pace{font-size:12px}.uw .bar{height:6px}
+  .usage{padding:0 12px 10px 40px;gap:7px}.uw{font-size:12.5px}.uw .rs,.uw .pace,.uw .forecast{font-size:12px}.uw .usage-meter{height:6px}
   .irow{padding:10px 12px;gap:10px}.irow .nm{font-size:15px}
   .irow button{font-size:13.5px;padding:7px 11px;border-radius:8px}
   .agsel button{padding:10px 6px;font-size:15px}
@@ -382,9 +383,9 @@ function fitViewport(){
   const vv=window.visualViewport;if(!vv)return;
   const root=document.documentElement;
   const keyboard=isMobile()&&Math.abs(vv.scale-1)<0.01&&root.clientHeight-vv.height>150;
-  // Use the dynamic layout viewport normally: iOS can leave visualViewport
-  // shorter than the screen after dismissing the keyboard in a home-screen app.
-  root.style.setProperty("--app-h",keyboard?vv.height+"px":"100dvh");
+  // Keep controls inside the web view: the OS-owned strip below an installed
+  // app is outside its drawable viewport, even when screen.height is larger.
+  root.style.setProperty("--app-h",vv.height+"px");
   root.style.setProperty("--app-top",keyboard?vv.offsetTop+"px":"0px");
   document.body.classList.toggle("keyboard-open",keyboard);
 }
@@ -920,17 +921,21 @@ function usageBlock(u){
   if(u.error&&!(u.windows||[]).length){box.append(el("div","err",u.error));return box}
   for(const w of u.windows||[]){
     const p=Math.round(w.percent||0),fill=el("i",p>=90?"bad":p>=70?"warn":"");fill.style.width=Math.min(p,100)+"%";
-    const pc=pace(w),bar=el("span","bar",fill),row=el("div","uw",el("span","",w.label),bar,el("span","pc",p+"%"));
+    const pc=pace(w),bar=el("span","usage-meter",fill),row=el("div","uw",el("span","",w.label),el("span","pc",p+"% использовано"),bar);
+    bar.setAttribute("role","progressbar");bar.setAttribute("aria-label","Использование лимита: "+w.label);
+    bar.setAttribute("aria-valuemin","0");bar.setAttribute("aria-valuemax","100");bar.setAttribute("aria-valuenow",String(Math.max(0,Math.min(p,100))));
     if(pc&&pc.norm!==undefined){
       const tick=el("b","");tick.style.left=(pc.elapsed*100)+"%";tick.title=`норма к этому моменту: ${pc.norm}%`;bar.append(tick);
       let cls,txt;
-      if(pc.diff<=0){cls="good";txt=`✓ запас ${-pc.diff}% · норма ${pc.norm}% · прогноз к сбросу ${pc.forecast??0}%`}
-      else if(pc.diff<=3){cls="good";txt=`≈ в темпе · норма ${pc.norm}%`}
+      if(pc.diff<=0){cls="good";txt=`✓ В пределах нормы · норма ${pc.norm}%`}
+      else if(pc.diff<=3){cls="good";txt=`≈ В пределах нормы · норма ${pc.norm}%`}
       else{
         cls=pc.hitAt?"crit":"over";
-        txt=`▲ перерасход ${pc.diff}% · норма ${pc.norm}%`+(pc.hitAt?` · закончится ~${fmtWhen(pc.hitAt)}`:` · прогноз ${pc.forecast}%, хватит`);
+        txt=`▲ Быстрее нормы на ${pc.diff} п.п. · норма ${pc.norm}%`;
       }
       row.append(el("span","pace "+cls,txt));
+      if(pc.hitAt)row.append(el("span","forecast","При таком темпе лимит закончится ≈ "+fmtWhen(pc.hitAt)));
+      else if(pc.forecast!==undefined)row.append(el("span","forecast","Прогноз к сбросу: ≈ "+pc.forecast+"% использовано"));
     }
     row.append(el("span","rs",fmtReset(w.resets_at)));
     box.append(row);
