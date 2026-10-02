@@ -471,9 +471,10 @@ def cached(key, ttl, fn):
     try:
         val = fn()
     except Exception as e:  # network/auth errors must not break the panel
-        if hit and "error" not in hit[1]:
-            return {**hit[1], "stale": True}
-        val = {"error": str(e)[:200]}
+        # remember the failure only briefly (max 5 min), so a transient error doesn't stick for the whole ttl
+        _cache[key] = (time.time() - ttl + min(ttl, 300), {**hit[1], "stale": True} if hit and "error" not in hit[1]
+                       else {"error": str(e)[:200]})
+        return _cache[key][1]
     _cache[key] = (time.time(), val)
     return val
 
