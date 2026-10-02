@@ -1,0 +1,45 @@
+name: Tests
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Backend unit and HTTP integration tests
+        run: python3 -W error::ResourceWarning -m unittest discover -s tests/backend -v
+
+  frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    container:
+      image: mcr.microsoft.com/playwright:v1.55.0-noble
+      options: --shm-size=512m
+    env:
+      CI: 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install locked test dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Chromium and WebKit regression tests
+        run: npm test
+      - name: Browser failure reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-failure-reports
+          path: |
+            test-results/
+            playwright-report/
+          retention-days: 7
+          if-no-files-found: ignore

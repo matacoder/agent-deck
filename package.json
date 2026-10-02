@@ -1,0 +1,12 @@
+{
+  "name": "agent-deck-tests",
+  "private": true,
+  "scripts": {
+    "test": "playwright test",
+    "test:backend": "python3 -m unittest discover -s tests/backend -v",
+    "test:all": "npm run test:backend && npm test"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.55.0"
+  }
+}

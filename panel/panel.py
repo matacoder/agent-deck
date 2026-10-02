@@ -47,7 +47,8 @@ UPLOAD_DIR = os.path.expanduser("~/.config/cc-panel/uploads")
 ATTACHMENT_RE = re.compile(r"^[0-9a-f]{32}\.(png|jpg|webp|gif)$")
 HERE = os.path.dirname(os.path.abspath(__file__))
 try:
-    VERSION = open(os.path.join(HERE, "VERSION")).read().strip()
+    with open(os.path.join(HERE, "VERSION")) as version_file:
+        VERSION = version_file.read().strip()
 except OSError:
     VERSION = "dev"
 UPDATE_REPO = os.environ.get("UPDATE_REPO", "matacoder/agent-deck")   # "" disables the update check
@@ -245,7 +246,7 @@ def create_session(name, path, agent, skip, sid=None, command=None):
 
 def action_new(d):
     name, agent = d.get("name", ""), d.get("agent") or "claude"
-    if not NAME_RE.match(name):
+    if not isinstance(name, str) or not NAME_RE.fullmatch(name):
         raise ValueError("имя сессии: латиница, цифры, - и _, до 32 символов")
     if agent not in AGENTS:
         raise ValueError("неизвестный агент")
@@ -607,7 +608,8 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
 
     def login_page(self, error=""):
-        html = open(os.path.join(HERE, "login.html"), encoding="utf-8").read()
+        with open(os.path.join(HERE, "login.html"), encoding="utf-8") as login_file:
+            html = login_file.read()
         html = html.replace("{{ERROR}}", error).replace("{{USER}}", PANEL_USER)
         self.send_body(200 if not error else 401, html.encode(), "text/html; charset=utf-8")
 
@@ -722,6 +724,7 @@ class Handler(BaseHTTPRequestHandler):
         try:
             backend.connect(TTYD_SOCK)
         except OSError as e:
+            backend.close()
             return self.send_json(502, {"error": f"ttyd unavailable: {e}"})
         lines = [f"{self.command} {self.path} HTTP/1.1"]
         for k, v in self.headers.items():

@@ -83,6 +83,8 @@ access.
 
 Architecture, all options, troubleshooting and development: [docs/DETAILS.md](docs/DETAILS.md).
 
+Backend and browser regression tests: [docs/TESTING.md](docs/TESTING.md).
+
 ## License
 
 [MIT](LICENSE)

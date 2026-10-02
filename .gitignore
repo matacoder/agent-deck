@@ -4,3 +4,6 @@ env
 !config/env.example
 sessions.json
 secret
+node_modules/
+test-results/
+playwright-report/
