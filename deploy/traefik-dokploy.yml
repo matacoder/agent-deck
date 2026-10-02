@@ -20,6 +20,8 @@ http:
       service: cc-panel
       tls:
         certResolver: letsencrypt
+        domains:
+        - main: __DOMAIN__
   services:
     cc-panel:
       loadBalancer:

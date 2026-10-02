@@ -4,10 +4,10 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content">
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
-<meta name="apple-mobile-web-app-title" content="Claude">
+<meta name="apple-mobile-web-app-title" content="Agent Deck">
 <meta name="theme-color" content="#252526">
 <link rel="apple-touch-icon" href="/icon-180.png"><link rel="icon" href="/icon-192.png"><link rel="manifest" href="/manifest.webmanifest">
-<title>Claude Sessions</title>
+<title>Agent Deck</title>
 <style>
 :root{
   --bg:#1e1e1e;--side:#252526;--side2:#2d2d30;--sel:#37373d;--bd:#333336;--fg:#d4d4d4;--fg2:#ececec;--mut:#8a8a8e;--dim:#5f5f63;
@@ -519,13 +519,13 @@ function renderTabs(){
   const busy=sessions.filter(s=>state(s)==="busy").length;
   $("foot").textContent=`${sessions.length} сессий · ${busy} работают`+(attention.size?` · ${attention.size} готово`:"");
   $("menuBadge").textContent=attention.size;$("menuBadge").classList.toggle("on",attention.size>0);
-  document.title=(attention.size?`(${attention.size}) `:"")+"Claude Sessions";
+  document.title=(attention.size?`(${attention.size}) `:"")+"Agent Deck";
 }
 function renderTitle(){
   const s=cur(),t=$("title");t.replaceChildren();
   document.body.classList.toggle("is-shell",!!s&&agentOf(s)==="shell");
   $("msg").placeholder=s?"Сообщение в "+AGENTS[agentOf(s)].label+"…":"Сообщение агенту…";
-  if(!s){t.textContent=isMobile()?"Claude":"—";return}
+  if(!s){t.textContent=isMobile()?"Agent Deck":"—";return}
   const st=state(s);
   t.append(el("b","",s.name),el("span","path"," — "+s.path.replace(/^\/home\/[^/]+/,"~")),el("span","st",stateText(s)+" · "+shortPath(s.path)));
 }
@@ -666,6 +666,8 @@ function appendStyledRange(node,runs,from,to){
     offset=end;if(offset>=to)break;
   }
 }
+const BOX_CHARS=/[─━═╌┄┈╍▔▁]/g;
+const BOX_LINE=/^[\s─━═╌┄┈╍▔▁-]*$/;
 function updateScreen(s,force){
   const p=$("pre"),stick=force||p.scrollTop+p.clientHeight>=p.scrollHeight-40;
   const raw=s.preview_ansi??unwrapUrls(s.preview||"");
@@ -675,6 +677,10 @@ function updateScreen(s,force){
     if(!lines.length)p.append(el("div","preview-empty","В tmux пока нет текста. Можно переключиться в «Терм» и проверить сессию."));
     for(const runs of lines){
       const line=runs.map(r=>r.text).join("").trimEnd();
+      // TUI rules (Claude's input box etc.) would wrap into a stack of lines on a phone: draw them as one rule
+      const boxN=(line.match(BOX_CHARS)||[]).length;
+      if(line.length>=8&&boxN&&BOX_LINE.test(line)){if(!(p.lastChild&&p.lastChild.className==="hr"))p.append(el("div","hr"));continue}
+      if(line.length>=20&&boxN/line.length>=0.8){p.append(el("div","hrl",line.replace(BOX_CHARS,"").trim()));continue}
       const d=el("div","ln");let i=0;
       for(const m of line.matchAll(URL_RE)){
         const u=cleanUrl(m[0]);appendStyledRange(d,runs,i,m.index);

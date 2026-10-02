@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Install / upgrade the Claude Sessions panel for one unprivileged user.
+# Install / upgrade Agent Deck (web panel for Claude Code / Codex / terminal sessions in tmux)
+# for one unprivileged user.
 #
 # Works on a clean Ubuntu 22.04 / 24.04 server: installs Tailscale, tmux, ttyd, gh, Claude Code, Codex CLI,
 # rootless Docker for the user, the panel and its systemd user services.

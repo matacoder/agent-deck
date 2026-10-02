@@ -1,5 +1,5 @@
 [Unit]
-Description=Claude sessions web panel
+Description=Agent Deck web panel
 After=cc-ttyd.service cc-tmux.service
 Wants=cc-tmux.service
 

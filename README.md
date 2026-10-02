@@ -1,10 +1,18 @@
-# Claude Sessions
+# Agent Deck
 
 A tiny self-hosted "iTerm2 in the browser" for running many [Claude Code](https://claude.com/claude-code)
 sessions (and [Codex](https://github.com/openai/codex), or plain terminals) on a remote Linux box: vertical tabs on the left, a live terminal on the right, a phone-friendly
 view with a message box, and sessions that survive browser disconnects **and server reboots**.
 
 Everything is reachable only over [Tailscale](https://tailscale.com); nothing listens on a public interface.
+
+![Agent Deck on desktop: session tabs grouped by project, live Claude Code terminal, weekly limits with pace](docs/screenshots/desktop.png)
+
+| Session screen on a phone | Sessions & limits | New session from a GitHub repo |
+|:---:|:---:|:---:|
+| <img src="docs/screenshots/mobile-screen.png" width="260" alt="Phone: session screen with message box and quick keys"> | <img src="docs/screenshots/mobile-sessions.png" width="260" alt="Phone: session list grouped by project with limits summary"> | <img src="docs/screenshots/mobile-new.png" width="260" alt="Phone: new session dialog with Claude / Codex / Terminal and repo picker"> |
+
+<sub>Screenshots use demo data.</sub>
 
 ## Features
 
@@ -33,7 +41,7 @@ Everything is reachable only over [Tailscale](https://tailscale.com); nothing li
 ## Install (clean Ubuntu 22.04 / 24.04)
 
 ```bash
-gh repo clone matacoder/tmux && cd tmux     # or git clone
+gh repo clone matacoder/agent-deck && cd agent-deck     # or git clone
 sudo ./install.sh
 ```
 
@@ -96,13 +104,15 @@ another process already listens on 80/443. Logs: `journalctl -u caddy`.
 On a fresh VPS the whole setup is one command:
 
 ```bash
-gh repo clone matacoder/tmux && cd tmux
+gh repo clone matacoder/agent-deck && cd agent-deck
 sudo PUBLIC_DOMAIN=cli.example.com TS_AUTHKEY=tskey-... MEM_MAX=12G ./install.sh
 ```
 
 **Brand-new DNS records:** if the certificate is requested before Let's Encrypt can see the record, the
 log shows `acme: error ... NXDOMAIN` and resolvers cache that negative answer for the zone's SOA minimum
-(often 5–15 min, `dig SOA <zone>`). Wait that long, then retry: Traefik — touch the file (add a comment line to `cc-panel.yml`);
+(often 5–15 min, `dig SOA <zone>`). Wait that long, then retry. Traefik ignores edits that don't change the parsed config (a comment is
+not enough) and doesn't retry on its own; force it without restarting Traefik by removing and re-adding
+the file: `mv cc-panel.yml /tmp/ && sleep 3 && mv /tmp/cc-panel.yml .` (in the dynamic dir).
 Caddy retries by itself with backoff (or `systemctl reload caddy`). Check:
 `docker logs dokploy-traefik 2>&1 | grep <domain>` / `journalctl -u caddy | grep <domain>` and
 `echo | openssl s_client -connect <domain>:443 -servername <domain> | openssl x509 -noout -issuer -enddate`.

@@ -1,5 +1,5 @@
 [Unit]
-Description=tmux server for Claude sessions (independent of panel/ttyd restarts)
+Description=Agent Deck: tmux server (independent of panel/ttyd restarts)
 
 [Service]
 Type=forking

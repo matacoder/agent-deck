@@ -1,6 +1,6 @@
 {
-  "name": "Claude Sessions",
-  "short_name": "Claude",
+  "name": "Agent Deck",
+  "short_name": "Agent Deck",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
