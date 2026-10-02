@@ -44,6 +44,21 @@ aside{width:240px;flex:none;background:var(--side);border-right:1px solid var(--
 .dot.off{background:transparent;border:1.5px solid var(--dim)}
 @keyframes pulse{50%{opacity:.35}}
 .bell{width:8px;height:8px;border-radius:50%;background:var(--acc);flex:none}
+.ag{font:600 11px var(--mono);width:16px;text-align:center;flex:none}
+.ag.claude{color:var(--orange)}.ag.codex{color:#5ac8c8}.ag.shell{color:var(--mut)}
+.dot.sh{background:var(--dim)}
+#integ{margin:0 8px 8px;border:1px solid var(--bd);border-radius:8px;overflow:hidden}
+.irow{display:flex;align-items:center;gap:8px;padding:7px 10px;border-bottom:1px solid var(--bd)}
+.irow:last-child{border-bottom:0}
+.irow .nm{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--fg)}
+.irow .nm small{color:var(--dim);margin-left:4px}
+.irow .ok{color:var(--ok);font-size:11px}
+.irow button{font-size:11.5px;padding:3px 8px;border-radius:6px;background:var(--side2);color:var(--fg);white-space:nowrap}
+.irow button.go{background:var(--acc);color:#fff}
+.irow button.ic{background:none;color:var(--mut);padding:3px 4px}.irow button.ic:hover{color:var(--fg)}
+.agsel{display:flex;background:var(--bg);border:1px solid var(--bd);border-radius:9px;padding:3px;gap:3px;margin-bottom:14px}
+.agsel button{flex:1;padding:7px 6px;border-radius:7px;color:var(--mut);display:flex;align-items:center;justify-content:center;gap:6px}
+.agsel button.on{background:var(--sel);color:var(--fg2)}
 .side-gh{display:flex;align-items:center;gap:8px;margin:0 8px 8px;padding:8px 10px;border:1px solid var(--bd);border-radius:8px;color:var(--fg);text-align:left}
 .side-gh:hover{background:var(--side2)}.side-gh.need{border-color:var(--acc);color:var(--acc)}
 .side-gh svg{flex:none}.side-gh span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -146,6 +161,11 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
   .tab .k{display:none}
   .dot{width:10px;height:10px}
   .side-gh{margin:0 12px 10px;padding:12px;font-size:15px;border-radius:10px}
+  #integ{margin:0 12px 10px;border-radius:10px}
+  .irow{padding:10px 12px;gap:10px}.irow .nm{font-size:15px}
+  .irow button{font-size:13.5px;padding:7px 11px;border-radius:8px}
+  .agsel button{padding:10px 6px;font-size:15px}
+  .ag{font-size:13px;width:18px}
   .side-foot{padding:10px 14px calc(10px + var(--sab));font-size:12.5px}
   .side-foot button{font-size:13px}
 
@@ -179,6 +199,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
   .chk{font-size:15px}
 }
 .seg{display:none}
+body.is-shell .agent-only{display:none!important}
 </style></head><body>
 <div id="app">
   <aside>
@@ -187,7 +208,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
       <button class="iconbtn" title="Новая сессия (⌥T)" onclick="openNew()">＋</button>
     </div>
     <div id="tabs"></div>
-    <button class="side-gh" id="ghfoot" onclick="ghFootClick()">GitHub…</button>
+    <div id="integ"></div>
     <div class="side-foot"><span id="foot"></span><button onclick="logout()">Выйти</button></div>
   </aside>
   <div id="scrim" onclick="drawer(false)"></div>
@@ -198,8 +219,9 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
       <div class="seg" id="seg"><button data-m="screen" onclick="setMode('screen')">Экран</button><button data-m="term" onclick="setMode('term')">Терм</button></div>
       <button class="act d-only" id="b_link" title="Открыть последнюю ссылку из терминала" onclick="openLink()" style="display:none">🔗 Ссылка</button>
       <button class="act d-only" id="b_mode" title="Терминал / экран с полем ввода" onclick="setMode(curMode()==='term'?'screen':'term')">⌨ Экран</button>
-      <button class="act d-only" title="Перезапустить Claude, продолжив разговор" onclick="restart('continue')">↻ Продолжить</button>
-      <button class="act d-only" title="Перезапустить Claude с новым разговором" onclick="restart('new')">✚ Новый</button>
+      <button class="act d-only" title="Открыть обычный терминал в папке этой сессии" onclick="termHere()">&gt;_ Терминал здесь</button>
+      <button class="act d-only agent-only" title="Перезапустить агента, продолжив разговор" onclick="restart('continue')">↻ Продолжить</button>
+      <button class="act d-only agent-only" title="Перезапустить агента с новым разговором" onclick="restart('new')">✚ Новый</button>
       <button class="act d-only" title="Открыть терминал в новой вкладке" onclick="popout()">↗</button>
       <button class="act dng d-only" title="Закрыть сессию" onclick="kill()">✕</button>
       <button class="iconbtn m-only" onclick="sheet(true)" aria-label="Действия">⋯</button>
@@ -228,8 +250,9 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 <div id="sheet"><div class="scrim" onclick="sheet(false)"></div><div class="panel">
   <div class="cap" id="sheetCap"></div>
   <button id="s_link" onclick="sheet(false);openLink()"><span class="i">🔗</span>Открыть ссылку из терминала</button>
-  <button onclick="sheet(false);restart('continue')"><span class="i">↻</span>Перезапустить, продолжив разговор</button>
-  <button onclick="sheet(false);restart('new')"><span class="i">✚</span>Перезапустить с новым разговором</button>
+  <button onclick="sheet(false);termHere()"><span class="i">&gt;_</span>Терминал в этой папке</button>
+  <button class="agent-only" onclick="sheet(false);restart('continue')"><span class="i">↻</span>Перезапустить, продолжив разговор</button>
+  <button class="agent-only" onclick="sheet(false);restart('new')"><span class="i">✚</span>Перезапустить с новым разговором</button>
   <button onclick="sheet(false);popout()"><span class="i">↗</span>Терминал в новой вкладке</button>
   <button class="dng" onclick="sheet(false);kill()"><span class="i">✕</span>Закрыть сессию</button>
   <button onclick="sheet(false)"><span class="i"></span>Отмена</button>
@@ -239,6 +262,11 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 <dialog id="dlg"><form class="dlg" method="dialog" onsubmit="event.preventDefault();createSession()">
   <div class="dlg-body">
     <h3>Новая сессия</h3>
+    <div class="agsel" id="agsel">
+      <button type="button" data-a="claude" class="on" onclick="pickAgent('claude')"><span class="ag claude">✻</span>Claude</button>
+      <button type="button" data-a="codex" onclick="pickAgent('codex')"><span class="ag codex">◎</span>Codex</button>
+      <button type="button" data-a="shell" onclick="pickAgent('shell')"><span class="ag shell">$</span>Терминал</button>
+    </div>
     <div class="gh" id="gh">
       <div class="gh-head"><span id="gh_state">GitHub…</span><button type="button" id="gh_refresh" onclick="loadRepos(true)" style="display:none">обновить</button></div>
       <div id="gh_body"></div>
@@ -252,7 +280,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
     <label class="chk"><input type="checkbox" id="n_wt"><span>Отдельный git worktree</span></label>
     <label for="n_branch">Ветка worktree (по умолчанию = имя)</label>
     <input type="text" id="n_branch" placeholder="feature-x" autocapitalize="off" autocorrect="off" spellcheck="false">
-    <label class="chk"><input type="checkbox" id="n_skip"><span>Без подтверждений (--dangerously-skip-permissions)</span></label>
+    <label class="chk" id="n_skip_row"><input type="checkbox" id="n_skip"><span id="n_skip_lbl">Без подтверждений (--dangerously-skip-permissions)</span></label>
   </div>
   <div class="acts"><button type="button" onclick="$('dlg').close()">Отмена</button><button class="pri" id="n_go">Создать</button></div>
 </form></dialog>
@@ -312,8 +340,20 @@ function hookClipboard(w,tries=0){
   });
 }
 const now=()=>Date.now()/1000-clockSkew;
-const state=s=>!s.running?"off":(now()-s.activity<BUSY_SEC?"busy":"idle");
-const STATE_TXT={off:"Claude не запущен",busy:"Claude работает…",idle:"Claude ждёт"};
+const AGENTS={claude:{label:"Claude",glyph:"✻",skip:"--dangerously-skip-permissions"},
+  codex:{label:"Codex",glyph:"◎",skip:"--dangerously-bypass-approvals-and-sandbox"},
+  shell:{label:"Терминал",glyph:"$"}};
+const agentOf=s=>AGENTS[s&&s.agent]?s.agent:"claude";
+const state=s=>{
+  const recent=now()-s.activity<BUSY_SEC;
+  if(agentOf(s)==="shell")return recent?"busy":"sh";
+  return !s.running?"off":(recent?"busy":"idle");
+};
+function stateText(s){
+  const a=AGENTS[agentOf(s)].label,st=state(s);
+  if(agentOf(s)==="shell")return st==="busy"?"терминал · вывод…":(s.running?"терминал · "+s.command:"терминал");
+  return {off:a+" не запущен",busy:a+" работает…",idle:a+" ждёт"}[st];
+}
 function el(tag,cls,...kids){const e=document.createElement(tag);if(cls)e.className=cls;e.append(...kids);return e}
 const shortPath=p=>p.replace(/^.*\/projects\//,"~/").replace(/\.worktrees\//,"⎇ ");
 const curMode=()=>mode||(isMobile()?"screen":"term");
@@ -333,8 +373,9 @@ function renderTabs(){
     if(s.group!==grp){grp=s.group;box.append(el("div","grp",grp))}
     i++;const st=state(s);
     const t=el("div","tab"+(s.name===active?" on":""));
-    const dot=el("span","dot "+st);dot.title=STATE_TXT[st];
-    t.append(dot,el("div","t",el("div","n",s.name),el("div","s",shortPath(s.path))));
+    const dot=el("span","dot "+st);dot.title=stateText(s);
+    const ag=agentOf(s);
+    t.append(dot,el("span","ag "+ag,AGENTS[ag].glyph),el("div","t",el("div","n",s.name),el("div","s",shortPath(s.path))));
     if(attention.has(s.name))t.append(el("span","bell"));
     else if(i<10)t.append(el("span","k","⌥"+i));
     t.onclick=()=>select(s.name);
@@ -348,9 +389,10 @@ function renderTabs(){
 }
 function renderTitle(){
   const s=cur(),t=$("title");t.replaceChildren();
+  document.body.classList.toggle("is-shell",!!s&&agentOf(s)==="shell");
   if(!s){t.textContent=isMobile()?"Claude":"—";return}
   const st=state(s);
-  t.append(el("b","",s.name),el("span","path"," — "+s.path.replace(/^\/home\/[^/]+/,"~")),el("span","st",STATE_TXT[st]+" · "+shortPath(s.path)));
+  t.append(el("b","",s.name),el("span","path"," — "+s.path.replace(/^\/home\/[^/]+/,"~")),el("span","st",stateText(s)+" · "+shortPath(s.path)));
 }
 
 function frameFor(name){
@@ -442,7 +484,17 @@ async function post(path,body,confirmText){
   if(confirmText&&!confirm(confirmText))return false;
   try{await api(path,body);await load();return true}catch(e){toast(e.message);return false}
 }
-function restart(m){if(active)post("/api/restart",{name:active,mode:m},m==="new"?`Перезапустить Claude в «${active}» с НОВЫМ разговором?`:`Перезапустить Claude в «${active}», продолжив разговор?`)}
+function restart(m){
+  const s=cur();if(!s)return;const a=AGENTS[agentOf(s)].label;
+  post("/api/restart",{name:active,mode:m},m==="new"?`Перезапустить ${a} в «${active}» с НОВЫМ разговором?`:`Перезапустить ${a} в «${active}», продолжив разговор?`);
+}
+async function termHere(){
+  const s=cur();if(!s)return;
+  const names=new Set(sessions.map(x=>x.name));
+  let base=s.name.replace(/-sh\d*$/,"").slice(0,27)+"-sh",n=base,i=2;
+  while(names.has(n))n=base+(i++);
+  if(await post("/api/new",{name:n,agent:"shell",path:s.path}))select(n);
+}
 async function kill(){
   if(!active)return;const n=active;
   if(await post("/api/kill",{name:n},`Закрыть сессию «${n}»? Claude будет остановлен.`)){active=null;show()}
@@ -468,12 +520,33 @@ const GH_ICON='<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColo
 let repos=[],ghLogin=null;
 async function ghStatus(){try{const st=await api("/api/github/status");ghLogin=st.connected?st.login:null}catch(e){ghLogin=null}return ghLogin}
 async function ghConnect(){if(await post("/api/github_login",{})){if($("dlg").open)$("dlg").close();select("github-login");setMode("screen")}}
-async function checkGithubFoot(){
-  const b=$("ghfoot");await ghStatus();
-  b.classList.toggle("need",!ghLogin);b.innerHTML=GH_ICON+"<span></span>";
-  b.lastChild.textContent=ghLogin?ghLogin+" · выбрать репозиторий":"Подключить GitHub";
+async function agentAction(kind,agent){
+  const name=kind==="install"?"install-"+agent:agent+"-login";
+  if(await post("/api/agent_"+kind,{agent})){select(name);if(isMobile())setMode("screen")}
 }
-function ghFootClick(){if(ghLogin)openNew();else ghConnect()}
+function irow(glyphHtml,name,ver,right){
+  const r=el("div","irow");const g=el("span","");g.innerHTML=glyphHtml;
+  const nm=el("span","nm",name);if(ver)nm.append(el("small","",ver));
+  r.append(g,nm,...right);return r;
+}
+function btn(label,cls,fn,title){const b=el("button",cls||"",label);b.onclick=fn;if(title)b.title=title;return b}
+async function checkGithubFoot(){
+  const box=$("integ");let ag={};
+  try{ag=await api("/api/agents")}catch(e){}
+  await ghStatus();
+  const rows=[];
+  for(const a of["claude","codex"]){
+    const st=ag[a]||{},glyph=`<span class="ag ${a}">${AGENTS[a].glyph}</span>`,right=[];
+    if(!st.installed)right.push(btn("Установить","go",()=>agentAction("install",a)));
+    else{
+      right.push(st.logged_in?el("span","ok","✓"):btn("Войти","go",()=>agentAction("login",a)));
+      right.push(btn("⟳","ic",()=>agentAction("install",a),"Обновить официальным установщиком"));
+    }
+    rows.push(irow(glyph,AGENTS[a].label,st.version||"",right));
+  }
+  rows.push(irow(GH_ICON,ghLogin||"GitHub","",[ghLogin?btn("Репозитории","",openNew):btn("Подключить","go",ghConnect)]));
+  box.replaceChildren(...rows);
+}
 async function loadGithub(){
   const body=$("gh_body");body.replaceChildren();$("gh_refresh").style.display="none";$("gh_state").textContent="GitHub: проверяю…";
   await ghStatus();
@@ -510,6 +583,12 @@ function pickRepo(r){
 }
 $("n_name").addEventListener("input",e=>delete e.target.dataset.auto);
 
+let newAgent="claude";
+function pickAgent(a){
+  newAgent=a;for(const b of $("agsel").children)b.classList.toggle("on",b.dataset.a===a);
+  $("n_skip_row").style.display=a==="shell"?"none":"";
+  if(a!=="shell")$("n_skip_lbl").textContent="Без подтверждений ("+AGENTS[a].skip+")";
+}
 async function openNew(){
   drawer(false);
   try{const{projects}=await api("/api/projects");$("projlist").replaceChildren(...projects.map(p=>{const o=document.createElement("option");o.value=p;return o}))}catch(e){}
@@ -518,7 +597,7 @@ async function openNew(){
 async function createSession(){
   const name=$("n_name").value.trim();$("n_go").disabled=true;$("n_go").textContent="Создаю…";
   const ok=await post("/api/new",{name,project:$("n_proj").value.trim()||name,git:$("n_git").value.trim(),
-    worktree:$("n_wt").checked,branch:$("n_branch").value.trim(),skip:$("n_skip").checked});
+    worktree:$("n_wt").checked,branch:$("n_branch").value.trim(),skip:$("n_skip").checked,agent:newAgent});
   $("n_go").disabled=false;$("n_go").textContent="Создать";
   if(ok){$("dlg").close();for(const i of["n_name","n_proj","n_git","n_branch"])$(i).value="";select(name)}
 }

@@ -99,21 +99,53 @@ def list_sessions():
         preview = tmux("capture-pane", "-p", "-J", "-t", f"={sname}:", "-S", "-40", check=False).rstrip().splitlines()
         rel = os.path.relpath(path, PROJECTS) if path.startswith(PROJECTS + os.sep) else path
         group = rel.split(os.sep)[0].removesuffix(".worktrees") if not rel.startswith("/") else "другое"
+        agent = opt(name, "@cc_agent") or "claude"
         result.append({
             "name": name, "created": int(created or 0), "attached": int(attached or 0),
-            "activity": int(activity or 0), "group": group,
-            "path": path, "running": cmd == "claude", "command": cmd,
+            "activity": int(activity or 0), "group": group, "agent": agent,
+            "path": path, "running": is_running(agent, cmd), "command": cmd,
             "sid": opt(name, "@cc_sid"), "skip": opt(name, "@cc_skip") == "1",
             "preview": "\n".join(preview[-25:]),
         })
     return sorted(result, key=lambda s: (s["group"], s["name"]))
 
 
-def claude_cmd(sid, resume, skip):
-    cmd = f"claude --resume {sid}" if resume else f"claude --session-id {sid}"
-    if skip:
-        cmd += " --dangerously-skip-permissions"
-    return cmd
+AGENTS = {
+    # name: (label, process names as seen in pane_current_command, skip-permissions flag)
+    "claude": ("Claude", {"claude"}, " --dangerously-skip-permissions"),
+    "codex": ("Codex", {"codex", "codex-x86_64-un", "codex-aarch64-u"}, " --dangerously-bypass-approvals-and-sandbox"),
+    "shell": ("Терминал", set(), ""),
+}
+SHELLS = {"bash", "zsh", "sh", "fish", "dash"}
+INSTALLERS = {
+    "claude": "curl -fsSL https://claude.ai/install.sh | bash",
+    "codex": "curl -fsSL https://chatgpt.com/codex/install.sh | sh",
+}
+LOGINS = {
+    "claude": "claude",  # first start asks to log in; afterwards /login switches accounts
+    "codex": "codex login --device-auth",
+}
+
+
+def is_running(agent, cmd):
+    if agent == "shell":
+        return cmd not in SHELLS
+    return cmd in AGENTS[agent][1]
+
+
+def agent_cmd(agent, sid=None, resume=False, skip=False, name=None):
+    """Shell command that starts (or resumes) the agent in a pane; None for a plain terminal."""
+    if agent == "shell":
+        return None
+    flag = AGENTS[agent][2] if skip else ""
+    if agent == "codex":
+        # resume --last is scoped to the current directory
+        return f"codex resume --last{flag} || codex{flag}" if resume else f"codex{flag}"
+    if resume:
+        if transcript_exists(sid):
+            return f"claude --resume {sid}{flag}"
+        return f"claude --continue{flag} || claude{flag}"
+    return f"claude --session-id {sid}{flag}" + (f" -n {name}" if name else "")
 
 
 def type_line(name, text):
@@ -157,14 +189,17 @@ def add_worktree(repo, project, name, branch):
     return wt
 
 
-def action_new(d):
-    name, project = d.get("name", ""), d.get("project") or d.get("name", "")
-    if not NAME_RE.match(name):
-        raise ValueError("имя сессии: латиница, цифры, - и _, до 32 символов")
+def resolve_path(d, name):
+    """Either an existing folder under $HOME ("path") or ~/projects/<project> (+clone, +worktree)."""
+    home = os.path.expanduser("~")
+    if d.get("path"):
+        path = os.path.realpath(d["path"])
+        if not (path == home or path.startswith(home + os.sep)) or not os.path.isdir(path):
+            raise ValueError("папка должна существовать и быть внутри домашнего каталога")
+        return path
+    project = d.get("project") or name
     if not PROJ_RE.match(project) or ".." in project or project.endswith(".worktrees"):
         raise ValueError("неверное имя проекта")
-    if session_exists(name):
-        raise ValueError(f"сессия {name} уже есть")
     path = os.path.join(PROJECTS, project)
     git = (d.get("git") or "").strip()
     if git and not os.path.exists(path):
@@ -177,30 +212,48 @@ def action_new(d):
     os.makedirs(path, exist_ok=True)
     if d.get("worktree"):
         path = add_worktree(path, project, name, (d.get("branch") or name).strip())
-    sid, skip = str(uuid.uuid4()), bool(d.get("skip"))
+    return path
+
+
+def create_session(name, path, agent, skip, sid=None, command=None):
     tmux("new-session", "-d", "-s", f"{PREFIX}{name}", "-c", path, "-x", "200", "-y", "50")
-    tmux("set-option", "-t", f"={PREFIX}{name}:", "@cc_sid", sid)
+    tmux("set-option", "-t", f"={PREFIX}{name}:", "@cc_agent", agent)
     tmux("set-option", "-t", f"={PREFIX}{name}:", "@cc_skip", "1" if skip else "0")
-    time.sleep(0.5)
-    type_line(name, claude_cmd(sid, False, skip) + f" -n {name}")
+    if sid:
+        tmux("set-option", "-t", f"={PREFIX}{name}:", "@cc_sid", sid)
+    if command:
+        time.sleep(0.5)
+        type_line(name, command)
+
+
+def action_new(d):
+    name, agent = d.get("name", ""), d.get("agent") or "claude"
+    if not NAME_RE.match(name):
+        raise ValueError("имя сессии: латиница, цифры, - и _, до 32 символов")
+    if agent not in AGENTS:
+        raise ValueError("неизвестный агент")
+    if session_exists(name):
+        raise ValueError(f"сессия {name} уже есть")
+    path = resolve_path(d, name)
+    skip = bool(d.get("skip")) and agent != "shell"
+    sid = str(uuid.uuid4()) if agent == "claude" else None
+    create_session(name, path, agent, skip, sid, agent_cmd(agent, sid, False, skip, name))
 
 
 def action_restart(d):
     name = d.get("name", "")
     if not session_exists(name):
         raise ValueError("нет такой сессии")
-    skip = opt(name, "@cc_skip") == "1"
+    skip, agent = opt(name, "@cc_skip") == "1", opt(name, "@cc_agent") or "claude"
     stop_children(name)
-    if d.get("mode") == "new":
+    sid = opt(name, "@cc_sid")
+    if d.get("mode") == "new" and agent == "claude":
         sid = str(uuid.uuid4())
         tmux("set-option", "-t", f"={PREFIX}{name}:", "@cc_sid", sid)
-        cmd = claude_cmd(sid, False, skip) + f" -n {name}"
-    else:
-        sid = opt(name, "@cc_sid")
-        cmd = claude_cmd(sid, True, skip) if sid else "claude --continue"
+    cmd = agent_cmd(agent, sid, d.get("mode") != "new", skip, name)
     time.sleep(0.3)
     tmux("send-keys", "-t", f"={PREFIX}{name}:", "C-u")
-    type_line(name, "clear; " + cmd)
+    type_line(name, "clear" + (f"; {cmd}" if cmd else ""))
 
 
 def action_kill(d):
@@ -270,7 +323,41 @@ def action_github_login(d):
     type_line(name, GH_LOGIN_CMD)
 
 
-ACTIONS = {"github_login": action_github_login, "new": action_new, "restart": action_restart, "kill": action_kill, "send": action_send}
+def run_in_session(name, command):
+    """(Re)create a utility session in $HOME and run a command in it."""
+    if session_exists(name):
+        tmux("kill-session", "-t", f"={PREFIX}{name}:")
+    create_session(name, os.path.expanduser("~"), "shell", False, command=command)
+
+
+def action_agent_install(d):
+    agent = d.get("agent")
+    if agent not in INSTALLERS:
+        raise ValueError("неизвестный агент")
+    run_in_session(f"install-{agent}", f"{INSTALLERS[agent]} && echo && echo '✅ {AGENTS[agent][0]} установлен/обновлён. Сессию можно закрыть.'")
+
+
+def action_agent_login(d):
+    agent = d.get("agent")
+    if agent not in LOGINS:
+        raise ValueError("неизвестный агент")
+    run_in_session(f"{agent}-login", LOGINS[agent])
+
+
+def agent_status(agent):
+    home = os.path.expanduser("~")
+    path = os.path.join(home, ".local", "bin", agent)
+    installed = os.path.exists(path)
+    version = None
+    if installed:
+        r = subprocess.run([path, "--version"], capture_output=True, text=True, timeout=10)
+        version = (r.stdout.strip().split() or [None])[-1] if agent == "codex" else (r.stdout.split() or [None])[0]
+    auth = {"claude": os.path.join(home, ".claude", ".credentials.json"),
+            "codex": os.path.join(home, ".codex", "auth.json")}[agent]
+    return {"installed": installed, "version": version, "logged_in": os.path.exists(auth)}
+
+
+ACTIONS = {"agent_install": action_agent_install, "agent_login": action_agent_login, "github_login": action_github_login, "new": action_new, "restart": action_restart, "kill": action_kill, "send": action_send}
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -353,6 +440,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_body(200, open(PAGE_FILE, "rb").read(), "text/html; charset=utf-8")
         if self.path == "/api/sessions":
             return self.send_json(200, {"sessions": list_sessions()})
+        if self.path == "/api/agents":
+            return self.send_json(200, {a: agent_status(a) for a in INSTALLERS})
         if self.path == "/api/github/status":
             return self.send_json(200, github_status())
         if self.path.startswith("/api/github/repos"):
@@ -433,13 +522,16 @@ def tmux_server_pid():
 
 
 def live_sessions():
-    fmt = "#{session_name}\t#{pane_current_path}\t#{pane_current_command}\t#{@cc_sid}\t#{@cc_skip}\t#{session_created}"
+    fmt = ("#{session_name}\t#{pane_current_path}\t#{pane_current_command}\t#{@cc_sid}\t#{@cc_skip}\t"
+           "#{session_created}\t#{@cc_agent}")
     live = {}
     for line in tmux("list-sessions", "-F", fmt, check=False).splitlines():
-        sname, path, cmd, sid, skip, created = (line.split("\t") + [""] * 6)[:6]
+        sname, path, cmd, sid, skip, created, agent = (line.split("\t") + [""] * 7)[:7]
+        agent = agent or "claude"
         if sname.startswith(PREFIX):
-            live[sname[len(PREFIX):]] = {"path": path, "sid": sid or None, "skip": skip == "1",
-                                         "running": cmd == "claude", "created": int(created or 0)}
+            live[sname[len(PREFIX):]] = {"path": path, "sid": sid or None, "skip": skip == "1", "agent": agent,
+                                         "running": is_running(agent, cmd) if agent != "shell" else False,
+                                         "created": int(created or 0)}
     return live
 
 
@@ -469,20 +561,10 @@ def restore_session(name, info):
     if not os.path.isdir(path):
         print(f"restore {name}: path {path!r} is gone, skipped", flush=True)
         return
-    tmux("new-session", "-d", "-s", f"{PREFIX}{name}", "-c", path, "-x", "200", "-y", "50")
-    sid, skip = info.get("sid"), bool(info.get("skip"))
-    if sid:
-        tmux("set-option", "-t", f"={PREFIX}{name}:", "@cc_sid", sid)
-    tmux("set-option", "-t", f"={PREFIX}{name}:", "@cc_skip", "1" if skip else "0")
-    if info.get("running"):
-        time.sleep(0.5)
-        if transcript_exists(sid):
-            cmd = claude_cmd(sid, True, skip)
-        else:
-            flag = " --dangerously-skip-permissions" if skip else ""
-            cmd = f"claude --continue{flag} || claude{flag}"
-        type_line(name, cmd)
-    print(f"restored {name} ({'claude resumed' if info.get('running') else 'shell only'})", flush=True)
+    sid, skip, agent = info.get("sid"), bool(info.get("skip")), info.get("agent") or "claude"
+    resume = agent_cmd(agent, sid, True, skip) if info.get("running") else None
+    create_session(name, path, agent, skip, sid, resume)
+    print(f"restored {name} ({agent}{', resumed' if resume else ', shell only'})", flush=True)
 
 
 def sync_state():

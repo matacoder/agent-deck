@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # Install / upgrade the Claude Sessions panel for one unprivileged user.
 #
-# Works on a clean Ubuntu 22.04 / 24.04 server: installs Tailscale, tmux, ttyd, gh, Claude Code,
+# Works on a clean Ubuntu 22.04 / 24.04 server: installs Tailscale, tmux, ttyd, gh, Claude Code, Codex CLI,
 # rootless Docker for the user, the panel and its systemd user services.
 #
 #   sudo ./install.sh                          # defaults: user "dev", bind to this host's Tailscale IP
 #   sudo TS_AUTHKEY=tskey-... ./install.sh     # join the tailnet without the interactive login link
 #   sudo DEV_USER=alice MEM_MAX=8G CPU_QUOTA=200% ./install.sh
-#   sudo WITH_DOCKER=0 ./install.sh            # skip rootless Docker
+#   sudo WITH_DOCKER=0 WITH_CODEX=0 ./install.sh   # skip rootless Docker / Codex CLI
 #
 # Re-running is safe: code and unit files are updated, the panel and ttyd are restarted,
 # the tmux server (and every running Claude session) is left alone.
@@ -20,6 +20,7 @@ BIND_HOST=${BIND_HOST:-}
 MEM_MAX=${MEM_MAX:-}          # e.g. 8G  -> MemoryMax for everything the user runs
 CPU_QUOTA=${CPU_QUOTA:-}      # e.g. 200% -> two cores
 WITH_DOCKER=${WITH_DOCKER:-1}
+WITH_CODEX=${WITH_CODEX:-1}
 TS_AUTHKEY=${TS_AUTHKEY:-}
 TTYD_VERSION=1.7.7
 PREFIX=/opt/cc-panel
@@ -77,7 +78,7 @@ as_user() { sudo -u "$DEV_USER" -H env XDG_RUNTIME_DIR="/run/user/$UID_" DBUS_SE
 
 say "panel code -> $PREFIX"
 install -d -m 755 "$PREFIX"
-install -m 644 "$SRC"/panel/* "$PREFIX"/
+find "$SRC/panel" -maxdepth 1 -type f -exec install -m 644 {} "$PREFIX"/ \;
 
 say "config"
 install -d -o "$DEV_USER" -g "$DEV_USER" -m 700 "$H/.config/cc-panel"
@@ -118,6 +119,11 @@ EOF
 if ! as_user bash -lc 'command -v claude' >/dev/null 2>&1; then
     say "Claude Code"
     as_user bash -c 'curl -fsSL https://claude.ai/install.sh | bash'
+fi
+
+if [ "$WITH_CODEX" = 1 ] && ! as_user bash -lc 'command -v codex' >/dev/null 2>&1; then
+    say "Codex CLI"
+    as_user bash -c 'curl -fsSL https://chatgpt.com/codex/install.sh | sh'
 fi
 
 if [ "$WITH_DOCKER" = 1 ]; then
