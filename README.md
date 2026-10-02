@@ -65,7 +65,8 @@ Put them before `bash` the same way, e.g. `sudo MEM_MAX=8G bash`:
 ## Update
 
 When a new version is out, the panel shows **↑ vX.Y.Z** in the sidebar. To update, run the install
-command again, or:
+command again, or click **Update to vX.Y.Z** in the sidebar / mobile **⋯** menu to update just the
+panel without root. For a full update including system setup:
 
 ```bash
 sudo /opt/agent-deck/update.sh

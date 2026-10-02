@@ -11,7 +11,12 @@ PREFIX=/opt/cc-panel
 export XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}
 export DBUS_SESSION_BUS_ADDRESS=${DBUS_SESSION_BUS_ADDRESS:-unix:path=$XDG_RUNTIME_DIR/bus}
 
-python3 -m py_compile "$SRC/panel/panel.py"
+PYTHONDONTWRITEBYTECODE=1 python3 - "$SRC" <<'PYTHON'
+from pathlib import Path
+import sys
+for path in (Path(sys.argv[1]) / "panel").glob("*.py"):
+    compile(path.read_text(), str(path), "exec")
+PYTHON
 find "$SRC/panel" -maxdepth 1 -type f -exec install -m 644 {} "$PREFIX"/ \;
 rm -rf "$SRC/panel/__pycache__"
 
@@ -25,6 +30,7 @@ for u in "$SRC"/systemd/*.service; do
 done
 cmp -s "$SRC/config/tmux.conf" "$HOME/.tmux.conf" || { install -m 644 "$SRC/config/tmux.conf" "$HOME/.tmux.conf"; tmux source-file "$HOME/.tmux.conf" 2>/dev/null || true; }
 install -m 755 "$SRC/claude/cc-session-hook.py" "$HOME/.claude/cc-session-hook.py"
+python3 "$SRC/claude/register-hooks.py"
 
 [ "$units_changed" = 0 ] || systemctl --user daemon-reload
 systemctl --user restart cc-ttyd.service cc-panel.service

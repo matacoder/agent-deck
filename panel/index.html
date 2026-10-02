@@ -83,7 +83,9 @@ aside{width:240px;flex:none;background:var(--side);border-right:1px solid var(--
 .side-gh:hover{background:var(--side2)}.side-gh.need{border-color:var(--acc);color:var(--acc)}
 .side-gh svg{flex:none}.side-gh span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .side-foot{border-top:1px solid var(--bd);padding:8px 12px;color:var(--dim);font-size:11px;display:flex;justify-content:space-between;align-items:center;gap:8px}
-#ver{margin-left:auto;font:10.5px var(--mono);color:var(--dim);white-space:nowrap}
+#ver{margin-left:auto;min-width:0;font:10.5px var(--mono);color:var(--dim);white-space:normal}
+#ver button{display:block;max-width:100%;margin-top:3px;color:var(--acc);text-align:left;overflow-wrap:anywhere}
+#ver button:disabled{opacity:.6;cursor:default}
 #ver a{color:var(--acc);text-decoration:none;font-weight:600;cursor:pointer}
 .side-foot button{color:var(--mut);font-size:11px}.side-foot button:hover{color:var(--fg)}
 
@@ -269,6 +271,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
   .chk{font-size:15px}
 }
 .seg{display:none}
+#closed_drafts pre{white-space:pre-wrap;overflow:auto;max-height:200px;overflow-wrap:anywhere}
 body.is-shell .agent-only{display:none!important}
 </style></head><body>
 <div id="app">
@@ -280,7 +283,7 @@ body.is-shell .agent-only{display:none!important}
     </div>
     <div id="tabs"></div>
     <div id="integ"></div>
-    <div class="side-foot"><span id="foot"></span><span id="ver"></span><button onclick="logout()">Выйти</button></div>
+    <div class="side-foot"><span id="foot"></span><span id="ver"></span><button id="b_drafts" onclick="showClosedDrafts()" style="display:none">Черновики закрытых сессий</button><button onclick="logout()">Выйти</button></div>
   </aside>
   <div id="scrim" onclick="drawer(false)"></div>
   <main>
@@ -336,9 +339,12 @@ body.is-shell .agent-only{display:none!important}
   <button onclick="sheet(false);popout()"><span class="i">↗</span>Терминал в новой вкладке</button>
   <button class="dng" onclick="sheet(false);kill()"><span class="i">✕</span>Закрыть сессию</button>
   <button onclick="refreshInterface()"><span class="i">↻</span>Обновить интерфейс</button>
+  <button id="s_update" onclick="updatePanel()" style="display:none"></button>
+  <button id="s_drafts" onclick="showClosedDrafts()" style="display:none">Черновики закрытых сессий</button>
   <button onclick="sheet(false)"><span class="i"></span>Отмена</button>
 </div></div>
 <div id="toast"></div>
+<dialog id="draft_dlg"><div class="dlg-body"><h3>Черновики закрытых сессий</h3><div id="closed_drafts"></div><button onclick="$('draft_dlg').close()">Закрыть</button></div></dialog>
 
 <dialog id="dlg"><form class="dlg" method="dialog" onsubmit="event.preventDefault();createSession()">
   <div class="dlg-body">
@@ -383,6 +389,7 @@ try{
 /* keep layout glued to the visible area when the iOS keyboard opens */
 function fitViewport(){
   const vv=window.visualViewport;if(!vv)return;
+  if(Math.abs(vv.scale-1)>0.01)return; // Pinch zoom must not resize the document layout.
   const root=document.documentElement;
   const keyboard=isMobile()&&Math.abs(vv.scale-1)<0.01&&root.clientHeight-vv.height>150;
   // Keep controls inside the web view: the OS-owned strip below an installed
@@ -397,7 +404,10 @@ addEventListener("orientationchange",()=>requestAnimationFrame(fitViewport));
 
 async function api(path,body){
   const r=await fetch(path,body?{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}:{cache:"no-store"});
-  if(r.status===401){location.href="/login";throw new Error("login required")}
+  if(r.status===401){
+    try{stashDrafts();location.href="/login"}catch(e){toast("Войдите в новой вкладке: здесь сохранён несохранённый текст.",true,{label:"Войти",run:()=>window.open("/login","_blank","noopener")})}
+    throw new Error("login required");
+  }
   const d=r.headers.get("Date");if(d)clockSkew=Date.now()/1000-Date.parse(d)/1000;
   const j=await r.json().catch(()=>({error:r.statusText}));
   if(!r.ok)throw new Error(j.error||r.statusText);return j;
@@ -462,6 +472,8 @@ function sheet(on){
 }
 const cur=()=>sessions.find(x=>x.name===active);
 const messageDrafts=new Map();
+const closedDrafts=new Map();
+try{for(const[name,text]of JSON.parse(sessionStorage.getItem("cc.closed-drafts")||"[]"))if(typeof name==="string"&&typeof text==="string")closedDrafts.set(name,text)}catch(e){}
 try{
   for(const [name,text] of JSON.parse(sessionStorage.getItem("cc.session-drafts")||"[]"))
     if(typeof name==="string"&&typeof text==="string")messageDrafts.set(name,text);
@@ -535,7 +547,7 @@ function renderTitle(){
 function frameFor(name){
   let f=frames.get(name);
   if(!f){
-    f=document.createElement("iframe");f.src="/t/?arg="+encodeURIComponent("cc-"+name);
+    f=document.createElement("iframe");f.src="/t/?arg="+encodeURIComponent("=cc-"+name);
     f.onload=()=>{try{f.contentWindow.addEventListener("keydown",hotkeys,true);hookClipboard(f.contentWindow)}catch(e){}};
     $("stage").append(f);frames.set(name,f);
   }
@@ -670,12 +682,28 @@ function appendStyledRange(node,runs,from,to){
 }
 const BOX_CHARS=/[─━═╌┄┈╍▔▁]/g;
 const BOX_LINE=/^[\s─━═╌┄┈╍▔▁-]*$/;
+function joinUrlLines(lines){
+  const out=[];
+  for(let i=0;i<lines.length;i++){
+    const runs=lines[i].slice(),plain=runs.map(r=>r.text).join("");
+    if(/https?:\/\/\S+$/.test(plain.trimEnd())){
+      while(i+1<lines.length){
+        const next=lines[i+1].map(r=>r.text).join("");
+        if(!/^\S{2,}$/.test(next)||/^https?:/.test(next))break;
+        for(let j=runs.length-1;j>=0&&/\s$/.test(runs[j].text);j--)runs[j]={...runs[j],text:runs[j].text.trimEnd()};
+        runs.push(...lines[++i]);
+      }
+    }
+    out.push(runs);
+  }
+  return out;
+}
 function updateScreen(s,force){
   const p=$("pre"),stick=force||p.scrollTop+p.clientHeight>=p.scrollHeight-40;
   const raw=s.preview_ansi??unwrapUrls(s.preview||"");
   if(p.dataset.raw!==raw){
     p.dataset.raw=raw;p.replaceChildren();
-    const lines=ansiLines(raw);
+    const lines=joinUrlLines(ansiLines(raw));
     if(!lines.length)p.append(el("div","preview-empty","В tmux пока нет текста. Можно переключиться в «Терм» и проверить сессию."));
     for(const runs of lines){
       const line=runs.map(r=>r.text).join("").trimEnd();
@@ -694,20 +722,52 @@ function updateScreen(s,force){
   }
   if(stick)p.scrollTop=p.scrollHeight;
 }
-function select(name){
-  if(name===active){drawer(false);return}
+function activate(name){
+  if(name===active)return;
   if(active)messageDrafts.set(active,$("msg").value);
   active=name;attention.delete(name);
   $("msg").value=messageDrafts.get(name)||"";$("msg").style.height="";
   $("msg").dispatchEvent(new Event("input"));
-  try{localStorage.setItem("cc.active",name)}catch(e){}
-  history.replaceState(null,"","#"+encodeURIComponent(name));
-  drawer(false);$("pre").dataset.raw="";renderTabs();show();
+  try{if(name)localStorage.setItem("cc.active",name);else localStorage.removeItem("cc.active")}catch(e){}
+  history.replaceState(null,"","#"+(name?encodeURIComponent(name):""));
+  $("pre").dataset.raw="";
+}
+function select(name){
+  if(!sessions.some(s=>s.name===name))return;
+  if(name===active){drawer(false);return}
+  activate(name);drawer(false);renderTabs();show();load();
+}
+function showClosedDrafts(){
+  const box=$("closed_drafts");box.replaceChildren();
+  for(const[name,text]of closedDrafts){
+    const item=el("div","",el("b","",name),el("pre","",text));
+    item.append(btn("Скопировать","",()=>copyToClipboard(text,window)),btn("Удалить","",()=>{closedDrafts.delete(name);saveClosedDrafts();showClosedDrafts()}));box.append(item);
+  }
+  $("draft_dlg").showModal();sheet(false);
+}
+function saveClosedDrafts(){
+  try{sessionStorage.setItem("cc.closed-drafts",JSON.stringify([...closedDrafts]))}catch(e){}
+  $("s_drafts").style.display=closedDrafts.size?"flex":"none";
+  $("b_drafts").style.display=closedDrafts.size?"block":"none";
 }
 
-async function load(){
+let loadingSessions=null,sessionsQueued=false;
+const previewCache=new Map();
+function load(){
+  if(document.hidden)return Promise.resolve();
+  if(loadingSessions){sessionsQueued=true;return loadingSessions}
+  loadingSessions=loadSessions().finally(()=>{
+    loadingSessions=null;if(sessionsQueued){sessionsQueued=false;load()}
+  });return loadingSessions;
+}
+async function loadSessions(){
+  const requested=active;
   try{
-    const{sessions:list}=await api("/api/sessions");
+    const{sessions:list}=await api("/api/sessions"+(requested?"?preview="+encodeURIComponent(requested):""));
+    for(const s of list){
+      if(s.preview!==undefined||s.preview_ansi!==undefined)previewCache.set(s.name,{preview:s.preview,preview_ansi:s.preview_ansi});
+      else Object.assign(s,previewCache.get(s.name)||{});
+    }
     for(const s of list){
       const busy=state(s)==="busy";
       if(wasBusy.get(s.name)&&!busy&&s.name!==active)attention.add(s.name);
@@ -717,12 +777,17 @@ async function load(){
     for(const[n,f]of frames)if(!names.has(n)){f.remove();frames.delete(n);attention.delete(n)}
     const first=!load.done,previousActive=active;load.done=true;
     sessions=list;
-    if(active&&!names.has(active))active=null;
-    if(!active&&sessions.length){
-      active=sessions.reduce((latest,s)=>Number(s.activity)>Number(latest.activity)?s:latest).name;
-      try{localStorage.setItem("cc.active",active)}catch(e){}
-      history.replaceState(null,"","#"+encodeURIComponent(active));
+    if(!active||!names.has(active)){
+      activate(sessions.length?sessions.reduce((latest,s)=>Number(s.activity)>Number(latest.activity)?s:latest).name:null);
     }
+    for(const[name,text]of messageDrafts)if(!names.has(name)){
+      if(text)closedDrafts.set(name,text);messageDrafts.delete(name);previewCache.delete(name);
+    }
+    for(const[name,images]of imageAttachments)if(!names.has(name)){
+      for(const image of images)if(image.preview)URL.revokeObjectURL(image.preview);imageAttachments.delete(name);sendStates.delete(name);
+    }
+    saveClosedDrafts();
+    if(active!==requested)sessionsQueued=true;
     if(first&&!active&&isMobile())drawer(true);
     renderTabs();renderTitle();updateLink();
     const s=cur(),m=curMode();
@@ -731,6 +796,7 @@ async function load(){
   }catch(e){toast(e.message)}
 }
 async function post(path,body,confirmText){
+  if(panelUpdating){toast("Панель обновляется. Дождитесь завершения.");return false}
   if(confirmText&&!confirm(confirmText))return false;
   try{await api(path,body);await load();return true}catch(e){toast(e.message);return false}
 }
@@ -747,9 +813,9 @@ async function termHere(){
 }
 async function kill(){
   if(!active)return;const n=active;
-  if(await post("/api/kill",{name:n},`Закрыть сессию «${n}»? Claude будет остановлен.`)){active=null;show()}
+  await post("/api/kill",{name:n},`Закрыть сессию «${n}»? Агент будет остановлен.`);
 }
-function popout(){if(active)window.open("/t/?arg="+encodeURIComponent("cc-"+active),"_blank")}
+function popout(){if(active)window.open("/t/?arg="+encodeURIComponent("=cc-"+active),"_blank")}
 let uploading=false,choosingImages=false;
 const imageAttachments=new Map();
 const attachmentsFor=name=>imageAttachments.get(name)||[];
@@ -769,16 +835,17 @@ function renderAttachments(){
     const remove=el("button","","×");remove.type="button";
     remove.setAttribute("aria-label","Убрать "+entry.label);remove.disabled=sending||uploading;
     remove.onclick=()=>{
+      api("/api/discard_upload",{name:active,attachments:[entry.attachment]}).catch(e=>toast(e.message));
       imageAttachments.set(active,attachmentsFor(active).filter(x=>x!==entry));
       if(entry.preview)URL.revokeObjectURL(entry.preview);renderAttachments();
     };
     chip.append(remove);list.append(chip);
   }
-  $("b_attach").disabled=!active||sending||uploading;
-  $("b_send").disabled=sending||uploading;
+  $("b_attach").disabled=!active||sending||uploading||panelUpdating;
+  $("b_send").disabled=sending||uploading||panelUpdating;
 }
 function chooseImages(){
-  if(!active||sending||uploading)return;
+  if(!active||sending||uploading||panelUpdating)return;
   choosingImages=true;
   $("image_files").click();
 }
@@ -801,7 +868,7 @@ async function prepareImage(file){
   }finally{URL.revokeObjectURL(url)}
 }
 async function uploadImages(files){
-  if(!active||sending||uploading||!files.length)return;
+  if(!active||sending||uploading||panelUpdating||!files.length)return;
   const name=active;
   if(agentOf(cur())==="shell"){toast("Выберите сессию Claude или Codex");return}
   if(attachmentsFor(name).length+files.length>4){toast("Можно приложить до 4 изображений");return}
@@ -831,11 +898,11 @@ let sending=false;
 const sendStates=new Map();
 function renderSendState(){
   const status=sendStates.get(active),d=$("send_state");
-  d.textContent=status?status.text:"Enter — новая строка · ↑ — отправить";
+  d.textContent=status?status.text:(isMobile()?"Enter — новая строка · ↑ — отправить":"Enter — отправить · Shift+Enter — новая строка");
   d.classList.toggle("error",!!status&&status.error);
 }
 async function send(){
-  const t=$("msg");if(sending||uploading||!active||(!t.value.trim()&&!attachmentsFor(active).length))return;
+  const t=$("msg");if(sending||uploading||panelUpdating||!active||(!t.value.trim()&&!attachmentsFor(active).length))return;
   const name=active,text=t.value,images=attachmentsFor(active).slice();
   sending=true;renderAttachments();
   sendStates.set(name,{text:"Отправляю…"});renderSendState();
@@ -854,7 +921,7 @@ async function send(){
     sending=false;renderAttachments();renderSendState();
   }
 }
-function key(k){if(active&&!sending&&!uploading)post("/api/send",{name:active,key:k})}
+function key(k){if(active&&!sending&&!uploading&&!panelUpdating)post("/api/send",{name:active,key:k})}
 async function logout(){await fetch("/logout",{method:"POST"});location.href="/login"}
 function hideKeyboard(){
   const focused=document.activeElement;
@@ -865,7 +932,7 @@ function hideKeyboard(){
 $("msg").addEventListener("focus",()=>document.body.classList.add("message-focused"));
 $("msg").addEventListener("blur",()=>document.body.classList.remove("message-focused"));
 
-$("msg").addEventListener("input",e=>{e.target.style.height="";e.target.style.height=Math.min(e.target.scrollHeight,160)+"px"});
+$("msg").addEventListener("input",e=>{if(active)messageDrafts.set(active,e.target.value);e.target.style.height="";e.target.style.height=Math.min(e.target.scrollHeight,160)+"px"});
 $("msg").addEventListener("keydown",e=>{
   if(e.key==="Enter"&&!e.shiftKey&&(isMobile()?false:true)&&!e.isComposing){e.preventDefault();send()}
   else if(e.key==="Enter"&&(e.metaKey||e.ctrlKey)){e.preventDefault();send()}
@@ -993,17 +1060,49 @@ function renderInteg(){
   blocks.push(el("div","iblk",irow(GH_ICON,ghLogin||"GitHub","",[ghLogin?btn("Репозитории","",openNew):btn("Подключить","go",ghConnect)])));
   $("integ").replaceChildren(...blocks);
 }
-async function loadVersion(){
-  try{
-    const v=await api("/api/version"),box=$("ver");box.replaceChildren("v"+v.version);
-    box.title=v.latest?`последний релиз: v${v.latest}`:"";
-    if(v.update){
-      const cmd=(v.checkout?`cd ${v.checkout} && `:"")+"sudo ./update.sh";
-      const a=el("a",""," ↑ v"+v.latest);a.title="Доступно обновление — нажмите";
-      a.onclick=()=>{toast(`Доступна v${v.latest}. На сервере: ${cmd}`,true,{label:"Что нового",run:()=>window.open(v.url,"_blank","noopener")})};
-      box.append(a);
+let panelUpdating=false,panelVersion=null,versionTimer=null,versionLoading=false;
+const UPDATE_PHASES=new Set(["checking","downloading","installing","restarting"]);
+function renderVersion(v){
+  panelVersion=v;const job=v.job||{},box=$("ver"),mobile=$("s_update");
+  panelUpdating=UPDATE_PHASES.has(job.phase);
+  box.replaceChildren("v"+v.version);box.title=v.latest?`последний релиз: v${v.latest}`:"";
+  mobile.style.display="none";
+  let label,action;
+  if(panelUpdating){label=job.message||"Обновляю панель…";action=()=>{}}
+  else if(job.phase==="done"&&job.version&&job.version!==UI_PANEL_VERSION){label="Обновлено · перезагрузить интерфейс";action=refreshInterface}
+  else if(job.phase==="error"){label="Обновление не удалось · повторить";action=startPanelUpdate;box.title=job.message||label}
+  else if(v.update){label="Обновить до v"+v.latest;action=startPanelUpdate}
+  if(label){
+    const b=btn(label,"",action);b.id="b_update";b.disabled=panelUpdating;
+    if(!v.can_update&&!panelUpdating&&job.phase!=="done"){
+      b.disabled=true;box.title="Разработка: обновляйте чекаут через git. Кнопка доступна после установки панели.";
     }
-  }catch(e){}
+    box.append(b);mobile.textContent=label;mobile.style.display="flex";mobile.disabled=b.disabled;
+  }
+  renderAttachments();
+}
+let UI_PANEL_VERSION=null;
+async function loadVersion(){
+  if(versionLoading)return;versionLoading=true;clearTimeout(versionTimer);
+  try{
+    const v=await api("/api/version");if(UI_PANEL_VERSION===null)UI_PANEL_VERSION=v.version;
+    renderVersion(v);
+  }catch(e){/* The panel is briefly unreachable while its service restarts. */}
+  finally{versionLoading=false;versionTimer=setTimeout(loadVersion,panelUpdating?2000:60000)}
+}
+async function startPanelUpdate(){
+  if(panelUpdating||!panelVersion||!panelVersion.can_update)return;
+  if(sending||uploading||choosingImages){toast("Дождитесь окончания отправки или загрузки");return}
+  sheet(false);
+  renderVersion({...panelVersion,job:{phase:"checking",message:"Запускаю обновление…"}});
+  try{
+    const result=await api("/api/update",{});renderVersion({...panelVersion,job:result.job});
+  }catch(e){renderVersion({...panelVersion,job:{phase:"error",message:e.message}});toast(e.message)}
+  clearTimeout(versionTimer);versionTimer=setTimeout(loadVersion,1000);
+}
+function updatePanel(){
+  if(panelVersion&&panelVersion.job&&panelVersion.job.phase==="done"&&panelVersion.job.version&&panelVersion.job.version!==UI_PANEL_VERSION)refreshInterface();
+  else startPanelUpdate();
 }
 async function loadServer(){
   try{
@@ -1086,16 +1185,20 @@ addEventListener("resize",()=>{if(isMobile()!==lastMobile){lastMobile=isMobile()
 
 /* Update installed home-screen pages too, without interrupting input. */
 let checkingVersion=false;
+function stashDrafts(){
+  if(active)messageDrafts.set(active,$("msg").value);
+  sessionStorage.setItem("cc.closed-drafts",JSON.stringify([...closedDrafts]));
+  sessionStorage.setItem("cc.session-drafts",JSON.stringify([...messageDrafts]));sessionStorage.setItem("cc.reload-images",JSON.stringify([...imageAttachments].map(([name,images])=>[name,images.map(x=>({attachment:x.attachment,label:x.label}))])));sessionStorage.setItem("cc.reload-draft",JSON.stringify({name:active,text:$("msg").value}));
+}
 function refreshInterface(){
   if(sending||uploading||choosingImages)return;
-  if(active)messageDrafts.set(active,$("msg").value);
-  try{sessionStorage.setItem("cc.session-drafts",JSON.stringify([...messageDrafts]));sessionStorage.setItem("cc.reload-images",JSON.stringify([...imageAttachments].map(([name,images])=>[name,images.map(x=>({attachment:x.attachment,label:x.label}))])));sessionStorage.setItem("cc.reload-draft",JSON.stringify({name:active,text:$("msg").value}))}catch(e){
+  try{stashDrafts()}catch(e){
     if($("msg").value||attachmentsFor(active).length){toast("Не удалось сохранить черновик. Очистите поле перед обновлением.");return}
   }
   location.reload();
 }
 function canAutoRefresh(){
-  return !document.hidden&&!sending&&!uploading&&!choosingImages&&!Array.from(imageAttachments.values()).some(images=>images.length)&&!Array.from(messageDrafts.values()).some(Boolean)&&!$("msg").value&&!$("dlg").open&&
+  return !document.hidden&&!panelUpdating&&!sending&&!uploading&&!choosingImages&&!Array.from(imageAttachments.values()).some(images=>images.length)&&!Array.from(messageDrafts.values()).some(Boolean)&&!$("msg").value&&!$("dlg").open&&!$("draft_dlg").open&&
     !$("sheet").classList.contains("on")&&!document.body.classList.contains("drawer")&&
     (!cur()||(curMode()==="screen"&&$("pre").scrollTop+$("pre").clientHeight>=$("pre").scrollHeight-40))&&
     !String(window.getSelection())&&
@@ -1119,7 +1222,7 @@ checkInterfaceVersion();
 checkGithubFoot(true);setInterval(checkGithubFoot,5000);
 loadUsage();setInterval(loadUsage,60000);
 loadServer();setInterval(loadServer,3600000);
-loadVersion();setInterval(loadVersion,3600000);
+loadVersion();
 document.addEventListener("visibilitychange",()=>{if(!document.hidden){checkGithubFoot(true);loadUsage();load();checkInterfaceVersion()}});
 load();setInterval(load,2500);
 </script>

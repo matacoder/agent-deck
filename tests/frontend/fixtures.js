@@ -4,6 +4,7 @@ const path = require('node:path');
 
 const panelDir = path.resolve(__dirname, '../../panel');
 const html = fs.readFileSync(path.join(panelDir, 'index.html'), 'utf8');
+const loginHtml = fs.readFileSync(path.join(panelDir, 'login.html'), 'utf8').replace('{{USER}}', 'test-user').replace('{{ERROR}}', '');
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a1X8AAAAASUVORK5CYII=', 'base64');
 
 function session(name, overrides = {}) {
@@ -22,6 +23,9 @@ const test = base.extend({
       page, sessions: [session('tmux'), session('other', { activity: 2 }), session('shell', { agent: 'shell', command: 'bash' })],
       revision: 'fixture-version', sends: [], uploads: [], sendError: null,
       uploadError: null, sendGate: null, navigations: 0, usage: {},
+      version: { version: '0.1.0', update: false, can_update: true, job: { phase: 'idle' } },
+      updates: [], updateError: null,
+      sessionRequests: [], sessionGate: null, sessionCaptured: false, authExpired: false,
       async open({ active = 'tmux', mode = 'screen', width, height } = {}) {
         if (width) await page.setViewportSize({ width, height: height || 844 });
         await page.addInitScript(({ active, mode }) => {
@@ -39,22 +43,55 @@ const test = base.extend({
         app.sendGate = { promise, release };
         return { release };
       },
+      holdSessions() {
+        let release;
+        const promise = new Promise(resolve => { release = resolve; });
+        app.sessionCaptured = false;app.sessionGate = { promise };
+        return { release };
+      },
     };
     await page.route('**/*', async route => {
       const url = new URL(route.request().url());
       if (url.hostname !== 'panel.test') return route.abort();
       const json = (body, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
+      if (url.pathname.startsWith('/api/') && app.authExpired) return json({ error: 'login required' }, 401);
       switch (url.pathname) {
+        case '/login':
+          if (route.request().method() === 'POST') {
+            app.authExpired = false;
+            // WebKit routing cannot synthesize redirects; backend tests cover the real 303.
+            return route.fulfill({ contentType: 'text/html', body: '<script>location.replace("/")</script>' });
+          }
+          return route.fulfill({ contentType: 'text/html', body: loginHtml });
         case '/':
         case '/index.html':
           app.navigations++;
           return route.fulfill({ contentType: 'text/html', body: html.replace('__PANEL_REVISION__', app.revision) });
         case '/api/ui-version': return json({ revision: app.revision });
-        case '/api/sessions': return json({ sessions: app.sessions });
+        case '/api/sessions': {
+          app.sessionRequests.push(url.searchParams.get('preview'));
+          const snapshot = app.sessions.map(s => {
+          if (s.name === url.searchParams.get('preview')) return s;
+          const { preview, preview_ansi, ...metadata } = s;
+          return metadata;
+          });
+          const gate = app.sessionGate;app.sessionGate = null;
+          if (gate) { app.sessionCaptured = true;await gate.promise; }
+          return json({ sessions: snapshot });
+        }
+        case '/api/discard_upload': return json({ ok: true });
+        case '/api/kill':
+          app.sessions = app.sessions.filter(s => s.name !== route.request().postDataJSON().name);
+          return json({ ok: true });
         case '/api/agents': return json({ codex: { installed: true, logged_in: true, version: 'test' }, claude: { installed: true, logged_in: true, version: 'test' } });
         case '/api/github/status': return json({ connected: false });
         case '/api/usage': return json(app.usage);
-        case '/api/version': return json({ version: '0.1.0', update: false });
+        case '/api/version': return json(app.version);
+        case '/api/update':
+          app.updates.push(route.request().postDataJSON());
+          if (app.updateError) return json({ error: app.updateError }, 400);
+          app.version.job = { phase: 'checking', message: 'Проверяю последний релиз…' };
+          return json({ ok: true, job: app.version.job });
         case '/api/server': return json({ hostname: 'test-server', ip: '192.0.2.1', tailscale_ip: '100.64.0.1', country: 'GB' });
         case '/api/projects': return json({ projects: ['demo'] });
         case '/api/upload': {

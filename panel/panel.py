@@ -14,18 +14,23 @@ import ipaddress
 import json
 import os
 import re
+import shutil
+import shlex
 import select
 import signal
 import socket
 import urllib.request
 from datetime import datetime
 import subprocess
+import sys
 import threading
 import time
 import uuid
 from http.cookies import SimpleCookie
 from urllib.parse import parse_qs
+from urllib.parse import urlsplit
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+import updater
 
 BIND_HOST = os.environ.get("BIND_HOST", "127.0.0.1")
 BIND_PORT = int(os.environ.get("BIND_PORT", "8790"))
@@ -53,6 +58,9 @@ except OSError:
     VERSION = "dev"
 UPDATE_REPO = os.environ.get("UPDATE_REPO", "matacoder/agent-deck")   # "" disables the update check
 CHECKOUT = os.environ.get("CHECKOUT", "")                             # where install.sh ran from
+UPDATE_STATE = os.path.expanduser("~/.config/cc-panel/update.json")
+action_lock = threading.Lock()
+actions_in_progress = 0
 STATIC = {"/icon-180.png": "image/png", "/icon-192.png": "image/png", "/icon-512.png": "image/png",
           "/manifest.webmanifest": "application/manifest+json"}
 
@@ -69,7 +77,10 @@ def _cookie_key():
 
 
 COOKIE_KEY = _cookie_key()
-failed_logins = {}  # ip -> (count, last_ts)
+failed_logins = {}  # ip -> (count, last_ts), reservations include in-flight attempts
+login_lock = threading.Lock()
+input_locks = {}
+input_locks_lock = threading.Lock()
 
 
 def make_token():
@@ -80,7 +91,7 @@ def make_token():
 
 def token_valid(token):
     exp, _, sig = (token or "").partition(".")
-    if not exp.isdigit() or int(exp) < time.time():
+    if not exp.isdigit() or len(exp) > 12 or int(exp) < time.time():
         return False
     return hmac.compare_digest(sig, hmac.new(COOKIE_KEY, exp.encode(), hashlib.sha256).hexdigest())
 
@@ -95,6 +106,8 @@ def tmux(*args, check=True):
 
 
 def session_exists(name):
+    if not isinstance(name, str) or not NAME_RE.fullmatch(name):
+        return False
     return subprocess.run(["tmux", "has-session", "-t", f"={PREFIX}{name}:"], capture_output=True).returncode == 0
 
 
@@ -103,28 +116,30 @@ def opt(name, key):
     return out or None
 
 
-def list_sessions():
+def list_sessions(preview_name=None):
     fmt = ("#{session_name}\t#{session_created}\t#{session_attached}\t#{pane_current_path}\t"
-           "#{pane_current_command}\t#{window_activity}")
+           "#{pane_current_command}\t#{window_activity}\t#{@cc_agent}\t#{@cc_sid}\t#{@cc_skip}")
     out = tmux("list-sessions", "-F", fmt, check=False)
     result = []
     for line in out.splitlines():
-        sname, created, attached, path, cmd, activity = (line.split("\t") + [""] * 6)[:6]
+        sname, created, attached, path, cmd, activity, agent, sid, skip = (line.split("\t") + [""] * 9)[:9]
         if not sname.startswith(PREFIX):
             continue
         name = sname[len(PREFIX):]
-        preview_ansi = tmux("capture-pane", "-p", "-e", "-J", "-t", f"={sname}:", "-S", "-200", check=False)
-        preview = re.sub(r"\x1b\[[0-?]*[ -/]*[@-~]", "", preview_ansi).rstrip().splitlines()
         rel = os.path.relpath(path, PROJECTS) if path.startswith(PROJECTS + os.sep) else path
         group = rel.split(os.sep)[0].removesuffix(".worktrees") if not rel.startswith("/") else "другое"
-        agent = opt(name, "@cc_agent") or "claude"
-        result.append({
+        agent = agent or "claude"
+        item = {
             "name": name, "created": int(created or 0), "attached": int(attached or 0),
             "activity": int(activity or 0), "group": group, "agent": agent,
             "path": path, "running": is_running(agent, cmd), "command": cmd,
-            "sid": opt(name, "@cc_sid"), "skip": opt(name, "@cc_skip") == "1",
-            "preview": "\n".join(preview[-200:]), "preview_ansi": preview_ansi,
-        })
+            "sid": sid or None, "skip": skip == "1",
+        }
+        if name == preview_name:
+            preview_ansi = tmux("capture-pane", "-p", "-e", "-J", "-t", f"={sname}:", "-S", "-200", check=False)
+            preview = re.sub(r"\x1b\[[0-?]*[ -/]*[@-~]", "", preview_ansi).rstrip().splitlines()
+            item.update(preview="\n".join(preview[-200:]), preview_ansi=preview_ansi)
+        result.append(item)
     return sorted(result, key=lambda s: (s["group"], s["name"]))
 
 
@@ -157,17 +172,18 @@ def agent_cmd(agent, sid=None, resume=False, skip=False, name=None):
         return None
     flag = AGENTS[agent][2] if skip else ""
     if agent == "codex":
-        # resume --last is scoped to the current directory
-        return f"codex resume --last{flag} || codex{flag}" if resume else f"codex{flag}"
+        if resume and not valid_sid(sid):
+            raise ValueError("ID разговора Codex не сохранён. Возобновите нужный разговор через codex resume; автоматический выбор последнего отключён.")
+        return f"codex --no-daemon resume {shlex.quote(sid)}{flag}" if resume else f"codex --no-daemon{flag}"
     if resume:
         if transcript_exists(sid):
             return f"claude --resume {sid}{flag}"
-        return f"claude --continue{flag} || claude{flag}"
+        raise ValueError("Транскрипт этого разговора Claude не найден. Выберите разговор вручную или запустите новый.")
     return f"claude --session-id {sid}{flag}" + (f" -n {name}" if name else "")
 
 
 def type_line(name, text):
-    tmux("send-keys", "-t", f"={PREFIX}{name}:", "-l", text)
+    paste_to_tmux(name, text, bracketed=False)
     tmux("send-keys", "-t", f"={PREFIX}{name}:", "Enter")
 
 
@@ -211,12 +227,14 @@ def resolve_path(d, name):
     """Either an existing folder under $HOME ("path") or ~/projects/<project> (+clone, +worktree)."""
     home = os.path.expanduser("~")
     if d.get("path"):
+        if not isinstance(d["path"], str):
+            raise ValueError("неверный путь проекта")
         path = os.path.realpath(d["path"])
         if not (path == home or path.startswith(home + os.sep)) or not os.path.isdir(path):
             raise ValueError("папка должна существовать и быть внутри домашнего каталога")
         return path
     project = d.get("project") or name
-    if not PROJ_RE.match(project) or ".." in project or project.endswith(".worktrees"):
+    if not isinstance(project, str) or not PROJ_RE.fullmatch(project) or ".." in project or project.endswith(".worktrees"):
         raise ValueError("неверное имя проекта")
     path = os.path.join(PROJECTS, project)
     git = (d.get("git") or "").strip()
@@ -263,12 +281,15 @@ def action_restart(d):
     if not session_exists(name):
         raise ValueError("нет такой сессии")
     skip, agent = opt(name, "@cc_skip") == "1", opt(name, "@cc_agent") or "claude"
-    stop_children(name)
     sid = opt(name, "@cc_sid")
     if d.get("mode") == "new" and agent == "claude":
         sid = str(uuid.uuid4())
         tmux("set-option", "-t", f"={PREFIX}{name}:", "@cc_sid", sid)
+    elif d.get("mode") == "new" and agent == "codex":
+        tmux("set-option", "-t", f"={PREFIX}{name}:", "-u", "@cc_sid")
+        sid = None
     cmd = agent_cmd(agent, sid, d.get("mode") != "new", skip, name)
+    stop_children(name)
     time.sleep(0.3)
     tmux("send-keys", "-t", f"={PREFIX}{name}:", "C-u")
     type_line(name, "clear" + (f"; {cmd}" if cmd else ""))
@@ -278,6 +299,8 @@ def action_kill(d):
     name = d.get("name", "")
     if session_exists(name):
         tmux("kill-session", "-t", f"={PREFIX}{name}:")
+    if isinstance(name, str) and NAME_RE.fullmatch(name):
+        shutil.rmtree(os.path.join(UPLOAD_DIR, name), ignore_errors=True)
 
 
 def attachment_dir(name):
@@ -335,17 +358,63 @@ def attachment_paths(name, attachments):
     return paths
 
 
-def paste_to_tmux(name, text):
-    # Codex recognizes an image path through its bracketed-paste handler.
-    tmux("send-keys", "-t", f"={PREFIX}{name}:", "-l", "\x1b[200~" + text + "\x1b[201~")
+def action_discard_upload(d):
+    for path in attachment_paths(d.get("name", ""), d.get("attachments", [])):
+        os.unlink(path)
+
+
+def cleanup_uploads(max_age=7 * 86400):
+    """Keep sent images long enough for deferred agent reads, but not forever."""
+    if not os.path.isdir(UPLOAD_DIR):
+        return
+    cutoff = time.time() - max_age
+    with os.scandir(UPLOAD_DIR) as folders:
+        for folder in folders:
+            if not folder.is_dir(follow_symlinks=False):
+                continue
+            with os.scandir(folder.path) as entries:
+                for entry in entries:
+                    if (ATTACHMENT_RE.fullmatch(entry.name) and entry.is_file(follow_symlinks=False)
+                            and entry.stat(follow_symlinks=False).st_mtime < cutoff):
+                        os.unlink(entry.path)
+            try:
+                os.rmdir(folder.path)
+            except OSError:
+                pass
+
+
+def paste_to_tmux(name, text, bracketed=True):
+    # stdin avoids tmux's option and command-separator parsing of user text.
+    buffer = "cc-input-" + uuid.uuid4().hex
+    payload = "\x1b[200~" + text + "\x1b[201~" if bracketed else text
+    result = subprocess.run(["tmux", "load-buffer", "-b", buffer, "-"], input=payload,
+                            text=True, capture_output=True, timeout=10)
+    if result.returncode:
+        raise RuntimeError(result.stderr.strip() or "не удалось подготовить ввод")
+    try:
+        tmux("paste-buffer", "-d", "-b", buffer, "-t", f"={PREFIX}{name}:", "-r")
+    finally:
+        tmux("delete-buffer", "-b", buffer, check=False)
     time.sleep(0.2)
 
 
 def action_send(d):
     name = d.get("name", "")
+    if not isinstance(name, str) or not NAME_RE.fullmatch(name):
+        raise ValueError("неверное имя сессии")
+    with input_locks_lock:
+        lock = input_locks.setdefault(name, threading.Lock())
+    with lock:
+        return send_input(d)
+
+
+def send_input(d):
+    name = d.get("name", "")
     if not session_exists(name):
         raise ValueError("нет такой сессии")
     key = d.get("key")
+    if key is not None and not isinstance(key, str):
+        raise ValueError("неверная клавиша")
     if key in ("Escape", "Enter", "C-c", "Up", "Down", "Tab", "BTab"):
         tmux("send-keys", "-t", f"={PREFIX}{name}:", key)
     elif key and len(key) == 1 and key in "123456789yn":
@@ -369,8 +438,7 @@ def action_send(d):
             if paths:
                 paste_to_tmux(name, text)
             elif text:
-                tmux("send-keys", "-t", f"={PREFIX}{name}:", "-l", text)
-                time.sleep(0.15)
+                paste_to_tmux(name, text, bracketed=agent != "shell")
         tmux("send-keys", "-t", f"={PREFIX}{name}:", "Enter")
 
 
@@ -410,12 +478,7 @@ GH_LOGIN_CMD = ("gh auth login --hostname github.com --git-protocol https --web"
 
 
 def action_github_login(d):
-    name = "github-login"
-    if session_exists(name):
-        tmux("kill-session", "-t", f"={PREFIX}{name}:")
-    tmux("new-session", "-d", "-s", f"{PREFIX}{name}", "-c", os.path.expanduser("~"), "-x", "200", "-y", "50")
-    time.sleep(0.5)
-    type_line(name, GH_LOGIN_CMD)
+    run_in_session("github-login", GH_LOGIN_CMD)
 
 
 def run_in_session(name, command):
@@ -492,7 +555,8 @@ def _semver(v):
 
 
 def version_info():
-    info = {"version": VERSION, "checkout": CHECKOUT, "repo": UPDATE_REPO}
+    info = {"version": VERSION, "checkout": CHECKOUT, "repo": UPDATE_REPO,
+            "can_update": updater.available(HERE, UPDATE_REPO), "job": updater.status(UPDATE_STATE)}
     if not UPDATE_REPO:
         return info
 
@@ -507,6 +571,31 @@ def version_info():
     return info
 
 
+def action_update(d):
+    if not updater.available(HERE, UPDATE_REPO):
+        raise ValueError("Обновление по кнопке доступно для установленной панели; чекаут обновляется через git")
+    os.makedirs(os.path.dirname(UPDATE_STATE), mode=0o700, exist_ok=True)
+    fd = updater.lock(UPDATE_STATE)
+    if fd is None:
+        return {"job": updater.status(UPDATE_STATE)}
+    try:
+        updater.write_state(UPDATE_STATE, "checking", message="Проверяю последний релиз…")
+        # Do not pass passwords or agent credentials to the update process.
+        env = {key: value for key, value in os.environ.items()
+               if key in {"PATH", "LANG", "LC_ALL", "XDG_RUNTIME_DIR", "DBUS_SESSION_BUS_ADDRESS"}}
+        subprocess.Popen([sys.executable, os.path.join(HERE, "updater.py"),
+                          "--repo", UPDATE_REPO, "--target", HERE, "--state", UPDATE_STATE,
+                          "--url", f"http://{BIND_HOST}:{BIND_PORT}", "--lock-fd", str(fd)],
+                         pass_fds=(fd,), start_new_session=True, env=env,
+                         stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        return {"job": {"phase": "checking", "message": "Проверяю последний релиз…"}}
+    except OSError as error:
+        updater.write_state(UPDATE_STATE, "error", message="Не удалось запустить обновление")
+        raise ValueError("Не удалось запустить обновление") from error
+    finally:
+        os.close(fd)
+
+
 def server_info():
     def fetch():
         geo = http_json("https://ipinfo.io/json", timeout=6)
@@ -517,11 +606,12 @@ def server_info():
 
 
 def _epoch(iso):
-    return int(datetime.fromisoformat(iso).timestamp()) if iso else None
+    return int(datetime.fromisoformat(iso.replace("Z", "+00:00")).timestamp()) if iso else None
 
 
 def claude_usage():
-    o = json.load(open(os.path.expanduser("~/.claude/.credentials.json"))).get("claudeAiOauth") or {}
+    with open(os.path.expanduser("~/.claude/.credentials.json")) as stream:
+        o = json.load(stream).get("claudeAiOauth") or {}
     if (o.get("expiresAt") or 0) / 1000 < time.time():
         # never refresh here: Claude rotates refresh tokens, a second refresher would log it out
         return {"plan": o.get("subscriptionType"), "error": "токен истёк — запустите Claude, он обновит его"}
@@ -539,7 +629,8 @@ def claude_usage():
 
 
 def codex_usage():
-    t = json.load(open(os.path.expanduser("~/.codex/auth.json"))).get("tokens") or {}
+    with open(os.path.expanduser("~/.codex/auth.json")) as stream:
+        t = json.load(stream).get("tokens") or {}
     if not t.get("access_token"):
         return {"error": "Codex вошёл по API-ключу: лимитов подписки нет"}
     d = http_json("https://chatgpt.com/backend-api/wham/usage",
@@ -563,12 +654,16 @@ def usage():
     return out
 
 
-ACTIONS = {"agent_install": action_agent_install, "agent_login": action_agent_login, "github_login": action_github_login, "new": action_new, "restart": action_restart, "kill": action_kill, "send": action_send, "upload": action_upload}
+ACTIONS = {"agent_install": action_agent_install, "agent_login": action_agent_login, "github_login": action_github_login, "new": action_new, "restart": action_restart, "kill": action_kill, "send": action_send, "upload": action_upload, "update": action_update, "discard_upload": action_discard_upload}
 
 
 class Handler(BaseHTTPRequestHandler):
     server_version = "cc-panel/1.0"
     protocol_version = "HTTP/1.1"
+
+    def setup(self):
+        super().setup()
+        self.connection.settimeout(30)
 
     def log_message(self, fmt, *args):
         print(f"{self.client_ip()} {fmt % args}", flush=True)
@@ -588,6 +683,21 @@ class Handler(BaseHTTPRequestHandler):
 
     def is_https(self):
         return self.via_proxy() and self.headers.get("X-Forwarded-Proto", "").lower() == "https"
+
+    def same_origin(self, required=False):
+        origin = self.headers.get("Origin")
+        if not origin:
+            return not required and self.headers.get("Sec-Fetch-Site") not in ("cross-site", "same-site")
+        try:
+            parsed = urlsplit(origin)
+            host = urlsplit("//" + self.headers.get("Host", ""))
+            scheme = "https" if self.is_https() else "http"
+            default = 443 if scheme == "https" else 80
+            return (parsed.scheme == scheme and parsed.hostname == host.hostname
+                    and (parsed.port or default) == (host.port or default)
+                    and not parsed.username and not parsed.password and parsed.path in ("", "/"))
+        except ValueError:
+            return False
 
     def authorized(self):
         cookie = SimpleCookie(self.headers.get("Cookie", ""))
@@ -615,18 +725,40 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_login(self):
         ip = self.client_ip()
-        count, last = failed_logins.get(ip, (0, 0))
-        if count >= 5 and time.time() - last < 60:
-            return self.login_page("Слишком много попыток. Подождите минуту.")
-        length = int(self.headers.get("Content-Length") or 0)
-        form = parse_qs(self.rfile.read(min(length, 10_000)).decode("utf-8", "replace"))
+        if not self.same_origin():
+            self.close_connection = True
+            return self.send_json(403, {"error": "неверный источник запроса"})
+        try:
+            length = int(self.headers.get("Content-Length") or 0)
+            if not 0 <= length <= 10_000:
+                raise ValueError()
+        except ValueError:
+            self.close_connection = True
+            return self.send_json(400, {"error": "неверный размер запроса"})
+        with login_lock:
+            now = time.time()
+            for old_ip, (_, timestamp) in list(failed_logins.items()):
+                if now - timestamp >= 60:
+                    failed_logins.pop(old_ip, None)
+            count, _ = failed_logins.get(ip, (0, 0))
+            if count >= 5 or sum(value[0] for value in failed_logins.values()) >= 100:
+                self.close_connection = True
+                return self.login_page("Слишком много попыток. Подождите минуту.")
+            # Reserve before reading a possibly delayed request body.
+            failed_logins[ip] = (count + 1, now)
+        form = parse_qs(self.rfile.read(length).decode("utf-8", "replace"))
         user, pwd = form.get("username", [""])[0], form.get("password", [""])[0]
         ok = hmac.compare_digest(user.encode(), PANEL_USER.encode()) & hmac.compare_digest(pwd.encode(), PANEL_PASSWORD.encode())
         if not ok:
-            failed_logins[ip] = (count + 1, time.time())
             time.sleep(1)
             return self.login_page("Неверный логин или пароль")
-        failed_logins.pop(ip, None)
+        with login_lock:
+            # Release only this successful attempt, not reservations of concurrent requests.
+            count, last = failed_logins.get(ip, (1, time.time()))
+            if count <= 1:
+                failed_logins.pop(ip, None)
+            else:
+                failed_logins[ip] = (count - 1, last)
         secure = "; Secure" if self.is_https() else ""
         self.redirect("/", f"{COOKIE}={make_token()}; Path=/; Max-Age={COOKIE_DAYS * 86400}; HttpOnly; SameSite=Lax{secure}")
 
@@ -652,6 +784,15 @@ class Handler(BaseHTTPRequestHandler):
         self.send_body(code, json.dumps(obj, ensure_ascii=False).encode(), "application/json")
 
     def do_GET(self):
+        try:
+            return self.get_request()
+        except (BrokenPipeError, ConnectionResetError):
+            pass
+        except Exception:
+            self.close_connection = True
+            self.send_json(500, {"error": "не удалось обработать запрос"})
+
+    def get_request(self):
         if self.path in STATIC:
             return self.serve_static()
         if self.path == "/login":
@@ -670,8 +811,10 @@ class Handler(BaseHTTPRequestHandler):
             with open(PAGE_FILE, "rb") as f:
                 revision = hashlib.sha256(f.read()).hexdigest()
             return self.send_json(200, {"revision": revision})
-        if self.path == "/api/sessions":
-            return self.send_json(200, {"sessions": list_sessions()})
+        parsed = urlsplit(self.path)
+        if parsed.path == "/api/sessions":
+            preview_name = parse_qs(parsed.query).get("preview", [None])[0]
+            return self.send_json(200, {"sessions": list_sessions(preview_name)})
         if self.path == "/api/usage":
             return self.send_json(200, usage())
         if self.path == "/api/version":
@@ -694,15 +837,31 @@ class Handler(BaseHTTPRequestHandler):
         self.send_json(404, {"error": "not found"})
 
     def do_POST(self):
+        try:
+            return self.post_request()
+        except (BrokenPipeError, ConnectionResetError):
+            pass
+        except Exception:
+            self.close_connection = True
+            self.send_json(500, {"error": "не удалось обработать запрос"})
+
+    def post_request(self):
+        global actions_in_progress
         if self.path == "/login":
             return self.do_login()
         if self.path == "/logout":
+            if not self.same_origin():
+                self.close_connection = True
+                return self.send_json(403, {"error": "неверный источник запроса"})
             return self.redirect("/login", f"{COOKIE}=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax")
         if not self.authorized():
             return
         m = re.match(r"^/api/(\w+)$", self.path)
         if not m or m.group(1) not in ACTIONS:
             return self.send_json(404, {"error": "not found"})
+        if (not self.same_origin() or self.headers.get("Content-Type", "").split(";", 1)[0].strip().lower() != "application/json"):
+            self.close_connection = True
+            return self.send_json(403, {"error": "разрешены только JSON-запросы из интерфейса панели"})
         try:
             length = int(self.headers.get("Content-Length") or 0)
             limit = 12 * 1024 * 1024 if m.group(1) == "upload" else 1_000_000
@@ -712,14 +871,35 @@ class Handler(BaseHTTPRequestHandler):
             data = json.loads(self.rfile.read(length) or b"{}")
             if not isinstance(data, dict):
                 raise ValueError("неверный запрос")
-            result = ACTIONS[m.group(1)](data)
+            action = m.group(1)
+            with action_lock:
+                if action == "update":
+                    if actions_in_progress:
+                        raise ValueError("Дождитесь окончания отправки или другой операции")
+                    result = ACTIONS[action](data)
+                else:
+                    if updater.status(UPDATE_STATE).get("phase") in updater.RUNNING:
+                        return self.send_json(503, {"error": "панель обновляется; повторите после завершения"})
+                    actions_in_progress += 1
+            if action != "update":
+                try:
+                    result = ACTIONS[action](data)
+                finally:
+                    with action_lock:
+                        actions_in_progress -= 1
             self.send_json(200, {"ok": True, **(result or {})})
         except (ValueError, RuntimeError, subprocess.TimeoutExpired) as e:
+            self.close_connection = True
             self.send_json(400, {"error": str(e)})
+        except Exception:
+            self.close_connection = True
+            self.send_json(500, {"error": "не удалось выполнить операцию"})
 
     def proxy_tty(self):
         """Raw pass-through to ttyd (HTTP + websocket upgrade)."""
         upgrade = "websocket" in self.headers.get("Upgrade", "").lower()
+        if upgrade and not self.same_origin(required=True):
+            return self.send_json(403, {"error": "неверный источник WebSocket"})
         backend = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         try:
             backend.connect(TTYD_SOCK)
@@ -796,9 +976,18 @@ def save_state(state):
 
 
 def transcript_exists(sid):
+    if not valid_sid(sid):
+        return False
     root = os.path.expanduser("~/.claude/projects")
     return bool(sid) and any(os.path.exists(os.path.join(root, d, f"{sid}.jsonl"))
                              for d in os.listdir(root)) if os.path.isdir(root) else False
+
+
+def valid_sid(sid):
+    try:
+        return str(uuid.UUID(sid)) == sid
+    except (ValueError, TypeError, AttributeError):
+        return False
 
 
 def restore_session(name, info):
@@ -807,7 +996,11 @@ def restore_session(name, info):
         print(f"restore {name}: path {path!r} is gone, skipped", flush=True)
         return
     sid, skip, agent = info.get("sid"), bool(info.get("skip")), info.get("agent") or "claude"
-    resume = agent_cmd(agent, sid, True, skip) if info.get("running") else None
+    try:
+        resume = agent_cmd(agent, sid, True, skip) if info.get("running") else None
+    except ValueError as error:
+        print(f"restore {name}: {error}; shell only", flush=True)
+        resume = None
     create_session(name, path, agent, skip, sid, resume)
     print(f"restored {name} ({agent}{', resumed' if resume else ', shell only'})", flush=True)
 
@@ -835,9 +1028,13 @@ def sync_state():
 
 
 def sync_loop():
+    cleanup_at = 0
     while True:
         try:
             sync_state()
+            if time.time() >= cleanup_at:
+                cleanup_uploads()
+                cleanup_at = time.time() + 3600
         except Exception as e:  # keep the loop alive whatever happens
             print(f"sync error: {e}", flush=True)
         time.sleep(5)

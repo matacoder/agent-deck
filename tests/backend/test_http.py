@@ -28,7 +28,8 @@ class HTTPTests(PanelCase):
     def request(self, method, path, body=None, headers=None):
         connection = http.client.HTTPConnection(*self.server.server_address, timeout=5)
         try:
-            connection.request(method, path, body=body, headers=headers or {})
+            defaults = {"Content-Type": "application/json"} if method == "POST" and path.startswith("/api/") else {}
+            connection.request(method, path, body=body, headers={**defaults, **(headers or {})})
             response = connection.getresponse()
             return response.status, dict(response.getheaders()), response.read()
         finally:
@@ -49,6 +50,118 @@ class HTTPTests(PanelCase):
             with self.subTest(path=path):
                 self.assertEqual(self.request("GET", path)[0], 401)
         self.panel.list_sessions.assert_not_called()
+        self.assertEqual(self.request("POST", "/api/update", "{}")[0], 401)
+
+    def test_update_rejects_cross_origin_and_non_json_requests(self):
+        cookie = self.login()
+        with patch.dict(self.panel.ACTIONS, {"update": Mock(return_value={"job": {"phase": "checking"}})}):
+            for headers in ({"Content-Type": "text/plain"}, {"Content-Type": "application/json", "Origin": "https://evil.example.com"}):
+                with self.subTest(headers=headers):
+                    self.assertEqual(self.request("POST", "/api/update", "{}", {"Cookie": cookie, **headers})[0], 403)
+            self.panel.ACTIONS["update"].assert_not_called()
+            status, _, body = self.request("POST", "/api/update", "{}", {"Cookie": cookie, "Content-Type": "application/json"})
+            self.assertEqual(status, 200)
+            self.assertEqual(json.loads(body)["job"]["phase"], "checking")
+
+    def test_all_mutations_login_logout_and_websocket_reject_sibling_origins(self):
+        cookie = self.login()
+        host = f"{self.server.server_address[0]}:{self.server.server_address[1]}"
+        for origin in ("http://sibling.test", "https://" + host, "null", "http://" + host + "/bad"):
+            with self.subTest(origin=origin):
+                headers = {"Cookie": cookie, "Origin": origin}
+                self.assertEqual(self.request("POST", "/api/send", "{}", headers)[0], 403)
+                self.assertEqual(self.request("POST", "/login", "", headers)[0], 403)
+                self.assertEqual(self.request("POST", "/logout", "", headers)[0], 403)
+                self.assertEqual(self.request("GET", "/t/", headers={**headers, "Upgrade": "websocket"})[0], 403)
+        self.assertEqual(self.request("GET", "/t/", headers={"Cookie": cookie, "Upgrade": "websocket"})[0], 403)
+        self.assertEqual(self.request("POST", "/api/send", "{}", {"Cookie": cookie, "Sec-Fetch-Site": "same-site"})[0], 403)
+        self.panel.tmux.assert_not_called()
+
+    def test_unexpected_errors_and_invalid_lengths_return_json_and_close_connection(self):
+        cookie = self.login()
+        for path in ("/api/send", "/login"):
+            status, _, body = self.request("POST", path, headers={"Cookie": cookie, "Content-Length": "invalid"})
+            self.assertEqual(status, 400)
+            self.assertIn("error", json.loads(body))
+        with patch.dict(self.panel.ACTIONS, {"send": Mock(side_effect=OSError("private diagnostic"))}):
+            status, _, body = self.request("POST", "/api/send", "{}", {"Cookie": cookie})
+            self.assertEqual(status, 500)
+            self.assertNotIn("private diagnostic", body.decode())
+            self.assertIn("error", json.loads(body))
+        self.panel.list_sessions.side_effect = OSError("private diagnostic")
+        self.assertEqual(self.request("GET", "/api/sessions", headers={"Cookie": cookie})[0], 500)
+        self.assertEqual(self.panel.actions_in_progress, 0)
+
+    def test_delayed_parallel_login_bodies_reserve_the_limit_before_password_check(self):
+        clients = []
+        host = f"{self.server.server_address[0]}:{self.server.server_address[1]}"
+        body = b"username=test-user&password=wrong"
+        import time
+        with patch.object(self.panel.time, "sleep"), patch.object(self.panel.hmac, "compare_digest", wraps=self.panel.hmac.compare_digest) as compare:
+            try:
+                for _ in range(5):
+                    client = socket.create_connection(self.server.server_address, timeout=5)
+                    clients.append(client)
+                    client.sendall(f"POST /login HTTP/1.1\r\nHost: {host}\r\nContent-Length: {len(body)}\r\nConnection: close\r\n\r\n".encode())
+                deadline = time.monotonic() + 5
+                while time.monotonic() < deadline:
+                    with self.panel.login_lock:
+                        reserved = self.panel.failed_logins.get("127.0.0.1", (0, 0))[0]
+                    if reserved == 5:
+                        break
+                    threading.Event().wait(0.01)
+                self.assertEqual(reserved, 5)
+                status, _, response = self.request("POST", "/login", body)
+                self.assertEqual(status, 401)
+                self.assertIn("Слишком много попыток", response.decode())
+                compare.assert_not_called()
+                for client in clients:
+                    client.sendall(body)
+                    self.assertIn(b"401", client.recv(4096))
+                self.assertEqual(compare.call_count, 10)
+            finally:
+                for client in clients:
+                    client.close()
+
+    def test_running_update_blocks_mutations_and_inflight_mutation_blocks_update(self):
+        cookie = self.login()
+        self.panel.updater.write_state(self.panel.UPDATE_STATE, "downloading")
+        fd = self.panel.updater.lock(self.panel.UPDATE_STATE)
+        try:
+            self.assertEqual(self.request("POST", "/api/send", '{"name":"demo","text":"keep"}', {"Cookie": cookie})[0], 503)
+            self.panel.tmux.assert_not_called()
+        finally:
+            import os
+            os.close(fd)
+        self.panel.actions_in_progress = 1
+        status, _, body = self.request("POST", "/api/update", "{}", {"Cookie": cookie, "Content-Type": "application/json"})
+        self.assertEqual(status, 400)
+        self.assertIn("Дождитесь", json.loads(body)["error"])
+
+    def test_actual_inflight_send_finishes_before_update_can_start(self):
+        cookie = self.login()
+        entered, release = threading.Event(), threading.Event()
+        results = []
+
+        def send(data):
+            entered.set()
+            if not release.wait(timeout=5):
+                raise RuntimeError("test send timed out")
+
+        with patch.dict(self.panel.ACTIONS, {"send": send}):
+            thread = threading.Thread(target=lambda: results.append(self.request("POST", "/api/send", '{}', {"Cookie": cookie})))
+            thread.start()
+            try:
+                self.assertTrue(entered.wait(timeout=5))
+                status, _, body = self.request("POST", "/api/update", '{}', {"Cookie": cookie, "Content-Type": "application/json"})
+                self.assertEqual(status, 400)
+                self.assertIn("Дождитесь", json.loads(body)["error"])
+            finally:
+                release.set()
+                thread.join(timeout=5)
+        self.assertFalse(thread.is_alive())
+        self.assertEqual(results[0][0], 200)
+        self.assertEqual(self.panel.actions_in_progress, 0)
 
     def test_real_login_cookie_allows_requests_and_logout_revokes_browser_cookie(self):
         cookie = self.login()
@@ -118,7 +231,8 @@ class HTTPTests(PanelCase):
             "name": "demo", "text": "", "attachments": [data["attachment"]],
         }), {"Cookie": cookie})
         self.assertEqual(status, 200)
-        self.assertEqual(self.panel.tmux.call_count, 2)
+        self.assertEqual(len(self.pasted), 1)
+        self.assertEqual(self.panel.tmux.call_args_list[-1].args[-1], "Enter")
 
     def test_missing_ttyd_returns_bad_gateway(self):
         status, _, body = self.request("GET", "/t/?arg=cc-demo", headers={"Cookie": self.login()})
@@ -158,7 +272,8 @@ class HTTPTests(PanelCase):
         thread.start()
         cookie = self.login()
         with socket.create_connection(self.server.server_address, timeout=5) as client:
-            client.sendall(("GET /t/?arg=cc-demo HTTP/1.1\r\nHost: test\r\nConnection: Upgrade\r\n"
+            host = f"{self.server.server_address[0]}:{self.server.server_address[1]}"
+            client.sendall((f"GET /t/?arg=cc-demo HTTP/1.1\r\nHost: {host}\r\nOrigin: http://{host}\r\nConnection: Upgrade\r\n"
                             "Upgrade: websocket\r\nCookie: " + cookie + "\r\n\r\n").encode())
             response = b""
             while b"\r\n\r\n" not in response:

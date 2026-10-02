@@ -14,11 +14,16 @@ systemd --user (linger):  cc-tmux  (owns the tmux server: restarts of the panel 
                           cc-panel (KillMode=process)
 ```
 
-- tmux sessions are named `cc-<name>`; options `@cc_agent` (claude|codex|shell), `@cc_sid` (Claude
+- tmux sessions are named `cc-<name>`; options `@cc_agent` (claude|codex|shell), `@cc_sid` (Claude/Codex
   conversation id) and `@cc_skip` (skip-permissions / bypass-approvals) live on the session.
 - Persistence: sessions are saved to `~/.config/cc-panel/sessions.json` every 5 s. If the tmux server PID
   changes (reboot, crash), missing sessions are recreated and agents resumed (`claude --resume <id>`,
-  `codex resume --last`). A Claude `SessionStart` hook keeps the id current across `/clear` and `/resume`.
+  `codex --no-daemon resume <id>`). SessionStart hooks remember the top-level conversation;
+  nested review agents cannot overwrite it. Codex runs without a daemon so ancestry identifies its pane.
+  Review and trust the newly registered Codex hook on its first launch; existing trust settings stay intact.
+  Legacy sessions without a saved ID require choosing the conversation manually with `codex resume`.
+  Missing IDs/transcripts produce a clear error before stopping an agent; the panel never guesses the
+  last conversation in a shared project. After a reboot such a session restores to a shell for recovery.
 - Files: code in `/opt/cc-panel`, config in `~/.config/cc-panel/` (`env` holds the password),
   user units in `~/.config/systemd/user/`, install options in `/etc/agent-deck/install.conf`.
 - Interface updates: the page checks for a new UI every 30 s and when it returns from the background and
@@ -49,7 +54,11 @@ remembered in `/etc/agent-deck/install.conf`, so later runs keep them unless ove
 
 `get.sh` additionally honours `AGENT_DECK_DIR` (default `/opt/agent-deck`) and `AGENT_DECK_REPO`.
 
-Manual install from a checkout: `git clone https://github.com/matacoder/agent-deck && cd agent-deck && sudo ./install.sh`.
+Manual system installation requires a root-owned checkout and protected parent directories:
+`sudo git clone https://github.com/matacoder/agent-deck /opt/agent-deck`, then
+`sudo /opt/agent-deck/install.sh`. The bootstrap handles this automatically. Root entrypoints reject
+user-owned, group/world-writable or symlinked source files. Files in the panel user's home and runtime
+are written as that user, so a symlink cannot redirect a root write into a protected file.
 
 ## Public HTTPS
 
@@ -106,8 +115,21 @@ bar) and extrapolates linearly to the reset.
 ## Updates and releases
 
 - The panel checks the latest GitHub release every 6 h (`UPDATE_REPO=` in `~/.config/cc-panel/env`
-  disables it) and shows **↑ vX.Y.Z** with the update command.
-- `sudo ./update.sh` checks out the latest tag (or `./update.sh v0.2.0`, `./update.sh main`) and re-runs
+  disables it). When a newer stable release exists, **Update to vX.Y.Z** appears in the sidebar
+  and the mobile **⋯** menu. Click it to update the panel without root.
+- The detached updater downloads the official release from the configured GitHub repository,
+  validates its version, allowed files and Python syntax, backs up the installed panel and restarts
+  only `cc-panel.service`. It restores the previous files if the updated login page fails its health
+  check. Running tmux sessions and ttyd are left running. The UI displays progress or an error with
+  a retry button; reloading the interface afterwards preserves drafts and attachments.
+- The button requires an installed, writable runtime directory (normally `/opt/cc-panel`) owned by
+  the panel user. It is disabled inside a git checkout. Downloaded install scripts are never executed;
+  this updates `panel/` only. System packages, proxy configuration, service units and agent binaries
+  are updated separately through the installer. Unknown release layouts are rejected before stopping
+  the running panel. A release must include the updater and the panel's required files.
+- A blank server still needs the initial `sudo` installation to create the user, packages, services
+  and HTTPS configuration. The panel itself and subsequent panel updates run as the unprivileged user.
+- `sudo /opt/agent-deck/update.sh` checks out the latest tag (or pass `v0.2.0` / `main`) and re-runs
   `install.sh` with the remembered options. It refuses to run with local changes in the checkout.
 - Releasing (maintainers): add a `## X.Y.Z` section to [CHANGELOG.md](../CHANGELOG.md), then
   `./release.sh X.Y.Z` — bumps `panel/VERSION`, tags, pushes and creates the GitHub release.
@@ -116,8 +138,8 @@ bar) and extrapolates linearly to the reset.
 
 - Day-to-day changes need no root: as the panel user (e.g. from a terminal session in the panel) run
   `./deploy.sh` in your checkout. It copies `panel/` to `/opt/cc-panel`, refreshes units / `tmux.conf` /
-  the Claude hook and restarts the panel and ttyd; the tmux server and sessions keep running.
-- Root (`sudo ./install.sh`) is only needed for system-level changes: packages, users, Traefik / Caddy.
+  the Claude/Codex hooks and restarts the panel and ttyd; the tmux server and sessions keep running.
+- Root (`sudo /opt/agent-deck/install.sh`) is only needed for system-level changes: packages, users, Traefik / Caddy.
 - `python3 panel/make_icons.py` re-renders the app icons.
 
 ## Useful commands

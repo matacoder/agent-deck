@@ -69,18 +69,18 @@ class AttachmentTests(PanelCase):
         attachment = self.upload()
         path = self.panel.attachment_paths("demo", [attachment])[0]
         self.panel.action_send({"name": "demo", "text": "Explain this\nimage", "attachments": [attachment]})
-        values = [call.args[-1] for call in self.panel.tmux.call_args_list]
-        self.assertEqual(values, ["\x1b[200~" + path + "\x1b[201~",
-                                 "\x1b[200~Explain this\nimage\x1b[201~", "Enter"])
+        self.assertEqual(self.pasted, ["\x1b[200~" + path + "\x1b[201~",
+                                     "\x1b[200~Explain this\nimage\x1b[201~"])
+        self.assertEqual([call.args[-1] for call in self.panel.tmux.call_args_list if call.args[0] == "send-keys"], ["Enter"])
 
     def test_image_only_send_and_claude_paths(self):
         attachment = self.upload()
         self.panel.action_send({"name": "demo", "attachments": [attachment]})
-        self.assertEqual(self.panel.tmux.call_count, 2)
+        self.assertEqual(len(self.pasted), 1)
         self.panel.tmux.reset_mock()
         self.panel.opt.return_value = "claude"
         self.panel.action_send({"name": "demo", "text": "Look", "attachments": [attachment]})
-        pasted = self.panel.tmux.call_args_list[0].args[-1]
+        pasted = self.pasted[-1]
         self.assertIn(self.panel.attachment_paths("demo", [attachment])[0], pasted)
         self.assertTrue(pasted.startswith("\x1b[200~Look"))
         self.assertEqual(self.panel.tmux.call_args_list[-1].args[-1], "Enter")
@@ -92,7 +92,8 @@ class AttachmentTests(PanelCase):
 
     def test_plain_text_and_special_keys_still_work(self):
         self.panel.action_send({"name": "demo", "text": "hello"})
-        self.assertEqual([c.args[-1] for c in self.panel.tmux.call_args_list], ["hello", "Enter"])
+        self.assertEqual(self.pasted, ["\x1b[200~hello\x1b[201~"])
+        self.assertEqual(self.panel.tmux.call_args_list[-1].args[-1], "Enter")
         for key in ("Escape", "Enter", "C-c", "Up", "Down", "Tab", "BTab", "1"):
             self.panel.tmux.reset_mock()
             self.panel.action_send({"name": "demo", "key": key})
@@ -113,12 +114,12 @@ class SessionTests(PanelCase):
         capture = "\x1b[31m" + "\n".join(str(i) for i in range(210)) + "\x1b[0m\n"
         def tmux(command, *args, **kwargs):
             if command == "list-sessions":
-                return f"unrelated\t1\t0\t/tmp\tbash\t1\ncc-demo\t1\t0\t{self.panel.PROJECTS}/repo\tcodex\t2\n"
+                return f"unrelated\t1\t0\t/tmp\tbash\t1\ncc-demo\t1\t0\t{self.panel.PROJECTS}/repo\tcodex\t2\tcodex\t\t0\n"
             self.assertIn("-e", args)
             return capture
         self.panel.tmux = Mock(side_effect=tmux)
         self.panel.opt = Mock(side_effect=lambda name, key: "codex" if key == "@cc_agent" else None)
-        sessions = self.panel.list_sessions()
+        sessions = self.panel.list_sessions("demo")
         self.assertEqual(len(sessions), 1)
         self.assertEqual(sessions[0]["group"], "repo")
         self.assertEqual(sessions[0]["preview_ansi"], capture)

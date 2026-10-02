@@ -15,10 +15,31 @@
 # Re-running is safe: code and unit files are updated, the panel and ttyd are restarted,
 # the tmux server (and every running Claude session) is left alone.
 set -euo pipefail
+# Keep this bootstrap check self-contained: never source code from an unchecked checkout.
+require_root_checkout() {
+    python3 - "$1" "${2:-tree}" <<'ROOT_CHECK'
+from pathlib import Path
+import stat, sys
+root = Path(sys.argv[1]).absolute()
+entries = [root, *root.parents]
+if sys.argv[2] == "tree":
+    entries.extend(root.rglob("*"))
+for path in entries:
+    info = path.lstat()
+    if stat.S_ISLNK(info.st_mode) or info.st_uid != 0 or info.st_mode & 0o022:
+        raise SystemExit(f"Refusing untrusted root checkout: {path}. Use the bootstrap installer in a root-owned /opt/agent-deck.")
+ROOT_CHECK
+}
+
+[ "$(id -u)" = 0 ] || { echo "run as root through the bootstrap installer" >&2; exit 1; }
+require_root_checkout "$(cd "$(dirname "$0")" && pwd)"
 
 # Install options are remembered: a later run (e.g. via update.sh) reuses them unless overridden in env.
 CONF=/etc/agent-deck/install.conf
 CONF_KEYS="DEV_USER DEV_UID PANEL_PORT BIND_HOST MEM_MAX CPU_QUOTA WITH_DOCKER WITH_CODEX PUBLIC_DOMAIN PUBLIC_PROXY TRAEFIK_DYNAMIC"
+if [ -e "$(dirname "$CONF")" ]; then
+    require_root_checkout "$(dirname "$CONF")"
+fi
 if [ -f "$CONF" ]; then
     while IFS='=' read -r k v; do
         case " $CONF_KEYS " in *" $k "*) [ -n "${!k+x}" ] || export "$k=$v" ;; esac
@@ -53,7 +74,7 @@ if ! grep -rqsE '^(deb .*universe|Components:.*universe)' /etc/apt/sources.list 
     apt-get install -y -q software-properties-common >/dev/null && add-apt-repository -y universe >/dev/null
 fi
 apt-get update -q >/dev/null
-apt-get install -y -q tmux ttyd git gh python3 curl ca-certificates >/dev/null
+apt-get install -y -q sudo tmux ttyd git gh python3 curl ca-certificates >/dev/null
 systemctl disable --now ttyd 2>/dev/null || true   # the distro unit would listen on 0.0.0.0:7681
 
 TTYD_BIN=/usr/bin/ttyd
@@ -93,46 +114,40 @@ as_user() { sudo -u "$DEV_USER" -H env XDG_RUNTIME_DIR="/run/user/$UID_" DBUS_SE
 
 say "panel code -> $PREFIX"
 # owned by the panel user: the panel runs as that user anyway, and ./deploy.sh can update it without root
-install -d -m 755 -o "$DEV_USER" -g "$DEV_USER" "$PREFIX"
-find "$SRC/panel" -maxdepth 1 -type f -exec install -m 644 -o "$DEV_USER" -g "$DEV_USER" {} "$PREFIX"/ \;
+[ ! -L "$PREFIX" ] || die "panel runtime must not be a symbolic link"
+install -d -m 755 "$PREFIX"
+chown -h "$DEV_USER:$DEV_USER" "$PREFIX"
+as_user find "$SRC/panel" -maxdepth 1 -type f -exec install -m 644 {} "$PREFIX"/ \;
 
 say "config"
-install -d -o "$DEV_USER" -g "$DEV_USER" -m 700 "$H/.config/cc-panel"
+as_user install -d -m 700 "$H/.config/cc-panel"
 ENV="$H/.config/cc-panel/env"
 NEW_PASS=""
+[ ! -L "$ENV" ] || die "panel env must not be a symbolic link"
 if [ ! -f "$ENV" ]; then
     NEW_PASS=$(python3 -c 'import secrets; print(secrets.token_urlsafe(18))')
-    cat > "$ENV" <<EOF
+    as_user tee "$ENV" >/dev/null <<EOF
 BIND_HOST=$BIND_HOST
 BIND_PORT=$PANEL_PORT
 PANEL_USER=$DEV_USER
 PANEL_PASSWORD=$NEW_PASS
 TTYD_SOCK=/run/user/$UID_/cc-ttyd.sock
 EOF
-    chown "$DEV_USER:$DEV_USER" "$ENV"; chmod 600 "$ENV"
+    as_user chmod 600 "$ENV"
 fi
 if [ -f "$H/.tmux.conf" ] && ! cmp -s "$H/.tmux.conf" "$SRC/config/tmux.conf"; then
-    cp "$H/.tmux.conf" "$H/.tmux.conf.bak.$(date +%s)"
+    as_user cp "$H/.tmux.conf" "$H/.tmux.conf.bak.$(date +%s)"
 fi
-install -o "$DEV_USER" -g "$DEV_USER" -m 644 "$SRC/config/tmux.conf" "$H/.tmux.conf"
+as_user install -m 644 "$SRC/config/tmux.conf" "$H/.tmux.conf"
 # the panel shows this path in the "update available" hint
-if grep -q '^CHECKOUT=' "$ENV"; then sed -i "s|^CHECKOUT=.*|CHECKOUT=$SRC|" "$ENV"; else echo "CHECKOUT=$SRC" >> "$ENV"; fi
-install -d -o "$DEV_USER" -g "$DEV_USER" "$H/projects" "$H/.config" "$H/.config/systemd" "$H/.config/systemd/user" "$H/.claude"
-install -o "$DEV_USER" -g "$DEV_USER" -m 644 "$SRC"/systemd/*.service "$H/.config/systemd/user/"
-sed -i "s|/usr/bin/ttyd|$TTYD_BIN|" "$H/.config/systemd/user/cc-ttyd.service"
+if as_user grep -q '^CHECKOUT=' "$ENV"; then as_user sed -i "s|^CHECKOUT=.*|CHECKOUT=$SRC|" "$ENV"; else echo "CHECKOUT=$SRC" | as_user tee -a "$ENV" >/dev/null; fi
+as_user install -d "$H/projects" "$H/.config" "$H/.config/systemd" "$H/.config/systemd/user" "$H/.claude"
+as_user install -m 644 "$SRC"/systemd/*.service "$H/.config/systemd/user/"
+as_user sed -i "s|/usr/bin/ttyd|$TTYD_BIN|" "$H/.config/systemd/user/cc-ttyd.service"
 
-say "Claude SessionStart hook"
-install -o "$DEV_USER" -g "$DEV_USER" -m 755 "$SRC/claude/cc-session-hook.py" "$H/.claude/cc-session-hook.py"
-as_user python3 - <<'EOF'
-import json, os
-p = os.path.expanduser("~/.claude/settings.json")
-s = json.load(open(p)) if os.path.exists(p) else {}
-hook = {"type": "command", "command": "python3 ~/.claude/cc-session-hook.py"}
-groups = s.setdefault("hooks", {}).setdefault("SessionStart", [])
-if not any(h.get("command") == hook["command"] for g in groups for h in g.get("hooks", [])):
-    groups.append({"hooks": [hook]})
-json.dump(s, open(p, "w"), indent=2)
-EOF
+say "Claude and Codex SessionStart hooks"
+as_user install -m 755 "$SRC/claude/cc-session-hook.py" "$H/.claude/cc-session-hook.py"
+as_user python3 "$SRC/claude/register-hooks.py"
 
 if ! as_user bash -lc 'command -v claude' >/dev/null 2>&1; then
     say "Claude Code"
@@ -171,10 +186,10 @@ include <tunables/global>
 EOF
         apparmor_parser -r /etc/apparmor.d/usr.bin.rootlesskit
     fi
-    install -d -o "$DEV_USER" -g "$DEV_USER" "$H/.config/docker"
+    as_user install -d "$H/.config/docker"
     [ -f "$H/.config/docker/daemon.json" ] || echo "{\"ip\": \"$BIND_HOST\"}" | as_user tee "$H/.config/docker/daemon.json" >/dev/null
     as_user systemctl --user is-active -q docker || as_user dockerd-rootless-setuptool.sh install
-    grep -q 'DOCKER_HOST' "$H/.bashrc" || cat >> "$H/.bashrc" <<'EOF'
+    as_user grep -q 'DOCKER_HOST' "$H/.bashrc" || as_user tee -a "$H/.bashrc" >/dev/null <<'EOF'
 
 # rootless docker
 export XDG_RUNTIME_DIR=/run/user/$(id -u)
