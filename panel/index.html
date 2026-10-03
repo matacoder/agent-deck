@@ -326,6 +326,7 @@ dialog{box-shadow:0 24px 80px #0006;border-color:#ffffff12;border-radius:16px}
 #settings_dlg>.settings-hub{height:min(680px,85dvh);max-height:85dvh}
 #kimi_dlg,#integrations_dlg{width:100%;height:auto;max-height:none;margin:0;border:0;border-radius:0}
 #settings_dlg{width:min(940px,calc(100vw - 48px));max-height:85dvh}
+.session-source{color:#69b5ff!important;font-size:11px!important}
 .settings-hub{display:grid;grid-template-columns:156px minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);height:min(680px,85dvh);max-height:85dvh}
 .hub-heading{grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;padding:14px 20px;border-bottom:1px solid var(--bd)}
 .hub-heading h3{margin:0;font-size:17px}.hub-heading button{width:44px;height:44px;border-radius:10px;font-size:24px;color:var(--mut)}.hub-heading button:hover{background:var(--side2);color:var(--fg2)}
@@ -621,13 +622,15 @@ const AGENTS={claude:{label:"Claude",glyph:"✻",skip:"--dangerously-skip-permis
   kimi:{label:"Kimi Code",glyph:"◈",skip:"--auto"},
   shell:{label:tr("Терминал"),glyph:"$"}};
 const agentOf=s=>AGENTS[s&&s.agent]?s.agent:"claude";
+const isLocal=s=>s?.source?.kind==="lmstudio";
+const agentLabel=s=>AGENTS[agentOf(s)].label+(isLocal(s)?" · "+tr("локальная модель"):"");
 const state=s=>{
   const recent=now()-s.activity<BUSY_SEC;
   if(agentOf(s)==="shell")return recent?"busy":"sh";
   return !s.running?"off":(recent?"busy":"idle");
 };
 function stateText(s){
-  const a=AGENTS[agentOf(s)].label,st=state(s);
+  const a=agentLabel(s),st=state(s);
   if(agentOf(s)==="shell")return st==="busy"?tr("терминал · вывод…"):(s.running?tr("терминал · ")+s.command:tr("терминал"));
   return {off:a+tr(" не запущен"),busy:a+tr(" работает…"),idle:a+tr(" ждёт")}[st];
 }
@@ -693,7 +696,7 @@ function renderTabs(){
     const t=el("div","tab"+(s.name===active?" on":""));
     const dot=el("span","dot "+st);dot.title=stateText(s);
     const ag=agentOf(s);
-    t.append(dot,el("span","ag "+ag,AGENTS[ag].glyph),el("div","t",el("div","n",s.name),el("div","s",shortPath(s.path))));
+    t.append(dot,el("span","ag "+ag,AGENTS[ag].glyph),el("div","t",el("div","n",s.name),...(isLocal(s)?[el("div","s session-source",agentLabel(s)+" · "+(lmData.profiles.find(p=>p.id===s.source.profile)?.name||s.source.label?.split(" · ")[1]||"LM Studio"))]:[]),el("div","s",shortPath(s.path))));
     if(attention.has(s.name))t.append(el("span","bell"));
     else if(i<10)t.append(el("span","k","⌥"+i));
     t.onclick=()=>select(s.name);
@@ -709,7 +712,7 @@ function renderTitle(){
   const s=cur(),t=$("title");t.replaceChildren();
   document.body.classList.toggle("is-shell",!!s&&agentOf(s)==="shell");
   document.body.classList.toggle("is-codex",!!s&&agentOf(s)==="codex");
-  $("msg").placeholder=s?tr("Сообщение в ")+AGENTS[agentOf(s)].label+"…":tr("Сообщение агенту…");
+  $("msg").placeholder=s?tr("Сообщение в ")+agentLabel(s)+"…":tr("Сообщение агенту…");
   if(!s){t.textContent=isMobile()?"Agent Deck":"—";return}
   const st=state(s);
   t.append(el("b","",s.name),el("span","path"," — "+s.path.replace(/^\/home\/[^/]+/,"~")),el("span","st",stateText(s)+" · "+shortPath(s.path)+(s.source?.label?" · "+s.source.label:"")));
@@ -972,7 +975,7 @@ async function post(path,body,confirmText){
   try{await api(path,body);await load();return true}catch(e){toast(e.message);return false}
 }
 function restart(m){
-  const s=cur();if(!s)return;const a=AGENTS[agentOf(s)].label;
+  const s=cur();if(!s)return;const a=agentLabel(s);
   post("/api/restart",{name:active,mode:m},m==="new"?tr("Перезапустить {0} в «{1}» с НОВЫМ разговором?",[a,active]):tr("Перезапустить {0} в «{1}», продолжив разговор?",[a,active]));
 }
 async function termHere(){
@@ -1089,7 +1092,7 @@ async function send(){
     for(const image of images)if(image.preview)URL.revokeObjectURL(image.preview);
     if(messageDrafts.get(name)===text)messageDrafts.delete(name);
     if(active===name&&t.value===text){t.value="";t.style.height=""}
-    sendStates.set(name,{text:tr("Отправлено в ")+AGENTS[agentOf(sessions.find(s=>s.name===name))].label+" · "+new Date().toLocaleTimeString(DATE_LOCALE,{hour:"2-digit",minute:"2-digit"}),phase:"success"});
+    sendStates.set(name,{text:tr("Отправлено в ")+agentLabel(sessions.find(s=>s.name===name))+" · "+new Date().toLocaleTimeString(DATE_LOCALE,{hour:"2-digit",minute:"2-digit"}),phase:"success"});
     await load();
     if(active===name)$("pre").scrollTop=$("pre").scrollHeight;
   }catch(e){

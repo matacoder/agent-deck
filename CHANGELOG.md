@@ -2,6 +2,16 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z`.
 
+## 1.0.3 — 2026-10-03
+
+- Identify Claude sessions backed by local models in the sidebar, header and
+  message status, including the connection name in the sidebar. Translate the
+  local-model label into all supported locales.
+- Allow up to ten minutes between upstream events for local inference rather
+  than truncating streams after two minutes. Report interrupted SSE streams
+  explicitly instead of silently closing them.
+- Add mobile identity and stalled-stream regression coverage.
+
 ## 1.0.2 — 2026-10-03
 
 - Fix LM Studio 500 errors with strict model templates when Claude Code sends

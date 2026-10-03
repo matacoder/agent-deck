@@ -14,6 +14,9 @@ import threading
 import time
 from urllib.parse import urlsplit
 
+# Large local prompts can take several minutes to prefill before the first token.
+UPSTREAM_IDLE_TIMEOUT = 600
+
 IDENTITY = re.compile(r'^[0-9a-f]{24}$')
 _lock = threading.RLock()
 
@@ -230,6 +233,7 @@ class Relay:
                         return self.error(503, 'Too many concurrent model requests')
                     connection = None
                     headers_sent = False
+                    streaming = False
                     try:
                         length = int(self.headers.get('Content-Length','-1'))
                         if not 0 <= length <= 16*1024*1024:
@@ -247,7 +251,7 @@ class Relay:
                             return self.error(409, 'Saved session server differs from the current profile')
                         upstream = urlsplit(binding['url'])
                         klass = http.client.HTTPSConnection if upstream.scheme == 'https' else http.client.HTTPConnection
-                        connection = klass(upstream.hostname, upstream.port, timeout=120)
+                        connection = klass(upstream.hostname, upstream.port, timeout=UPSTREAM_IDLE_TIMEOUT)
                         headers = {'Content-Type':'application/json','Accept':'text/event-stream, application/json'}
                         for key in ('anthropic-version','anthropic-beta'):
                             if self.headers.get(key):
@@ -289,6 +293,12 @@ class Relay:
                         if response.status == 200 and match[2] == '/v1/messages':
                             relay.profiles.record(binding['profile'],binding['model'],measurement.result())
                     except (ValueError, KeyError, TypeError, OSError, http.client.HTTPException):
+                        if headers_sent and streaming:
+                            try:
+                                self.wfile.write(b'event: error\ndata: {"type":"error","error":{"type":"api_error","message":"Local model stream interrupted; check model load, context size and server queue."}}\n\n')
+                                self.wfile.flush()
+                            except OSError:
+                                pass
                         if not headers_sent:
                             self.error(502, 'Local model request failed; check server and credentials')
                     finally:

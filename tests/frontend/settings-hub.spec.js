@@ -89,3 +89,12 @@ test('phone settings scroll content inside a fixed header and short navigation b
  expect((await page.locator('.hub-heading').boundingBox()).y).toBe(heading.y);
  expect(await page.locator('.hub-content').evaluate(e=>e.scrollWidth<=e.clientWidth)).toBe(true);
 });
+
+test('local Claude sessions identify the model source in the drawer and header',async({app,page})=>{
+ app.sessions[0].agent='claude';app.sessions[0].source={kind:'lmstudio',profile:localProfile().id,model:'qwen-coder',label:'LM Studio · Workstation · qwen-coder'};
+ await app.open({width:390});await page.evaluate(()=>drawer(true));
+ await expect(page.locator('.tab').filter({hasText:'tmux'}).locator('.session-source')).toHaveText('Claude · локальная модель · Workstation');
+ await page.evaluate(()=>drawer(false));
+ await expect(page.locator('#title')).toContainText('Claude · локальная модель');
+ await expect(page.locator('#msg')).toHaveAttribute('placeholder','Сообщение в Claude · локальная модель…');
+});

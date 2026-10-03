@@ -32,6 +32,10 @@ class LMStudioTests(unittest.TestCase):
             def do_POST(self):
                 body = json.loads(self.rfile.read(int(self.headers['Content-Length'])))
                 owner.requests.append((self.path, self.headers.get('Authorization'), body))
+                if body.get('slow_stream'):
+                    self.send_response(200);self.send_header('Content-Type','text/event-stream');self.send_header('Content-Length','10');self.end_headers()
+                    __import__('time').sleep(0.2)
+                    return
                 if self.path == '/v1/messages' and body.get('stream'):
                     raw = b'data: {"type":"message_start","message":{"usage":{"input_tokens":8,"output_tokens":0}}}\n\ndata: {"type":"content_block_delta","delta":{"text":"OK"}}\n\ndata: {"type":"message_delta","usage":{"output_tokens":12}}\n\n'
                     self.send_response(200);self.send_header('Content-Type','text/event-stream');self.send_header('Content-Length',str(len(raw)));self.end_headers();self.wfile.write(raw)
@@ -112,6 +116,22 @@ class LMStudioTests(unittest.TestCase):
         self.assertEqual(self.service.get(p['id'])['measurements']['session']['local-model']['output_tokens'],12)
         self.assertNotIn('text',json.dumps(performance))
         self.assertEqual(relay.bindings.get(binding)['url'],self.url)
+
+    def test_stalled_stream_reports_an_explicit_error_without_recording_success(self):
+        p = self.profile();relay = Relay(self.directory,self.service)
+        binding = relay.bindings.create(p,'local-model');relay.start()
+        self.addCleanup(relay.server.server_close);self.addCleanup(relay.server.shutdown)
+        config = read_json(relay.config,{})
+        with patch('integrations.relay.UPSTREAM_IDLE_TIMEOUT',0.05):
+            c = http.client.HTTPConnection('127.0.0.1',config['port'],timeout=3)
+            c.request('POST','/providers/'+binding+'/v1/messages',
+                      json.dumps({'model':'local-model','stream':True,'slow_stream':True}),
+                      {'Authorization':'Bearer '+config['token']})
+            r=c.getresponse();self.assertEqual(r.status,200)
+            body=r.read();c.close()
+        self.assertIn(b'event: error',body)
+        self.assertIn(b'Local model stream interrupted',body)
+        self.assertFalse(self.service.get(p['id']).get('performance'))
 
     def test_discovery_only_checks_known_tailnet_ips(self):
         peers = {'Self':{'HostName':'self','TailscaleIPs':['192.168.1.1']},'Peer':{'a':{'HostName':'good','TailscaleIPs':['100.64.1.2','fd7a:115c:a1e0::2']},'b':{'TailscaleIPs':['8.8.8.8']}}}
