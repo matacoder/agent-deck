@@ -7,7 +7,7 @@ import threading
 import unittest
 from unittest.mock import patch
 from integrations.lmstudio import LMStudio, endpoint, RemoteError, request
-from integrations.relay import Relay, LoopbackHTTPServer, read_json
+from integrations.relay import Relay, LoopbackHTTPServer, read_json, normalize_system_messages
 
 
 class LMStudioTests(unittest.TestCase):
@@ -149,3 +149,28 @@ class LMStudioTests(unittest.TestCase):
         self.addCleanup(relay.server.server_close);self.addCleanup(relay.server.shutdown)
         self.assertEqual(relay.server.server_name,'127.0.0.1')
         self.assertGreater(relay.server.server_port,0)
+
+
+class SystemMessageCompatibilityTests(unittest.TestCase):
+    def test_mid_conversation_instructions_are_preserved_before_strict_template(self):
+        tool = {'role': 'assistant', 'content': [{'type': 'tool_use', 'id': 'call1', 'name': 'read', 'input': {}}]}
+        result = {'role': 'user', 'content': [{'type': 'tool_result', 'tool_use_id': 'call1', 'content': 'OK'}]}
+        payload = {'model': 'local', 'system': [{'type': 'text', 'text': 'Initial'}],
+                   'messages': [{'role': 'user', 'content': 'Hello'}, tool, result,
+                                {'role': 'system', 'content': [{'type': 'text', 'text': 'Extra'}]}],
+                   'stream': True, 'tools': [{'name': 'read'}]}
+        normalized = normalize_system_messages(payload)
+        self.assertEqual(normalized['system'], 'Initial\n\nExtra')
+        self.assertEqual(normalized['messages'], payload['messages'][:-1])
+        self.assertEqual(normalized['tools'], payload['tools'])
+        self.assertTrue(normalized['stream'])
+        self.assertEqual(len(payload['messages']), 4)
+
+    def test_ordinary_requests_are_unchanged(self):
+        payload = {'system': [{'type': 'text', 'text': 'Initial', 'cache_control': {'type': 'ephemeral'}}],
+                   'messages': [{'role': 'user', 'content': 'Hello'}]}
+        self.assertIs(normalize_system_messages(payload), payload)
+
+    def test_unknown_instruction_blocks_are_never_silently_discarded(self):
+        with self.assertRaises(ValueError):
+            normalize_system_messages({'messages': [{'role': 'system', 'content': [{'type': 'image'}]}]})

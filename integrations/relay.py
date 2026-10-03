@@ -129,6 +129,41 @@ class Measurements:
         return result
 
 
+def normalize_system_messages(payload):
+    """Fold Claude's mid-conversation system instructions into one leading prompt.
+
+    Strict local chat templates reject system roles after the first turn.
+    Keep tool calls/results and all ordinary conversation turns intact.
+    """
+    messages = payload.get('messages')
+    if not isinstance(messages, list) or not any(
+        isinstance(message, dict) and message.get('role') == 'system'
+        for message in messages
+    ):
+        return payload
+
+    def text(content):
+        if isinstance(content, str):
+            return content
+        if isinstance(content, list) and all(
+            isinstance(block, dict) and block.get('type') == 'text'
+            and isinstance(block.get('text'), str) for block in content
+        ):
+            return '\n\n'.join(block['text'] for block in content)
+        raise ValueError('Unsupported local system message content')
+
+    instructions = []
+    if payload.get('system'):
+        instructions.append(text(payload['system']))
+    turns = []
+    for message in messages:
+        if isinstance(message, dict) and message.get('role') == 'system':
+            instructions.append(text(message.get('content')))
+        else:
+            turns.append(message)
+    return {**payload, 'system': '\n\n'.join(instructions), 'messages': turns}
+
+
 class LoopbackHTTPServer(ThreadingHTTPServer):
     def server_bind(self):
         # HTTPServer's reverse DNS lookup can block launchd startup on macOS.
@@ -221,6 +256,7 @@ class Relay:
                             headers['Authorization'] = 'Bearer '+profile['key']
                             headers['x-api-key'] = profile['key']
                         measurement = Measurements(time.monotonic())
+                        body = json.dumps(normalize_system_messages(payload)).encode()
                         connection.request('POST',upstream.path.rstrip('/')+match[2],body,headers)
                         response = connection.getresponse()
                         if 300 <= response.status < 400:

@@ -2,6 +2,13 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z`.
 
+## 1.0.2 — 2026-10-03
+
+- Fix LM Studio 500 errors with strict model templates when Claude Code sends
+  mid-conversation system messages. Preserve their instructions in the initial
+  system prompt while keeping ordinary messages and tool calls unchanged.
+- Add regression coverage and verify the failing request against a real local model.
+
 ## 1.0.1 — 2026-10-03
 
 - Redesign the drawer usage monitor with aligned headings, compact metrics and
