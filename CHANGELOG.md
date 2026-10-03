@@ -2,6 +2,14 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z`.
 
+## 0.9.2 — 2026-10-03
+
+- Start and resume Codex with `--no-alt-screen` so new terminal output enters tmux
+  scrollback instead of being lost when the alternate screen redraws. Running agents
+  are not restarted; the change takes effect on their next normal start/resume.
+- Expand screen capture from 200 to 2000 lines. This does not recover terminal text
+  already discarded; older conversations remain in agent transcripts.
+
 ## 0.9.1 — 2026-10-03
 
 - Move sign out from the sidebar footer into a separate account section in Settings

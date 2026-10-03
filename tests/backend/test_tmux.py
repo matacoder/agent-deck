@@ -49,6 +49,21 @@ class TmuxIntegration(PanelCase):
             time.sleep(0.01)
         self.assertTrue(ready.exists(), "isolated input reader did not start")
 
+    def test_screen_capture_includes_output_older_than_two_hundred_lines(self):
+        script = self.home / 'long_output.py'
+        script.write_text("import time\nfor i in range(700): print('history-line-%04d' % i, flush=True)\ntime.sleep(60)\n")
+        self.panel.tmux('new-session', '-d', '-s', 'cc-history', '-x', '100', '-y', '30',
+                        shlex.join(['python3', '-u', str(script)]))
+        deadline = time.monotonic() + 5
+        preview = ''
+        while time.monotonic() < deadline:
+            preview = next(s for s in self.panel.list_sessions('history') if s['name'] == 'history')['preview']
+            if 'history-line-0699' in preview:
+                break
+            time.sleep(.02)
+        self.assertIn('history-line-0000', preview)
+        self.assertIn('history-line-0699', preview)
+
     def test_literal_dash_semicolon_backslash_unicode_and_multiline_reach_tmux_intact(self):
         expected = b""
         for text in ("-x", "a;", "b\\;", "- список\n- вторая строка"):

@@ -29,6 +29,8 @@ class ReviewRegressions(PanelCase):
         self.assertIn(first, self.panel.agent_cmd("codex", first, True))
         self.assertIn(second, self.panel.agent_cmd("codex", second, True))
         self.assertNotIn("--last", self.panel.agent_cmd("codex", first, True))
+        self.assertIn("--no-alt-screen", self.panel.agent_cmd("codex", first, True))
+        self.assertIn("--no-alt-screen", self.panel.agent_cmd("codex"))
         for missing in (None, "garbage", "x; touch /tmp/unsafe"):
             with self.assertRaises(ValueError):
                 self.panel.agent_cmd("codex", missing, True)

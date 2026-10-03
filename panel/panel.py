@@ -230,9 +230,9 @@ def list_sessions(preview_name=None):
             "sid": sid or None, "skip": skip == "1",
         }
         if name == preview_name:
-            preview_ansi = tmux("capture-pane", "-p", "-e", "-J", "-t", f"={sname}:", "-S", "-200", check=False)
+            preview_ansi = tmux("capture-pane", "-p", "-e", "-J", "-t", f"={sname}:", "-S", "-2000", check=False)
             preview = re.sub(r"\x1b\[[0-?]*[ -/]*[@-~]", "", preview_ansi).rstrip().splitlines()
-            item.update(preview="\n".join(preview[-200:]), preview_ansi=preview_ansi)
+            item.update(preview="\n".join(preview[-2000:]), preview_ansi=preview_ansi)
         result.append(item)
     return sorted(result, key=lambda s: (s["group"], s["name"]))
 
@@ -282,7 +282,7 @@ def agent_cmd(agent, sid=None, resume=False, skip=False, name=None):
     if agent == "codex":
         if resume and not valid_sid(sid):
             raise ValueError("ID разговора Codex не сохранён. Возобновите нужный разговор через codex resume; автоматический выбор последнего отключён.")
-        return f"codex --no-daemon resume {shlex.quote(sid)}{flag}" if resume else f"codex --no-daemon{flag}"
+        return f"codex --no-daemon --no-alt-screen resume {shlex.quote(sid)}{flag}" if resume else f"codex --no-daemon --no-alt-screen{flag}"
     if resume:
         if transcript_exists(sid):
             return (launcher or "claude") + f" --resume {sid}{flag}"

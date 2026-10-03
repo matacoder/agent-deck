@@ -163,7 +163,7 @@ class SessionTests(PanelCase):
         self.panel.create_session.assert_not_called()
 
     def test_capture_keeps_ansi_and_bounds_plain_preview(self):
-        capture = "\x1b[31m" + "\n".join(str(i) for i in range(210)) + "\x1b[0m\n"
+        capture = "\x1b[31m" + "\n".join(str(i) for i in range(2010)) + "\x1b[0m\n"
         def tmux(command, *args, **kwargs):
             if command == "list-sessions":
                 return f"unrelated\t1\t0\t/tmp\tbash\t1\ncc-demo\t1\t0\t{self.panel.PROJECTS}/repo\tcodex\t2\tcodex\t\t0\n"
@@ -175,7 +175,7 @@ class SessionTests(PanelCase):
         self.assertEqual(len(sessions), 1)
         self.assertEqual(sessions[0]["group"], "repo")
         self.assertEqual(sessions[0]["preview_ansi"], capture)
-        self.assertEqual(sessions[0]["preview"].splitlines(), [str(i) for i in range(10, 210)])
+        self.assertEqual(sessions[0]["preview"].splitlines(), [str(i) for i in range(10, 2010)])
 
     def test_project_names_and_paths_cannot_escape_home(self):
         for project in ("../escape", "/tmp", "reserved.worktrees", "a..b"):
