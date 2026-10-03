@@ -21,6 +21,7 @@ const test = base.extend({
     page.on('pageerror', error => errors.push(error.message));
     const app = {
       page, sessions: [session('tmux'), session('other', { activity: 2 }), session('shell', { agent: 'shell', command: 'bash' })],
+      metrics: { cpu_percent: 24, memory_used: 3221225472, memory_total: 8589934592 }, metricsError: false,
       revision: 'fixture-version', sends: [], uploads: [], sendError: null,
       uploadError: null, sendGate: null, navigations: 0, usage: {},
       version: { version: '0.1.0', update: false, can_update: true, job: { phase: 'idle' } },
@@ -97,6 +98,7 @@ const test = base.extend({
           if (app.updateError) return json({ error: app.updateError }, 400);
           app.version.job = { phase: 'checking', message: 'Проверяю последний релиз…' };
           return json({ ok: true, job: app.version.job });
+        case '/api/server-metrics': return app.metricsError ? json({}, 503) : json(app.metrics);
         case '/api/server': return json({ hostname: 'test-server', ip: '192.0.2.1', tailscale_ip: '100.64.0.1', country: 'GB' });
         case '/api/projects': return json({ projects: ['demo'] });
         case '/api/upload': {

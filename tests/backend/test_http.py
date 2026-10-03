@@ -46,7 +46,7 @@ class HTTPTests(PanelCase):
         status, headers, _ = self.request("GET", "/")
         self.assertEqual(status, 303)
         self.assertEqual(headers["Location"], "/login")
-        for path in ("/api/sessions", "/api/ui-version", "/t/?arg=cc-demo"):
+        for path in ("/api/sessions", "/api/server-metrics", "/api/ui-version", "/t/?arg=cc-demo"):
             with self.subTest(path=path):
                 self.assertEqual(self.request("GET", path)[0], 401)
         self.panel.list_sessions.assert_not_called()
@@ -265,6 +265,12 @@ class HTTPTests(PanelCase):
         self.assertIn("ttyd unavailable", json.loads(body)["error"])
 
     def test_websocket_upgrade_and_bytes_are_proxied_to_isolated_unix_socket(self):
+        self.assert_websocket_proxy()
+
+    def test_secure_websocket_through_traefik_accepts_https_origin(self):
+        self.assert_websocket_proxy(forwarded=True)
+
+    def assert_websocket_proxy(self, forwarded=False):
         listener = socket.socket(socket.AF_UNIX)
         listener.bind(self.panel.TTYD_SOCK)
         listener.listen(1)
@@ -298,7 +304,9 @@ class HTTPTests(PanelCase):
         cookie = self.login()
         with socket.create_connection(self.server.server_address, timeout=5) as client:
             host = f"{self.server.server_address[0]}:{self.server.server_address[1]}"
-            client.sendall((f"GET /t/?arg=cc-demo HTTP/1.1\r\nHost: {host}\r\nOrigin: http://{host}\r\nConnection: Upgrade\r\n"
+            scheme = "https" if forwarded else "http"
+            proxy_header = "X-Forwarded-Proto: wss\r\n" if forwarded else ""
+            client.sendall((f"GET /t/ws?arg=cc-demo HTTP/1.1\r\nHost: {host}\r\nOrigin: {scheme}://{host}\r\n{proxy_header}Connection: Upgrade\r\n"
                             "Upgrade: websocket\r\nCookie: " + cookie + "\r\n\r\n").encode())
             response = b""
             while b"\r\n\r\n" not in response:
@@ -347,3 +355,13 @@ class ProxyTrustTests(PanelCase):
         handler = self.handler("172.18.0.2", {"X-Forwarded-For": "spoof, 203.0.113.2", "X-Forwarded-Proto": "https"})
         self.assertEqual(handler.client_ip(), "203.0.113.2")
         self.assertTrue(handler.is_https())
+
+    def test_wss_requires_trusted_proxy_and_matching_https_origin(self):
+        for address, origin, expected in (("172.18.0.2", "https://panel.test", True),
+                                           ("172.18.0.2", "https://other.test", False),
+                                           ("172.18.0.2", "http://panel.test", False),
+                                           ("203.0.113.1", "https://panel.test", False)):
+            with self.subTest(address=address, origin=origin):
+                handler = self.handler(address, {"Host": "panel.test", "Origin": origin,
+                                                 "X-Forwarded-Proto": "wss"})
+                self.assertEqual(handler.same_origin(), expected)

@@ -139,7 +139,9 @@ main{flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;backgrou
 .attachment img{width:44px;height:44px;object-fit:cover;border-radius:5px}
 .attachment span{font-size:12px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .attachment button{flex:none;width:32px;height:36px;font-size:20px;color:var(--mut)}
-.send-state{min-height:1.35em;margin:6px 4px 0;font-size:12px;color:var(--mut)}
+.composer-status{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px;margin:6px 4px 0;font-size:12px;color:var(--mut)}
+.send-state{min-height:1.35em}
+.server-metrics{margin-left:auto;text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
 .send-state.error{color:var(--bad)}
 #pre .preview-empty{color:var(--mut);white-space:normal;padding:16px 0}
 
@@ -325,7 +327,10 @@ body.is-shell .agent-only{display:none!important}
             <textarea id="msg" rows="1" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" placeholder="Сообщение агенту…" enterkeyhint="send"></textarea>
             <button class="sendbtn" id="b_send" onclick="send()" aria-label="Отправить"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>
           </div>
+          <div class="composer-status">
           <div id="send_state" class="send-state" role="status" aria-live="polite">Enter — новая строка · ↑ — отправить</div>
+          <div id="server_metrics" class="server-metrics" title="Загрузка CPU и занятая / общая память сервера">CPU — · RAM —</div>
+          </div>
         </div>
       </div>
     </div>
@@ -1268,6 +1273,26 @@ async function checkInterfaceVersion(){
 }
 setInterval(checkInterfaceVersion,30000);
 checkInterfaceVersion();
+
+let loadingMetrics=false;
+async function loadMetrics(){
+  if(document.hidden||loadingMetrics)return;
+  loadingMetrics=true;
+  const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),8000);
+  const node=$("server_metrics");
+  try{
+    const response=await fetch("/api/server-metrics",{cache:"no-store",signal:controller.signal});
+    if(!response.ok)throw new Error("metrics unavailable");
+    const data=await response.json();
+    const cpu=Number.isFinite(data.cpu_percent)?Math.round(data.cpu_percent)+"%":"—";
+    const ram=Number.isFinite(data.memory_used)&&Number.isFinite(data.memory_total)&&data.memory_total>0
+      ?(data.memory_used/1073741824).toFixed(1)+" / "+(data.memory_total/1073741824).toFixed(1)+" ГиБ":"—";
+    node.textContent="CPU "+cpu+" · RAM "+ram;
+  }catch(e){node.textContent="CPU — · RAM —"}
+  finally{clearTimeout(timeout);loadingMetrics=false}
+}
+loadMetrics();setInterval(loadMetrics,5000);
+document.addEventListener("visibilitychange",()=>{if(!document.hidden)loadMetrics()});
 
 checkGithubFoot(true);setInterval(checkGithubFoot,5000);
 loadUsage();setInterval(loadUsage,60000);

@@ -69,6 +69,53 @@ STATIC = {"/icon-180.png": "image/png", "/icon-192.png": "image/png", "/icon-512
           "/manifest.webmanifest": "application/manifest+json"}
 
 
+metrics_lock = threading.Lock()
+metrics_cpu_sample = None
+metrics_cpu_percent = None
+metrics_sample_time = 0.0
+
+
+def server_metrics():
+    """Host CPU utilization between samples and RAM excluding reclaimable memory."""
+    global metrics_cpu_sample, metrics_cpu_percent, metrics_sample_time
+    result = {"cpu_percent": None, "memory_used": None, "memory_total": None}
+    with metrics_lock:
+        try:
+            now = time.monotonic()
+            if metrics_cpu_sample is None or now - metrics_sample_time >= 1:
+                with open("/proc/stat") as f:
+                    fields = f.readline().split()
+                if fields[0] != "cpu" or len(fields) < 5:
+                    raise ValueError("missing CPU counters")
+                # guest/guest_nice are already included in user/nice.
+                counters = [int(value) for value in fields[1:9]]
+                total = sum(counters)
+                idle = counters[3] + (counters[4] if len(counters) > 4 else 0)
+                metrics_cpu_percent = None
+                if metrics_cpu_sample is not None:
+                    delta = total - metrics_cpu_sample[0]
+                    idle_delta = idle - metrics_cpu_sample[1]
+                    if delta > 0 and idle_delta >= 0:
+                        metrics_cpu_percent = round(max(0, min(100, 100 * (delta - idle_delta) / delta)), 1)
+                metrics_cpu_sample = (total, idle)
+                metrics_sample_time = now
+            result["cpu_percent"] = metrics_cpu_percent
+        except (OSError, ValueError, IndexError):
+            metrics_cpu_sample = None
+            metrics_cpu_percent = None
+        try:
+            with open("/proc/meminfo") as f:
+                memory = {parts[0].rstrip(":"): int(parts[1]) * 1024
+                          for line in f if len(parts := line.split()) >= 2}
+            total = memory["MemTotal"]
+            available = memory["MemAvailable"]
+            if total > 0:
+                result.update(memory_total=total, memory_used=max(0, min(total, total - available)))
+        except (OSError, ValueError, KeyError):
+            pass
+    return result
+
+
 def _cookie_key():
     """Per-install secret mixed with the password: changing the password logs everyone out."""
     path = os.path.expanduser("~/.config/cc-panel/secret")
@@ -761,7 +808,8 @@ class Handler(BaseHTTPRequestHandler):
         return xff.split(",")[-1].strip() or self.client_address[0]
 
     def is_https(self):
-        return self.via_proxy() and self.headers.get("X-Forwarded-Proto", "").lower() == "https"
+        # Traefik marks secure WebSocket upgrades as wss; their Origin remains https.
+        return self.via_proxy() and self.headers.get("X-Forwarded-Proto", "").lower() in ("https", "wss")
 
     def same_origin(self, required=False):
         origin = self.headers.get("Origin")
@@ -898,6 +946,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_json(200, usage())
         if self.path == "/api/version":
             return self.send_json(200, version_info())
+        if self.path == "/api/server-metrics":
+            return self.send_json(200, server_metrics())
         if self.path == "/api/server":
             return self.send_json(200, server_info())
         if self.path == "/api/agents":

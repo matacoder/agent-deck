@@ -2,6 +2,16 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z`.
 
+## 0.5.0 — 2026-10-03
+
+- Show server CPU utilization and used/total RAM on the right of the composer status bar,
+  refreshing every five seconds and wrapping cleanly on narrow screens.
+- Fix live terminal connections through Traefik: recognize `X-Forwarded-Proto: wss` as
+  secure when checking the HTTPS Origin, preventing erroneous WebSocket 403 responses.
+  Forwarded headers remain restricted to trusted proxies and foreign origins are rejected.
+- Add CPU/RAM calculation, unavailable-metrics, mobile/desktop layout, and secure
+  WebSocket proxy regression coverage.
+
 ## 0.4.1 — 2026-10-03
 
 - Fix the live terminal for browsers that omit the Origin header on same-origin WebSocket
