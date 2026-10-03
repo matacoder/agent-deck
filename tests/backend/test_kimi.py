@@ -85,3 +85,24 @@ class KimiTests(PanelCase):
         key = 'sk:test/with+base64==and~symbols'
         self.panel.kimi_config.save({'key': key})
         self.assertEqual(self.panel.kimi_config.read()['key'], key)
+
+    def test_monthly_and_five_hour_quotas_do_not_invent_week_or_calendar_pace(self):
+        self.panel.kimi_config.save({'key': 'sk-test-key-123456789'})
+        self.panel.http_json = Mock(return_value={'usages': {
+            'limit_month_total': {'used_ratio': '0.32', 'reset_time': '2026-11-03T12:00:00Z'},
+            'limit_month_code': {'used_ratio': 0.15, 'reset_time': '2026-11-03T12:00:00Z'},
+            'limit_5h': {'used_ratio': 0.01},
+        }})
+        data = self.panel.kimi_usage()
+        self.assertEqual([w['percent'] for w in data['windows']], [32, 15, 1])
+        self.assertEqual([w['secs'] for w in data['windows']], [0, 0, 18000])
+        self.assertNotIn('неделя', [w['label'] for w in data['windows']])
+        self.assertIsNotNone(data['windows'][0]['resets_at'])
+
+    def test_invalid_quota_values_and_network_errors_are_safe(self):
+        import urllib.error
+        self.panel.kimi_config.save({'key': 'sk-test-key-123456789'})
+        self.panel.http_json = Mock(return_value={'usages': {'limit_month_total': {'used_ratio': 'NaN'}}})
+        self.assertIn('error', self.panel.kimi_usage())
+        self.panel.http_json.side_effect = urllib.error.HTTPError('https://api.kimi.com/coding/v1/usages', 401, 'private upstream error', {}, None)
+        self.assertEqual(self.panel.kimi_usage()['error'], 'Kimi: проверьте ключ')

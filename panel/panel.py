@@ -12,6 +12,7 @@ import hashlib
 import hmac
 import ipaddress
 import json
+import math
 import os
 import re
 import shutil
@@ -20,6 +21,7 @@ import select
 import signal
 import socket
 import urllib.request
+import urllib.error
 from datetime import datetime
 import subprocess
 import sys
@@ -689,11 +691,45 @@ def codex_usage():
     return {"plan": d.get("plan_type"), "windows": windows}
 
 
+def kimi_usage():
+    key = kimi_config.read().get("key")
+    if not key:
+        return {"error": "Сохраните ключ Kimi в настройках панели"}
+    try:
+        data = http_json("https://api.kimi.com/coding/v1/usages", {"Authorization": "Bearer " + key, "Accept": "application/json"})
+    except urllib.error.HTTPError as error:
+        return {"error": "Kimi: проверьте ключ" if error.code in (401, 403) else "Kimi: лимиты временно недоступны"}
+    except (OSError, ValueError):
+        return {"error": "Kimi: лимиты временно недоступны"}
+    windows = []
+    for name, label, secs, period in (
+            ("limit_month_total", "Общий · месяц", 0, "month"),
+            ("limit_month_code", "Kimi Code · месяц", 0, "month"),
+            ("limit_5h", "5 часов", 18000, "hours"),
+            ("limit_7d", "неделя", 604800, "week")):
+        value = (data.get("usages") or {}).get(name)
+        if not isinstance(value, dict):
+            continue
+        try:
+            ratio = float(value["used_ratio"])
+            if not math.isfinite(ratio) or ratio < 0:
+                continue
+            reset = _epoch(value.get("reset_time"))
+        except (ValueError, TypeError, KeyError, OverflowError):
+            continue
+        # Calendar months vary in length. Do not invent a 30-day pace/forecast.
+        windows.append({"label": label, "percent": ratio * 100, "resets_at": reset, "secs": secs, "period": period})
+    return {"windows": windows} if windows else {"error": "Kimi не вернул данные о квотах"}
+
+
 def usage():
     out = {}
-    for agent, fn in (("claude", claude_usage), ("codex", codex_usage)):
+    for agent, fn in (("claude", claude_usage), ("codex", codex_usage), ("kimi", kimi_usage)):
         if agent_status(agent)["logged_in"]:
-            out[agent] = cached(f"usage-{agent}", 60, fn)
+            cache_key = f"usage-{agent}"
+            if agent == "kimi":
+                cache_key += "-" + hashlib.sha256(kimi_config.read().get("key", "").encode()).hexdigest()
+            out[agent] = cached(cache_key, 60, fn)
     return out
 
 

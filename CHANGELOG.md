@@ -8,6 +8,8 @@ Versions follow [semver](https://semver.org). Install a version with `sudo ./upd
 - Launch Claude Code through Kimi or the native Kimi Code CLI, install/update Kimi from the UI.
 - Restore the exact native Kimi conversation with SessionStart hooks and keep credentials
   out of API responses, browser storage and tmux command history.
+- Show actual Kimi monthly total/coding quotas, five-hour windows and reset times; only
+  show legacy weekly limits when the account returns them.
 - Add backend credential/launch and mobile Chromium/WebKit regression coverage.
 
 ## 0.3.0 — 2026-10-03

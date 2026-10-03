@@ -101,3 +101,6 @@ The key stays on the server in a private file; API responses and tmux commands d
 Clearing the password field preserves the key; **Удалить ключ** removes it from the panel.
 Model/key changes apply on the next agent launch. Native sessions/configuration use
 `~/.config/cc-panel/kimi-native/`, preserving the user's independent Kimi configuration.
+
+Kimi quota cards show the account’s returned monthly total/coding and short-period limits,
+with reset dates. Monthly windows do not assume a fixed 30-day duration for pace forecasts.

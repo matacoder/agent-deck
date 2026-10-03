@@ -74,6 +74,7 @@ aside{width:240px;flex:none;background:var(--side);border-right:1px solid var(--
 .irow .nm small{color:var(--dim);margin-left:4px}
 .irow .ok{color:var(--ok);font-size:11px}
 .irow button{font-size:11.5px;padding:3px 8px;border-radius:6px;background:var(--side2);color:var(--fg);white-space:nowrap}
+.irow button.connected{background:#15351f;color:#d3f8dc}
 .irow button.go{background:var(--acc);color:#fff}
 .irow button.ic{background:none;color:var(--mut);padding:3px 4px}.irow button.ic:hover{color:var(--fg)}
 .agsel{display:flex;flex-wrap:wrap;background:var(--bg);border:1px solid var(--bd);border-radius:9px;padding:3px;gap:3px;margin-bottom:14px}
@@ -150,6 +151,7 @@ main{flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;backgrou
 #quick_tabs::-webkit-scrollbar{display:none}
 
 /* toast */
+#toast.success{background:#15351f;color:#d3f8dc;border-color:#2b6b40}
 #toast.info{background:#1d2a3a;color:#cfe3ff;border-color:#2c4a6e}
 #toast button{margin-left:12px;padding:5px 12px;border-radius:7px;background:var(--acc);color:#fff;font-weight:600}
 #toast{position:fixed;left:50%;bottom:calc(20px + var(--sab));transform:translateX(-50%);background:#3a1d1d;color:#ffb4ae;border:1px solid #6b2a26;padding:9px 14px;border-radius:10px;display:none;z-index:60;max-width:calc(100vw - 32px)}
@@ -427,7 +429,7 @@ async function api(path,body){
 }
 function toast(m,info,action){
   const t=$("toast"),dialogs=Array.from(document.querySelectorAll("dialog[open]"));
-  (dialogs[dialogs.length-1]||document.body).append(t);t.className=info?"info":"";t.replaceChildren(m);
+  (dialogs[dialogs.length-1]||document.body).append(t);t.className=info==="success"?"success":info?"info":"";t.replaceChildren(m);
   if(action){const b=document.createElement("button");b.textContent=action.label;b.onclick=()=>{action.run();t.style.display="none"};t.append(b)}
   t.style.display="block";clearTimeout(t._h);t._h=setTimeout(()=>t.style.display="none",action?12000:(info?1800:5000));
 }
@@ -442,7 +444,7 @@ function execCopy(text,doc){
   ta.remove();return ok;
 }
 async function copyToClipboard(text,w){
-  const done=()=>toast(`Скопировано: ${text.length} симв.`,true);
+  const done=()=>toast(`Скопировано: ${text.length} симв.`,"success");
   try{if(navigator.clipboard&&window.isSecureContext){await navigator.clipboard.writeText(text);return done()}}catch(e){}
   const ok=execCopy(text,w.document);
   try{w.term.focus()}catch(e){}
@@ -1043,12 +1045,12 @@ function toggleInteg(){integOpen=!integOpen;try{localStorage.setItem("cc.integ."
 function integSummary(){
   const head=el("button","ihead"+(integOpen?" open":""));head.type="button";head.onclick=toggleInteg;
   head.title=integOpen?"Свернуть":"Лимиты и аккаунты";
-  for(const a of["claude","codex"]){
+  for(const a of["claude","codex","kimi"]){
     const st=lastAg[a]||{},u=usageData[a],sum=el("span","sum");
     const g=el("span","ag "+a,AGENTS[a].glyph);sum.append(g);
     if(!st.installed||!st.logged_in){sum.append(el("span","dim",st.installed?"войти":"нет"))}
     else{
-      const w=u&&(u.windows||[]).find(x=>x.secs>=86400)||(u&&(u.windows||[])[0]);
+      const w=u&&(u.windows||[]).find(x=>x.period==="month")||u&&(u.windows||[]).find(x=>x.secs>=86400)||(u&&(u.windows||[])[0]);
       if(w){
         const pc=pace(w),p=Math.round(w.percent||0);
         const cls=!pc||pc.diff===undefined?"":pc.diff<=3?"good":pc.hitAt?"crit":"over";
@@ -1078,9 +1080,10 @@ function renderInteg(){
     blocks.push(blk);
   }
   const ks=lastAg.kimi||{},kc=lastAg.kimi_config||{};
-  const kr=[btn("Настроить ключ","go",openKimi)];
+  const kr=[btn(kc.configured?"Изменить ключ":"Настроить ключ",kc.configured?"connected":"go",openKimi)];
   kr.push(btn(ks.installed?"⟳":"Установить Kimi","",()=>agentAction("install","kimi")));
-  blocks.push(el("div","iblk",irow("◈","Kimi",kc.configured?"Ключ сохранён · "+kc.model:"Ключ не настроен",kr)));
+  const kb=el("div","iblk",irow("◈",kc.configured?"Kimi ✓":"Kimi",kc.configured?kc.model:"Ключ не настроен",kr));
+  const ku=kc.configured&&usageBlock(usageData.kimi);if(ku)kb.append(ku);blocks.push(kb);
   blocks.push(el("div","iblk",irow(GH_ICON,ghLogin||"GitHub","",[ghLogin?btn("Репозитории","",openNew):btn("Подключить","go",ghConnect)])));
   $("integ").replaceChildren(...blocks);
 }
@@ -1096,7 +1099,7 @@ async function saveKimi(clear=false){
   $("kimi_save").disabled=true;
   try{
     await api("/api/kimi_config",{key:$("kimi_key").value.trim(),model:$("kimi_model").value,clear});
-    closeKimi();await checkGithubFoot();toast(clear?"Ключ Kimi удалён":"Настройки Kimi сохранены");
+    closeKimi();await checkGithubFoot();await loadUsage();toast(clear?"Ключ Kimi удалён":"Настройки Kimi сохранены","success");
   }catch(e){toast(e.message)}finally{$("kimi_save").disabled=false}
 }
 function clearKimi(){if(confirm("Удалить ключ Kimi из панели?"))saveKimi(true)}
