@@ -16,7 +16,7 @@ import urllib.request
 
 REPO_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]*/[A-Za-z0-9][A-Za-z0-9_.-]*")
 TAG_RE = re.compile(r"v?(\d+)\.(\d+)\.(\d+)")
-REQUIRED = {"panel.py", "index.html", "login.html", "VERSION", "updater.py", "session_hook.py", "kimi_config.py"}
+REQUIRED = {"panel.py", "index.html", "login.html", "VERSION", "updater.py", "session_hook.py"}
 ALLOWED = REQUIRED | {"icon-180.png", "icon-192.png", "icon-512.png", "manifest.webmanifest", "make_icons.py"}
 RUNNING = {"checking", "downloading", "installing", "restarting"}
 
@@ -99,7 +99,7 @@ def unpack(data, stage, version):
     if not REQUIRED <= found or (stage / "VERSION").read_text().strip() != version:
         raise ValueError("Релиз неполный или версия не совпадает")
     # Reject broken backend syntax before stopping the running service.
-    for name in ("panel.py", "updater.py", "session_hook.py", "kimi_config.py"):
+    for name in ("panel.py", "updater.py", "session_hook.py"):
         compile((stage / name).read_text(), name, "exec")
     return found
 

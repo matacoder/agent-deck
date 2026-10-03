@@ -31,7 +31,7 @@ from urllib.parse import parse_qs
 from urllib.parse import urlsplit
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import updater
-import kimi_config
+import session_hook as kimi_config
 
 BIND_HOST = os.environ.get("BIND_HOST", "127.0.0.1")
 BIND_PORT = int(os.environ.get("BIND_PORT", "8790"))
@@ -182,7 +182,7 @@ def agent_cmd(agent, sid=None, resume=False, skip=False, name=None):
             raise ValueError("Сначала сохраните ключ Kimi в настройках панели")
         if not kimi_config.executable(agent):
             raise ValueError("Сначала установите " + ("Claude" if agent == "claude-kimi" else "Kimi Code"))
-        launcher = shlex.join([sys.executable, os.path.join(HERE, "kimi_config.py"), agent])
+        launcher = shlex.join([sys.executable, os.path.join(HERE, "session_hook.py"), agent])
     if agent == "kimi":
         if resume and not (isinstance(sid, str) and sid.startswith("session_") and valid_sid(sid[8:])):
             raise ValueError("ID разговора Kimi не сохранён. Выберите разговор вручную в терминале.")
