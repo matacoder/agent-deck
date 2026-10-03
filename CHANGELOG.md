@@ -2,6 +2,13 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z`.
 
+## 0.5.1 — 2026-10-03
+
+- Keep the composer hint and server metrics on one line on screens as narrow as 320 px.
+- Shorten keyboard hints and show CPU/RAM icons with percentages; retain used/total RAM
+  in the tooltip and accessible description.
+- Verify compact layouts and keyboard hints in Chromium and mobile WebKit.
+
 ## 0.5.0 — 2026-10-03
 
 - Show server CPU utilization and used/total RAM on the right of the composer status bar,

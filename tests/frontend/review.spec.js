@@ -92,7 +92,7 @@ test('colored hard-wrapped URLs become one complete link', async ({ app, page })
 
 test('desktop Enter hint matches sending and pinch zoom does not shrink the layout', async ({ app, page }) => {
   await app.open({ width: 1280, height: 800 });
-  await expect(page.locator('#send_state')).toHaveText('Enter — отправить · Shift+Enter — новая строка');
+  await expect(page.locator('#send_state')).toHaveText('Enter отправить · ⇧Enter ↵');
   const before = await page.locator('#app').boundingBox();
   await page.evaluate(() => {
     Object.defineProperty(window, 'visualViewport', { configurable: true, value: { height: 400, offsetTop: 0, scale: 2 } });
