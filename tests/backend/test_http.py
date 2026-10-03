@@ -42,6 +42,32 @@ class HTTPTests(PanelCase):
         self.assertEqual(status, 303)
         return response_headers["Set-Cookie"].split(";", 1)[0]
 
+    def test_legacy_update_without_catalogs_still_serves_ui_and_offers_repair(self):
+        cookie = self.login()
+        with patch.object(self.panel, 'locales', None):
+            status, _, body = self.request('GET', '/', headers={'Cookie':cookie})
+            self.assertEqual(status, 200)
+            self.assertIn(b'const I18N={"language":"ru","messages":{}};', body)
+            self.assertTrue(self.panel.version_info()['incomplete'])
+
+    def test_locales_are_public_and_language_cookie_localizes_login_html_and_errors(self):
+        status, _, body = self.request("GET", "/api/locales")
+        self.assertEqual(status, 200)
+        self.assertEqual({x['code'] for x in json.loads(body)['languages']}, {'en', 'ru'})
+        _, _, body = self.request('GET', '/login', headers={'Cookie': 'cc_lang=en'})
+        self.assertIn(b'<html lang="en"', body)
+        self.assertIn(b'Password', body)
+        self.assertNotIn('Пароль'.encode(), body)
+        cookie = self.login() + '; cc_lang=en'
+        _, _, body = self.request('GET', '/', headers={'Cookie': cookie})
+        self.assertIn(b'<h3>Settings</h3>', body)
+        self.assertNotIn(b'__PANEL_I18N__', body)
+        status, _, body = self.request('POST', '/api/send', '{}', {'Cookie': cookie})
+        self.assertEqual(status, 400)
+        self.assertEqual(json.loads(body)['error'], 'invalid session name')
+        _, _, body = self.request('GET', '/login', headers={'Cookie': 'cc_lang=../../outside'})
+        self.assertIn(b'<html lang="en"', body)
+
     def test_anonymous_html_redirects_and_api_and_terminal_require_login(self):
         status, headers, _ = self.request("GET", "/")
         self.assertEqual(status, 303)

@@ -89,7 +89,8 @@ aside{width:240px;flex:none;background:var(--side);border-right:1px solid var(--
 #ver button{display:block;max-width:100%;margin-top:3px;color:var(--acc);text-align:left;overflow-wrap:anywhere}
 #ver button:disabled{opacity:.6;cursor:default}
 #ver a{color:var(--acc);text-decoration:none;font-weight:600;cursor:pointer}
-.side-foot button{color:var(--mut);font-size:11px}.side-foot button:hover{color:var(--fg)}
+.side-foot button{color:var(--mut);font-size:11px}.side-foot .settingsbtn{font-size:17px;flex:none;min-width:20px}.side-foot button{white-space:nowrap}
+.side-foot button:hover{color:var(--fg)}
 
 /* ---------- main ---------- */
 main{flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;background:var(--bg)}
@@ -182,12 +183,38 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 .dlg h3{margin:0 0 14px;font-size:15px;font-weight:600;color:var(--fg2)}
 .dlg label{display:block;font-size:11.5px;color:var(--mut);margin:12px 0 5px}
 .dlg input[type=text],.dlg input[type=password],.dlg select{width:100%;background:var(--bg);border:1px solid var(--bd);border-radius:7px;color:var(--fg2);padding:8px 10px;outline:none}
+.dlg select{-webkit-appearance:none;appearance:none;padding-right:32px;background-image:linear-gradient(45deg,transparent 50%,var(--mut) 50%),linear-gradient(135deg,var(--mut) 50%,transparent 50%);background-position:calc(100% - 17px) 50%,calc(100% - 12px) 50%;background-size:5px 5px;background-repeat:no-repeat}
 .dlg input[type=text]:focus,.dlg input[type=password]:focus,.dlg select:focus{border-color:var(--acc)}
 .chk{display:flex;align-items:center;gap:9px;color:var(--fg);margin-top:14px;cursor:pointer}
 .chk input{width:17px;height:17px;accent-color:var(--acc)}
 .acts{display:flex;justify-content:flex-end;gap:8px;padding:14px 18px;border-top:1px solid var(--bd)}
 .acts button{padding:8px 16px;border-radius:7px;background:var(--side2)}
 .acts button.pri{background:var(--acc);color:#fff;font-weight:600}
+.integration-card{border:1px solid var(--bd);border-radius:14px;padding:16px;background:var(--bg);margin:4px 0 14px}
+.integration-heading{display:flex;align-items:center;gap:12px}
+.integration-heading h4{margin:0;font-size:15px;font-weight:600;color:var(--fg2)}
+.integration-heading p,.integration-note{margin:5px 0 0;color:var(--mut);font-size:12px;line-height:1.5}
+.telegram-mark{display:grid;place-items:center;width:38px;height:38px;border-radius:12px;background:#229ed922;color:#57b9ef;flex:none}
+.integration-status{display:flex;align-items:center;gap:7px;min-height:34px;margin:14px 0 8px;font-size:12px;color:var(--mut);overflow-wrap:anywhere}
+.integration-status::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--dim);flex:none}
+.integration-status.connected::before{background:var(--ok)}
+.integration-status.error{color:var(--bad)}
+.integration-status.error::before{background:var(--bad)}
+.integration-card details{border-top:1px solid var(--bd);padding:12px 0 4px}
+.integration-card summary{font-size:12px;color:var(--mut);cursor:pointer;min-height:36px;padding:7px 0}
+.integration-card details[open] summary{color:var(--fg2)}
+.dlg .integration-toggle{display:flex;justify-content:space-between;gap:12px;align-items:center;margin:14px 0 0;padding:14px 0 0;border-top:1px solid var(--bd);font-size:13px;color:var(--fg2)}
+.integration-toggle input{appearance:none;-webkit-appearance:none;width:36px;height:21px;border-radius:12px;background:var(--bd);position:relative;flex:none;cursor:pointer}
+.integration-toggle input::after{content:"";position:absolute;top:3px;left:3px;width:15px;height:15px;border-radius:50%;background:var(--fg2)}
+.integration-toggle input:checked{background:var(--acc)}
+.integration-toggle input:checked::after{left:18px}
+.integration-toggle input:focus-visible{outline:2px solid var(--fg2);outline-offset:3px}
+.integration-link,.integration-pair{display:flex;align-items:center;justify-content:center;min-height:44px;padding:9px 12px;border-radius:9px;width:100%;font-size:13px;margin-top:12px}
+.integration-link{background:var(--acc);color:#fff;text-decoration:none;font-weight:600}
+.integration-pair{border:1px solid var(--bd);color:var(--fg2);background:var(--side2)}
+.integration-dialog .acts .integration-remove{background:transparent;color:var(--mut);padding-left:0;margin-right:auto}
+.integration-dialog .acts .integration-remove:hover{color:var(--bad)}
+.integration-dialog .acts button{padding:11px 10px;font-size:14px;min-width:0}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .two label{margin-top:0}
 .gh{border:1px solid var(--bd);border-radius:9px;padding:9px;margin-bottom:6px}
@@ -214,7 +241,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
   body.message-focused .keyboard-hide{display:inline-flex;align-items:center;justify-content:center}
   .m-only{display:inline-grid!important}.d-only{display:none!important}
   aside{position:fixed;top:var(--app-top);bottom:0;left:0;width:min(340px,88vw);height:var(--app-h);z-index:30;transform:translateX(-102%);transition:transform .22s ease;box-shadow:0 0 40px rgba(0,0,0,.6);padding-top:var(--sat);padding-left:var(--sal)}
-  body.drawer aside{transform:none}
+  body.drawer aside{transform:translateX(0)}
   #scrim{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:20}
   body.drawer #scrim{display:block}
   .side-top{padding:12px 12px 8px}
@@ -280,6 +307,9 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
   #gh_list{max-height:38vh}
   .acts{padding:12px 16px calc(12px + var(--sab))}
   .acts button{flex:1;padding:13px;font-size:16px;border-radius:10px}
+  #integrations_dlg,#settings_dlg{width:calc(100vw - 24px);height:fit-content;max-height:calc(var(--app-h) - 32px);margin:auto;border:1px solid var(--bd);border-radius:16px}
+  #integrations_dlg .dlg,#settings_dlg .dlg{height:auto;max-height:calc(var(--app-h) - 32px);padding-top:0}
+  #integrations_dlg .acts,#settings_dlg .acts{padding:12px 14px}
   .chk{font-size:15px}
 }
 .seg{display:none}
@@ -295,7 +325,7 @@ body.is-shell .agent-only{display:none!important}
     </div>
     <div id="tabs"></div>
     <div id="integ"></div>
-    <div class="side-foot"><span id="foot"></span><span id="ver"></span><button id="b_drafts" onclick="showClosedDrafts()" style="display:none">Черновики закрытых сессий</button><button onclick="logout()">Выйти</button></div>
+    <div class="side-foot"><span id="foot"></span><span id="ver"></span><button id="b_drafts" onclick="showClosedDrafts()" style="display:none">Черновики закрытых сессий</button><button class="settingsbtn" onclick="openSettings()" aria-label="Настройки" title="Настройки">⚙</button><button onclick="logout()">Выйти</button></div>
   </aside>
   <div id="scrim" onclick="drawer(false)"></div>
   <main>
@@ -364,6 +394,7 @@ body.is-shell .agent-only{display:none!important}
   <button class="dng" onclick="sheet(false);kill()"><span class="i">✕</span>Закрыть сессию</button>
   <button onclick="refreshInterface()"><span class="i">↻</span>Обновить интерфейс</button>
   <button onclick="sheet(false);openIntegrations()"><span class="i" aria-hidden="true">✈</span>Интеграции</button>
+  <button onclick="sheet(false);openSettings()"><span class="i">⚙</span>Настройки</button>
   <button id="s_update" onclick="updatePanel()" style="display:none"></button>
   <button id="s_drafts" onclick="showClosedDrafts()" style="display:none">Черновики закрытых сессий</button>
   <button onclick="sheet(false)"><span class="i"></span>Отмена</button>
@@ -399,6 +430,11 @@ body.is-shell .agent-only{display:none!important}
   <div class="acts"><button type="button" onclick="$('dlg').close()">Отмена</button><button class="pri" id="n_go">Создать</button></div>
 </form></dialog>
 
+<dialog id="settings_dlg"><form class="dlg" onsubmit="event.preventDefault();saveLanguage()">
+  <div class="dlg-body"><h3>Настройки</h3><label for="ui_language">Язык интерфейса</label>
+  <select id="ui_language"></select><p>Язык сохраняется в этом браузере. Сообщения и вывод агентов не переводятся.</p></div>
+  <div class="acts"><button type="button" onclick="$('settings_dlg').close()">Отмена</button><button class="pri">Применить</button></div>
+</form></dialog>
 <dialog id="kimi_dlg"><form class="dlg" onsubmit="event.preventDefault();saveKimi()">
   <div class="dlg-body"><h3>Настройки Kimi</h3>
     <p id="kimi_state"></p>
@@ -410,25 +446,33 @@ body.is-shell .agent-only{display:none!important}
   </div>
   <div class="acts"><button type="button" onclick="clearKimi()">Удалить ключ</button><button type="button" onclick="closeKimi()">Отмена</button><button class="pri" id="kimi_save">Сохранить</button></div>
 </form></dialog>
-<dialog id="integrations_dlg"><form class="dlg" onsubmit="event.preventDefault();saveTelegram()">
+<dialog id="integrations_dlg"><form class="dlg integration-dialog" onsubmit="event.preventDefault();saveTelegram()">
   <div class="dlg-body"><h3>Интеграции</h3>
-    <h4>Telegram</h4>
-    <p>Получайте вопросы агентов с кнопками ответа в личном чате с ботом.</p>
-    <p id="telegram_state" role="status"></p>
+    <div class="integration-card">
+    <div class="integration-heading"><span class="telegram-mark" aria-hidden="true"><svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m21 3-4 18-6-5-4 3v-6L3 10 21 3Z"/><path d="m7 13 10-6-6 9"/></svg></span><div><h4>Telegram</h4><p>Вопросы и ответы в чате с ботом</p></div></div>
+    <p id="telegram_state" class="integration-status" role="status"></p>
+    <details id="telegram_credentials" open><summary>Токен бота</summary>
     <label for="telegram_token">Токен бота из @BotFather</label>
-    <input id="telegram_token" type="password" autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Пустое поле сохраняет текущий токен">
-    <label class="chk"><input type="checkbox" id="telegram_enabled" checked><span>Отправлять вопросы в Telegram</span></label>
+    <input id="telegram_token" type="password" autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Вставить или заменить токен">
+    <p class="integration-note">Пустое поле сохраняет текущий токен.</p>
+    </details>
+    <label class="integration-toggle"><span>Отправлять вопросы</span><input type="checkbox" role="switch" id="telegram_enabled" checked></label>
     <div id="telegram_pairing" style="display:none">
-      <p>Откройте бота по ссылке и нажмите Start. Отвечать сможет только привязанный аккаунт.</p>
-      <a id="telegram_link" target="_blank" rel="noopener noreferrer">Привязать мой Telegram</a>
-      <p>Ссылка действует 10 минут.</p>
+      <p class="integration-note">Откройте бота и нажмите Start. Ответы доступны только вашему аккаунту.</p>
+      <a class="integration-link" id="telegram_link" target="_blank" rel="noopener noreferrer">Привязать мой Telegram ↗</a>
+      <p class="integration-note">Ссылка действует 10 минут.</p>
     </div>
-    <button type="button" id="telegram_pair" onclick="pairTelegram()" style="display:none">Привязать Telegram</button>
+    <button type="button" class="integration-pair" id="telegram_pair" onclick="pairTelegram()" style="display:none">Привязать Telegram</button>
+    </div>
   </div>
-  <div class="acts"><button type="button" onclick="clearTelegram()">Отключить</button><button type="button" onclick="$('integrations_dlg').close()">Закрыть</button><button class="pri" id="telegram_save">Сохранить</button></div>
+  <div class="acts"><button type="button" class="integration-remove" onclick="clearTelegram()">Отключить</button><button type="button" onclick="$('integrations_dlg').close()">Закрыть</button><button class="pri" id="telegram_save">Сохранить</button></div>
 </form></dialog>
 <script>
+const I18N=__PANEL_I18N__;
+const DATE_LOCALE=(()=>{try{return Intl.getCanonicalLocales(I18N.language)[0]}catch(e){return "en"}})();
 const $=id=>document.getElementById(id);
+function tr(message,params=[]){return (I18N.messages[message]??message).replace(/\{(\d+)\}/g,(_,n)=>String(params[n]??""))}
+
 const BUSY_SEC=6;
 const UI_REVISION="__PANEL_REVISION__";
 const isMobile=()=>matchMedia("(max-width:760px)").matches;
@@ -460,7 +504,7 @@ addEventListener("orientationchange",()=>requestAnimationFrame(fitViewport));
 async function api(path,body){
   const r=await fetch(path,body?{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}:{cache:"no-store"});
   if(r.status===401){
-    try{stashDrafts();location.href="/login"}catch(e){toast("Войдите в новой вкладке: здесь сохранён несохранённый текст.",true,{label:"Войти",run:()=>window.open("/login","_blank","noopener")})}
+    try{stashDrafts();location.href="/login"}catch(e){toast(tr("Войдите в новой вкладке: здесь сохранён несохранённый текст."),true,{label:tr("Войти"),run:()=>window.open("/login","_blank","noopener")})}
     throw new Error("login required");
   }
   const d=r.headers.get("Date");if(d)clockSkew=Date.now()/1000-Date.parse(d)/1000;
@@ -484,12 +528,12 @@ function execCopy(text,doc){
   ta.remove();return ok;
 }
 async function copyToClipboard(text,w){
-  const done=()=>toast(`Скопировано: ${text.length} симв.`,"success");
+  const done=()=>toast(tr("Скопировано: {0} симв.",[text.length]),"success");
   try{if(navigator.clipboard&&window.isSecureContext){await navigator.clipboard.writeText(text);return done()}}catch(e){}
   const ok=execCopy(text,w.document);
   try{w.term.focus()}catch(e){}
   if(ok)return done();
-  toast("Выделение из терминала готово",true,{label:"Копировать",run:()=>{execCopy(text,document)?done():toast("Браузер запретил копирование")}});
+  toast(tr("Выделение из терминала готово"),true,{label:tr("Копировать"),run:()=>{execCopy(text,document)?done():toast(tr("Браузер запретил копирование"))}});
 }
 function hookClipboard(w,tries=0){
   const t=w.term;
@@ -507,7 +551,7 @@ const AGENTS={claude:{label:"Claude",glyph:"✻",skip:"--dangerously-skip-permis
   codex:{label:"Codex",glyph:"◎",skip:"--dangerously-bypass-approvals-and-sandbox"},
   "claude-kimi":{label:"Claude · Kimi",glyph:"✻",skip:"--dangerously-skip-permissions"},
   kimi:{label:"Kimi Code",glyph:"◈",skip:"--auto"},
-  shell:{label:"Терминал",glyph:"$"}};
+  shell:{label:tr("Терминал"),glyph:"$"}};
 const agentOf=s=>AGENTS[s&&s.agent]?s.agent:"claude";
 const state=s=>{
   const recent=now()-s.activity<BUSY_SEC;
@@ -516,8 +560,8 @@ const state=s=>{
 };
 function stateText(s){
   const a=AGENTS[agentOf(s)].label,st=state(s);
-  if(agentOf(s)==="shell")return st==="busy"?"терминал · вывод…":(s.running?"терминал · "+s.command:"терминал");
-  return {off:a+" не запущен",busy:a+" работает…",idle:a+" ждёт"}[st];
+  if(agentOf(s)==="shell")return st==="busy"?tr("терминал · вывод…"):(s.running?tr("терминал · ")+s.command:tr("терминал"));
+  return {off:a+tr(" не запущен"),busy:a+tr(" работает…"),idle:a+tr(" ждёт")}[st];
 }
 function el(tag,cls,...kids){const e=document.createElement(tag);if(cls)e.className=cls;e.append(...kids);return e}
 const shortPath=p=>p.replace(/^.*\/projects\//,"~/").replace(/\.worktrees\//,"⎇ ");
@@ -547,7 +591,7 @@ function renderQuickTabs(){
     const left=box.scrollLeft;box.replaceChildren();quickButtons.clear();
     for(const s of sessions){
       const button=el("button","quick-tab",el("span","dot"),el("span","ag "+agentOf(s),AGENTS[agentOf(s)].glyph),el("span","label",s.name),el("span","bell"));
-      button.type="button";button.setAttribute("aria-label","Открыть сессию "+s.name);
+      button.type="button";button.setAttribute("aria-label",tr("Открыть сессию ")+s.name);
       button.onclick=()=>select(s.name);box.append(button);quickButtons.set(s.name,button);
     }
     box.scrollLeft=left;quickSignature=signature;
@@ -587,9 +631,9 @@ function renderTabs(){
     t.onclick=()=>select(s.name);
     box.append(t);
   }
-  if(!sessions.length)box.append(el("div","grp","сессий пока нет"));
+  if(!sessions.length)box.append(el("div","grp",tr("сессий пока нет")));
   const busy=sessions.filter(s=>state(s)==="busy").length;
-  $("foot").textContent=`${sessions.length} сессий · ${busy} работают`+(attention.size?` · ${attention.size} готово`:"");
+  $("foot").textContent=tr("{0} сессий · {1} работают",[sessions.length,busy])+(attention.size?tr(" · {0} готово",[attention.size]):"");
   $("menuBadge").textContent=attention.size;$("menuBadge").classList.toggle("on",attention.size>0);
   document.title=(attention.size?`(${attention.size}) `:"")+"Agent Deck";
 }
@@ -597,7 +641,7 @@ function renderTitle(){
   const s=cur(),t=$("title");t.replaceChildren();
   document.body.classList.toggle("is-shell",!!s&&agentOf(s)==="shell");
   document.body.classList.toggle("is-codex",!!s&&agentOf(s)==="codex");
-  $("msg").placeholder=s?"Сообщение в "+AGENTS[agentOf(s)].label+"…":"Сообщение агенту…";
+  $("msg").placeholder=s?tr("Сообщение в ")+AGENTS[agentOf(s)].label+"…":tr("Сообщение агенту…");
   if(!s){t.textContent=isMobile()?"Agent Deck":"—";return}
   const st=state(s);
   t.append(el("b","",s.name),el("span","path"," — "+s.path.replace(/^\/home\/[^/]+/,"~")),el("span","st",stateText(s)+" · "+shortPath(s.path)));
@@ -615,9 +659,9 @@ function frameFor(name){
 function show(){
   const s=cur(),m=curMode();
   $("empty").style.display=s?"none":"grid";
-  if(!s)$("empty").textContent=load.done?"Нет сессий. Создайте новую через меню ☰ → ＋.":"Загружаю сессии…";
+  if(!s)$("empty").textContent=load.done?tr("Нет сессий. Создайте новую через меню ☰ → ＋."):tr("Загружаю сессии…");
   renderTitle();renderSendState();renderAttachments();
-  $("b_mode").textContent=m==="term"?"⌨ Экран":"▣ Живой терминал";
+  $("b_mode").textContent=m==="term"?tr("⌨ Экран"):tr("▣ Живой терминал");
   for(const b of $("seg").children)b.classList.toggle("on",b.dataset.m===m);
   for(const[n,f]of frames)f.classList.toggle("on",!!s&&m==="term"&&n===active);
   $("screen").classList.toggle("on",!!s&&m==="screen");
@@ -763,7 +807,7 @@ function updateScreen(s,force){
   if(p.dataset.raw!==raw){
     p.dataset.raw=raw;p.replaceChildren();
     const lines=joinUrlLines(ansiLines(raw));
-    if(!lines.length)p.append(el("div","preview-empty","В tmux пока нет текста. Можно переключиться в «Терм» и проверить сессию."));
+    if(!lines.length)p.append(el("div","preview-empty",tr("В tmux пока нет текста. Можно переключиться в «Терм» и проверить сессию.")));
     for(const runs of lines){
       const line=runs.map(r=>r.text).join("").trimEnd();
       // TUI rules (Claude's input box etc.) would wrap into a stack of lines on a phone: draw them as one rule
@@ -800,7 +844,7 @@ function showClosedDrafts(){
   const box=$("closed_drafts");box.replaceChildren();
   for(const[name,text]of closedDrafts){
     const item=el("div","",el("b","",name),el("pre","",text));
-    item.append(btn("Скопировать","",()=>copyToClipboard(text,window)),btn("Удалить","",()=>{closedDrafts.delete(name);saveClosedDrafts();showClosedDrafts()}));box.append(item);
+    item.append(btn(tr("Скопировать"),"",()=>copyToClipboard(text,window)),btn(tr("Удалить"),"",()=>{closedDrafts.delete(name);saveClosedDrafts();showClosedDrafts()}));box.append(item);
   }
   $("draft_dlg").showModal();sheet(false);
 }
@@ -855,13 +899,13 @@ async function loadSessions(){
   }catch(e){toast(e.message)}
 }
 async function post(path,body,confirmText){
-  if(panelUpdating){toast("Панель обновляется. Дождитесь завершения.");return false}
+  if(panelUpdating){toast(tr("Панель обновляется. Дождитесь завершения."));return false}
   if(confirmText&&!confirm(confirmText))return false;
   try{await api(path,body);await load();return true}catch(e){toast(e.message);return false}
 }
 function restart(m){
   const s=cur();if(!s)return;const a=AGENTS[agentOf(s)].label;
-  post("/api/restart",{name:active,mode:m},m==="new"?`Перезапустить ${a} в «${active}» с НОВЫМ разговором?`:`Перезапустить ${a} в «${active}», продолжив разговор?`);
+  post("/api/restart",{name:active,mode:m},m==="new"?tr("Перезапустить {0} в «{1}» с НОВЫМ разговором?",[a,active]):tr("Перезапустить {0} в «{1}», продолжив разговор?",[a,active]));
 }
 async function termHere(){
   const s=cur();if(!s)return;
@@ -872,7 +916,7 @@ async function termHere(){
 }
 async function kill(){
   if(!active)return;const n=active;
-  await post("/api/kill",{name:n},`Закрыть сессию «${n}»? Агент будет остановлен.`);
+  await post("/api/kill",{name:n},tr("Закрыть сессию «{0}»? Агент будет остановлен.",[n]));
 }
 function popout(){if(active)window.open("/t/?arg="+encodeURIComponent("=cc-"+active),"_blank")}
 let uploading=false,choosingImages=false;
@@ -892,7 +936,7 @@ function renderAttachments(){
     if(entry.preview){const img=document.createElement("img");img.src=entry.preview;img.alt="";chip.append(img)}
     chip.append(el("span","",entry.label));
     const remove=el("button","","×");remove.type="button";
-    remove.setAttribute("aria-label","Убрать "+entry.label);remove.disabled=sending||uploading;
+    remove.setAttribute("aria-label",tr("Убрать ")+entry.label);remove.disabled=sending||uploading;
     remove.onclick=()=>{
       api("/api/discard_upload",{name:active,attachments:[entry.attachment]}).catch(e=>toast(e.message));
       imageAttachments.set(active,attachmentsFor(active).filter(x=>x!==entry));
@@ -911,7 +955,7 @@ function chooseImages(){
 function readImageData(file){
   return new Promise((resolve,reject)=>{
     const reader=new FileReader();reader.onload=()=>resolve(String(reader.result).split(",")[1]);
-    reader.onerror=()=>reject(new Error("Не удалось прочитать файл"));reader.readAsDataURL(file);
+    reader.onerror=()=>reject(new Error(tr("Не удалось прочитать файл")));reader.readAsDataURL(file);
   });
 }
 async function prepareImage(file){
@@ -919,35 +963,35 @@ async function prepareImage(file){
   // Safari can decode some photo formats that the terminal agents do not accept.
   const url=URL.createObjectURL(file),img=new Image();
   try{
-    await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=()=>reject(new Error("Выберите PNG или JPEG: этот формат не удалось открыть"));img.src=url});
+    await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=()=>reject(new Error(tr("Выберите PNG или JPEG: этот формат не удалось открыть")));img.src=url});
     const scale=Math.min(1,4096/Math.max(img.naturalWidth,img.naturalHeight));
     const canvas=document.createElement("canvas");canvas.width=Math.max(1,Math.round(img.naturalWidth*scale));canvas.height=Math.max(1,Math.round(img.naturalHeight*scale));
     const ctx=canvas.getContext("2d");ctx.fillStyle="#fff";ctx.fillRect(0,0,canvas.width,canvas.height);ctx.drawImage(img,0,0,canvas.width,canvas.height);
-    return await new Promise((resolve,reject)=>canvas.toBlob(blob=>blob?resolve(blob):reject(new Error("Не удалось подготовить изображение")),"image/jpeg",0.9));
+    return await new Promise((resolve,reject)=>canvas.toBlob(blob=>blob?resolve(blob):reject(new Error(tr("Не удалось подготовить изображение"))),"image/jpeg",0.9));
   }finally{URL.revokeObjectURL(url)}
 }
 async function uploadImages(files){
   if(!active||sending||uploading||panelUpdating||!files.length)return;
   const name=active;
-  if(agentOf(cur())==="shell"){toast("Выберите сессию Claude или Codex");return}
-  if(attachmentsFor(name).length+files.length>4){toast("Можно приложить до 4 файлов");return}
+  if(agentOf(cur())==="shell"){toast(tr("Выберите сессию Claude или Codex"));return}
+  if(attachmentsFor(name).length+files.length>4){toast(tr("Можно приложить до 4 файлов"));return}
   uploading=true;renderAttachments();
-  sendStates.set(name,{text:"Загружаю файлы…",phase:"pending"});renderSendState();
+  sendStates.set(name,{text:tr("Загружаю файлы…"),phase:"pending"});renderSendState();
   let failed=false;
   for(const file of files){
     try{
       const isImage=file.type.startsWith("image/");
       const limit=200*1024*1024;
-      if(file.size>limit)throw new Error("Файл слишком большой: максимум 200 МБ");
+      if(file.size>limit)throw new Error(tr("Файл слишком большой: максимум 200 МБ"));
       let image=file;
       if(["image/heic","image/heif"].includes(file.type)){try{image=await prepareImage(file)}catch(e){image=file}}
       const data=await readImageData(image);
       const result=await api("/api/upload",{name,data,filename:file.name||"file"});
-      imageAttachments.set(name,[...attachmentsFor(name),{attachment:result.attachment,label:file.name||"Файл",preview:result.kind==="image"||(result.kind===undefined&&isImage)?URL.createObjectURL(image):null}]);
-    }catch(e){failed=true;toast(e.message);sendStates.set(name,{text:"Не удалось приложить: "+e.message,error:true})}
+      imageAttachments.set(name,[...attachmentsFor(name),{attachment:result.attachment,label:file.name||tr("Файл"),preview:result.kind==="image"||(result.kind===undefined&&isImage)?URL.createObjectURL(image):null}]);
+    }catch(e){failed=true;toast(e.message);sendStates.set(name,{text:tr("Не удалось приложить: ")+e.message,error:true})}
   }
   uploading=false;
-  if(!failed)sendStates.set(name,{text:"Файлы приложены · нажмите ↑ для отправки",phase:"success"});
+  if(!failed)sendStates.set(name,{text:tr("Файлы приложены · нажмите ↑ для отправки"),phase:"success"});
   renderAttachments();renderSendState();
 }
 $("image_files").addEventListener("cancel",()=>{choosingImages=false});
@@ -961,7 +1005,7 @@ let sending=false;
 const sendStates=new Map();
 function renderSendState(){
   const status=sendStates.get(active),d=$("send_state");
-  d.textContent=status?status.text:(isMobile()?"Enter ↵ · ↑ отправить":"Enter отправить · ⇧Enter ↵");
+  d.textContent=status?status.text:(isMobile()?tr("Enter ↵ · ↑ отправить"):tr("Enter отправить · ⇧Enter ↵"));
   d.classList.toggle("error",Boolean(status&&status.error));
   d.classList.toggle("pending",Boolean(status&&status.phase==="pending"));
   d.classList.toggle("success",Boolean(status&&status.phase==="success"));
@@ -970,18 +1014,18 @@ async function send(){
   const t=$("msg");if(sending||uploading||panelUpdating||!active||(!t.value.trim()&&!attachmentsFor(active).length))return;
   const name=active,text=t.value,images=attachmentsFor(active).slice();
   sending=true;renderAttachments();
-  sendStates.set(name,{text:"Отправляю…",phase:"pending"});renderSendState();
+  sendStates.set(name,{text:tr("Отправляю…"),phase:"pending"});renderSendState();
   try{
     await api("/api/send",{name,text,attachments:images.map(x=>x.attachment)});
     imageAttachments.set(name,attachmentsFor(name).filter(x=>!images.includes(x)));
     for(const image of images)if(image.preview)URL.revokeObjectURL(image.preview);
     if(messageDrafts.get(name)===text)messageDrafts.delete(name);
     if(active===name&&t.value===text){t.value="";t.style.height=""}
-    sendStates.set(name,{text:"Отправлено в "+AGENTS[agentOf(sessions.find(s=>s.name===name))].label+" · "+new Date().toLocaleTimeString("ru-RU",{hour:"2-digit",minute:"2-digit"}),phase:"success"});
+    sendStates.set(name,{text:tr("Отправлено в ")+AGENTS[agentOf(sessions.find(s=>s.name===name))].label+" · "+new Date().toLocaleTimeString(DATE_LOCALE,{hour:"2-digit",minute:"2-digit"}),phase:"success"});
     await load();
     if(active===name)$("pre").scrollTop=$("pre").scrollHeight;
   }catch(e){
-    sendStates.set(name,{text:"Не отправлено: "+e.message,error:true});
+    sendStates.set(name,{text:tr("Не отправлено: ")+e.message,error:true});
   }finally{
     sending=false;renderAttachments();renderSendState();
   }
@@ -1030,12 +1074,12 @@ async function loadUsage(){try{usageData=await api("/api/usage")}catch(e){}rende
 
 function fmtReset(ts){
   if(!ts)return"";
-  const ms=ts*1000-Date.now();if(ms<=0)return"сбрасывается…";
+  const ms=ts*1000-Date.now();if(ms<=0)returnt("сбрасывается…");
   const m=Math.round(ms/60000),d=new Date(ts*1000);
-  const rel=m<60?`${m} мин`:m<1440?`${Math.floor(m/60)} ч ${m%60} мин`:`${Math.floor(m/1440)} д ${Math.floor(m%1440/60)} ч`;
-  const hm=d.toLocaleTimeString("ru-RU",{hour:"2-digit",minute:"2-digit"});
-  const abs=m<1440&&d.getDate()===new Date().getDate()?hm:d.toLocaleDateString("ru-RU",{weekday:"short",day:"numeric",month:"short"})+" "+hm;
-  return `сброс через ${rel} · ${abs}`;
+  const rel=m<60?tr("{0} мин",[m]):m<1440?tr("{0} ч {1} мин",[Math.floor(m/60),m%60]):tr("{0} д {1} ч",[Math.floor(m/1440),Math.floor(m%1440/60)]);
+  const hm=d.toLocaleTimeString(DATE_LOCALE,{hour:"2-digit",minute:"2-digit"});
+  const abs=m<1440&&d.getDate()===new Date().getDate()?hm:d.toLocaleDateString(DATE_LOCALE,{weekday:"short",day:"numeric",month:"short"})+" "+hm;
+  return tr("сброс через {0} · {1}",[rel,abs]);
 }
 /* pace: compare used % with the share of the window that has already elapsed */
 function pace(w){
@@ -1053,13 +1097,13 @@ function pace(w){
   return res;
 }
 function fmtWhen(ts){
-  const d=new Date(ts*1000),hm=d.toLocaleTimeString("ru-RU",{hour:"2-digit",minute:"2-digit"});
-  return d.toDateString()===new Date().toDateString()?"сегодня "+hm:d.toLocaleDateString("ru-RU",{weekday:"short"})+" "+hm;
+  const d=new Date(ts*1000),hm=d.toLocaleTimeString(DATE_LOCALE,{hour:"2-digit",minute:"2-digit"});
+  return d.toDateString()===new Date().toDateString()?tr("сегодня ")+hm:d.toLocaleDateString(DATE_LOCALE,{weekday:"short"})+" "+hm;
 }
 function compactReset(ts){
   if(!ts)return "↻ —";
   const minutes=Math.max(0,Math.round((ts*1000-Date.now())/60000)),days=Math.floor(minutes/1440),hours=Math.floor(minutes%1440/60);
-  const duration=days?`${days}д ${hours}ч`:hours?`${hours}ч ${minutes%60}м`:`${minutes}м`;
+  const duration=days?tr("{0}д {1}ч",[days,hours]):hours?tr("{0}ч {1}м",[hours,minutes%60]):tr("{0}м",[minutes]);
   return "↻ "+duration;
 }
 function usageBlock(u){
@@ -1067,34 +1111,34 @@ function usageBlock(u){
   if(u.error&&!(u.windows||[]).length){box.append(el("div","err",u.error));return box}
   for(const w of u.windows||[]){
     const p=Math.round(w.percent||0),fill=el("i",p>=90?"bad":p>=70?"warn":"");fill.style.width=Math.min(p,100)+"%";
-    const labels={"Общий · месяц":"месяц · всё","Kimi Code · месяц":"месяц · код","5 часов":"5 ч"};
-    const pc=pace(w),bar=el("span","usage-meter",fill),row=el("div","uw",el("span","",labels[w.label]||w.label),el("span","pc",p+"%"),bar);
-    bar.setAttribute("role","progressbar");bar.setAttribute("aria-label","Использование лимита: "+w.label);
+    const labels={"Общий · месяц":tr("месяц · всё"),"Kimi Code · месяц":tr("месяц · код"),"5 часов":tr("5 ч")};
+    const pc=pace(w),bar=el("span","usage-meter",fill),row=el("div","uw",el("span","",labels[w.label]||tr(w.label)),el("span","pc",p+"%"),bar);
+    bar.setAttribute("role","progressbar");bar.setAttribute("aria-label",tr("Использование лимита: ")+tr(w.label));
     bar.setAttribute("aria-valuemin","0");bar.setAttribute("aria-valuemax","100");bar.setAttribute("aria-valuenow",String(Math.max(0,Math.min(p,100))));
     const details=el("details","quota-details"),summary=el("summary","",el("span","rs",compactReset(w.resets_at))),body=el("div","quota-explanation");
-    summary.title=fmtReset(w.resets_at)||"Данные о лимите";summary.setAttribute("aria-label","Подробности лимита: "+w.label);
+    summary.title=fmtReset(w.resets_at)||tr("Данные о лимите");summary.setAttribute("aria-label",tr("Подробности лимита: ")+tr(w.label));
     if(pc&&pc.norm!==undefined){
-      const tick=el("b","");tick.style.left=(pc.elapsed*100)+"%";tick.title=`норма к этому моменту: ${pc.norm}%`;bar.append(tick);
+      const tick=el("b","");tick.style.left=(pc.elapsed*100)+"%";tick.title=tr("норма к этому моменту: {0}%",[pc.norm]);bar.append(tick);
       const cls=pc.diff<=3?"good":pc.hitAt?"crit":"over";
-      summary.append(el("span","pace "+cls,pc.diff<=3?"✓":"▲ +"+pc.diff+" п.п."));
-      body.append(el("div","",`Норма сейчас: ${pc.norm}%. `+(pc.diff<=3?"В пределах нормы.":`Быстрее нормы на ${pc.diff} п.п.`)));
-      if(pc.hitAt)body.append(el("div","forecast","При таком темпе лимит закончится ≈ "+fmtWhen(pc.hitAt)));
-      else if(pc.forecast!==undefined)body.append(el("div","forecast","Прогноз к сбросу: ≈ "+pc.forecast+"%"));
+      summary.append(el("span","pace "+cls,pc.diff<=3?"✓":"▲ +"+pc.diff+tr(" п.п.")));
+      body.append(el("div","",tr("Норма сейчас: {0}%. ",[pc.norm])+(pc.diff<=3?tr("В пределах нормы."):tr("Быстрее нормы на {0} п.п.",[pc.diff]))));
+      if(pc.hitAt)body.append(el("div","forecast",tr("При таком темпе лимит закончится ≈ ")+fmtWhen(pc.hitAt)));
+      else if(pc.forecast!==undefined)body.append(el("div","forecast",tr("Прогноз к сбросу: ≈ ")+pc.forecast+"%"));
     }
     body.append(el("div","",fmtReset(w.resets_at)));details.append(summary,body);row.append(details);box.append(row);
   }
-  if(u.stale)box.append(el("div","err","⚠ данные устарели"));return box;
+  if(u.stale)box.append(el("div","err",tr("⚠ данные устарели")));return box;
 }
 
 let integOpen=(()=>{try{const v=localStorage.getItem("cc.integ."+(isMobile()?"m":"d"));return v===null?!isMobile():v==="1"}catch(e){return !isMobile()}})();
 function toggleInteg(){integOpen=!integOpen;try{localStorage.setItem("cc.integ."+(isMobile()?"m":"d"),integOpen?"1":"0")}catch(e){}renderInteg()}
 function integSummary(){
   const head=el("button","ihead"+(integOpen?" open":""));head.type="button";head.onclick=toggleInteg;
-  head.title=integOpen?"Свернуть":"Лимиты и аккаунты";
+  head.title=integOpen?tr("Свернуть"):tr("Лимиты и аккаунты");
   for(const a of["claude","codex","kimi"]){
     const st=lastAg[a]||{},u=usageData[a],sum=el("span","sum");
     const g=el("span","ag "+a,AGENTS[a].glyph);sum.append(g);
-    if(!st.installed||!st.logged_in){sum.append(el("span","dim",st.installed?"войти":"нет"))}
+    if(!st.installed||!st.logged_in){sum.append(el("span","dim",st.installed?tr("войти"):tr("нет")))}
     else{
       const w=u&&(u.windows||[]).find(x=>x.period==="month")||u&&(u.windows||[]).find(x=>x.secs>=86400)||(u&&(u.windows||[])[0]);
       if(w){
@@ -1115,10 +1159,10 @@ function renderInteg(){
   const blocks=[integSummary()];
   for(const a of["claude","codex"]){
     const st=lastAg[a]||{},glyph=`<span class="ag ${a}">${AGENTS[a].glyph}</span>`,right=[];
-    if(!st.installed)right.push(btn("Установить","go",()=>agentAction("install",a)));
+    if(!st.installed)right.push(btn(tr("Установить"),"go",()=>agentAction("install",a)));
     else{
-      right.push(st.logged_in?el("span","ok","✓"):btn("Войти","go",()=>agentAction("login",a)));
-      right.push(btn("⟳","ic",()=>agentAction("install",a),"Обновить официальным установщиком"));
+      right.push(st.logged_in?el("span","ok","✓"):btn(tr("Войти"),"go",()=>agentAction("login",a)));
+      right.push(btn("⟳","ic",()=>agentAction("install",a),tr("Обновить официальным установщиком")));
     }
     const u=usageData[a],ver=[st.version,u&&u.plan].filter(Boolean).join(" · ");
     const blk=el("div","iblk",irow(glyph,AGENTS[a].label,ver,right));
@@ -1126,21 +1170,35 @@ function renderInteg(){
     blocks.push(blk);
   }
   const ks=lastAg.kimi||{},kc=lastAg.kimi_config||{};
-  const keyLabel=kc.configured?"Изменить ключ Kimi":"Настроить ключ Kimi";
+  const keyLabel=kc.configured?tr("Изменить ключ Kimi"):tr("Настроить ключ Kimi");
   const keyButton=btn("⚿",kc.configured?"connected":"go",openKimi,keyLabel);keyButton.setAttribute("aria-label",keyLabel);
   const kr=[keyButton];
-  kr.push(btn(ks.installed?"⟳":"Установить Kimi","",()=>agentAction("install","kimi")));
+  kr.push(btn(ks.installed?"⟳":tr("Установить Kimi"),"",()=>agentAction("install","kimi")));
   const kb=el("div","iblk",irow("◈",kc.configured?"Kimi ✓":"Kimi",ks.version||"",kr));
   const ku=kc.configured&&usageBlock(usageData.kimi);if(ku)kb.append(ku);blocks.push(kb);
-  blocks.push(el("div","iblk",irow(GH_ICON,ghLogin||"GitHub","",[ghLogin?btn("Репозитории","",openNew):btn("Подключить","go",ghConnect)])));
-  blocks.push(el("div","iblk",irow("✈","Telegram",telegramConfig.paired?(telegramConfig.enabled?"подключён":"пауза"):"",[btn("Настроить","",openIntegrations)])));
+  blocks.push(el("div","iblk",irow(GH_ICON,ghLogin||"GitHub","",[ghLogin?btn(tr("Репозитории"),"",openNew):btn(tr("Подключить"),"go",ghConnect)])));
+  blocks.push(el("div","iblk",irow("✈","Telegram",telegramConfig.paired?(telegramConfig.enabled?tr("подключён"):tr("пауза")):"",[btn(tr("Настроить"),"",openIntegrations)])));
   $("integ").replaceChildren(...blocks);
+}
+async function openSettings(){
+  drawer(false);sheet(false);
+  try{
+    const data=await api("/api/locales");
+    $("ui_language").replaceChildren(...data.languages.map(x=>{const o=document.createElement("option");o.value=x.code;o.textContent=x.name;return o}));
+    $("ui_language").value=I18N.language;$("settings_dlg").showModal();
+  }catch(e){toast(e.message)}
+}
+function saveLanguage(){
+  if(sending||uploading||choosingImages){toast(tr("Дождитесь окончания отправки или загрузки"));return}
+  try{stashDrafts()}catch(e){toast(tr("Не удалось сохранить черновик. Очистите поле перед обновлением."));return}
+  document.cookie="cc_lang="+encodeURIComponent($("ui_language").value)+"; Path=/; Max-Age=31536000; SameSite=Lax"+(location.protocol==="https:"?"; Secure":"");
+  location.reload();
 }
 function closeKimi(){$("kimi_key").value="";$("kimi_dlg").close()}
 function openKimi(){
   const config=lastAg.kimi_config||{};
   $("kimi_key").value="";$("kimi_model").value=config.model||"k3";
-  $("kimi_state").textContent=config.configured?"Ключ сохранён на сервере":"Ключ ещё не настроен";
+  $("kimi_state").textContent=config.configured?tr("Ключ сохранён на сервере"):tr("Ключ ещё не настроен");
   $("kimi_dlg").showModal();
 }
 $("kimi_dlg").addEventListener("close",()=>{$("kimi_key").value=""});
@@ -1148,20 +1206,25 @@ async function saveKimi(clear=false){
   $("kimi_save").disabled=true;
   try{
     await api("/api/kimi_config",{key:$("kimi_key").value.trim(),model:$("kimi_model").value,clear});
-    closeKimi();await checkGithubFoot();await loadUsage();toast(clear?"Ключ Kimi удалён":"Настройки Kimi сохранены","success");
+    closeKimi();await checkGithubFoot();await loadUsage();toast(clear?tr("Ключ Kimi удалён"):tr("Настройки Kimi сохранены"),"success");
   }catch(e){toast(e.message)}finally{$("kimi_save").disabled=false}
 }
-function clearKimi(){if(confirm("Удалить ключ Kimi из панели?"))saveKimi(true)}
+function clearKimi(){if(confirm(tr("Удалить ключ Kimi из панели?")))saveKimi(true)}
 let telegramConfig={},integrationTimer=null,telegramDirty=false;
 for(const id of ["telegram_token","telegram_enabled"])$(id).addEventListener("input",()=>{telegramDirty=true});
 function renderTelegram(config){
+  const wasConfigured=telegramConfig.configured;
   telegramConfig=config||{};
   const c=telegramConfig;
-  $("telegram_state").textContent=c.available===false?"Обновите панель: установите интеграции из меню обновлений":c.error||
-    (c.paired?`@${c.bot} · ${c.account||"аккаунт привязан"} · ${c.enabled?"включён":"пауза"}`:c.configured?`@${c.bot} · привяжите свой Telegram`:"Бот ещё не подключён");
+  if(wasConfigured!==c.configured)$("telegram_credentials").open=!c.configured;
+  $("telegram_credentials").querySelector("summary").textContent=c.configured?tr("Изменить токен бота"):tr("Токен бота");
+  $("telegram_state").classList.toggle("connected",!!c.paired&&!!c.enabled&&!c.error);
+  $("telegram_state").classList.toggle("error",!!c.error);
+  $("telegram_state").textContent=c.available===false?tr("Обновите панель: установите интеграции из меню обновлений"):c.error||
+    (c.paired?`@${c.bot} · ${c.account||tr("аккаунт привязан")} · ${c.enabled?tr("включён"):tr("пауза")}`:c.configured?tr("@{0} · привяжите свой Telegram",[c.bot]):tr("Бот ещё не подключён"));
   $("telegram_enabled").checked=c.enabled!==false;
-  $("telegram_pair").style.display=c.configured?"inline-block":"none";
-  $("telegram_pair").textContent=c.paired?"Привязать другой аккаунт":"Получить ссылку привязки";
+  $("telegram_pair").style.display=c.configured&&!c.pair_url?"flex":"none";
+  $("telegram_pair").textContent=c.paired?tr("Привязать другой аккаунт"):tr("Получить ссылку привязки");
   $("telegram_pairing").style.display=c.pair_url?"block":"none";
   if(c.pair_url)$("telegram_link").href=c.pair_url;else $("telegram_link").removeAttribute("href");
   renderInteg();
@@ -1170,39 +1233,39 @@ async function loadIntegrations(){
   try{const data=await api("/api/integrations");renderTelegram(data.telegram)}catch(e){if($("integrations_dlg").open)$("telegram_state").textContent=e.message}
 }
 function openIntegrations(){
-  telegramDirty=false;$("telegram_token").value="";$("integrations_dlg").showModal();loadIntegrations();
+  telegramDirty=false;$("telegram_token").value="";$("telegram_credentials").open=!telegramConfig.configured;$("integrations_dlg").showModal();loadIntegrations();
   clearInterval(integrationTimer);integrationTimer=setInterval(()=>{if(!telegramDirty)loadIntegrations()},3000);
 }
 $("integrations_dlg").addEventListener("close",()=>{$("telegram_token").value="";clearInterval(integrationTimer)});
 async function saveTelegram(clear=false){
   $("telegram_save").disabled=true;
   try{
-    const data=await api("/api/telegram_config",{token:$("telegram_token").value.trim(),enabled:$("telegram_enabled").checked,clear});
+    const data=await api("/api/telegram_config",{token:$("telegram_token").value.trim(),enabled:$("telegram_enabled").checked,language:I18N.language,clear});
     telegramDirty=false;$("telegram_token").value="";renderTelegram(data.telegram);
     if(!clear&&!data.telegram.paired)await pairTelegram();
-    toast(clear?"Telegram отключён":"Настройки Telegram сохранены","success");
+    toast(clear?tr("Telegram отключён"):tr("Настройки Telegram сохранены"),"success");
   }catch(e){toast(e.message)}finally{$("telegram_save").disabled=false}
 }
 async function pairTelegram(){
   try{const data=await api("/api/telegram_pair",{});renderTelegram(data.telegram)}catch(e){toast(e.message)}
 }
-function clearTelegram(){if(confirm("Отключить Telegram и удалить сохранённый токен?"))saveTelegram(true)}
+function clearTelegram(){if(confirm(tr("Отключить Telegram и удалить сохранённый токен?")))saveTelegram(true)}
 let panelUpdating=false,panelVersion=null,versionTimer=null,versionLoading=false;
 const UPDATE_PHASES=new Set(["checking","downloading","installing","restarting"]);
 function renderVersion(v){
   panelVersion=v;const job=v.job||{},box=$("ver"),mobile=$("s_update");
   panelUpdating=UPDATE_PHASES.has(job.phase);
-  box.replaceChildren("v"+v.version);box.title=v.latest?`последний релиз: v${v.latest}`:"";
+  box.replaceChildren("v"+v.version);box.title=v.latest?tr("последний релиз: v{0}",[v.latest]):"";
   mobile.style.display="none";
   let label,action;
-  if(panelUpdating){label=job.message||"Обновляю панель…";action=()=>{}}
-  else if(job.phase==="done"&&job.version&&job.version!==UI_PANEL_VERSION){label="Обновлено · перезагрузить интерфейс";action=refreshInterface}
-  else if(job.phase==="error"){label="Обновление не удалось · повторить";action=startPanelUpdate;box.title=job.message||label}
-  else if(v.update){label=v.incomplete?"Установить интеграции":"Обновить до v"+v.latest;action=startPanelUpdate}
+  if(panelUpdating){label=job.message||tr("Обновляю панель…");action=()=>{}}
+  else if(job.phase==="done"&&job.version&&job.version!==UI_PANEL_VERSION){label=tr("Обновлено · перезагрузить интерфейс");action=refreshInterface}
+  else if(job.phase==="error"){label=tr("Обновление не удалось · повторить");action=startPanelUpdate;box.title=job.message||label}
+  else if(v.update){label=v.incomplete?tr("Доустановить компоненты"):tr("Обновить до v")+v.latest;action=startPanelUpdate}
   if(label){
     const b=btn(label,"",action);b.id="b_update";b.disabled=panelUpdating;
     if(!v.can_update&&!panelUpdating&&job.phase!=="done"){
-      b.disabled=true;box.title="Разработка: обновляйте чекаут через git. Кнопка доступна после установки панели.";
+      b.disabled=true;box.title=tr("Разработка: обновляйте чекаут через git. Кнопка доступна после установки панели.");
     }
     box.append(b);mobile.textContent=label;mobile.style.display="flex";mobile.disabled=b.disabled;
   }
@@ -1219,9 +1282,9 @@ async function loadVersion(){
 }
 async function startPanelUpdate(){
   if(panelUpdating||!panelVersion||!panelVersion.can_update)return;
-  if(sending||uploading||choosingImages){toast("Дождитесь окончания отправки или загрузки");return}
+  if(sending||uploading||choosingImages){toast(tr("Дождитесь окончания отправки или загрузки"));return}
   sheet(false);
-  renderVersion({...panelVersion,job:{phase:"checking",message:"Запускаю обновление…"}});
+  renderVersion({...panelVersion,job:{phase:"checking",message:tr("Запускаю обновление…")}});
   try{
     const result=await api("/api/update",{});renderVersion({...panelVersion,job:result.job});
   }catch(e){renderVersion({...panelVersion,job:{phase:"error",message:e.message}});toast(e.message)}
@@ -1241,19 +1304,19 @@ async function loadServer(){
   }catch(e){}
 }
 async function loadGithub(){
-  const body=$("gh_body");body.replaceChildren();$("gh_refresh").style.display="none";$("gh_state").textContent="GitHub: проверяю…";
+  const body=$("gh_body");body.replaceChildren();$("gh_refresh").style.display="none";$("gh_state").textContent=tr("GitHub: проверяю…");
   await ghStatus();
   if(!ghLogin){
-    $("gh_state").textContent="GitHub не подключён";
-    const b=el("button","ghbtn","Подключить GitHub");b.type="button";b.onclick=ghConnect;body.append(b);return;
+    $("gh_state").textContent=tr("GitHub не подключён");
+    const b=el("button","ghbtn",tr("Подключить GitHub"));b.type="button";b.onclick=ghConnect;body.append(b);return;
   }
   $("gh_state").textContent="GitHub: "+ghLogin;$("gh_refresh").style.display="";
-  const q=document.createElement("input");q.type="text";q.id="gh_q";q.className="search";q.placeholder="Поиск репозитория…";q.autocomplete="off";q.setAttribute("autocapitalize","off");
+  const q=document.createElement("input");q.type="text";q.id="gh_q";q.className="search";q.placeholder=tr("Поиск репозитория…");q.autocomplete="off";q.setAttribute("autocapitalize","off");
   q.oninput=renderRepos;const list=el("div","");list.id="gh_list";body.append(q,list);
   loadRepos(false);
 }
 async function loadRepos(refresh){
-  const list=$("gh_list");if(!list)return;list.textContent="Загружаю…";
+  const list=$("gh_list");if(!list)return;list.textContent=tr("Загружаю…");
   try{repos=(await api("/api/github/repos"+(refresh?"?refresh=1":""))).repos;renderRepos()}catch(e){list.textContent=e.message}
 }
 function renderRepos(){
@@ -1266,7 +1329,7 @@ function renderRepos(){
     row.append(el("span","rm",(r.pushed_at||"").slice(0,10)));
     row.title=r.description||"";row.onclick=()=>pickRepo(r);list.append(row);
   }
-  if(!list.children.length)list.textContent="Ничего не найдено";
+  if(!list.children.length)list.textContent=tr("Ничего не найдено");
 }
 function pickRepo(r){
   const repo=r.full_name.split("/")[1];
@@ -1280,7 +1343,7 @@ let newAgent="claude";
 function pickAgent(a){
   newAgent=a;for(const b of $("agsel").children)b.classList.toggle("on",b.dataset.a===a);
   $("n_skip_row").style.display=a==="shell"?"none":"";
-  if(a!=="shell")$("n_skip_lbl").textContent="Без подтверждений ("+AGENTS[a].skip+")";
+  if(a!=="shell")$("n_skip_lbl").textContent=tr("Без подтверждений (")+AGENTS[a].skip+")";
 }
 async function openNew(){
   drawer(false);
@@ -1288,10 +1351,10 @@ async function openNew(){
   $("dlg").showModal();loadGithub();
 }
 async function createSession(){
-  const name=$("n_name").value.trim();$("n_go").disabled=true;$("n_go").textContent="Создаю…";
+  const name=$("n_name").value.trim();$("n_go").disabled=true;$("n_go").textContent=tr("Создаю…");
   const ok=await post("/api/new",{name,project:$("n_proj").value.trim()||name,git:$("n_git").value.trim(),
     worktree:$("n_wt").checked,branch:$("n_branch").value.trim(),skip:$("n_skip").checked,agent:newAgent});
-  $("n_go").disabled=false;$("n_go").textContent="Создать";
+  $("n_go").disabled=false;$("n_go").textContent=tr("Создать");
   if(ok){$("dlg").close();for(const i of["n_name","n_proj","n_git","n_branch"])$(i).value="";select(name)}
 }
 
@@ -1320,12 +1383,12 @@ function stashDrafts(){
 function refreshInterface(){
   if(sending||uploading||choosingImages)return;
   try{stashDrafts()}catch(e){
-    if($("msg").value||attachmentsFor(active).length){toast("Не удалось сохранить черновик. Очистите поле перед обновлением.");return}
+    if($("msg").value||attachmentsFor(active).length){toast(tr("Не удалось сохранить черновик. Очистите поле перед обновлением."));return}
   }
   location.reload();
 }
 function canAutoRefresh(){
-  return !document.hidden&&!panelUpdating&&!sending&&!uploading&&!choosingImages&&!Array.from(imageAttachments.values()).some(images=>images.length)&&!Array.from(messageDrafts.values()).some(Boolean)&&!$("msg").value&&!$("dlg").open&&!$("draft_dlg").open&&!$("kimi_dlg").open&&
+  return !document.hidden&&!panelUpdating&&!sending&&!uploading&&!choosingImages&&!Array.from(imageAttachments.values()).some(images=>images.length)&&!Array.from(messageDrafts.values()).some(Boolean)&&!$("msg").value&&!$("dlg").open&&!$("draft_dlg").open&&!$("kimi_dlg").open&&!$("settings_dlg").open&&!$("integrations_dlg").open&&
     !$("sheet").classList.contains("on")&&!document.body.classList.contains("drawer")&&
     (!cur()||(curMode()==="screen"&&$("pre").scrollTop+$("pre").clientHeight>=$("pre").scrollHeight-40))&&
     !String(window.getSelection())&&
@@ -1364,7 +1427,7 @@ async function loadMetrics(){
     const cpu=Number.isFinite(data.cpu_percent)?Math.round(data.cpu_percent)+"%":"—";
     const hasMemory=Number.isFinite(data.memory_used)&&Number.isFinite(data.memory_total)&&data.memory_total>0;
     const ram=hasMemory?Math.round(data.memory_used/data.memory_total*100)+"%":"—";
-    const detail=hasMemory?" ("+(data.memory_used/1073741824).toFixed(1)+" / "+(data.memory_total/1073741824).toFixed(1)+" ГиБ)":"";
+    const detail=hasMemory?" ("+(data.memory_used/1073741824).toFixed(1)+" / "+(data.memory_total/1073741824).toFixed(1)+tr(" ГиБ)"):"";
     render(cpu,ram,detail);
   }catch(e){render("—","—")}
   finally{clearTimeout(timeout);loadingMetrics=false}

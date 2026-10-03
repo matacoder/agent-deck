@@ -4,7 +4,8 @@
   "scripts": {
     "test": "playwright test",
     "test:backend": "python3 -m unittest discover -s tests/backend -v",
-    "test:all": "npm run test:backend && npm test"
+    "test:all": "npm run test:backend && npm test",
+    "screenshots": "playwright test --config=scripts/screenshots.config.js"
   },
   "devDependencies": {
     "@playwright/test": "1.55.0"

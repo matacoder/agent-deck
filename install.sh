@@ -120,7 +120,10 @@ chown -h "$DEV_USER:$DEV_USER" "$PREFIX"
 as_user find "$SRC/panel" -maxdepth 1 -type f -exec install -m 644 {} "$PREFIX"/ \;
 as_user install -d -m 755 "$PREFIX/integrations"
 as_user find "$SRC/integrations" -maxdepth 1 -type f -name '*.py' -exec install -m 644 {} "$PREFIX/integrations"/ \;
+as_user install -d -m 755 "$PREFIX/locales"
+as_user find "$SRC/locales" -maxdepth 1 -type f \( -name '*.py' -o -name '*.json' \) -exec install -m 644 {} "$PREFIX/locales"/ \;
 
+[ -f "$SRC/locales/${PANEL_LANGUAGE:-en}.json" ] && [[ "${PANEL_LANGUAGE:-en}" =~ ^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$ ]] || die "unsupported PANEL_LANGUAGE"
 say "config"
 as_user install -d -m 700 "$H/.config/cc-panel"
 ENV="$H/.config/cc-panel/env"
@@ -131,6 +134,7 @@ if [ ! -f "$ENV" ]; then
     as_user tee "$ENV" >/dev/null <<EOF
 BIND_HOST=$BIND_HOST
 BIND_PORT=$PANEL_PORT
+PANEL_LANGUAGE=${PANEL_LANGUAGE:-en}
 PANEL_USER=$DEV_USER
 PANEL_PASSWORD=$NEW_PASS
 TTYD_SOCK=/run/user/$UID_/cc-ttyd.sock

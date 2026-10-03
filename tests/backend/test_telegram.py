@@ -7,7 +7,7 @@ from unittest.mock import Mock, patch
 
 from support import PanelCase, ROOT
 sys.path.insert(0, str(ROOT))
-from integrations.questions import parse_question, transcript_questions, matches_screen
+from integrations.questions import parse_question, transcript_questions, matches_screen, QuestionNotReady
 from integrations.store import Store
 from integrations.telegram import API, Telegram, TelegramError
 
@@ -28,6 +28,25 @@ def question(screen=SCREEN, instance='%1:123:conversation-1'):
 
 
 class QuestionTests(unittest.TestCase):
+    def test_actual_codex_async_form_with_enter_submit_footer(self):
+        screen='''• Working (2m • esc to interrupt)
+• Queued follow-up inputs
+
+Проверка ответа Telegram:
+какую плотность интерфейса выбрать?
+
+› 1. Компактно
+  2. Крупнее
+  3. Other
+
+enter submit   ctrl+] skip   shift+→ main prompt
+'''
+        q=question(screen)
+        self.assertIsNotNone(q)
+        self.assertEqual(q.title,'Проверка ответа Telegram:\nкакую плотность интерфейса выбрать?')
+        self.assertEqual(q.options,('Компактно','Крупнее','Other'))
+        from dataclasses import replace
+        self.assertTrue(matches_screen(replace(q,title=q.title.replace('\n',' '),request_id='async:0'),q))
     def test_cursor_is_not_identity_but_pane_conversation_and_question_are(self):
         q = question()
         moved = question(SCREEN.replace('› 1.', '  1.').replace('  2.', '› 2.'))
@@ -169,6 +188,17 @@ class TelegramTests(unittest.TestCase):
         self.service.handle(self.callback(row))
         self.answer.assert_called_once()
         self.assertIn('закрыт', [d['text'] for m, d in self.api.calls if m == 'answerCallbackQuery'][0])
+
+    def test_temporary_open_failure_keeps_buttons_for_a_user_retry(self):
+        self.pair();self.service.deliver()
+        row=self.service.database().pending()[0]
+        self.answer.side_effect=QuestionNotReady('Сначала ответьте на предыдущий вопрос')
+        self.service.handle(self.callback(row))
+        self.assertEqual(self.service.database().get(row['id'])['status'],'sent')
+        self.assertFalse(any(m=='editMessageReplyMarkup' for m,d in self.api.calls))
+        self.answer.side_effect=None
+        self.service.handle(self.callback(row))
+        self.assertEqual(self.service.database().get(row['id'])['status'],'answered')
 
     def test_crash_during_input_is_not_replayed(self):
         self.pair(); self.service.deliver()

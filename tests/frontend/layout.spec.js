@@ -72,3 +72,11 @@ test('desktop layout keeps sidebar visible and Enter sends', async ({ app, page 
   await expect(page.locator('#send_state')).toContainText('Отправлено');
   expect(app.sends).toHaveLength(1);
 });
+
+test('mobile drawer stays visible and accepts search after opening',async({app,page})=>{
+ await app.open({width:390});
+ await page.getByRole('button',{name:'Сессии',exact:true}).click();
+ await page.locator('#q').fill('other');
+ await expect(page.locator('#tabs .tab')).toHaveCount(1);
+ await expect(page.locator('#tabs .n')).toHaveText('other');
+});

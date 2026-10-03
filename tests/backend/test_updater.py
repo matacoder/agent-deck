@@ -28,11 +28,13 @@ class UpdaterTests(unittest.TestCase):
 
     def archive(self, extra=None, version="0.2.0"):
         files = {name: (version if name == "VERSION" else "# release file").encode() for name in updater.REQUIRED}
+        for name in updater.LOCALES:
+            files[name] = (ROOT/name).read_bytes()
         files.update(extra or {})
         result = io.BytesIO()
         with tarfile.open(fileobj=result, mode="w:gz") as archive:
             for name, content in files.items():
-                info = tarfile.TarInfo("repo-release/" + (name if name.startswith('integrations/') else 'panel/' + name))
+                info = tarfile.TarInfo("repo-release/" + (name if name.startswith(('integrations/', 'locales/')) else 'panel/' + name))
                 if content is None:
                     info.type = tarfile.SYMTYPE
                     info.linkname = "/tmp/escape"
@@ -79,6 +81,16 @@ class UpdaterTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 updater.unpack(b"", self.stage, "0.2.0")
         self.assertFalse((self.target / "escape").exists())
+
+    def test_additional_locales_are_validated_without_executing_downloaded_code(self):
+        spanish = json.dumps({'name':'Español','messages':{'Value {0}':'Valor {0}'}}).encode()
+        names = updater.unpack(self.archive({'locales/es.json':spanish}), self.stage, '0.2.0')
+        self.assertIn('locales/es.json', names)
+        for payload in (b'not JSON', b'{"name":"Test","messages":{"Value {0}":"Value {1}"}}'):
+            with self.assertRaises(ValueError):
+                updater.unpack(self.archive({'locales/es.json':payload}), self.stage, '0.2.0')
+        with self.assertRaises(ValueError):
+            updater.unpack(self.archive({'locales/../escape.json':spanish}), self.stage, '0.2.0')
 
     def test_success_installs_files_and_only_restarts_panel(self):
         names = updater.unpack(self.archive(), self.stage, "0.2.0")

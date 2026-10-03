@@ -118,6 +118,13 @@ class AttachmentTests(PanelCase):
                                      "\x1b[200~Explain this\nimage\n\nВложения временные: удаляются с сервера через 7 дней после загрузки. Если они нужны надолго, сохрани их в подходящем месте в проекте.\x1b[201~"])
         self.assertEqual([call.args[-1] for call in self.panel.tmux.call_args_list if call.args[0] == "send-keys"], ["Enter"])
 
+    def test_english_attachment_notice_preserves_user_message_and_paths(self):
+        attachment = self.upload()
+        self.panel.action_send({'name':'demo','text':'Сообщение пользователя','attachments':[attachment], '_language':'en'})
+        self.assertIn('Сообщение пользователя', self.pasted[-1])
+        self.assertIn('Attachments are temporary', self.pasted[-1])
+        self.assertNotIn('Вложения временные', self.pasted[-1])
+
     def test_image_only_send_and_claude_paths(self):
         attachment = self.upload()
         self.panel.action_send({"name": "demo", "attachments": [attachment]})

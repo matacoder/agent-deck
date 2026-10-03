@@ -2,6 +2,25 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z`.
 
+## 0.8.0 — 2026-10-03
+
+- Add English and Russian interface catalogs, browser-specific language selection in Settings,
+  localized login/errors/usage/Telegram acknowledgments and language-aware dates.
+- Default fresh installations to English; allow `PANEL_LANGUAGE=ru` at installation.
+  Support additional JSON catalogs with English fallback and validated placeholders.
+- Preserve unsent drafts, attachments, active session and view when switching languages.
+  Package locales for Linux, macOS and safe in-panel updates.
+- Recognize Codex's queued follow-up input form and its `enter submit` footer,
+  fixing Telegram answers that previously failed to open the question in Codex CLI 0.160.
+- Preserve Telegram answer buttons when opening a pending question temporarily fails;
+  never navigate blindly between unrelated forms or retry uncertain terminal input.
+- Polish Telegram setup with a compact card, connection indicator, delivery switch,
+  collapsed token controls and a compact mobile dialog.
+- Document one-time administrator pairing, private JSON/SQLite storage and the verified
+  Telegram-to-Codex reply flow. Add native-form and retry regression coverage.
+- Refresh desktop/mobile screenshots and repository documentation for macOS, Kimi,
+  Telegram replies, file attachments and host resource indicators.
+
 ## 0.7.0 — 2026-10-03
 
 - Add an Integrations section with Telegram bot configuration, expiring private-chat

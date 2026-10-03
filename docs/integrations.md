@@ -34,7 +34,12 @@ conversation, request, and question contents. Input uses the panel's existing
 per-session lock. For hidden Codex questions the adapter opens the question UI,
 matches its title/options, moves the cursor, checks the resulting selection, and
 confirms. Unknown menus or changed questions fail closed and direct the user to
-the panel. A newer direct user message supersedes older asynchronous questions.
+the panel. Codex CLI 0.160's **Queued follow-up inputs** form uses an `enter submit`
+footer and is supported in addition to the numbered question overlay. This path
+was verified with a real Telegram button response reaching the live Codex session.
+A temporary opening failure leaves the buttons available for another user click;
+the integration does not blindly navigate an unrelated queued form.
+A newer direct user message supersedes older asynchronous questions.
 Terminal formats vary between agent versions; unrecognized forms are not answered.
 The transcript reader reads a bounded two-megabyte tail to avoid scanning large
 conversations repeatedly.

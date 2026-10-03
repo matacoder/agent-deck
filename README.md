@@ -1,8 +1,10 @@
 # Agent Deck
 
-Run [Claude Code](https://claude.com/claude-code), [Codex](https://github.com/openai/codex) and plain
-terminals on your own server and use them from any browser — desktop or phone. Every session lives in
-tmux, so it keeps working when you close the tab and comes back after a reboot.
+A self-hosted workspace for [Claude Code](https://claude.com/claude-code),
+[Codex](https://github.com/openai/codex), Kimi and terminals. Install on Linux or
+macOS, work from a desktop or phone browser, and answer agent questions in Telegram.
+Sessions live in tmux, keep working after you close the tab, and can be restored
+after a reboot.
 
 ![Agent Deck on desktop](docs/screenshots/desktop.png)
 
@@ -17,12 +19,30 @@ tmux, so it keeps working when you close the tab and comes back after a reboot.
 - Tabs for all your sessions, grouped by project, with live terminals and "working / waiting / done" status.
 - Claude Code, Codex, Claude through Kimi, native Kimi Code or a plain terminal per tab; restart an agent keeping the conversation.
 - Pick a GitHub repo and start working; optional git worktree per session (one branch per agent).
-- Weekly Claude / Codex subscription limits with a pace forecast.
-- Phone friendly: home-screen app, message box, quick keys for agent prompts, image attachments.
+- Claude / Codex subscription limits with a pace forecast; Kimi usage windows and reset times.
+- Server CPU/RAM indicators beside the message composer.
+- Phone friendly: home-screen app, message box, question controls and file attachments up to 200 MB.
+- English and Russian UI, switchable in Settings; extensible file-based locales.
 - Telegram bot integration: receive agent questions with answer buttons in your private chat.
-- Survives disconnects and reboots; one-click install and login for Claude and Codex.
+- One-command installation on Linux and macOS, autostart and panel updates; in-panel agent setup and login.
+
+<img src="docs/screenshots/mobile-settings.png" width="260" alt="Interface language settings">
 
 ## Install
+
+New installations open in English. Change **Settings → Interface language** at any
+time; the choice is saved in your browser and preserves message drafts. For Russian
+from the first launch, set `PANEL_LANGUAGE=ru` on the installer:
+
+```bash
+# Linux
+curl -fsSL https://raw.githubusercontent.com/matacoder/agent-deck/main/get.sh | sudo PANEL_LANGUAGE=ru bash
+# macOS
+curl -fsSL https://raw.githubusercontent.com/matacoder/agent-deck/main/get.sh | PANEL_LANGUAGE=ru bash
+```
+
+[Adding another language](docs/localization.md) only requires a JSON catalog.
+
 
 On a fresh **Ubuntu 22.04 / 24.04** server:
 
@@ -37,7 +57,7 @@ log in to it, or pass `TS_AUTHKEY=tskey-...`).
 Then:
 
 1. Open the printed address and log in.
-2. In the sidebar, click **Log in** next to Claude and/or Codex, and **Connect** next to GitHub.
+2. In the sidebar, click **Sign in** next to Claude and/or Codex, and **Connect** next to GitHub.
 3. On a phone: Share → *Add to Home Screen*.
 
 ### macOS (Apple Silicon or Intel)
@@ -93,6 +113,7 @@ Put them before `bash` the same way, e.g. `sudo MEM_MAX=8G bash`:
 | Option | Meaning |
 |---|---|
 | `MEM_MAX`, `CPU_QUOTA` | Cap memory / CPU for everything the panel runs, e.g. `8G`, `200%` |
+| `PANEL_LANGUAGE` | Default interface locale: `en`, `ru`, or another installed catalog; default `en`. |
 | `DEV_USER` | Name of the (unprivileged) user that runs the sessions, default `dev` |
 | `WITH_DOCKER=0`, `WITH_CODEX=0` | Skip rootless Docker / Codex CLI |
 | `TS_AUTHKEY` | Join Tailscale without the interactive login |
@@ -111,11 +132,32 @@ Your settings are kept and running sessions are not interrupted. See [CHANGELOG.
 
 ## Telegram
 
-Open **Integrations** in the phone actions menu, or **Telegram → Configure** in the
-sidebar. Save an existing bot token from [@BotFather](https://t.me/BotFather), open
-the pairing link and press **Start**. Questions arrive with answer buttons; only
-your linked Telegram account can answer. The bot must not have another polling
-consumer or webhook. See [integration setup and architecture](docs/integrations.md).
+<img src="docs/screenshots/mobile-integrations.png" width="300" alt="Telegram integration: linked demo account, delivery switch and private token controls">
+
+Receive questions from Codex and Claude in your bot's private chat and answer by
+tapping a button. Codex questions can arrive while the agent continues working;
+the panel opens the queued question, selects your answer and confirms it in the
+correct session. Claude through Kimi uses the same Claude adapter; native Kimi uses
+recognized active terminal menus. Custom text and multiple selections use the panel.
+
+1. Open **⋯ → Integrations** on a phone, or **Telegram → Configure** in the sidebar.
+2. Paste your existing bot token from [@BotFather](https://t.me/BotFather) and save.
+3. Follow **Link my Telegram** and press **Start** in the bot's private chat.
+4. Answer a question using its buttons. The bot confirms when the answer reaches the agent.
+
+The pairing link contains a one-time code and expires after ten minutes. The panel
+gets the administrator's user/chat IDs from that authorized `/start` message;
+an ordinary `/start` does not grant access. Only the paired account can answer.
+Pause delivery with the switch or remove the token from the integration card.
+Use a dedicated bot without another polling consumer or webhook. No public server
+address, webhook endpoint or extra dependency is needed.
+
+Settings stay in JSON files. Telegram credentials and pairing are in
+`~/.config/cc-panel/integrations/telegram.json`; the durable question outbox is in
+`questions.sqlite3` alongside it. Both files are private (`600`), and SQLite needs
+no database server. Tokens are never returned to the browser or committed to git.
+Answers are protected against stale buttons, repeated clicks and uncertain replays
+after a restart. See [integration setup and architecture](docs/integrations.md).
 
 ## Security
 

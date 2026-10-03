@@ -24,7 +24,7 @@ class PanelCase(unittest.TestCase):
         self.home = Path(temporary).resolve()
         (self.home / ".config/cc-panel").mkdir(parents=True)
         self.enterContext(patch.dict(os.environ, {
-            "PANEL_PASSWORD": "test-password-only", "PANEL_USER": "test-user",
+            "PANEL_LANGUAGE": "ru", "PANEL_PASSWORD": "test-password-only", "PANEL_USER": "test-user",
             "BIND_HOST": "127.0.0.1", "PROJECTS_DIR": str(self.home / "projects"),
             "TTYD_SOCK": str(self.home / "ttyd.sock"),
             "UPDATE_REPO": "", "CHECKOUT": "",

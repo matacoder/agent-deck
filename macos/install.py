@@ -4,6 +4,7 @@ import argparse
 import importlib.util
 import json
 import os
+import re
 from pathlib import Path
 import plistlib
 import secrets
@@ -44,7 +45,7 @@ def configuration(home):
     path = config / 'macos.json'
     data = json.loads(path.read_text()) if path.exists() else {}
     defaults = {'BIND_HOST': '127.0.0.1', 'BIND_PORT': '8790',
-                'PANEL_USER': home.name, 'PANEL_PASSWORD': secrets.token_urlsafe(18),
+                'PANEL_LANGUAGE': 'en', 'PANEL_USER': home.name, 'PANEL_PASSWORD': secrets.token_urlsafe(18),
                 'PROJECTS_DIR': str(home / 'projects')}
     for key, value in defaults.items():
         data.setdefault(key, value)
@@ -52,6 +53,8 @@ def configuration(home):
     for key in defaults:
         if key in os.environ:
             data[key] = os.environ[key]
+    if not re.fullmatch(r'[a-z]{2,3}(?:-[A-Za-z0-9]{2,8})*', data['PANEL_LANGUAGE']) or not (SOURCE / 'locales' / (data['PANEL_LANGUAGE'] + '.json')).is_file():
+        raise ValueError('Unsupported PANEL_LANGUAGE')
     if data['BIND_HOST'] in ('0.0.0.0', '::') or ':' in data['BIND_HOST']:
         raise ValueError('Use localhost or a specific IPv4 address for BIND_HOST')
     socket.inet_aton(data['BIND_HOST'])
@@ -120,6 +123,9 @@ def install(home, start=True, open_browser=True):
             atomic_write(target / source.name, source.read_bytes(), 0o644)
     for source in (SOURCE / 'integrations').glob('*.py'):
         atomic_write(target / 'integrations' / source.name, source.read_bytes(), 0o644)
+    for source in (SOURCE / 'locales').iterdir():
+        if source.suffix in ('.py', '.json'):
+            atomic_write(target / 'locales' / source.name, source.read_bytes(), 0o644)
     atomic_write(config / 'tmux.conf', (SOURCE / 'config/tmux.conf').read_bytes(), 0o644)
     wrapper = home / '.claude/cc-session-hook.py'
     atomic_write(wrapper, (SOURCE / 'claude/cc-session-hook.py').read_bytes(), 0o755)

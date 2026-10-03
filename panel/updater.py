@@ -19,7 +19,8 @@ REPO_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]*/[A-Za-z0-9][A-Za-z0-9_.-]*")
 TAG_RE = re.compile(r"v?(\d+)\.(\d+)\.(\d+)")
 REQUIRED = {"panel.py", "index.html", "login.html", "VERSION", "updater.py", "session_hook.py"}
 PACKAGES = {"integrations/" + name for name in ("__init__.py", "questions.py", "store.py", "telegram.py")}
-REQUIRED |= PACKAGES
+LOCALES = {"locales/__init__.py", "locales/en.json", "locales/ru.json"}
+REQUIRED |= PACKAGES | LOCALES
 ALLOWED = REQUIRED | {"icon-180.png", "icon-192.png", "icon-512.png", "manifest.webmanifest", "make_icons.py"}
 RUNNING = {"checking", "downloading", "installing", "restarting"}
 
@@ -85,14 +86,17 @@ def unpack(data, stage, version):
     with tarfile.open(fileobj=io.BytesIO(data), mode="r:gz") as archive:
         for member in archive:
             parts = member.name.split("/")
-            if len(parts) < 2 or parts[1] not in ("panel", "integrations"):
+            if len(parts) < 2 or parts[1] not in ("panel", "integrations", "locales"):
                 continue
             if member.isdir() and len(parts) <= 3:
                 continue
-            name = '/'.join(parts[1:]) if parts[1] == 'integrations' else '/'.join(parts[2:])
+            name = '/'.join(parts[1:]) if parts[1] in ('integrations', 'locales') else '/'.join(parts[2:])
             package_module = parts[1] == 'integrations' and len(parts) == 3 and re.fullmatch(r'(?:[a-z][a-z0-9_]*|__init__)\.py', parts[2])
-            if len(parts) != 3 or (name not in ALLOWED and not package_module) or not member.isfile():
+            locale_file = parts[1] == 'locales' and len(parts) == 3 and re.fullmatch(r'[a-z]{2,3}(?:-[A-Za-z0-9]{2,8})*\.json', parts[2])
+            if len(parts) != 3 or (name not in ALLOWED and not package_module and not locale_file) or not member.isfile():
                 raise ValueError("Недопустимый файл в релизе")
+            if locale_file and member.size > 1024 * 1024:
+                raise ValueError('Locale catalog exceeds the size limit')
             total += member.size
             if name in found or member.size > 16 * 1024 * 1024 or total > 64 * 1024 * 1024:
                 raise ValueError("Недопустимый размер или повтор файла релиза")
@@ -103,6 +107,18 @@ def unpack(data, stage, version):
             found.add(name)
     if not REQUIRED <= found or (stage / "VERSION").read_text().strip() != version:
         raise ValueError("Релиз неполный или версия не совпадает")
+    # Validate catalog structure and placeholders before replacing a running installation.
+    for name in found:
+        if name.startswith('locales/') and name.endswith('.json'):
+            data = json.loads((stage / name).read_text())
+            if (not isinstance(data, dict) or not isinstance(data.get('name'), str)
+                    or not 1 <= len(data['name']) <= 80 or not isinstance(data.get('messages'), dict)
+                    or len(data['messages']) > 3000):
+                raise ValueError('Invalid locale catalog')
+            for key, value in data['messages'].items():
+                if (not isinstance(key, str) or not isinstance(value, str) or len(key) > 10000 or len(value) > 10000
+                        or sorted(re.findall(r'\{\d+\}', key)) != sorted(re.findall(r'\{\d+\}', value))):
+                    raise ValueError('Invalid locale translation')
     # Reject broken backend syntax before stopping the running service.
     for name in found:
         if not name.endswith('.py'):

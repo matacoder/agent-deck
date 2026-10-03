@@ -77,10 +77,10 @@ from pathlib import Path
 tty.setraw(0)
 selected=0
 def render():
- print('\\x1b[2J\\x1b[HQuestion 1/1\\r\\nChoose an installation?\\r\\n',end='')
+ print('\\x1b[2J\\x1b[H• Queued follow-up inputs\\r\\nChoose an installation?\\r\\n',end='')
  for i,label in enumerate(['Homebrew','Manual']):
   print(('›' if selected==i else ' ')+' '+str(i+1)+'. '+label+'\\r')
- print('enter to submit answer\\r',flush=True)
+ print('enter submit   ctrl+] skip   shift+→ main prompt\\r',flush=True)
 render()
 while True:
  data=os.read(0,4096)

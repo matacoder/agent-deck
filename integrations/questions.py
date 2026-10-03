@@ -25,7 +25,11 @@ class Question:
 
 
 OPTION = re.compile(r"^\s*([›❯>●]?)\s*(\d{1,2})[.)]\s+(.+)$")
-FOOTER = re.compile(r"(?:enter|return|⏎)\s+(?:to\s+)?(?:submit (?:answer|all)|select|confirm|continue|proceed)", re.I)
+FOOTER = re.compile(r"(?:enter|return|⏎)\s+(?:to\s+)?(?:submit(?: (?:answer|all))?|select|confirm|continue|proceed)\b", re.I)
+
+
+class QuestionNotReady(ValueError):
+    retryable = True
 
 
 def parse_question(session, agent, instance, screen):
@@ -44,10 +48,14 @@ def parse_question(session, agent, instance, screen):
         return None  # Notes focus requires a different adapter, never send selection keys there.
     start = max(0, end - 60)
     headers = [i for i in range(start, end) if re.match(r"^Question \d+/\d+", lines[i])]
+    queued = [i for i in range(start, end) if 'Queued follow-up inputs' in lines[i]]
+    async_form = bool(queued and re.search(r'shift\+\s*→\s+main prompt', lines[end], re.I))
     progress = ""
     if headers:
         start = headers[-1] + 1
         progress = re.match(r"Question \d+/\d+", lines[headers[-1]])[0]
+    elif async_form:
+        start = queued[-1] + 1
     rows = [(i, OPTION.match(lines[i])) for i in range(start, end) if OPTION.match(lines[i])]
     if not rows or not any(match[1] for _, match in rows):
         return None
@@ -62,7 +70,7 @@ def parse_question(session, agent, instance, screen):
     if len(marked) != 1:
         return None
     first = rows[0][0]
-    if not headers:
+    if not headers and not async_form:
         # Separators bound the dialog and keep preceding conversation out of notifications.
         separators = [i for i in range(start, first) if re.match(r"^[─━═╌┄╭╰┌└][─━═╌┄╭╰┌└┐┘╮╯\s]*$", lines[i])]
         if separators:
@@ -72,7 +80,7 @@ def parse_question(session, agent, instance, screen):
     title = "\n".join(line for line in lines[start:first] if line).strip()
     if not title:
         return None
-    if not headers and not re.search(r"\?|would you|do you|allow|proceed|choose|выберите|разрешить", title, re.I):
+    if not headers and not async_form and not re.search(r"\?|would you|do you|allow|proceed|choose|выберите|разрешить", title, re.I):
         return None
     options = tuple(match[3].strip() for _, match in rows)
     if any(re.match(r'\[[ xX✓]\]', label) for label in options) or any('space to toggle' in line.lower() for line in lines[start:end + 2]):

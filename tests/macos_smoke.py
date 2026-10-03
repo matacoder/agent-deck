@@ -86,7 +86,7 @@ with tempfile.TemporaryDirectory(prefix='deck-update-', dir='/tmp') as directory
             relative = str(source.relative_to(runtime))
             if source.is_file() and relative in updater.REQUIRED | updater.ALLOWED:
                 payload = source.read_bytes()
-                member = tarfile.TarInfo('release/' + (relative if relative.startswith('integrations/') else 'panel/' + relative))
+                member = tarfile.TarInfo('release/' + (relative if relative.startswith(('integrations/', 'locales/')) else 'panel/' + relative))
                 member.size = len(payload)
                 bundle.addfile(member, io.BytesIO(payload))
     (fixture / 'release.tar.gz').write_bytes(archive.getvalue())

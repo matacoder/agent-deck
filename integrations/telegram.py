@@ -12,6 +12,11 @@ import time
 import urllib.error
 import urllib.request
 
+try:
+    import locales
+except ModuleNotFoundError:
+    locales = None
+
 from .questions import Question
 from .store import Store
 
@@ -89,6 +94,14 @@ class Telegram:
         self.started = False
         self.seen = {}
 
+    def translate(self, text):
+        if locales is None:
+            return text
+        language = self.config.get('language', os.environ.get('PANEL_LANGUAGE', 'en'))
+        if language not in {item['code'] for item in locales.available()}:
+            language = 'en'
+        return locales.translate_message(text, language)
+
     def database(self):
         with self.lock:
             if self.store is None:
@@ -124,11 +137,15 @@ class Telegram:
                 raise ValueError('У бота уже настроен webhook. Используйте отдельного бота или отключите webhook самостоятельно.')
             if not bot.get('is_bot') or not re.fullmatch(r'[A-Za-z0-9_]{5,32}', bot.get('username', '')):
                 raise ValueError('Telegram не вернул имя бота')
+            language = data.get('language', self.config.get('language', os.environ.get('PANEL_LANGUAGE', 'en')))
+            if locales is not None and language not in {item['code'] for item in locales.available()}:
+                raise ValueError('Invalid language')
             changed = token != self.config.get('token')
             if changed:
                 self.config = {}
                 self.pair_code = None
                 self.database().reset()
+            self.config.update(language=language)
             self.config.update(token=token, bot=bot['username'], enabled=data.get('enabled', True))
             atomic_json(self.path, self.config)
             self.error = ''
@@ -245,7 +262,7 @@ class Telegram:
                 self.pair_code = None
                 atomic_json(self.path, c)
                 self.api.call(c['token'], 'sendMessage', chat_id=chat['id'],
-                              text='Agent Deck подключён. Вопросы агентов придут сюда с кнопками ответа.')
+                              text=self.translate('Agent Deck подключён. Вопросы агентов придут сюда с кнопками ответа.'))
             return
         callback = update.get('callback_query')
         if not callback:
@@ -269,7 +286,7 @@ class Telegram:
                             raise ValueError('Неверный вариант ответа')
                         self.answer(q, index)
                     except ValueError as error:
-                        self.database().set_status(row['id'], 'expired')
+                        self.database().set_status(row['id'], 'sent' if getattr(error, 'retryable', False) else 'expired')
                         result_text = str(error)
                     except Exception:
                         self.database().set_status(row['id'], 'uncertain')
@@ -277,7 +294,8 @@ class Telegram:
                     else:
                         self.database().set_status(row['id'], 'answered')
                         result_text = 'Ответ передан агенту'
-                    self.api.call(c['token'], 'editMessageReplyMarkup', chat_id=c['chat_id'],
-                                  message_id=msg['message_id'], reply_markup={'inline_keyboard': []})
+                    if self.database().get(row['id'])['status'] != 'sent':
+                        self.api.call(c['token'], 'editMessageReplyMarkup', chat_id=c['chat_id'],
+                                      message_id=msg['message_id'], reply_markup={'inline_keyboard': []})
         self.api.call(c['token'], 'answerCallbackQuery', callback_query_id=callback['id'],
-                      text=result_text[:180], show_alert=result_text != 'Ответ передан агенту')
+                      text=self.translate(result_text)[:180], show_alert=result_text != 'Ответ передан агенту')

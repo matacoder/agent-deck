@@ -5,6 +5,17 @@ const path = require('node:path');
 const panelDir = path.resolve(__dirname, '../../panel');
 const html = fs.readFileSync(path.join(panelDir, 'index.html'), 'utf8');
 const loginHtml = fs.readFileSync(path.join(panelDir, 'login.html'), 'utf8').replace('{{USER}}', 'test-user').replace('{{ERROR}}', '');
+const catalogs=Object.fromEntries(['en','ru'].map(code=>[code,JSON.parse(fs.readFileSync(path.resolve(panelDir,'../locales',code+'.json'),'utf8')).messages]));
+function renderLocalized(html,language,messages){
+  const start=html.indexOf('<script>');const end=start<0?html.length:start;
+  const escape=x=>x.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
+  const head=html.slice(0,end).replace(/>([^<>]+)<|(title|placeholder|aria-label)="([^"]*)"/g,(all,text,attr,value)=>{
+    const key=text??value;if(!(key in messages))return all;
+    const translated=escape(messages[key].replaceAll('&gt;','>'));
+    return text!==undefined?'>'+translated+'<':attr+'="'+translated+'"';
+  }).replace(/<html lang="[^"]*"/,'<html lang="'+language+'"');
+  return (head+html.slice(end)).replace('__PANEL_I18N__',JSON.stringify({language,messages}).replaceAll('<','\\u003c'));
+}
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a1X8AAAAASUVORK5CYII=', 'base64');
 
 function session(name, overrides = {}) {
@@ -18,9 +29,9 @@ function session(name, overrides = {}) {
 const test = base.extend({
   app: async ({ page }, use) => {
     const errors = [];
-    page.on('pageerror', error => errors.push(error.message));
+    page.on('pageerror', error => {errors.push(error.message); console.error(error.stack)});
     const app = {
-      page, sessions: [session('tmux'), session('other', { activity: 2 }), session('shell', { agent: 'shell', command: 'bash' })],
+      page, language:'ru', catalogs, sessions: [session('tmux'), session('other', { activity: 2 }), session('shell', { agent: 'shell', command: 'bash' })],
       metrics: { cpu_percent: 24, memory_used: 3221225472, memory_total: 8589934592 }, metricsError: false,
       revision: 'fixture-version', sends: [], uploads: [], sendError: null,
       uploadError: null, sendGate: null, navigations: 0, usage: {},
@@ -64,11 +75,13 @@ const test = base.extend({
             // WebKit routing cannot synthesize redirects; backend tests cover the real 303.
             return route.fulfill({ contentType: 'text/html', body: '<script>location.replace("/")</script>' });
           }
-          return route.fulfill({ contentType: 'text/html', body: loginHtml });
+          return route.fulfill({ contentType: 'text/html', body: renderLocalized(loginHtml,app.language,app.catalogs[app.language]) });
         case '/':
         case '/index.html':
           app.navigations++;
-          return route.fulfill({ contentType: 'text/html', body: html.replace('__PANEL_REVISION__', app.revision) });
+          const language=(await page.context().cookies(url.toString())).find(x=>x.name==='cc_lang')?.value||app.language;
+          return route.fulfill({ contentType: 'text/html', body: renderLocalized(html.replace('__PANEL_REVISION__', app.revision),language,app.catalogs[language]) });
+        case '/api/locales': return json({languages:[{code:'en',name:'English'},{code:'ru',name:'Русский'}]});
         case '/api/ui-version': return json({ revision: app.revision });
         case '/api/sessions': {
           app.sessionRequests.push(url.searchParams.get('preview'));

@@ -22,6 +22,8 @@ PYTHON
 find "$SRC/panel" -maxdepth 1 -type f -exec install -m 644 {} "$PREFIX"/ \;
 install -d -m 755 "$PREFIX/integrations"
 find "$SRC/integrations" -maxdepth 1 -type f -name '*.py' -exec install -m 644 {} "$PREFIX/integrations"/ \;
+install -d -m 755 "$PREFIX/locales"
+find "$SRC/locales" -maxdepth 1 -type f \( -name '*.py' -o -name '*.json' \) -exec install -m 644 {} "$PREFIX/locales"/ \;
 rm -rf "$SRC/panel/__pycache__"
 
 units_changed=0

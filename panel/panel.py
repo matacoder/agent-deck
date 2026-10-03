@@ -61,7 +61,14 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 if os.path.isdir(os.path.join(os.path.dirname(HERE), "integrations")):
     sys.path.insert(0, os.path.dirname(HERE))
 try:
-    from integrations.questions import parse_question, transcript_questions, matches_screen
+    import locales
+    if not {'en', 'ru'} <= {item['code'] for item in locales.available()}:
+        locales = None
+except ModuleNotFoundError:
+    locales = None  # Legacy updaters repair the optional catalog package on the next run.
+DEFAULT_LANGUAGE = os.environ.get("PANEL_LANGUAGE", "en")
+try:
+    from integrations.questions import parse_question, transcript_questions, matches_screen, QuestionNotReady
     from integrations.telegram import Telegram
 except ModuleNotFoundError:
     Telegram = None  # A pre-0.7 updater installs core files first; its next run repairs packages.
@@ -561,13 +568,18 @@ def send_input(d):
         agent = opt(name, "@cc_agent") or "claude"
         if paths and agent == "shell":
             raise ValueError("файлы можно приложить к Claude или Codex")
+        language = d.get('_language', DEFAULT_LANGUAGE)
+        def translated(message):
+            if locales is None or language not in {item['code'] for item in locales.available()}:
+                return message
+            return locales.translate(message, language)
         files = [path for path in paths if "--" in os.path.basename(path)]
         if paths:
-            text = (text + "\n\nВложения временные: удаляются с сервера через 7 дней после загрузки. "
-                    "Если они нужны надолго, сохрани их в подходящем месте в проекте.").lstrip()
+            text = (text + translated("\n\nВложения временные: удаляются с сервера через 7 дней после загрузки. "
+                    "Если они нужны надолго, сохрани их в подходящем месте в проекте.")).lstrip()
         paths = [path for path in paths if "--" not in os.path.basename(path)]
         if files:
-            text = (text + "\n\nПриложенные файлы (прочитай их с диска):\n" + "\n".join(files)).lstrip()
+            text = (text + translated("\n\nПриложенные файлы (прочитай их с диска):\n") + "\n".join(files)).lstrip()
         if paths and agent == "codex":
             for path in paths:
                 paste_to_tmux(name, path)
@@ -575,7 +587,7 @@ def send_input(d):
                 paste_to_tmux(name, text)
         else:
             if paths:
-                text = (text + "\n\nПосмотри приложенные изображения:\n" + "\n".join(paths)).lstrip()
+                text = (text + translated("\n\nПосмотри приложенные изображения:\n") + "\n".join(paths)).lstrip()
             if paths:
                 paste_to_tmux(name, text)
             elif text:
@@ -708,7 +720,7 @@ def _semver(v):
 def version_info():
     info = {"version": VERSION, "checkout": CHECKOUT, "repo": UPDATE_REPO,
             "can_update": updater.available(HERE, UPDATE_REPO), "job": updater.status(UPDATE_STATE)}
-    info['incomplete'] = Telegram is None
+    info['incomplete'] = Telegram is None or locales is None
     if not UPDATE_REPO:
         return info
 
@@ -955,10 +967,12 @@ def answer_question(question, index):
                     current = current_question(question.session)
                     if matches_screen(question, current):
                         break
-                    if current:
+                    if current and current.progress:
                         tmux('send-keys', '-t', f'={PREFIX}{question.session}:', 'Right')
+                    elif current:
+                        raise QuestionNotReady('Сначала ответьте на предыдущий вопрос в Telegram, затем повторите нажатие')
                 else:
-                    raise ValueError('Не удалось открыть этот вопрос. Ответьте через панель.')
+                    raise QuestionNotReady('Не удалось открыть этот вопрос. Повторите нажатие, когда Codex покажет форму.')
             # From this point the terminal overlay is the authority for input.
             question = current
         if not current or current.fingerprint != question.fingerprint:
@@ -987,7 +1001,7 @@ telegram_integration = None
 def telegram_service():
     global telegram_integration
     if Telegram is None:
-        raise ValueError('Нажмите «Установить интеграции» в меню обновлений панели')
+        raise ValueError('Нажмите «Доустановить компоненты» в меню обновлений панели')
     with telegram_lock:
         if telegram_integration is None:
             telegram_integration = Telegram(os.path.expanduser('~/.config/cc-panel/integrations'),
@@ -1072,9 +1086,24 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", "0")
         self.end_headers()
 
+    def language(self):
+        if locales is None:
+            return 'ru'
+        allowed = {item['code'] for item in locales.available()}
+        cookie = SimpleCookie(self.headers.get('Cookie', ''))
+        choice = cookie['cc_lang'].value if 'cc_lang' in cookie else DEFAULT_LANGUAGE
+        return choice if choice in allowed else 'en'
+
+    def localized_page(self, page):
+        if locales is not None:
+            return locales.render_html(page, self.language())
+        return page.replace('__PANEL_I18N__', '{"language":"ru","messages":{}}')
+
     def login_page(self, error=""):
         with open(os.path.join(HERE, "login.html"), encoding="utf-8") as login_file:
             html = login_file.read()
+        html = self.localized_page(html)
+        error = locales.translate(error, self.language()) if locales is not None else error
         html = html.replace("{{ERROR}}", error).replace("{{USER}}", PANEL_USER)
         self.send_body(200 if not error else 401, html.encode(), "text/html; charset=utf-8")
 
@@ -1136,6 +1165,8 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def send_json(self, code, obj):
+        if locales is not None:
+            obj = locales.response(obj, self.language())
         self.send_body(code, json.dumps(obj, ensure_ascii=False).encode(), "application/json")
 
     def do_GET(self):
@@ -1148,6 +1179,8 @@ class Handler(BaseHTTPRequestHandler):
             self.send_json(500, {"error": "не удалось обработать запрос"})
 
     def get_request(self):
+        if self.path == '/api/locales':
+            return self.send_json(200, {'languages': locales.available() if locales is not None else [{'code': 'ru', 'name': 'Русский'}]})
         if self.path in STATIC:
             return self.serve_static()
         if self.path == "/login":
@@ -1160,6 +1193,7 @@ class Handler(BaseHTTPRequestHandler):
             with open(PAGE_FILE, "rb") as f:
                 page = f.read()
             revision = hashlib.sha256(page).hexdigest().encode()
+            page = self.localized_page(page.decode()).encode()
             page = page.replace(b"__PANEL_REVISION__", revision)
             return self.send_body(200, page, "text/html; charset=utf-8")
         if self.path == "/api/ui-version":
@@ -1231,6 +1265,8 @@ class Handler(BaseHTTPRequestHandler):
             if not isinstance(data, dict):
                 raise ValueError("неверный запрос")
             action = m.group(1)
+            if action == 'send':
+                data['_language'] = self.language()
             with action_lock:
                 if action == "update":
                     if actions_in_progress:
