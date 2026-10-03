@@ -121,7 +121,9 @@ main{flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;backgrou
 .composer{flex:none;border-top:1px solid var(--bd);background:var(--side);padding:8px 8px max(8px,var(--sab))}
 .keys-row{display:flex;gap:8px;align-items:flex-start}
 .keyboard-hide{display:none;flex:none;height:36px;padding:0 10px;border:1px solid var(--bd);border-radius:9px;background:var(--side2);color:var(--fg2);font-size:12px}
-.keys{flex:1;min-width:0;display:flex;gap:6px;overflow-x:auto;padding-bottom:8px;scrollbar-width:none}
+.keys{flex:1;min-width:0;display:flex;flex-wrap:wrap;gap:6px;padding-bottom:8px}
+.question-key{display:none!important}
+body.is-codex .question-key{display:inline-flex!important;align-items:center;justify-content:center}
 .keys::-webkit-scrollbar{display:none}
 .key{flex:none;background:var(--side2);border:1px solid var(--bd);border-radius:8px;min-width:38px;height:32px;padding:0 10px;font:12.5px var(--mono);color:var(--fg)}
 .key:active{background:var(--sel)}
@@ -257,7 +259,10 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 
   #pre{font-size:13px;line-height:1.5;padding:12px}
   .composer{padding-top:10px}
-  .keys{gap:8px}
+  .keys{gap:4px}
+  .keys:not(.expanded) .key-extra{display:none}
+  .keys .key-primary{min-width:36px;padding:0 6px}
+  .keyboard-hide{width:36px;padding:0}
   .seg{flex:none}
   .seg button{padding:8px}
   body.keyboard-open #msg{max-height:96px}
@@ -313,14 +318,20 @@ body.is-shell .agent-only{display:none!important}
         <div id="pre"></div>
         <div class="composer">
           <div class="keys-row">
-          <div class="keys">
-            <button class="key num" onclick="key('1')">1</button><button class="key num" onclick="key('2')">2</button><button class="key num" onclick="key('3')">3</button>
-            <button class="key" onclick="key('Escape')">Esc</button><button class="key" onclick="key('Up')">↑</button><button class="key" onclick="key('Down')">↓</button>
-            <button class="key" onclick="key('Enter')">⏎</button><button class="key" onclick="key('BTab')">⇧Tab</button><button class="key" onclick="key('Tab')">Tab</button>
-            <button class="key" onclick="key('C-c')">^C</button>
-            <button class="key" id="b_wrap" onclick="toggleWrap()" aria-pressed="true">Перенос</button>
+          <div class="keys" id="keys">
+            <button class="key key-primary question-key" onclick="key('S-Left')" aria-label="Предыдущий вопрос" title="Вопросы Codex: Shift+←">?←</button>
+            <button class="key key-primary question-key" onclick="key('S-Right')" aria-label="Следующий вопрос" title="Вопросы Codex: Shift+→">?→</button>
+            <button class="key key-primary" onclick="key('Up')" aria-label="Вариант выше">↑</button><button class="key key-primary" onclick="key('Down')" aria-label="Вариант ниже">↓</button>
+            <button class="key key-primary" onclick="key('Enter')" aria-label="Подтвердить выбор" title="Enter — подтвердить выбранный ответ">⏎</button>
+            <button class="key key-primary m-only" id="b_keymore" onclick="toggleKeys()" aria-expanded="false" aria-label="Другие клавиши">…</button>
+            <button class="key key-extra num" onclick="key('1')">1</button><button class="key key-extra num" onclick="key('2')">2</button><button class="key key-extra num" onclick="key('3')">3</button>
+            <button class="key key-extra" onclick="key('Left')" aria-label="Влево">←</button><button class="key key-extra" onclick="key('Right')" aria-label="Вправо">→</button>
+            <button class="key key-extra" onclick="key('Escape')">Esc</button>
+            <button class="key key-extra" onclick="key('BTab')">⇧Tab</button><button class="key key-extra" onclick="key('Tab')">Tab</button>
+            <button class="key key-extra" onclick="key('C-c')">^C</button>
+            <button class="key key-extra" id="b_wrap" onclick="toggleWrap()" aria-pressed="true">Перенос</button>
           </div>
-          <button class="keyboard-hide" id="b_keyboard" onpointerdown="event.preventDefault()" onclick="hideKeyboard()" aria-label="Скрыть клавиатуру">Скрыть клавиатуру</button>
+          <button class="keyboard-hide" id="b_keyboard" onpointerdown="event.preventDefault()" onclick="hideKeyboard()" aria-label="Скрыть клавиатуру" title="Скрыть клавиатуру"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="2" y="3" width="20" height="12" rx="2"/><path d="M5 7h2m3 0h2m3 0h2m2 0h1M6 11h12m-9 8 3 3 3-3"/></svg></button>
           </div>
           <div id="attachments" aria-label="Приложенные файлы"></div>
           <input type="file" id="image_files" multiple hidden>
@@ -567,6 +578,7 @@ function renderTabs(){
 function renderTitle(){
   const s=cur(),t=$("title");t.replaceChildren();
   document.body.classList.toggle("is-shell",!!s&&agentOf(s)==="shell");
+  document.body.classList.toggle("is-codex",!!s&&agentOf(s)==="codex");
   $("msg").placeholder=s?"Сообщение в "+AGENTS[agentOf(s)].label+"…":"Сообщение агенту…";
   if(!s){t.textContent=isMobile()?"Agent Deck":"—";return}
   const st=state(s);
@@ -958,6 +970,7 @@ async function send(){
 }
 function key(k){if(active&&!sending&&!uploading&&!panelUpdating)post("/api/send",{name:active,key:k})}
 async function logout(){await fetch("/logout",{method:"POST"});location.href="/login"}
+function toggleKeys(){const expanded=$("keys").classList.toggle("expanded");$("b_keymore").setAttribute("aria-expanded",String(expanded))}
 function hideKeyboard(){
   const focused=document.activeElement;
   if(focused&&typeof focused.blur==="function")focused.blur();

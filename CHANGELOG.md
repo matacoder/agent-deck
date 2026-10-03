@@ -4,6 +4,8 @@ Versions follow [semver](https://semver.org). Install a version with `sudo ./upd
 
 ## 0.6.0 — 2026-10-03
 
+- Keep Codex question navigation, arrow keys and answer confirmation visible on phones;
+  put secondary keys in an expandable row and make the hide-keyboard button compact.
 - Install on macOS with one Terminal command, without sudo: Homebrew dependencies,
   Claude/Codex, private local panel, browser launch and LaunchAgent autostart.
 - Keep a separate Agent Deck tmux server on Mac; preserve user tmux configuration,

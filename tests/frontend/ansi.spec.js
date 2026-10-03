@@ -27,9 +27,11 @@ test('terminal separators stay compact and long lines can switch wrapping', asyn
   await app.open();
   await expect(page.locator('#pre .hr')).toHaveCount(1);
   expect((await page.locator('#pre .hr').boundingBox()).height).toBe(1);
+  if (!await page.locator('#b_wrap').isVisible()) await page.getByRole('button', { name: 'Другие клавиши' }).click();
   await page.locator('#b_wrap').click();
   await expect(page.locator('#pre')).toHaveClass(/no-wrap/);
   expect(await page.locator('#pre').evaluate(el => el.scrollWidth > el.clientWidth)).toBe(true);
+  if (!await page.locator('#b_wrap').isVisible()) await page.getByRole('button', { name: 'Другие клавиши' }).click();
   await page.locator('#b_wrap').click();
   await expect(page.locator('#pre')).not.toHaveClass(/no-wrap/);
 });

@@ -16,6 +16,22 @@ spec.loader.exec_module(installer)
 
 
 class MacPlatformTests(PanelCase):
+    def test_server_startup_does_not_wait_for_reverse_dns(self):
+        with patch.object(self.panel.socket, 'getfqdn', side_effect=AssertionError('reverse DNS must not run')):
+            server = self.panel.PanelHTTPServer(('127.0.0.1', 0), self.panel.Handler)
+            try:
+                self.assertEqual(server.server_name, '127.0.0.1')
+                self.assertGreater(server.server_port, 0)
+            finally:
+                server.server_close()
+
+    def test_question_navigation_keys_are_forwarded_without_text_paste(self):
+        self.allow_session()
+        for key in ('S-Left', 'S-Right', 'Left', 'Right', 'Up', 'Down', 'Enter'):
+            self.panel.action_send({'name': 'demo', 'key': key})
+            self.panel.tmux.assert_called_with('send-keys', '-t', '=cc-demo:', key)
+        self.assertEqual(self.pasted, [])
+
     def test_metrics_use_cumulative_cpu_across_request_threads(self):
         from collections import namedtuple
         cpu = namedtuple('cpu', 'user system idle')

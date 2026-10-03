@@ -32,6 +32,7 @@ from http.cookies import SimpleCookie
 from urllib.parse import parse_qs
 from urllib.parse import urlsplit
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from socketserver import TCPServer
 import updater
 import session_hook as kimi_config
 
@@ -540,7 +541,7 @@ def send_input(d):
     key = d.get("key")
     if key is not None and not isinstance(key, str):
         raise ValueError("неверная клавиша")
-    if key in ("Escape", "Enter", "C-c", "Up", "Down", "Tab", "BTab"):
+    if key in ("Escape", "Enter", "C-c", "Up", "Down", "Left", "Right", "S-Left", "S-Right", "Tab", "BTab"):
         tmux("send-keys", "-t", f"={PREFIX}{name}:", key)
     elif key and len(key) == 1 and key in "123456789yn":
         tmux("send-keys", "-t", f"={PREFIX}{name}:", "-l", key)
@@ -870,6 +871,14 @@ def usage():
 
 
 ACTIONS = {"kimi_config": lambda d: {"kimi": kimi_config.save(d)}, "agent_install": action_agent_install, "agent_login": action_agent_login, "github_login": action_github_login, "new": action_new, "restart": action_restart, "kill": action_kill, "send": action_send, "upload": action_upload, "update": action_update, "discard_upload": action_discard_upload}
+
+
+class PanelHTTPServer(ThreadingHTTPServer):
+    def server_bind(self):
+        # HTTPServer normally reverse-resolves the bind address here. On macOS
+        # this can block startup (including update recovery) waiting on DNS.
+        TCPServer.server_bind(self)
+        self.server_name, self.server_port = self.server_address[:2]
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -1265,7 +1274,7 @@ def main():
         config = os.path.expanduser("~/.config/cc-panel/tmux.conf")
         tmux("-f", config, "new-session", "-d", "-s", "_keep")
     threading.Thread(target=sync_loop, daemon=True).start()
-    httpd = ThreadingHTTPServer((BIND_HOST, BIND_PORT), Handler)
+    httpd = PanelHTTPServer((BIND_HOST, BIND_PORT), Handler)
     httpd.daemon_threads = True
     print(f"cc-panel on http://{BIND_HOST}:{BIND_PORT}", flush=True)
     httpd.serve_forever()
