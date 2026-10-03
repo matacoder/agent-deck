@@ -20,7 +20,7 @@ class PanelCase(unittest.TestCase):
         return value
 
     def setUp(self):
-        temporary = self.enterContext(tempfile.TemporaryDirectory(prefix="agent-deck-test-"))
+        temporary = self.enterContext(tempfile.TemporaryDirectory(prefix="agent-deck-test-", dir="/tmp"))
         self.home = Path(temporary)
         (self.home / ".config/cc-panel").mkdir(parents=True)
         self.enterContext(patch.dict(os.environ, {

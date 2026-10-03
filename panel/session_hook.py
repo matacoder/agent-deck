@@ -9,6 +9,11 @@ import uuid
 
 
 def parent_info(pid):
+    if sys.platform == "darwin":
+        result = subprocess.run(["ps", "-p", str(pid), "-o", "ppid=", "-o", "comm="],
+                                capture_output=True, text=True, timeout=3)
+        parent, name = result.stdout.strip().split(None, 1)
+        return int(parent), os.path.basename(name)
     fields = {}
     for line in (Path("/proc") / str(pid) / "status").read_text().splitlines():
         key, _, value = line.partition(":")
@@ -39,11 +44,12 @@ def remember(data, pane, pid):
             return
     except (ValueError, TypeError, AttributeError):
         return
-    result = subprocess.run(["tmux", "display-message", "-p", "-t", pane,
+    command = ["tmux"] + (["-L", os.environ["TMUX_SOCKET_NAME"]] if os.environ.get("TMUX_SOCKET_NAME") else [])
+    result = subprocess.run([*command, "display-message", "-p", "-t", pane,
                              "#{pane_pid}\t#{session_name}"], capture_output=True, text=True, timeout=3)
     pane_pid, session = result.stdout.strip().split("\t")
     if session.startswith("cc-") and top_level(int(pane_pid), pid):
-        subprocess.run(["tmux", "set-option", "-t", pane, "@cc_sid", sid],
+        subprocess.run([*command, "set-option", "-t", pane, "@cc_sid", sid],
                        capture_output=True, timeout=3)
 
 

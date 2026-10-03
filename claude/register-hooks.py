@@ -6,8 +6,8 @@ from pathlib import Path
 import tempfile
 
 
-def register(home):
-    hook = {"type": "command", "command": "python3 ~/.claude/cc-session-hook.py"}
+def register(home, command="python3 ~/.claude/cc-session-hook.py"):
+    hook = {"type": "command", "command": command}
     for relative in (".claude/settings.json", ".codex/hooks.json"):
         path = Path(home) / relative
         path.parent.mkdir(parents=True, exist_ok=True)

@@ -22,7 +22,7 @@ jobs:
       - name: Install isolated tmux test dependency
         run: sudo apt-get update -qq && sudo apt-get install -y tmux shellcheck
       - name: Shell scripts
-        run: shellcheck -S warning get.sh install.sh update.sh deploy.sh release.sh
+        run: shellcheck -S warning get.sh install.sh update.sh deploy.sh release.sh install-macos.sh
       - name: Backend unit and HTTP integration tests
         run: python3 -W error::ResourceWarning -m unittest discover -s tests/backend -v
 
@@ -60,3 +60,36 @@ jobs:
             playwright-report/
           retention-days: 7
           if-no-files-found: ignore
+
+  macos:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-15, macos-15-intel]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    env:
+      CI: 'true'
+      WITH_CLAUDE: '0'
+      WITH_CODEX: '0'
+      PANEL_PASSWORD: 'ephemeral-ci-test-password'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install as the logged-in Mac user
+        run: bash install-macos.sh --no-open
+      - name: Backend and macOS regression tests
+        run: ~/.local/share/agent-deck/venv/bin/python3 -W error::ResourceWarning -m unittest discover -s tests/backend -v
+      - name: Real launchd, terminal, metrics and update smoke test
+        run: ~/.local/share/agent-deck/venv/bin/python3 tests/macos_smoke.py
+      - name: Verify repeated installation preserves settings and sessions
+        run: |
+          before=$(shasum "$HOME/.config/cc-panel/macos.json")
+          pid_before=$(tmux -L agent-deck display-message -p -t '=cc-mac-smoke:' '#{pane_pid}')
+          ~/.local/share/agent-deck/venv/bin/python3 macos/install.py --no-open
+          test "$before" = "$(shasum "$HOME/.config/cc-panel/macos.json")"
+          test "$pid_before" = "$(tmux -L agent-deck display-message -p -t '=cc-mac-smoke:' '#{pane_pid}')"
+      - name: Service diagnostics on failure
+        if: failure()
+        run: |
+          launchctl print "gui/$(id -u)/com.agent-deck.panel" || true
+          tail -100 "$HOME/Library/Logs/Agent Deck/"*.log || true

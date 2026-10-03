@@ -2,6 +2,17 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z`.
 
+## 0.6.0 — 2026-10-03
+
+- Install on macOS with one Terminal command, without sudo: Homebrew dependencies,
+  Claude/Codex, private local panel, browser launch and LaunchAgent autostart.
+- Keep a separate Agent Deck tmux server on Mac; preserve user tmux configuration,
+  existing hooks, credentials, panel settings and sessions across reinstalls.
+- Support macOS CPU/RAM metrics, process ancestry hooks, Homebrew agent discovery,
+  Claude Keychain credentials and launchd-based panel updates.
+- Add macOS integration coverage for installation, login, terminal WebSockets,
+  shell input, metrics, detached updates and repeated installation.
+
 ## 0.5.1 — 2026-10-03
 
 - Keep the composer hint and server metrics on one line on screens as narrow as 320 px.

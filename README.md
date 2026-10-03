@@ -39,6 +39,40 @@ Then:
 2. In the sidebar, click **Log in** next to Claude and/or Codex, and **Connect** next to GitHub.
 3. On a phone: Share → *Add to Home Screen*.
 
+### macOS (Apple Silicon or Intel)
+
+Run in Terminal **without sudo**:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/matacoder/agent-deck/main/get.sh | bash
+```
+
+The installer sets up Homebrew if needed (follow its prompts), Python, tmux, ttyd,
+GitHub CLI, Claude Code and Codex, then opens `http://127.0.0.1:8790`.
+It prints your panel login and password. Sign in to your own Claude/Codex accounts
+from the sidebar. Existing installations and agent credentials are reused.
+Homebrew may ask to install Apple's command-line tools on a fresh Mac.
+
+The panel starts when you log in to your Mac and runs as your user. It uses a separate
+`agent-deck` tmux server and preserves your `.tmux.conf` and other tmux sessions.
+It is local-only by default; Docker and Tailscale are not required. A sleeping or
+powered-off Mac cannot run agents or serve the panel.
+
+Run the same command to reinstall/update, or update the panel from its sidebar.
+Settings/password: `~/.config/cc-panel/macos.json`; logs: `~/Library/Logs/Agent Deck/`.
+To change the port, use `... | BIND_PORT=8791 bash`. Use `WITH_CLAUDE=0` or
+`WITH_CODEX=0` before `bash` to skip either agent. For phone access, install Tailscale
+separately and rerun with `BIND_HOST=<your Mac's Tailscale IPv4 address>`; the panel
+password is still required. Keep the Mac awake while using remote sessions.
+
+To stop autostart without deleting sessions or settings:
+
+```bash
+launchctl bootout gui/$(id -u)/com.agent-deck.panel
+launchctl bootout gui/$(id -u)/com.agent-deck.ttyd
+rm ~/Library/LaunchAgents/com.agent-deck.{panel,ttyd}.plist
+```
+
 ### Your own domain (optional)
 
 Point a DNS A record (e.g. `cli.example.com`) to the server, then:
@@ -76,8 +110,8 @@ Your settings are kept and running sessions are not interrupted. See [CHANGELOG.
 
 ## Security
 
-The panel gives a shell to whoever logs in (as an unprivileged user without sudo; its Docker is
-rootless). Keep the password private, and prefer the default Tailscale-only setup unless you need public
+The panel gives a shell to whoever logs in. On Ubuntu it runs as the dedicated unprivileged
+user (with rootless Docker); on macOS it runs as your logged-in Mac user. Keep the password private, and prefer the default Tailscale-only setup unless you need public
 access.
 
 ## More

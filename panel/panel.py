@@ -41,6 +41,7 @@ PANEL_USER = os.environ.get("PANEL_USER", "dev")
 PANEL_PASSWORD = os.environ["PANEL_PASSWORD"]
 TTYD_SOCK = os.environ.get("TTYD_SOCK", f"/run/user/{os.getuid()}/cc-ttyd.sock")
 PROJECTS = os.path.expanduser(os.environ.get("PROJECTS_DIR", "~/projects"))
+TMUX_COMMAND = ["tmux"] + (["-L", os.environ["TMUX_SOCKET_NAME"]] if os.environ.get("TMUX_SOCKET_NAME") else [])
 PREFIX = "cc-"
 NAME_RE = re.compile(r"^[A-Za-z0-9_-]{1,32}$")
 PROJ_RE = re.compile(r"^[A-Za-z0-9_][A-Za-z0-9_.-]{0,63}$")
@@ -80,6 +81,8 @@ def server_metrics():
     global metrics_cpu_sample, metrics_cpu_percent, metrics_sample_time
     result = {"cpu_percent": None, "memory_used": None, "memory_total": None}
     with metrics_lock:
+        if sys.platform == "darwin":
+            return mac_server_metrics(result)
         try:
             now = time.monotonic()
             if metrics_cpu_sample is None or now - metrics_sample_time >= 1:
@@ -113,6 +116,30 @@ def server_metrics():
                 result.update(memory_total=total, memory_used=max(0, min(total, total - available)))
         except (OSError, ValueError, KeyError):
             pass
+    return result
+
+
+def mac_server_metrics(result):
+    """Use cumulative counters: HTTP handlers run on different threads."""
+    global metrics_cpu_sample, metrics_cpu_percent, metrics_sample_time
+    try:
+        import psutil
+        now = time.monotonic()
+        if metrics_cpu_sample is None or now - metrics_sample_time >= 1:
+            cpu = psutil.cpu_times()
+            total, idle = sum(cpu), cpu.idle
+            metrics_cpu_percent = None
+            if metrics_cpu_sample is not None:
+                delta, idle_delta = total - metrics_cpu_sample[0], idle - metrics_cpu_sample[1]
+                if delta > 0 and idle_delta >= 0:
+                    metrics_cpu_percent = round(max(0, min(100, 100 * (delta - idle_delta) / delta)), 1)
+            metrics_cpu_sample = (total, idle)
+            metrics_sample_time = now
+        memory = psutil.virtual_memory()
+        result.update(cpu_percent=metrics_cpu_percent, memory_total=memory.total,
+                      memory_used=max(0, min(memory.total, memory.total - memory.available)))
+    except (ImportError, OSError):
+        pass
     return result
 
 
@@ -150,7 +177,7 @@ os.makedirs(PROJECTS, exist_ok=True)
 
 
 def tmux(*args, check=True):
-    r = subprocess.run(["tmux", *args], capture_output=True, text=True, timeout=10)
+    r = subprocess.run([*TMUX_COMMAND, *args], capture_output=True, text=True, timeout=10)
     if check and r.returncode:
         raise RuntimeError(r.stderr.strip() or f"tmux {args[0]} failed")
     return r.stdout
@@ -159,7 +186,7 @@ def tmux(*args, check=True):
 def session_exists(name):
     if not isinstance(name, str) or not NAME_RE.fullmatch(name):
         return False
-    return subprocess.run(["tmux", "has-session", "-t", f"={PREFIX}{name}:"], capture_output=True).returncode == 0
+    return subprocess.run([*TMUX_COMMAND, "has-session", "-t", f"={PREFIX}{name}:"], capture_output=True).returncode == 0
 
 
 def opt(name, key):
@@ -252,6 +279,16 @@ def type_line(name, text):
     tmux("send-keys", "-t", f"={PREFIX}{name}:", "Enter")
 
 
+def process_exists(pid):
+    try:
+        os.kill(pid, 0)
+        return True
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+
+
 def stop_children(name):
     """Terminate whatever runs in the pane's shell (normally claude)."""
     shell = int(tmux("display-message", "-p", "-t", f"={PREFIX}{name}:", "#{pane_pid}").strip())
@@ -264,9 +301,9 @@ def stop_children(name):
             except ProcessLookupError:
                 pass
         deadline = time.time() + wait
-        while time.time() < deadline and any(os.path.exists(f"/proc/{p}") for p in pids):
+        while time.time() < deadline and any(process_exists(p) for p in pids):
             time.sleep(0.2)
-        if not any(os.path.exists(f"/proc/{p}") for p in pids):
+        if not any(process_exists(p) for p in pids):
             return
 
 
@@ -466,7 +503,7 @@ def paste_to_tmux(name, text, bracketed=True):
     # stdin avoids tmux's option and command-separator parsing of user text.
     buffer = "cc-input-" + uuid.uuid4().hex
     payload = "\x1b[200~" + text + "\x1b[201~" if bracketed else text
-    result = subprocess.run(["tmux", "load-buffer", "-b", buffer, "-"], input=payload,
+    result = subprocess.run([*TMUX_COMMAND, "load-buffer", "-b", buffer, "-"], input=payload,
                             text=True, capture_output=True, timeout=10)
     if result.returncode:
         raise RuntimeError(result.stderr.strip() or "не удалось подготовить ввод")
@@ -598,7 +635,8 @@ def agent_status(agent):
     path = kimi_config.executable("kimi") if agent == "kimi" else os.path.join(home, ".local", "bin", agent)
     if agent == "kimi" and not path:
         return {"installed": False, "version": None, "logged_in": kimi_config.status()["configured"]}
-    installed = os.path.exists(path)
+    path = path if path and os.path.exists(path) else shutil.which(agent)
+    installed = bool(path)
     version = None
     if installed:
         real = os.path.realpath(path)
@@ -612,7 +650,10 @@ def agent_status(agent):
         return {"installed": installed, "version": version, "logged_in": kimi_config.status()["configured"]}
     auth = {"claude": os.path.join(home, ".claude", ".credentials.json"),
             "codex": os.path.join(home, ".codex", "auth.json")}[agent]
-    return {"installed": installed, "version": version, "logged_in": os.path.exists(auth)}
+    logged_in = os.path.exists(auth)
+    if agent == "claude" and sys.platform == "darwin" and not logged_in and installed:
+        logged_in = bool(cached("claude-keychain", 60, claude_credentials).get("claudeAiOauth", {}).get("accessToken"))
+    return {"installed": installed, "version": version, "logged_in": logged_in}
 
 
 # ---- server info & subscription limits ---------------------------------------------------
@@ -701,9 +742,22 @@ def _epoch(iso):
     return int(datetime.fromisoformat(iso.replace("Z", "+00:00")).timestamp()) if iso else None
 
 
+def claude_credentials():
+    try:
+        with open(os.path.expanduser("~/.claude/.credentials.json")) as stream:
+            return json.load(stream)
+    except FileNotFoundError:
+        if sys.platform != "darwin":
+            return {}
+        result = subprocess.run(["security", "find-generic-password", "-s", "Claude Code-credentials", "-w"],
+                                capture_output=True, text=True, timeout=5)
+        return json.loads(result.stdout) if result.returncode == 0 else {}
+
+
 def claude_usage():
-    with open(os.path.expanduser("~/.claude/.credentials.json")) as stream:
-        o = json.load(stream).get("claudeAiOauth") or {}
+    o = claude_credentials().get("claudeAiOauth") or {}
+    if not o.get("accessToken"):
+        return {"error": "Войдите в Claude Code для просмотра лимитов"}
     if (o.get("expiresAt") or 0) / 1000 < time.time():
         # never refresh here: Claude rotates refresh tokens, a second refresher would log it out
         return {"plan": o.get("subscriptionType"), "error": "токен истёк — запустите Claude, он обновит его"}
@@ -1172,6 +1226,9 @@ def sync_loop():
 
 
 def main():
+    if sys.platform == "darwin" and os.environ.get("TMUX_SOCKET_NAME") and not tmux_server_pid():
+        config = os.path.expanduser("~/.config/cc-panel/tmux.conf")
+        tmux("-f", config, "new-session", "-d", "-s", "_keep")
     threading.Thread(target=sync_loop, daemon=True).start()
     httpd = ThreadingHTTPServer((BIND_HOST, BIND_PORT), Handler)
     httpd.daemon_threads = True

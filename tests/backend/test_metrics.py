@@ -5,6 +5,10 @@ from support import PanelCase
 
 
 class MetricsTests(PanelCase):
+    def setUp(self):
+        super().setUp()
+        self.enterContext(patch.object(self.panel.sys, "platform", "linux"))
+
     def test_cpu_interval_excludes_guest_and_ram_excludes_available(self):
         stats = iter(["cpu 100 0 100 800 0 0 0 0 20 0\n",
                       "cpu 130 0 120 850 0 0 0 0 30 0\n"])

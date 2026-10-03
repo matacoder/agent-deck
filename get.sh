@@ -5,6 +5,18 @@
 # Clones the latest release to /opt/agent-deck (AGENT_DECK_DIR) and runs install.sh; if it is already
 # there, updates it instead. Options are passed through as environment variables (see README).
 set -euo pipefail
+if [ "$(uname -s)" = Darwin ]; then
+    [ "$(id -u)" != 0 ] || { echo "On macOS run this command without sudo." >&2; exit 1; }
+    mac_stage=$(mktemp -d)
+    trap 'rm -rf "$mac_stage"' EXIT
+    mac_version=${AGENT_DECK_VERSION:-$(curl -fsSL https://api.github.com/repos/matacoder/agent-deck/releases/latest | /usr/bin/plutil -extract tag_name raw -o - -)}
+    [[ $mac_version =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "Invalid release version" >&2; exit 1; }
+    curl -fsSL "https://github.com/matacoder/agent-deck/archive/refs/tags/$mac_version.tar.gz" -o "$mac_stage/release.tar.gz"
+    tar -xzf "$mac_stage/release.tar.gz" -C "$mac_stage" --strip-components=1
+    [ -f "$mac_stage/install-macos.sh" ] || { echo "This release does not support macOS yet." >&2; exit 1; }
+    bash "$mac_stage/install-macos.sh"
+    exit
+fi
 # Keep this bootstrap check self-contained: never source code from an unchecked checkout.
 require_root_checkout() {
     python3 - "$1" "${2:-tree}" <<'ROOT_CHECK'

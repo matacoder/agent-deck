@@ -9,6 +9,7 @@ from pathlib import Path
 import re
 import shutil
 import subprocess
+import sys
 import tarfile
 import tempfile
 import time
@@ -105,6 +106,20 @@ def unpack(data, stage, version):
 
 
 def service(action):
+    if sys.platform == "darwin":
+        domain = f"gui/{os.getuid()}"
+        label = "com.agent-deck.panel"
+        plist = str(Path.home() / "Library/LaunchAgents" / (label + ".plist"))
+        command = (["launchctl", "bootout", domain + "/" + label] if action == "stop"
+                   else ["launchctl", "bootstrap", domain, plist])
+        result = subprocess.run(command, timeout=30, capture_output=True)
+        if result.returncode:
+            # Stopping a service already absent is harmless during rollback.
+            if action == "stop" and subprocess.run(["launchctl", "print", domain + "/" + label],
+                                                   capture_output=True, timeout=10).returncode:
+                return
+            result.check_returncode()
+        return
     subprocess.run(["systemctl", "--user", action, "cc-panel.service"],
                    check=True, timeout=30, capture_output=True)
 
