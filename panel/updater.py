@@ -126,15 +126,16 @@ def service(action):
 
 def healthy(url):
     deadline = time.monotonic() + 20
+    last_error = ""
     while time.monotonic() < deadline:
         try:
             with urllib.request.urlopen(url + "/login", timeout=2) as response:
                 if response.status == 200:
                     return
-        except OSError:
-            pass
+        except OSError as error:
+            last_error = str(error)
         time.sleep(0.5)
-    raise RuntimeError("Панель не ответила после перезапуска")
+    raise RuntimeError("Панель не ответила после перезапуска: " + last_error)
 
 
 def install(stage, target, names, state, version, url):

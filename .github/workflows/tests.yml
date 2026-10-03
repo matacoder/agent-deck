@@ -93,3 +93,4 @@ jobs:
         run: |
           launchctl print "gui/$(id -u)/com.agent-deck.panel" || true
           tail -100 "$HOME/Library/Logs/Agent Deck/"*.log || true
+          cat "$HOME/.config/cc-panel/health-debug.log"* 2>/dev/null || true

@@ -89,6 +89,23 @@ with tempfile.TemporaryDirectory(prefix='deck-update-', dir='/tmp') as directory
     (fixture / 'release.tar.gz').write_bytes(archive.getvalue())
     (fixture / 'release.json').write_text(json.dumps({'tag_name': 'v' + version}))
     shim = '\ndef fetch(url, limit):\n    from pathlib import Path\n    return (Path(' + repr(str(fixture)) + ') / ("release.json" if url.endswith("/latest") else "release.tar.gz")).read_bytes()\n\n'
+    shim += """
+original_healthy = healthy
+def healthy(url):
+    try:
+        return original_healthy(url)
+    except Exception:
+        import re
+        diagnostic = Path.home() / '.config/cc-panel/health-debug.log'
+        with diagnostic.open('w') as stream:
+            state = subprocess.run(['launchctl', 'print', f'gui/{os.getuid()}/com.agent-deck.panel'], capture_output=True, text=True).stdout
+            stream.write(state)
+            subprocess.run(['ps', '-ax', '-o', 'pid,ppid,state,command'], stdout=stream, stderr=stream)
+            match = re.search(r'pid = (\\d+)', state)
+            if match:
+                subprocess.run(['sample', match[1], '1', '-file', str(diagnostic) + '.sample'], stdout=stream, stderr=stream)
+        raise
+"""
     (runtime / 'updater.py').write_text(updater_source.replace('if __name__ == "__main__":', shim + 'if __name__ == "__main__":'))
     (runtime / 'VERSION').write_text('0.0.0\n')
     assert request('POST', '/api/update', {})[0] == 200
