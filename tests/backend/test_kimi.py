@@ -106,3 +106,25 @@ class KimiTests(PanelCase):
         self.assertIn('error', self.panel.kimi_usage())
         self.panel.http_json.side_effect = urllib.error.HTTPError('https://api.kimi.com/coding/v1/usages', 401, 'private upstream error', {}, None)
         self.assertEqual(self.panel.kimi_usage()['error'], 'Kimi: проверьте ключ')
+
+    def test_authoritative_five_hour_counter_overrides_incorrect_zero_usage(self):
+        self.panel.kimi_config.save({'key': 'sk-test-key'})
+        self.panel.http_json = Mock(return_value={
+            'limits': [{'window': {'duration': 300, 'timeUnit': 'TIME_UNIT_MINUTE'},
+                        'detail': {'limit': '100', 'used': '100', 'resetTime': '2026-10-03T12:31:36.924045Z'}}],
+            'usages': {'limit_5h': {'used_ratio': 0, 'reset_time': '2026-10-03T12:31:36Z'},
+                       'limit_month_total': {'used_ratio': 0.1446, 'reset_time': '2026-11-02T00:00:00Z'}}})
+        data = self.panel.kimi_usage()
+        hours = [w for w in data['windows'] if w['secs'] == 18000]
+        self.assertEqual(len(hours), 1)
+        self.assertEqual(hours[0]['percent'], 100)
+        self.assertIsNotNone(hours[0]['resets_at'])
+        self.assertEqual(len(data['windows']), 2)
+
+    def test_malformed_authoritative_counter_does_not_claim_free_quota(self):
+        self.panel.kimi_config.save({'key': 'sk-test-key'})
+        self.panel.http_json = Mock(return_value={
+            'limits': [{'window': {'duration': 300, 'timeUnit': 'TIME_UNIT_MINUTE'},
+                        'detail': {'limit': '100', 'used': 'NaN'}}],
+            'usages': {'limit_5h': {'used_ratio': 0}}})
+        self.assertIn('error', self.panel.kimi_usage())

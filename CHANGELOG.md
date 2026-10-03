@@ -10,6 +10,9 @@ Versions follow [semver](https://semver.org). Install a version with `sudo ./upd
   existing hooks, credentials, panel settings and sessions across reinstalls.
 - Support macOS CPU/RAM metrics, process ancestry hooks, Homebrew agent discovery,
   Claude Keychain credentials and launchd-based panel updates.
+- Fix Kimi five-hour quota reporting when legacy usage says zero but authoritative
+  counters report exhaustion; show the actual used/limit and reset time.
+- Handle tmux 3.7 control-byte sanitization while retaining older tmux compatibility.
 - Add macOS integration coverage for installation, login, terminal WebSockets,
   shell input, metrics, detached updates and repeated installation.
 

@@ -21,7 +21,7 @@ class PanelCase(unittest.TestCase):
 
     def setUp(self):
         temporary = self.enterContext(tempfile.TemporaryDirectory(prefix="agent-deck-test-", dir="/tmp"))
-        self.home = Path(temporary)
+        self.home = Path(temporary).resolve()
         (self.home / ".config/cc-panel").mkdir(parents=True)
         self.enterContext(patch.dict(os.environ, {
             "PANEL_PASSWORD": "test-password-only", "PANEL_USER": "test-user",

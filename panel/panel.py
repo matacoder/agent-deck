@@ -327,7 +327,7 @@ def add_worktree(repo, project, name, branch):
 
 def resolve_path(d, name):
     """Either an existing folder under $HOME ("path") or ~/projects/<project> (+clone, +worktree)."""
-    home = os.path.expanduser("~")
+    home = os.path.realpath(os.path.expanduser("~"))
     if d.get("path"):
         if not isinstance(d["path"], str):
             raise ValueError("неверный путь проекта")
@@ -499,7 +499,16 @@ def cleanup_uploads(max_age=7 * 86400):
                 pass
 
 
+_paste_raw_supported = None
+
+
 def paste_to_tmux(name, text, bracketed=True):
+    global _paste_raw_supported
+    if _paste_raw_supported is None:
+        # tmux 3.7 sanitizes control bytes unless -S is supplied; older tmux
+        # rejects that flag. Detect the capability from its command synopsis.
+        commands = tmux("list-commands")
+        _paste_raw_supported = bool(re.search(r"^paste-buffer[^\n]*\[[^]\n]*S", commands, re.M))
     # stdin avoids tmux's option and command-separator parsing of user text.
     buffer = "cc-input-" + uuid.uuid4().hex
     payload = "\x1b[200~" + text + "\x1b[201~" if bracketed else text
@@ -508,7 +517,7 @@ def paste_to_tmux(name, text, bracketed=True):
     if result.returncode:
         raise RuntimeError(result.stderr.strip() or "не удалось подготовить ввод")
     try:
-        tmux("paste-buffer", "-d", "-b", buffer, "-t", f"={PREFIX}{name}:", "-r")
+        tmux("paste-buffer", "-d", "-b", buffer, "-t", f"={PREFIX}{name}:", "-r", *(["-S"] if _paste_raw_supported else []))
     finally:
         tmux("delete-buffer", "-b", buffer, check=False)
     time.sleep(0.2)
@@ -799,15 +808,41 @@ def kimi_usage():
     try:
         data = http_json("https://api.kimi.com/coding/v1/usages", {"Authorization": "Bearer " + key, "Accept": "application/json"})
     except urllib.error.HTTPError as error:
+        error.close()
         return {"error": "Kimi: проверьте ключ" if error.code in (401, 403) else "Kimi: лимиты временно недоступны"}
     except (OSError, ValueError):
         return {"error": "Kimi: лимиты временно недоступны"}
     windows = []
+    authoritative = set()
+    # The counters in limits are authoritative. The legacy usages.limit_5h can
+    # incorrectly report zero even while the service rejects calls at 100/100.
+    for limit in data.get("limits") or []:
+        if not isinstance(limit, dict):
+            continue
+        window, detail = limit.get("window") or {}, limit.get("detail") or {}
+        try:
+            multiplier = {"TIME_UNIT_SECOND": 1, "TIME_UNIT_MINUTE": 60,
+                          "TIME_UNIT_HOUR": 3600, "TIME_UNIT_DAY": 86400}[window["timeUnit"]]
+            secs = float(window["duration"]) * multiplier
+            if not math.isfinite(secs) or secs <= 0:
+                continue
+            authoritative.add(secs)
+            total, used = float(detail["limit"]), float(detail["used"])
+            if not all(map(math.isfinite, (total, used))) or total <= 0 or used < 0:
+                continue
+            reset = _epoch(detail.get("resetTime"))
+            label = {18000: "5 часов", 604800: "неделя"}.get(secs, f"{secs / 3600:g} ч")
+            windows.append({"label": label, "percent": used / total * 100,
+                            "resets_at": reset, "secs": secs, "period": "hours"})
+        except (ValueError, TypeError, KeyError, OverflowError):
+            continue
     for name, label, secs, period in (
             ("limit_month_total", "Общий · месяц", 0, "month"),
             ("limit_month_code", "Kimi Code · месяц", 0, "month"),
             ("limit_5h", "5 часов", 18000, "hours"),
             ("limit_7d", "неделя", 604800, "week")):
+        if secs and secs in authoritative:
+            continue
         value = (data.get("usages") or {}).get(name)
         if not isinstance(value, dict):
             continue
