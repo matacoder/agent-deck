@@ -309,6 +309,23 @@ class HTTPTests(PanelCase):
         self.assertEqual(captured[1], b"ping")
 
 
+    def test_kimi_key_requires_login_and_same_origin_and_never_returns_secret(self):
+        key = 'sk-private-test-123456789'
+        body = json.dumps({'key': key, 'model': 'k3'})
+        self.assertEqual(self.request('POST', '/api/kimi_config', body)[0], 401)
+        cookie = self.login()
+        self.assertEqual(self.request('POST', '/api/kimi_config', body,
+                         {'Cookie': cookie, 'Origin': 'https://evil.example'})[0], 403)
+        status, _, response = self.request('POST', '/api/kimi_config', body, {'Cookie': cookie})
+        self.assertEqual(status, 200)
+        self.assertNotIn(key.encode(), response)
+        with patch.object(self.panel, 'agent_status', return_value={'installed': True}):
+            status, _, response = self.request('GET', '/api/agents', headers={'Cookie': cookie})
+        self.assertEqual(status, 200)
+        self.assertNotIn(key.encode(), response)
+        self.assertTrue(json.loads(response)['kimi_config']['configured'])
+
+
 class ProxyTrustTests(PanelCase):
     def handler(self, address, headers):
         handler = self.panel.Handler.__new__(self.panel.Handler)

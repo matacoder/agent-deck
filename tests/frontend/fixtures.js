@@ -24,7 +24,7 @@ const test = base.extend({
       revision: 'fixture-version', sends: [], uploads: [], sendError: null,
       uploadError: null, sendGate: null, navigations: 0, usage: {},
       version: { version: '0.1.0', update: false, can_update: true, job: { phase: 'idle' } },
-      updates: [], updateError: null,
+      updates: [], updateError: null, kimiConfig: {configured: false, model: "k3"}, kimiSaves: [],
       sessionRequests: [], sessionGate: null, sessionCaptured: false, authExpired: false,
       async open({ active = 'tmux', mode = 'screen', width, height } = {}) {
         if (width) await page.setViewportSize({ width, height: height || 844 });
@@ -83,7 +83,12 @@ const test = base.extend({
         case '/api/kill':
           app.sessions = app.sessions.filter(s => s.name !== route.request().postDataJSON().name);
           return json({ ok: true });
-        case '/api/agents': return json({ codex: { installed: true, logged_in: true, version: 'test' }, claude: { installed: true, logged_in: true, version: 'test' } });
+        case '/api/kimi_config': {
+          const data=route.request().postDataJSON();app.kimiSaves.push(data);
+          app.kimiConfig={configured: data.clear?false:!!data.key||app.kimiConfig.configured, model:data.model};
+          return json({ok:true,kimi:app.kimiConfig});
+        }
+        case '/api/agents': return json({ kimi_config:app.kimiConfig, kimi:{installed:true,logged_in:app.kimiConfig.configured,version:'2.1.1'}, codex: { installed: true, logged_in: true, version: 'test' }, claude: { installed: true, logged_in: true, version: 'test' } });
         case '/api/github/status': return json({ connected: false });
         case '/api/usage': return json(app.usage);
         case '/api/version': return json(app.version);

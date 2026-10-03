@@ -24,7 +24,7 @@ def top_level(pane_pid, pid):
         if pid <= 1:
             return False
         pid, name = parent_info(pid)
-        if name == "claude" or name.startswith("codex"):
+        if name in ("claude", "kimi", "kimi-code") or name.startswith("codex"):
             agents += 1
         if agents > 1:
             return False
@@ -34,7 +34,8 @@ def top_level(pane_pid, pid):
 def remember(data, pane, pid):
     sid = data.get("session_id")
     try:
-        if str(uuid.UUID(sid)) != sid:
+        value = sid.removeprefix("session_") if data.get("client_type") == "kimi_code_cli" else sid
+        if str(uuid.UUID(value)) != value:
             return
     except (ValueError, TypeError, AttributeError):
         return

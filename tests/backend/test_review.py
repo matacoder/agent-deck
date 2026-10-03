@@ -120,3 +120,11 @@ class HookTests(PanelCase):
         with patch.object(self.hook, "parent_info", side_effect=lambda pid: nested[pid]), patch.object(self.hook.subprocess, "run", return_value=SimpleNamespace(stdout="10\tcc-demo")) as run:
             self.hook.remember({"session_id": sid}, "%1", 60)
             self.assertEqual(run.call_count, 1)
+
+    def test_native_kimi_session_id_and_process_name_are_recorded(self):
+        sid = "session_11111111-1111-4111-8111-111111111111"
+        roots = {40: (30, "sh"), 30: (10, "kimi-code")}
+        with patch.object(self.hook, "parent_info", side_effect=lambda pid: roots[pid]), patch.object(self.hook.subprocess, "run", return_value=SimpleNamespace(stdout="10\tcc-demo")) as run:
+            self.hook.remember({"session_id": sid, "client_type": "kimi_code_cli"}, "%1", 40)
+            self.assertEqual(run.call_count, 2)
+            self.assertEqual(run.call_args.args[0][-2:], ["@cc_sid", sid])

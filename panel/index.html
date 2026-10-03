@@ -18,7 +18,7 @@
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;margin:0;background:var(--bg);color:var(--fg);font:13px/1.35 -apple-system,BlinkMacSystemFont,system-ui,sans-serif;overflow:hidden;overscroll-behavior:none}
 button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;padding:0}
-input,textarea{font:inherit}
+input,textarea,select{font:inherit}
 #app{display:flex;height:var(--app-h)}
 
 /* ---------- sidebar ---------- */
@@ -76,8 +76,8 @@ aside{width:240px;flex:none;background:var(--side);border-right:1px solid var(--
 .irow button{font-size:11.5px;padding:3px 8px;border-radius:6px;background:var(--side2);color:var(--fg);white-space:nowrap}
 .irow button.go{background:var(--acc);color:#fff}
 .irow button.ic{background:none;color:var(--mut);padding:3px 4px}.irow button.ic:hover{color:var(--fg)}
-.agsel{display:flex;background:var(--bg);border:1px solid var(--bd);border-radius:9px;padding:3px;gap:3px;margin-bottom:14px}
-.agsel button{flex:1;padding:7px 6px;border-radius:7px;color:var(--mut);display:flex;align-items:center;justify-content:center;gap:6px}
+.agsel{display:flex;flex-wrap:wrap;background:var(--bg);border:1px solid var(--bd);border-radius:9px;padding:3px;gap:3px;margin-bottom:14px}
+.agsel button{flex:1 1 30%;padding:7px 6px;border-radius:7px;color:var(--mut);display:flex;align-items:center;justify-content:center;gap:6px}
 .agsel button.on{background:var(--sel);color:var(--fg2)}
 .side-gh{display:flex;align-items:center;gap:8px;margin:0 8px 8px;padding:8px 10px;border:1px solid var(--bd);border-radius:8px;color:var(--fg);text-align:left}
 .side-gh:hover{background:var(--side2)}.side-gh.need{border-color:var(--acc);color:var(--acc)}
@@ -172,8 +172,8 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 .dlg-body{padding:18px 18px 4px;overflow-y:auto}
 .dlg h3{margin:0 0 14px;font-size:15px;font-weight:600;color:var(--fg2)}
 .dlg label{display:block;font-size:11.5px;color:var(--mut);margin:12px 0 5px}
-.dlg input[type=text]{width:100%;background:var(--bg);border:1px solid var(--bd);border-radius:7px;color:var(--fg2);padding:8px 10px;outline:none}
-.dlg input[type=text]:focus{border-color:var(--acc)}
+.dlg input[type=text],.dlg input[type=password],.dlg select{width:100%;background:var(--bg);border:1px solid var(--bd);border-radius:7px;color:var(--fg2);padding:8px 10px;outline:none}
+.dlg input[type=text]:focus,.dlg input[type=password]:focus,.dlg select:focus{border-color:var(--acc)}
 .chk{display:flex;align-items:center;gap:9px;color:var(--fg);margin-top:14px;cursor:pointer}
 .chk input{width:17px;height:17px;accent-color:var(--acc)}
 .acts{display:flex;justify-content:flex-end;gap:8px;padding:14px 18px;border-top:1px solid var(--bd)}
@@ -261,7 +261,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
   .dlg{height:100%;max-height:none;padding-top:var(--sat)}
   .dlg-body{flex:1}
   .dlg h3{font-size:18px}
-  .dlg input[type=text],.gh .search{font-size:16px;padding:11px 12px;border-radius:10px}
+  .dlg input[type=text],.dlg input[type=password],.dlg select,.gh .search{font-size:16px;padding:11px 12px;border-radius:10px}
   .two{grid-template-columns:1fr}
   .two>div+div label{margin-top:12px}
   .repo{padding:11px 10px}
@@ -352,6 +352,8 @@ body.is-shell .agent-only{display:none!important}
     <div class="agsel" id="agsel">
       <button type="button" data-a="claude" class="on" onclick="pickAgent('claude')"><span class="ag claude">✻</span>Claude</button>
       <button type="button" data-a="codex" onclick="pickAgent('codex')"><span class="ag codex">◎</span>Codex</button>
+      <button type="button" data-a="claude-kimi" onclick="pickAgent('claude-kimi')">Claude · Kimi</button>
+      <button type="button" data-a="kimi" onclick="pickAgent('kimi')">Kimi Code</button>
       <button type="button" data-a="shell" onclick="pickAgent('shell')"><span class="ag shell">$</span>Терминал</button>
     </div>
     <div class="gh" id="gh">
@@ -372,6 +374,17 @@ body.is-shell .agent-only{display:none!important}
   <div class="acts"><button type="button" onclick="$('dlg').close()">Отмена</button><button class="pri" id="n_go">Создать</button></div>
 </form></dialog>
 
+<dialog id="kimi_dlg"><form class="dlg" onsubmit="event.preventDefault();saveKimi()">
+  <div class="dlg-body"><h3>Настройки Kimi</h3>
+    <p id="kimi_state"></p>
+    <label for="kimi_key">API-ключ Kimi Code</label>
+    <input id="kimi_key" type="password" autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Вставьте ключ; пустое поле сохраняет текущий">
+    <label for="kimi_model">Модель для новых запусков</label>
+    <select id="kimi_model"><option value="k3">K3</option><option value="kimi-for-coding">Kimi for coding</option><option value="kimi-for-coding-highspeed">Kimi for coding · highspeed</option></select>
+    <p>Один ключ для Claude · Kimi и Kimi Code. Изменения применятся при следующем запуске агента.</p>
+  </div>
+  <div class="acts"><button type="button" onclick="clearKimi()">Удалить ключ</button><button type="button" onclick="closeKimi()">Отмена</button><button class="pri" id="kimi_save">Сохранить</button></div>
+</form></dialog>
 <script>
 const $=id=>document.getElementById(id);
 const BUSY_SEC=6;
@@ -449,6 +462,8 @@ function hookClipboard(w,tries=0){
 const now=()=>Date.now()/1000-clockSkew;
 const AGENTS={claude:{label:"Claude",glyph:"✻",skip:"--dangerously-skip-permissions"},
   codex:{label:"Codex",glyph:"◎",skip:"--dangerously-bypass-approvals-and-sandbox"},
+  "claude-kimi":{label:"Claude · Kimi",glyph:"✻",skip:"--dangerously-skip-permissions"},
+  kimi:{label:"Kimi Code",glyph:"◈",skip:"--auto"},
   shell:{label:"Терминал",glyph:"$"}};
 const agentOf=s=>AGENTS[s&&s.agent]?s.agent:"claude";
 const state=s=>{
@@ -1061,9 +1076,29 @@ function renderInteg(){
     const ub=st.logged_in&&usageBlock(u);if(ub)blk.append(ub);
     blocks.push(blk);
   }
+  const ks=lastAg.kimi||{},kc=lastAg.kimi_config||{};
+  const kr=[btn("Настроить ключ","go",openKimi)];
+  kr.push(btn(ks.installed?"⟳":"Установить Kimi","",()=>agentAction("install","kimi")));
+  blocks.push(el("div","iblk",irow("◈","Kimi",kc.configured?"Ключ сохранён · "+kc.model:"Ключ не настроен",kr)));
   blocks.push(el("div","iblk",irow(GH_ICON,ghLogin||"GitHub","",[ghLogin?btn("Репозитории","",openNew):btn("Подключить","go",ghConnect)])));
   $("integ").replaceChildren(...blocks);
 }
+function closeKimi(){$("kimi_key").value="";$("kimi_dlg").close()}
+function openKimi(){
+  const config=lastAg.kimi_config||{};
+  $("kimi_key").value="";$("kimi_model").value=config.model||"k3";
+  $("kimi_state").textContent=config.configured?"Ключ сохранён на сервере":"Ключ ещё не настроен";
+  $("kimi_dlg").showModal();
+}
+$("kimi_dlg").addEventListener("close",()=>{$("kimi_key").value=""});
+async function saveKimi(clear=false){
+  $("kimi_save").disabled=true;
+  try{
+    await api("/api/kimi_config",{key:$("kimi_key").value.trim(),model:$("kimi_model").value,clear});
+    closeKimi();await checkGithubFoot();toast(clear?"Ключ Kimi удалён":"Настройки Kimi сохранены");
+  }catch(e){toast(e.message)}finally{$("kimi_save").disabled=false}
+}
+function clearKimi(){if(confirm("Удалить ключ Kimi из панели?"))saveKimi(true)}
 let panelUpdating=false,panelVersion=null,versionTimer=null,versionLoading=false;
 const UPDATE_PHASES=new Set(["checking","downloading","installing","restarting"]);
 function renderVersion(v){
@@ -1202,7 +1237,7 @@ function refreshInterface(){
   location.reload();
 }
 function canAutoRefresh(){
-  return !document.hidden&&!panelUpdating&&!sending&&!uploading&&!choosingImages&&!Array.from(imageAttachments.values()).some(images=>images.length)&&!Array.from(messageDrafts.values()).some(Boolean)&&!$("msg").value&&!$("dlg").open&&!$("draft_dlg").open&&
+  return !document.hidden&&!panelUpdating&&!sending&&!uploading&&!choosingImages&&!Array.from(imageAttachments.values()).some(images=>images.length)&&!Array.from(messageDrafts.values()).some(Boolean)&&!$("msg").value&&!$("dlg").open&&!$("draft_dlg").open&&!$("kimi_dlg").open&&
     !$("sheet").classList.contains("on")&&!document.body.classList.contains("drawer")&&
     (!cur()||(curMode()==="screen"&&$("pre").scrollTop+$("pre").clientHeight>=$("pre").scrollHeight-40))&&
     !String(window.getSelection())&&

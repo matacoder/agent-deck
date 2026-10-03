@@ -31,6 +31,7 @@ from urllib.parse import parse_qs
 from urllib.parse import urlsplit
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import updater
+import kimi_config
 
 BIND_HOST = os.environ.get("BIND_HOST", "127.0.0.1")
 BIND_PORT = int(os.environ.get("BIND_PORT", "8790"))
@@ -148,6 +149,8 @@ AGENTS = {
     # name: (label, process names as seen in pane_current_command, skip-permissions flag)
     "claude": ("Claude", {"claude"}, " --dangerously-skip-permissions"),
     "codex": ("Codex", {"codex", "codex-x86_64-un", "codex-aarch64-u"}, " --dangerously-bypass-approvals-and-sandbox"),
+    "claude-kimi": ("Claude · Kimi", {"claude"}, " --dangerously-skip-permissions"),
+    "kimi": ("Kimi Code", {"kimi", "kimi-code"}, " --auto"),
     "shell": ("Терминал", set(), ""),
 }
 SHELLS = {"bash", "zsh", "sh", "fish", "dash"}
@@ -155,6 +158,7 @@ INSTALLERS = {
     "claude": "curl -fsSL https://claude.ai/install.sh | bash",
     "codex": "curl -fsSL https://chatgpt.com/codex/install.sh | sh",
 }
+INSTALLERS["kimi"] = "curl -fsSL https://code.kimi.com/kimi-code/install.sh | sh"
 LOGINS = {
     "claude": "claude",  # first start asks to log in; afterwards /login switches accounts
     "codex": "codex login --device-auth",
@@ -172,15 +176,26 @@ def agent_cmd(agent, sid=None, resume=False, skip=False, name=None):
     if agent == "shell":
         return None
     flag = AGENTS[agent][2] if skip else ""
+    launcher = ""
+    if agent in ("kimi", "claude-kimi"):
+        if not kimi_config.status()["configured"]:
+            raise ValueError("Сначала сохраните ключ Kimi в настройках панели")
+        if not kimi_config.executable(agent):
+            raise ValueError("Сначала установите " + ("Claude" if agent == "claude-kimi" else "Kimi Code"))
+        launcher = shlex.join([sys.executable, os.path.join(HERE, "kimi_config.py"), agent])
+    if agent == "kimi":
+        if resume and not (isinstance(sid, str) and sid.startswith("session_") and valid_sid(sid[8:])):
+            raise ValueError("ID разговора Kimi не сохранён. Выберите разговор вручную в терминале.")
+        return launcher + (" --session " + shlex.quote(sid) if resume else "") + flag
     if agent == "codex":
         if resume and not valid_sid(sid):
             raise ValueError("ID разговора Codex не сохранён. Возобновите нужный разговор через codex resume; автоматический выбор последнего отключён.")
         return f"codex --no-daemon resume {shlex.quote(sid)}{flag}" if resume else f"codex --no-daemon{flag}"
     if resume:
         if transcript_exists(sid):
-            return f"claude --resume {sid}{flag}"
+            return (launcher or "claude") + f" --resume {sid}{flag}"
         raise ValueError("Транскрипт этого разговора Claude не найден. Выберите разговор вручную или запустите новый.")
-    return f"claude --session-id {sid}{flag}" + (f" -n {name}" if name else "")
+    return (launcher or "claude") + f" --session-id {sid}{flag}" + (f" -n {name}" if name else "")
 
 
 def type_line(name, text):
@@ -273,7 +288,7 @@ def action_new(d):
         raise ValueError(f"сессия {name} уже есть")
     path = resolve_path(d, name)
     skip = bool(d.get("skip")) and agent != "shell"
-    sid = str(uuid.uuid4()) if agent == "claude" else None
+    sid = str(uuid.uuid4()) if agent in ("claude", "claude-kimi") else None
     create_session(name, path, agent, skip, sid, agent_cmd(agent, sid, False, skip, name))
 
 
@@ -283,14 +298,18 @@ def action_restart(d):
         raise ValueError("нет такой сессии")
     skip, agent = opt(name, "@cc_skip") == "1", opt(name, "@cc_agent") or "claude"
     sid = opt(name, "@cc_sid")
-    if d.get("mode") == "new" and agent == "claude":
+    new = d.get("mode") == "new"
+    if new and agent in ("claude", "claude-kimi"):
         sid = str(uuid.uuid4())
-        tmux("set-option", "-t", f"={PREFIX}{name}:", "@cc_sid", sid)
-    elif d.get("mode") == "new" and agent == "codex":
-        tmux("set-option", "-t", f"={PREFIX}{name}:", "-u", "@cc_sid")
+    elif new and agent in ("codex", "kimi"):
         sid = None
-    cmd = agent_cmd(agent, sid, d.get("mode") != "new", skip, name)
+    cmd = agent_cmd(agent, sid, not new, skip, name)
     stop_children(name)
+    if new and agent != "shell":
+        if sid:
+            tmux("set-option", "-t", f"={PREFIX}{name}:", "@cc_sid", sid)
+        else:
+            tmux("set-option", "-t", f"={PREFIX}{name}:", "-u", "@cc_sid")
     time.sleep(0.3)
     tmux("send-keys", "-t", f"={PREFIX}{name}:", "C-u")
     type_line(name, "clear" + (f"; {cmd}" if cmd else ""))
@@ -525,7 +544,11 @@ _version_cache = {}
 
 def agent_status(agent):
     home = os.path.expanduser("~")
-    path = os.path.join(home, ".local", "bin", agent)
+    if agent == "claude-kimi":
+        return {**agent_status("claude"), "logged_in": kimi_config.status()["configured"]}
+    path = kimi_config.executable("kimi") if agent == "kimi" else os.path.join(home, ".local", "bin", agent)
+    if agent == "kimi" and not path:
+        return {"installed": False, "version": None, "logged_in": kimi_config.status()["configured"]}
     installed = os.path.exists(path)
     version = None
     if installed:
@@ -536,6 +559,8 @@ def agent_status(agent):
             v = (r.stdout.strip().split() or [None])[-1] if agent == "codex" else (r.stdout.split() or [None])[0]
             _version_cache[agent] = (key, v)
         version = _version_cache[agent][1]
+    if agent == "kimi":
+        return {"installed": installed, "version": version, "logged_in": kimi_config.status()["configured"]}
     auth = {"claude": os.path.join(home, ".claude", ".credentials.json"),
             "codex": os.path.join(home, ".codex", "auth.json")}[agent]
     return {"installed": installed, "version": version, "logged_in": os.path.exists(auth)}
@@ -672,7 +697,7 @@ def usage():
     return out
 
 
-ACTIONS = {"agent_install": action_agent_install, "agent_login": action_agent_login, "github_login": action_github_login, "new": action_new, "restart": action_restart, "kill": action_kill, "send": action_send, "upload": action_upload, "update": action_update, "discard_upload": action_discard_upload}
+ACTIONS = {"kimi_config": lambda d: {"kimi": kimi_config.save(d)}, "agent_install": action_agent_install, "agent_login": action_agent_login, "github_login": action_github_login, "new": action_new, "restart": action_restart, "kill": action_kill, "send": action_send, "upload": action_upload, "update": action_update, "discard_upload": action_discard_upload}
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -840,7 +865,7 @@ class Handler(BaseHTTPRequestHandler):
         if self.path == "/api/server":
             return self.send_json(200, server_info())
         if self.path == "/api/agents":
-            return self.send_json(200, {a: agent_status(a) for a in INSTALLERS})
+            return self.send_json(200, {**{a: agent_status(a) for a in (*INSTALLERS, "claude-kimi")}, "kimi_config": kimi_config.status()})
         if self.path == "/api/github/status":
             return self.send_json(200, github_status())
         if self.path.startswith("/api/github/repos"):

@@ -15,7 +15,7 @@ tmux, so it keeps working when you close the tab and comes back after a reboot.
 ## Features
 
 - Tabs for all your sessions, grouped by project, with live terminals and "working / waiting / done" status.
-- Claude Code, Codex or a plain terminal per tab; restart an agent keeping the conversation.
+- Claude Code, Codex, Claude through Kimi, native Kimi Code or a plain terminal per tab; restart an agent keeping the conversation.
 - Pick a GitHub repo and start working; optional git worktree per session (one branch per agent).
 - Weekly Claude / Codex subscription limits with a pace forecast.
 - Phone friendly: home-screen app, message box, quick keys for agent prompts, image attachments.
@@ -89,3 +89,15 @@ Backend and browser regression tests: [docs/TESTING.md](docs/TESTING.md).
 ## License
 
 [MIT](LICENSE)
+
+### Kimi Code
+
+Open the sidebar integrations and choose **Kimi → Настроить ключ**. Save a Kimi Code API key
+and choose a model. Create a session with **Claude · Kimi** (Claude Code through the Kimi
+Anthropic-compatible endpoint) or **Kimi Code** (the native CLI). Install Claude or Kimi
+from the integrations if needed. An existing `~/.config/cc-kimi/env` key is detected automatically.
+
+The key stays on the server in a private file; API responses and tmux commands do not contain it.
+Clearing the password field preserves the key; **Удалить ключ** removes it from the panel.
+Model/key changes apply on the next agent launch. Native sessions/configuration use
+`~/.config/cc-panel/kimi-native/`, preserving the user's independent Kimi configuration.
