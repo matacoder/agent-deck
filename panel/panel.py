@@ -73,6 +73,88 @@ try:
 except ModuleNotFoundError:
     Telegram = None  # A pre-0.7 updater installs core files first; its next run repairs packages.
 try:
+    from integrations.lmstudio import LMStudio
+    from integrations.relay import Relay, Bindings
+except ModuleNotFoundError:
+    LMStudio = None
+
+_lmstudio = None
+_model_relay = None
+_lm_lock = threading.RLock()
+
+
+def model_service():
+    global _lmstudio, _model_relay
+    if LMStudio is None:
+        raise ValueError('LM Studio components are not installed; update the panel')
+    with _lm_lock:
+        if _lmstudio is None:
+            directory = os.path.expanduser('~/.config/cc-panel/integrations')
+            _lmstudio = LMStudio(directory)
+            _model_relay = Relay(directory, _lmstudio)
+    return _lmstudio
+
+
+def saved_source(name):
+    try:
+        source = json.loads(opt(name, '@cc_source') or 'null')
+        return source if isinstance(source, dict) or source is None else {"kind":"invalid"}
+    except (ValueError, TypeError):
+        return {"kind":"invalid"}
+
+
+def session_source(data, agent):
+    source = data.get('source')
+    if source is None:
+        return None
+    if not isinstance(source, dict):
+        raise ValueError('Invalid model source')
+    kind = source.get('kind')
+    if kind == 'default':
+        return None
+    if kind == 'kimi' and agent in ('claude', 'claude-kimi', 'kimi'):
+        model = source.get('model', kimi_config.status()['model'])
+        if model not in kimi_config.MODELS:
+            raise ValueError('Unknown Kimi model')
+        return {'kind':'kimi','model':model,'label':'Kimi · '+model}
+    if kind == 'lmstudio' and agent == 'claude':
+        service = model_service()
+        profile = service.get(source.get('profile'))
+        model = source.get('model')
+        models = profile.get('models', [])
+        if not isinstance(model, str) or not any(m['id'] == model for m in models):
+            raise ValueError('Select a model from the LM Studio profile')
+        if not kimi_config.executable('claude-kimi'):
+            raise ValueError('Install Claude Code first')
+        binding = _model_relay.bindings.create(profile, model)
+        return {'kind':'lmstudio','profile':profile['id'],'model':model,'binding':binding,
+                'label':'LM Studio · '+profile['name']+' · '+model}
+    raise ValueError('This model source is not compatible with the selected agent')
+
+
+def action_lm_save(data):
+    service = model_service()
+    identity = data.get('id')
+    if identity:
+        old = service.get(identity)
+        from integrations.lmstudio import endpoint
+        if endpoint(data.get('url', '')) != old['url']:
+            if any((session.get('source') or {}).get('profile') == identity for session in list_sessions() + list(load_state().get('sessions', {}).values())):
+                raise ValueError('Close sessions using this profile before changing its address; add a separate profile instead')
+    return {'profile': service.save(data)}
+
+
+def action_lm_remove(data):
+    identity = data.get('id')
+    for session in list_sessions() + list(load_state().get("sessions", {}).values()):
+        source = session.get('source') or {}
+        if source.get('profile') == identity:
+            raise ValueError('Close sessions using this LM Studio profile before removing it')
+    model_service().remove(identity)
+    return {'lmstudio': model_service().status()}
+
+
+try:
     with open(os.path.join(HERE, "VERSION")) as version_file:
         VERSION = version_file.read().strip()
 except OSError:
@@ -212,11 +294,11 @@ def opt(name, key):
 
 def list_sessions(preview_name=None):
     fmt = ("#{session_name}\t#{session_created}\t#{session_attached}\t#{pane_current_path}\t"
-           "#{pane_current_command}\t#{window_activity}\t#{@cc_agent}\t#{@cc_sid}\t#{@cc_skip}")
+           "#{pane_current_command}\t#{window_activity}\t#{@cc_agent}\t#{@cc_sid}\t#{@cc_skip}\t#{@cc_source}")
     out = tmux("list-sessions", "-F", fmt, check=False)
     result = []
     for line in out.splitlines():
-        sname, created, attached, path, cmd, activity, agent, sid, skip = (line.split("\t") + [""] * 9)[:9]
+        sname, created, attached, path, cmd, activity, agent, sid, skip, source = (line.split("\t") + [""] * 10)[:10]
         if not sname.startswith(PREFIX):
             continue
         name = sname[len(PREFIX):]
@@ -229,6 +311,12 @@ def list_sessions(preview_name=None):
             "path": path, "running": is_running(agent, cmd), "command": cmd,
             "sid": sid or None, "skip": skip == "1",
         }
+        try:
+            model_source = json.loads(source or 'null')
+            if isinstance(model_source, dict):
+                item['source'] = {k:v for k,v in model_source.items() if k in ('kind','profile','model','binding','label')}
+        except ValueError:
+            pass
         if name == preview_name:
             preview_ansi = tmux("capture-pane", "-p", "-e", "-J", "-t", f"={sname}:", "-S", "-2000", check=False)
             preview = re.sub(r"\x1b\[[0-?]*[ -/]*[@-~]", "", preview_ansi).rstrip().splitlines()
@@ -263,18 +351,36 @@ def is_running(agent, cmd):
     return cmd in AGENTS[agent][1]
 
 
-def agent_cmd(agent, sid=None, resume=False, skip=False, name=None):
+def agent_cmd(agent, sid=None, resume=False, skip=False, name=None, source=None):
     """Shell command that starts (or resumes) the agent in a pane; None for a plain terminal."""
     if agent == "shell":
         return None
+    if source is not None:
+        if not isinstance(source, dict) or source.get('kind') not in ('kimi','lmstudio'):
+            raise ValueError('Invalid saved model source')
+        if source['kind'] == 'lmstudio' and agent != 'claude':
+            raise ValueError('Saved local source is incompatible with this agent')
+        if source['kind'] == 'kimi' and (agent not in ('kimi','claude-kimi') or source.get('model') not in kimi_config.MODELS):
+            raise ValueError('Invalid saved Kimi source')
     flag = AGENTS[agent][2] if skip else ""
     launcher = ""
-    if agent in ("kimi", "claude-kimi"):
+    if source and source.get('kind') == 'lmstudio':
+        model_service()
+        binding = _model_relay.bindings.get(source.get('binding'))
+        profile = model_service().get(binding['profile'])
+        if binding['profile'] != source.get('profile') or binding['model'] != source.get('model') or binding['url'] != profile['url']:
+            raise ValueError('Saved model binding differs from its profile')
+        if _model_relay.server is None:
+            raise ValueError('Local model relay is unavailable; restart the panel')
+        launcher = shlex.join([sys.executable, os.path.join(HERE, 'session_hook.py'), 'claude-local', source['binding']])
+    elif agent in ("kimi", "claude-kimi"):
         if not kimi_config.status()["configured"]:
             raise ValueError("Сначала сохраните ключ Kimi в настройках панели")
         if not kimi_config.executable(agent):
             raise ValueError("Сначала установите " + ("Claude" if agent == "claude-kimi" else "Kimi Code"))
         launcher = shlex.join([sys.executable, os.path.join(HERE, "session_hook.py"), agent])
+        if source and source.get('kind') == 'kimi':
+            launcher += ' --deck-model '+shlex.quote(source['model'])
     if agent == "kimi":
         if resume and not (isinstance(sid, str) and sid.startswith("session_") and valid_sid(sid[8:])):
             raise ValueError("ID разговора Kimi не сохранён. Выберите разговор вручную в терминале.")
@@ -369,12 +475,14 @@ def resolve_path(d, name):
     return path
 
 
-def create_session(name, path, agent, skip, sid=None, command=None):
+def create_session(name, path, agent, skip, sid=None, command=None, source=None):
     tmux("new-session", "-d", "-s", f"{PREFIX}{name}", "-c", path, "-x", "200", "-y", "50")
     tmux("set-option", "-t", f"={PREFIX}{name}:", "@cc_agent", agent)
     tmux("set-option", "-t", f"={PREFIX}{name}:", "@cc_skip", "1" if skip else "0")
     if sid:
         tmux("set-option", "-t", f"={PREFIX}{name}:", "@cc_sid", sid)
+    if source:
+        tmux('set-option', '-t', f'={PREFIX}{name}:', '@cc_source', json.dumps(source, separators=(',',':')))
     if command:
         time.sleep(0.5)
         type_line(name, command)
@@ -391,7 +499,18 @@ def action_new(d):
     path = resolve_path(d, name)
     skip = bool(d.get("skip")) and agent != "shell"
     sid = str(uuid.uuid4()) if agent in ("claude", "claude-kimi") else None
-    create_session(name, path, agent, skip, sid, agent_cmd(agent, sid, False, skip, name))
+    source = session_source(d, agent)
+    if source and source.get('kind') == 'kimi' and agent == 'claude':
+        agent = 'claude-kimi'
+    if source is None:
+        create_session(name, path, agent, skip, sid, agent_cmd(agent, sid, False, skip, name))
+    else:
+        try:
+            create_session(name, path, agent, skip, sid, agent_cmd(agent, sid, False, skip, name, source), source)
+        except Exception:
+            if source.get('binding'):
+                _model_relay.bindings.remove(source['binding'])
+            raise
 
 
 def action_restart(d):
@@ -405,7 +524,8 @@ def action_restart(d):
         sid = str(uuid.uuid4())
     elif new and agent in ("codex", "kimi"):
         sid = None
-    cmd = agent_cmd(agent, sid, not new, skip, name)
+    source = saved_source(name)
+    cmd = agent_cmd(agent, sid, not new, skip, name, source)
     stop_children(name)
     if new and agent != "shell":
         if sid:
@@ -420,7 +540,11 @@ def action_restart(d):
 def action_kill(d):
     name = d.get("name", "")
     if session_exists(name):
+        source = saved_source(name)
         tmux("kill-session", "-t", f"={PREFIX}{name}:")
+        if source and source.get("kind") == "lmstudio":
+            model_service()
+            _model_relay.bindings.remove(source.get("binding"))
     if isinstance(name, str) and NAME_RE.fullmatch(name):
         shutil.rmtree(os.path.join(UPLOAD_DIR, name), ignore_errors=True)
 
@@ -891,7 +1015,14 @@ def usage():
     return out
 
 
-ACTIONS = {"kimi_config": lambda d: {"kimi": kimi_config.save(d)}, "agent_install": action_agent_install, "agent_login": action_agent_login, "github_login": action_github_login, "new": action_new, "restart": action_restart, "kill": action_kill, "send": action_send, "upload": action_upload, "update": action_update, "discard_upload": action_discard_upload}
+ACTIONS = {
+    'lm_save': action_lm_save,
+    'lm_probe': lambda d: {'profile':model_service().probe(d.get('id'))},
+    'lm_test': lambda d: model_service().test(d),
+    'lm_benchmark': lambda d: model_service().benchmark(d),
+    'lm_discover': lambda d: {'discovery':model_service().discover(d)},
+    'lm_remove': action_lm_remove,
+    "kimi_config": lambda d: {"kimi": kimi_config.save(d)}, "agent_install": action_agent_install, "agent_login": action_agent_login, "github_login": action_github_login, "new": action_new, "restart": action_restart, "kill": action_kill, "send": action_send, "upload": action_upload, "update": action_update, "discard_upload": action_discard_upload}
 
 
 def current_question(name):
@@ -1214,6 +1345,11 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_json(200, server_info())
         if self.path == "/api/agents":
             return self.send_json(200, {**{a: agent_status(a) for a in (*INSTALLERS, "claude-kimi")}, "kimi_config": kimi_config.status()})
+        if self.path == '/api/lmstudio':
+            try:
+                return self.send_json(200, model_service().status())
+            except (ValueError, OSError):
+                return self.send_json(200, {'available':False,'profiles':[],'discovery':{'phase':'idle','results':[]}})
         if self.path == "/api/integrations":
             return self.send_json(200, integration_status())
         if self.path == "/api/github/status":
@@ -1345,15 +1481,19 @@ def tmux_server_pid():
 
 def live_sessions():
     fmt = ("#{session_name}\t#{pane_current_path}\t#{pane_current_command}\t#{@cc_sid}\t#{@cc_skip}\t"
-           "#{session_created}\t#{@cc_agent}")
+           "#{session_created}\t#{@cc_agent}\t#{@cc_source}")
     live = {}
     for line in tmux("list-sessions", "-F", fmt, check=False).splitlines():
-        sname, path, cmd, sid, skip, created, agent = (line.split("\t") + [""] * 7)[:7]
+        sname, path, cmd, sid, skip, created, agent, raw_source = (line.split("\t") + [""] * 8)[:8]
         agent = agent or "claude"
+        try:
+            source = json.loads(raw_source or "null")
+        except ValueError:
+            source = {"kind":"invalid"}
         if sname.startswith(PREFIX):
             live[sname[len(PREFIX):]] = {"path": path, "sid": sid or None, "skip": skip == "1", "agent": agent,
                                          "running": is_running(agent, cmd) if agent != "shell" else False,
-                                         "created": int(created or 0)}
+                                         "created": int(created or 0), "source": source}
     return live
 
 
@@ -1393,12 +1533,18 @@ def restore_session(name, info):
         print(f"restore {name}: path {path!r} is gone, skipped", flush=True)
         return
     sid, skip, agent = info.get("sid"), bool(info.get("skip")), info.get("agent") or "claude"
+    source = info.get("source")
     try:
-        resume = agent_cmd(agent, sid, True, skip) if info.get("running") else None
+        if source is not None and (not isinstance(source, dict) or source.get("kind") not in ("kimi", "lmstudio")):
+            raise ValueError("Invalid saved model source")
+        resume = agent_cmd(agent, sid, True, skip, source=source) if info.get("running") else None
     except ValueError as error:
         print(f"restore {name}: {error}; shell only", flush=True)
         resume = None
-    create_session(name, path, agent, skip, sid, resume)
+    if source is None:
+        create_session(name, path, agent, skip, sid, resume)
+    else:
+        create_session(name, path, agent, skip, sid, resume, source)
     print(f"restored {name} ({agent}{', resumed' if resume else ', shell only'})", flush=True)
 
 
@@ -1441,6 +1587,14 @@ def main():
     if sys.platform == "darwin" and os.environ.get("TMUX_SOCKET_NAME") and not tmux_server_pid():
         config = os.path.expanduser("~/.config/cc-panel/tmux.conf")
         tmux("-f", config, "new-session", "-d", "-s", "_keep")
+    if LMStudio:
+        try:
+            model_service()
+            _model_relay.start()
+            references = {source.get("binding") for info in list(load_state().get("sessions", {}).values()) + list(live_sessions().values()) if isinstance(source := info.get("source"), dict) and source.get("kind") == "lmstudio"}
+            _model_relay.bindings.prune(references)
+        except (OSError, ValueError):
+            print('Local model relay could not be started', flush=True)
     threading.Thread(target=sync_loop, daemon=True).start()
     if Telegram:
         try:

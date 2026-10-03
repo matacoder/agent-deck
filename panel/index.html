@@ -182,9 +182,9 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 .dlg-body{padding:18px 18px 4px;overflow-y:auto}
 .dlg h3{margin:0 0 14px;font-size:15px;font-weight:600;color:var(--fg2)}
 .dlg label{display:block;font-size:11.5px;color:var(--mut);margin:12px 0 5px}
-.dlg input[type=text],.dlg input[type=password],.dlg select{width:100%;background:var(--bg);border:1px solid var(--bd);border-radius:7px;color:var(--fg2);padding:8px 10px;outline:none}
+.dlg input[type=url],.dlg input[type=text],.dlg input[type=password],.dlg select{width:100%;background:var(--bg);border:1px solid var(--bd);border-radius:7px;color:var(--fg2);padding:8px 10px;outline:none}
 .dlg select{-webkit-appearance:none;appearance:none;padding-right:32px;background-image:linear-gradient(45deg,transparent 50%,var(--mut) 50%),linear-gradient(135deg,var(--mut) 50%,transparent 50%);background-position:calc(100% - 17px) 50%,calc(100% - 12px) 50%;background-size:5px 5px;background-repeat:no-repeat}
-.dlg input[type=text]:focus,.dlg input[type=password]:focus,.dlg select:focus{border-color:var(--acc)}
+.dlg input[type=url]:focus,.dlg input[type=text]:focus,.dlg input[type=password]:focus,.dlg select:focus{border-color:var(--acc)}
 .chk{display:flex;align-items:center;gap:9px;color:var(--fg);margin-top:14px;cursor:pointer}
 .chk input{width:17px;height:17px;accent-color:var(--acc)}
 .acts{display:flex;justify-content:flex-end;gap:8px;padding:14px 18px;border-top:1px solid var(--bd)}
@@ -302,7 +302,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
   .dlg{height:100%;max-height:none;padding-top:var(--sat)}
   .dlg-body{flex:1}
   .dlg h3{font-size:18px}
-  .dlg input[type=text],.dlg input[type=password],.dlg select,.gh .search{font-size:16px;padding:11px 12px;border-radius:10px}
+  .dlg input[type=url],.dlg input[type=text],.dlg input[type=password],.dlg select,.gh .search{font-size:16px;padding:11px 12px;border-radius:10px}
   .two{grid-template-columns:1fr}
   .two>div+div label{margin-top:12px}
   .repo{padding:11px 10px}
@@ -317,6 +317,16 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 .seg{display:none}
 #closed_drafts pre{white-space:pre-wrap;overflow:auto;max-height:200px;overflow-wrap:anywhere}
 body.is-shell .agent-only{display:none!important}
+
+#settings_dlg{width:min(850px,calc(100vw - 32px));max-height:90dvh}
+.settings-hub{min-height:460px;max-height:90dvh}.hub-heading{display:flex;justify-content:space-between;align-items:center;padding:12px 20px;border-bottom:1px solid var(--bd)}
+.hub-heading h3{margin:0}.hub-heading button{min-width:44px;border-radius:8px}.settings-hub .pri{background:var(--acc);color:white;padding:10px 14px;border-radius:8px}.hub-nav button{padding:10px;border-radius:8px}.hub-card h4{font-size:15px;font-weight:600}.ihead{flex-wrap:wrap}.ihead>span:first-child{flex-basis:100%;text-align:left;font-weight:600}.hub-heading button{font-size:24px}.hub-nav{display:flex;gap:4px;padding:12px;flex-wrap:wrap;border-bottom:1px solid var(--bd)}
+.hub-nav button{flex:1}.hub-nav button.on{background:var(--acc);color:white}.hub-content section[hidden]{display:none}
+.settings-hub button,.settings-hub select,.settings-hub summary{min-height:44px}.hub-card{border:1px solid var(--bd);border-radius:12px;padding:16px;margin-bottom:12px;overflow-wrap:anywhere}.hub-card h4{margin:0 0 8px}.hub-card p{color:var(--mut);margin:6px 0 12px}.hub-card .acts{padding:0;flex-wrap:wrap}.hub-card select{width:100%;margin:8px 0}.hub-card details{margin-top:10px}.hub-card details button{margin:4px}
+#kimi_dlg[hidden],#integrations_dlg[hidden]{display:none}#kimi_dlg .dlg,#integrations_dlg .dlg{max-height:none;width:100%;border:1px solid var(--bd);border-radius:12px;margin:12px 0}.hub-content{overflow-y:auto}
+#n_source{width:100%;max-width:100%;min-width:0}#source_row{min-width:0}#source_row button{min-height:44px;margin:8px 0}.iblk{overflow-wrap:anywhere}
+#lm_editor{margin:12px 0;padding:12px;border:1px solid var(--bd);border-radius:12px}#lm_editor input{max-width:100%}.side-foot{flex-wrap:wrap}.side-foot .settingsbtn{font-size:13px;min-height:44px}.hub-card .good{color:var(--ok)}
+@media(max-width:760px){#settings_dlg{width:100vw;height:100dvh;max-height:100dvh;max-width:100vw;margin:0;border-radius:0}.settings-hub{height:100%;max-height:100dvh;min-height:0}.hub-nav{display:grid;grid-template-columns:1fr 1fr}.hub-nav button{font-size:13px;white-space:normal}.hub-content{padding:14px}.hub-card{padding:12px}.hub-card .acts button{min-width:100px}.hub-heading{padding:12px 14px}}
 </style></head><body>
 <div id="app">
   <aside>
@@ -327,7 +337,7 @@ body.is-shell .agent-only{display:none!important}
     </div>
     <div id="tabs"></div>
     <div id="integ"></div>
-    <div class="side-foot"><span id="foot"></span><span id="ver"></span><button id="b_drafts" onclick="showClosedDrafts()" style="display:none">Черновики закрытых сессий</button><button class="settingsbtn" onclick="openSettings()" aria-label="Настройки" title="Настройки">⚙</button></div>
+    <div class="side-foot"><span id="foot"></span><span id="ver"></span><button id="b_drafts" onclick="showClosedDrafts()" style="display:none">Черновики закрытых сессий</button><button class="settingsbtn" onclick="openSettings()" aria-label="Настройки" title="Настройки">⚙ Настройки</button></div>
   </aside>
   <div id="scrim" onclick="drawer(false)"></div>
   <main>
@@ -395,8 +405,7 @@ body.is-shell .agent-only{display:none!important}
   <button onclick="sheet(false);popout()"><span class="i">↗</span>Терминал в новой вкладке</button>
   <button class="dng" onclick="sheet(false);kill()"><span class="i">✕</span>Закрыть сессию</button>
   <button onclick="refreshInterface()"><span class="i">↻</span>Обновить интерфейс</button>
-  <button onclick="sheet(false);openIntegrations()"><span class="i" aria-hidden="true">✈</span>Интеграции</button>
-  <button onclick="sheet(false);openSettings()"><span class="i">⚙</span>Настройки</button>
+  <button onclick="sheet(false);openSettings()"><span class="i" aria-hidden="true">⚙</span>Настройки</button>
   <button id="s_update" onclick="updatePanel()" style="display:none"></button>
   <button id="s_drafts" onclick="showClosedDrafts()" style="display:none">Черновики закрытых сессий</button>
   <button onclick="sheet(false)"><span class="i"></span>Отмена</button>
@@ -410,10 +419,10 @@ body.is-shell .agent-only{display:none!important}
     <div class="agsel" id="agsel">
       <button type="button" data-a="claude" class="on" onclick="pickAgent('claude')"><span class="ag claude">✻</span>Claude</button>
       <button type="button" data-a="codex" onclick="pickAgent('codex')"><span class="ag codex">◎</span>Codex</button>
-      <button type="button" data-a="claude-kimi" onclick="pickAgent('claude-kimi')">Claude · Kimi</button>
       <button type="button" data-a="kimi" onclick="pickAgent('kimi')">Kimi Code</button>
       <button type="button" data-a="shell" onclick="pickAgent('shell')"><span class="ag shell">$</span>Терминал</button>
     </div>
+    <div id="source_row"><label for="n_source">Источник модели</label><select id="n_source"></select><button type="button" onclick="configureSource()">Настроить модели</button></div>
     <div class="gh" id="gh">
       <div class="gh-head"><span id="gh_state">GitHub…</span><button type="button" id="gh_refresh" onclick="loadRepos(true)" style="display:none">обновить</button></div>
       <div id="gh_body"></div>
@@ -432,12 +441,17 @@ body.is-shell .agent-only{display:none!important}
   <div class="acts"><button type="button" onclick="$('dlg').close()">Отмена</button><button class="pri" id="n_go">Создать</button></div>
 </form></dialog>
 
-<dialog id="settings_dlg"><form class="dlg" onsubmit="event.preventDefault();saveLanguage()">
-  <div class="dlg-body"><h3>Настройки</h3><label for="ui_language">Язык интерфейса</label>
-  <select id="ui_language"></select><p>Язык сохраняется в этом браузере. Сообщения и вывод агентов не переводятся.</p><div class="settings-account"><button type="button" onclick="logout()">Выйти</button></div></div>
-  <div class="acts"><button type="button" onclick="$('settings_dlg').close()">Отмена</button><button class="pri">Применить</button></div>
-</form></dialog>
-<dialog id="kimi_dlg"><form class="dlg" onsubmit="event.preventDefault();saveKimi()">
+<dialog id="settings_dlg"><div class="dlg settings-hub">
+  <div class="hub-heading"><h3>Настройки</h3><button type="button" onclick="$('settings_dlg').close()" aria-label="Закрыть">×</button></div>
+  <nav class="hub-nav" aria-label="Настройки">
+    <button type="button" data-section="agents" onclick="settingsSection('agents')">Агенты</button>
+    <button type="button" data-section="models" onclick="settingsSection('models')">Модели</button>
+    <button type="button" data-section="connections" onclick="settingsSection('connections')">Подключения</button>
+    <button type="button" data-section="app" onclick="settingsSection('app')">Приложение</button>
+  </nav>
+  <div class="dlg-body hub-content">
+    <section id="hub_agents"></section>
+    <section id="hub_models"><div id="model_cards"></div><div id="kimi_dlg" hidden><form class="dlg" onsubmit="event.preventDefault();saveKimi()">
   <div class="dlg-body"><h3>Настройки Kimi</h3>
     <p id="kimi_state"></p>
     <label for="kimi_key">API-ключ Kimi Code</label>
@@ -447,8 +461,20 @@ body.is-shell .agent-only{display:none!important}
     <p>Один ключ для Claude · Kimi и Kimi Code. Изменения применятся при следующем запуске агента.</p>
   </div>
   <div class="acts"><button type="button" onclick="clearKimi()">Удалить ключ</button><button type="button" onclick="closeKimi()">Отмена</button><button class="pri" id="kimi_save">Сохранить</button></div>
-</form></dialog>
-<dialog id="integrations_dlg"><form class="dlg integration-dialog" onsubmit="event.preventDefault();saveTelegram()">
+</form></div>
+
+      <details id="lm_editor"><summary>Добавить сервер</summary><form onsubmit="event.preventDefault();saveLM()">
+        <input type="hidden" id="lm_id"><label for="lm_name">Название</label><input id="lm_name" required maxlength="100">
+        <label for="lm_url">Адрес сервера</label><input id="lm_url" type="url" required placeholder="http://100.64.0.1:1234">
+        <label for="lm_key">API-ключ</label><input id="lm_key" type="password" autocomplete="new-password" placeholder="Вставьте ключ; пустое поле сохраняет текущий">
+        <label class="chk"><input type="checkbox" id="lm_clear_key"><span>Удалить ключ</span></label>
+        <div class="acts"><button type="button" onclick="resetLM()">Отмена</button><button class="pri">Сохранить</button></div>
+      </form></details>
+      <div class="hub-card"><h4>Tailscale</h4><p>Поиск серверов на известных узлах</p><label for="lm_ports">Порты</label><input id="lm_ports" value="1234" inputmode="numeric">
+      <div class="acts"><button type="button" onclick="discoverLM()">Найти серверы</button><button type="button" id="lm_cancel" onclick="discoverLM(true)" hidden>Остановить</button></div>
+      <p id="lm_progress" role="status"></p><div id="lm_results"></div></div>
+    </section>
+    <section id="hub_connections"><div id="connection_cards"></div><div id="integrations_dlg" hidden><form class="dlg integration-dialog" onsubmit="event.preventDefault();saveTelegram()">
   <div class="dlg-body"><h3>Интеграции</h3>
     <div class="integration-card">
     <div class="integration-heading"><span class="telegram-mark" aria-hidden="true"><svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m21 3-4 18-6-5-4 3v-6L3 10 21 3Z"/><path d="m7 13 10-6-6 9"/></svg></span><div><h4>Telegram</h4><p>Вопросы и ответы в чате с ботом</p></div></div>
@@ -467,8 +493,14 @@ body.is-shell .agent-only{display:none!important}
     <button type="button" class="integration-pair" id="telegram_pair" onclick="pairTelegram()" style="display:none">Привязать Telegram</button>
     </div>
   </div>
-  <div class="acts"><button type="button" class="integration-remove" onclick="clearTelegram()">Отключить</button><button type="button" onclick="$('integrations_dlg').close()">Закрыть</button><button class="pri" id="telegram_save">Сохранить</button></div>
-</form></dialog>
+  <div class="acts"><button type="button" class="integration-remove" onclick="clearTelegram()">Отключить</button><button type="button" onclick="closeIntegrations()">Закрыть</button><button class="pri" id="telegram_save">Сохранить</button></div>
+</form></div>
+</section>
+    <section id="hub_app"><form onsubmit="event.preventDefault();saveLanguage()"><label for="ui_language">Язык интерфейса</label><select id="ui_language"></select>
+    <p>Язык сохраняется в этом браузере. Сообщения и вывод агентов не переводятся.</p><button class="pri">Применить</button></form>
+    <div class="hub-card"><h4>Agent Deck</h4><div id="hub_version"></div></div><div class="settings-account"><button type="button" onclick="logout()">Выйти</button></div></section>
+  </div>
+</div></dialog>
 <script>
 const I18N=__PANEL_I18N__;
 const DATE_LOCALE=(()=>{try{return Intl.getCanonicalLocales(I18N.language)[0]}catch(e){return "en"}})();
@@ -646,7 +678,7 @@ function renderTitle(){
   $("msg").placeholder=s?tr("Сообщение в ")+AGENTS[agentOf(s)].label+"…":tr("Сообщение агенту…");
   if(!s){t.textContent=isMobile()?"Agent Deck":"—";return}
   const st=state(s);
-  t.append(el("b","",s.name),el("span","path"," — "+s.path.replace(/^\/home\/[^/]+/,"~")),el("span","st",stateText(s)+" · "+shortPath(s.path)));
+  t.append(el("b","",s.name),el("span","path"," — "+s.path.replace(/^\/home\/[^/]+/,"~")),el("span","st",stateText(s)+" · "+shortPath(s.path)+(s.source?.label?" · "+s.source.label:"")));
 }
 
 function frameFor(name){
@@ -1076,7 +1108,7 @@ async function loadUsage(){try{usageData=await api("/api/usage")}catch(e){}rende
 
 function fmtReset(ts){
   if(!ts)return"";
-  const ms=ts*1000-Date.now();if(ms<=0)returnt("сбрасывается…");
+  const ms=ts*1000-Date.now();if(ms<=0)return tr("сбрасывается…");
   const m=Math.round(ms/60000),d=new Date(ts*1000);
   const rel=m<60?tr("{0} мин",[m]):m<1440?tr("{0} ч {1} мин",[Math.floor(m/60),m%60]):tr("{0} д {1} ч",[Math.floor(m/1440),Math.floor(m%1440/60)]);
   const hm=d.toLocaleTimeString(DATE_LOCALE,{hour:"2-digit",minute:"2-digit"});
@@ -1157,38 +1189,67 @@ function integSummary(){
   return head;
 }
 function renderInteg(){
-  if(!integOpen){$("integ").replaceChildren(integSummary());return}
-  const blocks=[integSummary()];
-  for(const a of["claude","codex"]){
-    const st=lastAg[a]||{},glyph=`<span class="ag ${a}">${AGENTS[a].glyph}</span>`,right=[];
-    if(!st.installed)right.push(btn(tr("Установить"),"go",()=>agentAction("install",a)));
-    else{
-      right.push(st.logged_in?el("span","ok","✓"):btn(tr("Войти"),"go",()=>agentAction("login",a)));
-      right.push(btn("⟳","ic",()=>agentAction("install",a),tr("Обновить официальным установщиком")));
-    }
-    const u=usageData[a],ver=[st.version,u&&u.plan].filter(Boolean).join(" · ");
-    const blk=el("div","iblk",irow(glyph,AGENTS[a].label,ver,right));
-    const ub=st.logged_in&&usageBlock(u);if(ub)blk.append(ub);
+  const head=integSummary();head.setAttribute("aria-label",tr("Лимиты"));head.prepend(el("span","",tr("Лимиты")));
+  if(!integOpen){$("integ").replaceChildren(head);return}
+  const blocks=[head];
+  for(const a of ["claude","codex","kimi"]){
+    const u=usageData[a],blk=el("div","iblk",el("strong","",AGENTS[a].label));
+    const ub=usageBlock(u);if(ub)blk.append(ub);else blk.append(el("p","",tr("Нет данных")));
     blocks.push(blk);
   }
-  const ks=lastAg.kimi||{},kc=lastAg.kimi_config||{};
-  const keyLabel=kc.configured?tr("Изменить ключ Kimi"):tr("Настроить ключ Kimi");
-  const keyButton=btn("⚿",kc.configured?"connected":"go",openKimi,keyLabel);keyButton.setAttribute("aria-label",keyLabel);
-  const kr=[keyButton];
-  kr.push(btn(ks.installed?"⟳":tr("Установить Kimi"),"",()=>agentAction("install","kimi")));
-  const kb=el("div","iblk",irow("◈",kc.configured?"Kimi ✓":"Kimi",ks.version||"",kr));
-  const ku=kc.configured&&usageBlock(usageData.kimi);if(ku)kb.append(ku);blocks.push(kb);
-  blocks.push(el("div","iblk",irow(GH_ICON,ghLogin||"GitHub","",[ghLogin?btn(tr("Репозитории"),"",openNew):btn(tr("Подключить"),"go",ghConnect)])));
-  blocks.push(el("div","iblk",irow("✈","Telegram",telegramConfig.paired?(telegramConfig.enabled?tr("подключён"):tr("пауза")):"",[btn(tr("Настроить"),"",openIntegrations)])));
+  for(const p of lmData.profiles||[]){const m=p.performance||{};blocks.push(el("div","iblk",el("strong","",p.name),el("p","",performanceText(m))))}
   $("integ").replaceChildren(...blocks);
+  if($("settings_dlg").open&&!$("settings_dlg").contains(document.activeElement))renderHub();
 }
-async function openSettings(){
-  drawer(false);sheet(false);
-  try{
-    const data=await api("/api/locales");
-    $("ui_language").replaceChildren(...data.languages.map(x=>{const o=document.createElement("option");o.value=x.code;o.textContent=x.name;return o}));
-    $("ui_language").value=I18N.language;$("settings_dlg").showModal();
-  }catch(e){toast(e.message)}
+let hubSection="agents",lmData={profiles:[],discovery:{}},lmTimer=null,returnToNew=false;
+function settingsSection(section){
+  hubSection=section;for(const name of ["agents","models","connections","app"])$("hub_"+name).hidden=name!==section;
+  for(const b of document.querySelectorAll(".hub-nav button"))b.classList.toggle("on",b.dataset.section===section);
+}
+async function openSettings(section="agents"){
+  drawer(false);sheet(false);settingsSection(section);
+  if(!$("settings_dlg").open)$("settings_dlg").showModal();
+  renderHub();
+  await Promise.allSettled([loadLM(),loadIntegrations(),checkGithubFoot(),(async()=>{const data=await api("/api/locales");$("ui_language").replaceChildren(...data.languages.map(x=>{const o=el("option","",x.name);o.value=x.code;return o}));$("ui_language").value=I18N.language})()]);
+  clearInterval(lmTimer);lmTimer=setInterval(()=>{if($("settings_dlg").open&&lmData.discovery?.phase==="running")loadLM(false)},2000);
+}
+$("settings_dlg").addEventListener("close",()=>{if($("settings_dlg").open)return;clearInterval(lmTimer);closeKimi();closeIntegrations();$("lm_key").value="";if(returnToNew){returnToNew=false;$("dlg").showModal();renderSources()}});
+function card(name,status,label,action,secondary=[]){const c=el("div","hub-card",el("h4","",name),el("p","",status),btn(label,"pri",action));if(secondary.length){const d=el("details","",el("summary","",tr("Другие действия")));for(const [text,fn] of secondary)d.append(btn(text,"",fn));c.append(d)}return c}
+function renderHub(){
+  const selections=new Map([...$("model_cards").querySelectorAll("select")].map(x=>[x.dataset.profile,x.value]));
+  $("hub_agents").replaceChildren(...["claude","codex","kimi"].map(a=>{const st=lastAg[a]||{};if(a==="kimi")return card(AGENTS[a].label,st.version||tr("Не установлен"),st.installed?(lastAg.kimi_config?.configured?tr("Обновить"):tr("Настроить ключ Kimi")):tr("Установить"),()=>st.installed&&!lastAg.kimi_config?.configured?openKimi():agentAction("install",a));return card(AGENTS[a].label,[st.version,st.installed?(st.logged_in?tr("подключён"):tr("Войти")):tr("Не установлен")].filter(Boolean).join(" · "),st.installed?(st.logged_in?tr("Обновить"):tr("Войти")):tr("Установить"),()=>agentAction(st.installed&&!st.logged_in?"login":"install",a),st.installed?[[tr("Обновить"),()=>agentAction("install",a)]]:[])}));
+  const cards=[card("Kimi",lastAg.kimi_config?.configured?tr("Ключ сохранён на сервере"):tr("Ключ ещё не настроен"),tr("Настроить"),()=>openEditor("kimi"))];
+  for(const p of lmData.profiles||[]){
+    const c=card(p.name+" · LM Studio",p.url+" · "+tr(p.status==="online"?"подключён":p.status==="needs_key"?"Нужен ключ":p.status==="offline"?"Недоступен":"Не проверен"),tr("Проверить подключение"),()=>lmAction("probe",{id:p.id}),[[tr("Изменить"),()=>editLM(p)],[tr("Удалить"),()=>lmAction("remove",{id:p.id})]]);
+    const samples=p.measurements?Object.values(p.measurements).flatMap(group=>Object.values(group)):[p.performance||{}];for(const sample of samples)c.append(el("p","",performanceText(sample)));
+    if(p.models?.length){const select=el("select","");select.dataset.profile=p.id;select.setAttribute("aria-label",tr("Модель"));for(const m of p.models){const o=el("option","",m.name+(m.loaded?" · "+tr("Загружена"):"")+(m.tool_tested?" · ✓ tools":""));o.value=m.id;select.append(o)}if(selections.has(p.id))select.value=selections.get(p.id);if(!select.value&&select.options.length)select.selectedIndex=0;c.append(select);const detail=el("p","");const describe=()=>{const m=p.models.find(x=>x.id===select.value);detail.textContent=[m.context_length||m.max_context_length?"Context: "+(m.context_length||m.max_context_length):"",m.quantization||"",m.tool_tested?"Tools: ✓":"Tools: ?"].filter(Boolean).join(" · ")};select.onchange=describe;describe();c.append(detail);const actions=el("div","acts",btn(tr("Проверить инструменты"),"",()=>lmAction("test",{id:p.id,model:select.value})),btn(tr("Измерить скорость"),"",()=>lmAction("benchmark",{id:p.id,model:select.value})));c.append(actions)}cards.push(c);
+  }
+  $("model_cards").replaceChildren(...cards);
+  $("connection_cards").replaceChildren(card("GitHub",ghLogin||tr("Не подключён"),ghLogin?tr("Репозитории"):tr("Подключить"),()=>{returnToNew=false;$("settings_dlg").close();ghLogin?openNew():ghConnect()}),card("Telegram",telegramConfig.paired?tr("подключён"):tr("Не подключён"),tr("Настроить"),()=>openEditor("telegram")));
+  if(panelVersion)renderVersion(panelVersion);
+}
+function performanceText(m){
+  const parts=[m.source==="session"?tr("Последний ответ"):m.source==="benchmark"?tr("Тест скорости"):tr("Без лимитов")];
+  if(Number.isFinite(m.tokens_per_second))parts.push(m.tokens_per_second.toFixed(1)+" tok/s");
+  if(Number.isFinite(m.time_to_first_token_seconds))parts.push("TTFT "+m.time_to_first_token_seconds.toFixed(2)+" s");
+  if(Number.isFinite(m.model_load_time_seconds))parts.push(tr("Загрузка")+" "+m.model_load_time_seconds.toFixed(2)+" s");
+  if(m.model)parts.push(m.model);return parts.join(" · ");
+}
+async function loadLM(refresh=true){try{lmData=await api("/api/lmstudio");if($("settings_dlg").open&&refresh)renderHub();renderDiscovery()}catch(e){$("lm_progress").textContent=e.message}}
+function editLM(p){$("lm_editor").open=true;$("lm_id").value=p.id||"";$("lm_name").value=p.name||"";$("lm_url").value=p.url||"";$("lm_key").value="";$("lm_clear_key").checked=false;$("lm_editor").scrollIntoView({block:"nearest"})}
+function resetLM(){editLM({});$("lm_editor").open=false}
+async function saveLM(){try{const saved=await api("/api/lm_save",{id:$("lm_id").value||undefined,name:$("lm_name").value.trim(),url:$("lm_url").value.trim(),key:$("lm_key").value,clear_key:$("lm_clear_key").checked});$("lm_key").value="";await api("/api/lm_probe",{id:saved.profile.id});resetLM();await loadLM();renderSources()}catch(e){toast(e.message)}}
+async function lmAction(action,data){const buttons=[...$("model_cards").querySelectorAll("button")];buttons.forEach(b=>b.disabled=true);$("model_cards").setAttribute("aria-busy","true");toast(tr("Загружаю…"));try{const r=await api("/api/lm_"+action,data);if(r.result)toast(r.result.ok?tr("Проверка завершена"):r.result.error,r.result.ok?"success":"error");await loadLM();renderSources()}catch(e){toast(e.message)}finally{buttons.forEach(b=>b.disabled=false);$("model_cards").removeAttribute("aria-busy")}}
+async function discoverLM(cancel=false){try{const ports=$("lm_ports").value.split(",").map(x=>Number(x.trim()));await api("/api/lm_discover",cancel?{cancel:true}:{ports});await loadLM()}catch(e){toast(e.message)}}
+function renderDiscovery(){const d=lmData.discovery||{};$("lm_progress").textContent=d.error||[tr(d.phase==="running"?"Поиск…":d.phase==="done"?"Поиск завершён":d.phase==="cancelled"?"Остановлено":""),d.total?d.checked+" / "+d.total:""].filter(Boolean).join(" · ");$("lm_cancel").hidden=d.phase!=="running";$("lm_results").replaceChildren(...(d.results||[]).map(p=>card(p.name,p.url+(p.status==="needs_key"?" · "+tr("Нужен ключ"):""),tr("Добавить"),()=>editLM(p))))}
+function openEditor(kind){kind==="kimi"?openKimi():openIntegrations()}
+function configureSource(){returnToNew=true;$("dlg").close();openSettings("models")}
+function renderSources(){
+  const old=$("n_source").value;$("source_row").hidden=!["claude","kimi"].includes(newAgent);
+  const values=[];if(newAgent==="claude")values.push([{kind:"default"},"Claude"]);
+  if(lastAg.kimi_config?.configured&&["claude","kimi"].includes(newAgent))for(const m of ["k3","kimi-for-coding","kimi-for-coding-highspeed"])values.push([{kind:"kimi",model:m},"Kimi · "+m]);
+  if(newAgent==="claude")for(const p of lmData.profiles||[])for(const m of p.models||[])values.push([{kind:"lmstudio",profile:p.id,model:m.id},p.name+" · "+m.name]);
+  $("n_source").replaceChildren(...values.map(([v,label])=>{const o=el("option","",label);o.value=JSON.stringify(v);return o}));if([...$("n_source").options].some(o=>o.value===old))$("n_source").value=old;else if(newAgent==="kimi"&&lastAg.kimi_config?.model)$("n_source").value=JSON.stringify({kind:"kimi",model:lastAg.kimi_config.model});
 }
 function saveLanguage(){
   if(sending||uploading||choosingImages){toast(tr("Дождитесь окончания отправки или загрузки"));return}
@@ -1196,19 +1257,19 @@ function saveLanguage(){
   document.cookie="cc_lang="+encodeURIComponent($("ui_language").value)+"; Path=/; Max-Age=31536000; SameSite=Lax"+(location.protocol==="https:"?"; Secure":"");
   location.reload();
 }
-function closeKimi(){$("kimi_key").value="";$("kimi_dlg").close()}
+function closeKimi(){$("kimi_key").value="";$("kimi_dlg").hidden=true}
 function openKimi(){
   const config=lastAg.kimi_config||{};
   $("kimi_key").value="";$("kimi_model").value=config.model||"k3";
   $("kimi_state").textContent=config.configured?tr("Ключ сохранён на сервере"):tr("Ключ ещё не настроен");
-  $("kimi_dlg").showModal();
+  openSettings("models");$("kimi_dlg").hidden=false;$("kimi_dlg").scrollIntoView({block:"nearest"});
 }
-$("kimi_dlg").addEventListener("close",()=>{$("kimi_key").value=""});
+
 async function saveKimi(clear=false){
   $("kimi_save").disabled=true;
   try{
     await api("/api/kimi_config",{key:$("kimi_key").value.trim(),model:$("kimi_model").value,clear});
-    closeKimi();await checkGithubFoot();await loadUsage();toast(clear?tr("Ключ Kimi удалён"):tr("Настройки Kimi сохранены"),"success");
+    closeKimi();await checkGithubFoot();await loadUsage();renderHub();renderSources();toast(clear?tr("Ключ Kimi удалён"):tr("Настройки Kimi сохранены"),"success");
   }catch(e){toast(e.message)}finally{$("kimi_save").disabled=false}
 }
 function clearKimi(){if(confirm(tr("Удалить ключ Kimi из панели?")))saveKimi(true)}
@@ -1232,18 +1293,18 @@ function renderTelegram(config){
   renderInteg();
 }
 async function loadIntegrations(){
-  try{const data=await api("/api/integrations");renderTelegram(data.telegram)}catch(e){if($("integrations_dlg").open)$("telegram_state").textContent=e.message}
+  try{const data=await api("/api/integrations");renderTelegram(data.telegram)}catch(e){if(!$("integrations_dlg").hidden)$("telegram_state").textContent=e.message}
 }
 function openIntegrations(){
-  telegramDirty=false;$("telegram_token").value="";$("telegram_credentials").open=!telegramConfig.configured;$("integrations_dlg").showModal();loadIntegrations();
+  telegramDirty=false;$("telegram_token").value="";$("telegram_credentials").open=!telegramConfig.configured;openSettings("connections");$("integrations_dlg").hidden=false;loadIntegrations();
   clearInterval(integrationTimer);integrationTimer=setInterval(()=>{if(!telegramDirty)loadIntegrations()},3000);
 }
-$("integrations_dlg").addEventListener("close",()=>{$("telegram_token").value="";clearInterval(integrationTimer)});
+function closeIntegrations(){$("telegram_token").value="";clearInterval(integrationTimer);$("integrations_dlg").hidden=true}
 async function saveTelegram(clear=false){
   $("telegram_save").disabled=true;
   try{
     const data=await api("/api/telegram_config",{token:$("telegram_token").value.trim(),enabled:$("telegram_enabled").checked,language:I18N.language,clear});
-    telegramDirty=false;$("telegram_token").value="";renderTelegram(data.telegram);
+    telegramDirty=false;$("telegram_token").value="";renderTelegram(data.telegram);renderHub();
     if(!clear&&!data.telegram.paired)await pairTelegram();
     toast(clear?tr("Telegram отключён"):tr("Настройки Telegram сохранены"),"success");
   }catch(e){toast(e.message)}finally{$("telegram_save").disabled=false}
@@ -1269,9 +1330,9 @@ function renderVersion(v){
     if(!v.can_update&&!panelUpdating&&job.phase!=="done"){
       b.disabled=true;box.title=tr("Разработка: обновляйте чекаут через git. Кнопка доступна после установки панели.");
     }
-    box.append(b);mobile.textContent=label;mobile.style.display="flex";mobile.disabled=b.disabled;
+    $("hub_version").replaceChildren("v"+v.version,b);box.append(btn(tr("Обновить"),"",()=>openSettings("app")));mobile.textContent=label;mobile.style.display="flex";mobile.disabled=b.disabled;
   }
-  renderAttachments();
+  if(!label)$("hub_version").replaceChildren("v"+v.version);renderAttachments();
 }
 let UI_PANEL_VERSION=null;
 async function loadVersion(){
@@ -1345,17 +1406,17 @@ let newAgent="claude";
 function pickAgent(a){
   newAgent=a;for(const b of $("agsel").children)b.classList.toggle("on",b.dataset.a===a);
   $("n_skip_row").style.display=a==="shell"?"none":"";
-  if(a!=="shell")$("n_skip_lbl").textContent=tr("Без подтверждений (")+AGENTS[a].skip+")";
+  if(a!=="shell")$("n_skip_lbl").textContent=tr("Без подтверждений (")+AGENTS[a].skip+")";renderSources();
 }
 async function openNew(){
-  drawer(false);
+  returnToNew=false;if($("settings_dlg").open)$("settings_dlg").close();drawer(false);
   try{const{projects}=await api("/api/projects");$("projlist").replaceChildren(...projects.map(p=>{const o=document.createElement("option");o.value=p;return o}))}catch(e){}
-  $("dlg").showModal();loadGithub();
+  $("dlg").showModal();loadGithub();await loadLM();renderSources();
 }
 async function createSession(){
   const name=$("n_name").value.trim();$("n_go").disabled=true;$("n_go").textContent=tr("Создаю…");
   const ok=await post("/api/new",{name,project:$("n_proj").value.trim()||name,git:$("n_git").value.trim(),
-    worktree:$("n_wt").checked,branch:$("n_branch").value.trim(),skip:$("n_skip").checked,agent:newAgent});
+    worktree:$("n_wt").checked,branch:$("n_branch").value.trim(),skip:$("n_skip").checked,agent:newAgent,source:["claude","kimi"].includes(newAgent)&&$("n_source").value?JSON.parse($("n_source").value):undefined});
   $("n_go").disabled=false;$("n_go").textContent=tr("Создать");
   if(ok){$("dlg").close();for(const i of["n_name","n_proj","n_git","n_branch"])$(i).value="";select(name)}
 }
@@ -1390,7 +1451,7 @@ function refreshInterface(){
   location.reload();
 }
 function canAutoRefresh(){
-  return !document.hidden&&!panelUpdating&&!sending&&!uploading&&!choosingImages&&!Array.from(imageAttachments.values()).some(images=>images.length)&&!Array.from(messageDrafts.values()).some(Boolean)&&!$("msg").value&&!$("dlg").open&&!$("draft_dlg").open&&!$("kimi_dlg").open&&!$("settings_dlg").open&&!$("integrations_dlg").open&&
+  return !document.hidden&&!panelUpdating&&!sending&&!uploading&&!choosingImages&&!Array.from(imageAttachments.values()).some(images=>images.length)&&!Array.from(messageDrafts.values()).some(Boolean)&&!$("msg").value&&!$("dlg").open&&!$("draft_dlg").open&&!$("settings_dlg").open&&
     !$("sheet").classList.contains("on")&&!document.body.classList.contains("drawer")&&
     (!cur()||(curMode()==="screen"&&$("pre").scrollTop+$("pre").clientHeight>=$("pre").scrollHeight-40))&&
     !String(window.getSelection())&&
@@ -1438,7 +1499,7 @@ loadMetrics();setInterval(loadMetrics,5000);
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)loadMetrics()});
 
 checkGithubFoot(true);setInterval(checkGithubFoot,5000);
-loadUsage();setInterval(loadUsage,60000);
+loadUsage();setInterval(loadUsage,60000);loadLM();setInterval(()=>{if(!document.hidden&&!$("settings_dlg").open)loadLM().then(renderInteg)},15000);
 loadServer();setInterval(loadServer,3600000);
 loadVersion();
 loadIntegrations();

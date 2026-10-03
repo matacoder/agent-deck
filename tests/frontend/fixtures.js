@@ -38,7 +38,7 @@ const test = base.extend({
       revision: 'fixture-version', sends: [], uploads: [], sendError: null,
       uploadError: null, sendGate: null, navigations: 0, usage: {},
       version: { version: '0.1.0', update: false, can_update: true, job: { phase: 'idle' } },
-      updates: [], updateError: null, kimiConfig: {configured: false, model: "k3"}, kimiSaves: [],
+      lmstudio:{available:true,profiles:[],discovery:{phase:"idle",results:[]}},lmActions:[],newSessions:[],updates: [], updateError: null, kimiConfig: {configured: false, model: "k3"}, kimiSaves: [],
       telegramConfig:{available:true,configured:false,paired:false,enabled:true},telegramSaves:[],
       sessionRequests: [], sessionGate: null, sessionCaptured: false, authExpired: false,
       async open({ active = 'tmux', mode = 'screen', width, height } = {}) {
@@ -83,6 +83,8 @@ const test = base.extend({
           app.navigations++;
           const language=(await page.context().cookies(url.toString())).find(x=>x.name==='cc_lang')?.value||app.language;
           return route.fulfill({ contentType: 'text/html', body: renderLocalized(html.replace('__PANEL_REVISION__', app.revision),language,app.catalogs[language]) });
+        case '/api/lmstudio': return json(app.lmstudio);
+        case '/api/lm_save': case '/api/lm_probe': case '/api/lm_test': case '/api/lm_benchmark': case '/api/lm_remove': case '/api/lm_discover': { const data=route.request().postDataJSON();app.lmActions.push({path:url.pathname,data});return json({profile:app.lmstudio.profiles[0],result:{ok:true},discovery:app.lmstudio.discovery}); }
         case '/api/locales': return json({languages:languages.map(({code,name})=>({code,name}))});
         case '/api/ui-version': return json({ revision: app.revision });
         case '/api/sessions': {
@@ -126,6 +128,7 @@ const test = base.extend({
           return json({ ok: true, job: app.version.job });
         case '/api/server-metrics': return app.metricsError ? json({}, 503) : json(app.metrics);
         case '/api/server': return json({ hostname: 'test-server', ip: '192.0.2.1', tailscale_ip: '100.64.0.1', country: 'GB' });
+        case '/api/new': {const data=route.request().postDataJSON();app.newSessions.push(data);app.sessions.push(session(data.name,{agent:data.agent,source:data.source}));return json({ok:true});}
         case '/api/projects': return json({ projects: ['demo'] });
         case '/api/upload': {
           app.uploads.push(route.request().postDataJSON());

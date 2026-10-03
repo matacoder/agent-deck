@@ -68,7 +68,7 @@ class KimiTests(PanelCase):
 
     def test_missing_key_restart_keeps_running_process_and_saved_id(self):
         self.panel.session_exists = Mock(return_value=True)
-        self.panel.opt = Mock(side_effect=lambda name, key: {'@cc_agent': 'kimi', '@cc_sid': 'session_11111111-1111-4111-8111-111111111111', '@cc_skip': '0'}[key])
+        self.panel.opt = Mock(side_effect=lambda name, key: {'@cc_agent': 'kimi', '@cc_sid': 'session_11111111-1111-4111-8111-111111111111', '@cc_skip': '0', '@cc_source': ''}[key])
         self.panel.stop_children = Mock()
         with self.assertRaises(ValueError):
             self.panel.action_restart({'name': 'demo', 'mode': 'new'})

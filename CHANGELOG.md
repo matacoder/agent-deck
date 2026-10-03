@@ -2,6 +2,21 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z`.
 
+## 1.0.0 — 2026-10-03
+
+- Unify desktop and mobile settings into Agents, Models, Connections and Application.
+  Move setup/key forms out of the sidebar; keep subscription quota monitoring there.
+- Select the coding runtime and model source separately. Keep existing Claude/Kimi
+  sessions compatible and pin each new source/model across restarts and recovery.
+- Add LM Studio profiles, manual URL/key configuration, custom ports and cancellable
+  discovery restricted to known Tailscale peers. Check models and tool support explicitly.
+- Measure real local-session speed and TTFT through an authenticated loopback relay;
+  store native synthetic benchmarks separately. Do not store relay conversation text
+  or invent subscription quotas/hardware metrics for local models.
+- Keep model keys out of browser responses and launch commands; protect private files,
+  verify the relay before sending its token and prevent accidental provider fallback.
+- Translate new controls in all 16 locales and update public demo screenshots/docs.
+
 ## 0.9.2 — 2026-10-03
 
 - Start and resume Codex with `--no-alt-screen` so new terminal output enters tmux

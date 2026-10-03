@@ -11,11 +11,8 @@ test('Kimi settings save a key without displaying or retaining it in the dialog'
   await expect(page.locator('#kimi_dlg')).not.toBeVisible();
   await expect(page.locator('#toast')).toHaveClass('success');
   expect(app.kimiSaves[0]).toEqual({key:'sk-private-test-123456789',model:'kimi-for-coding',clear:false});
-  await page.getByRole('button',{name:'Сессии',exact:true}).click();
-  await page.evaluate(()=>{integOpen=true;renderInteg()});
-  await expect(page.getByRole('button',{name:'Изменить ключ Kimi',exact:true})).toHaveClass('connected');
-  await expect(page.getByRole('button',{name:'Настроить ключ Kimi',exact:true})).toHaveCount(0);
-  await page.getByRole('button',{name:'Изменить ключ Kimi',exact:true}).click();
+  await expect(page.locator('#model_cards')).toContainText('Ключ сохранён на сервере');
+  await page.locator('#model_cards .hub-card').filter({hasText:'Kimi'}).getByRole('button',{name:'Настроить',exact:true}).click();
   await expect(page.locator('#kimi_key')).toHaveValue('');
   await expect(page.locator('#kimi_state')).toHaveText('Ключ сохранён на сервере');
   expect(await page.evaluate(() => canAutoRefresh())).toBe(false);
@@ -26,7 +23,7 @@ test('Kimi settings save a key without displaying or retaining it in the dialog'
 test('both Kimi session modes fit the iPhone dialog and expose correct permission flags', async ({ app, page }) => {
   await app.open();
   await page.evaluate(() => openNew());
-  for(const agent of ['claude-kimi','kimi']) {
+  for(const agent of ['claude','kimi']) {
     await page.locator(`#agsel [data-a="${agent}"]`).click();
     await expect(page.locator(`#agsel [data-a="${agent}"]`)).toHaveClass('on');
     await expect(page.locator('#n_skip_lbl')).toContainText(agent==='kimi'?'--auto':'--dangerously-skip-permissions');

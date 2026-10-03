@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Remember only the top-level Claude/Codex conversation in a managed tmux pane."""
+import http.client
 import json
 import os
 from pathlib import Path
@@ -143,6 +144,11 @@ def executable(mode):
 
 def launch(mode, args):
     data = read()
+    if len(args) >= 2 and args[0] == '--deck-model':
+        if args[1] not in MODELS:
+            raise ValueError('Unknown Kimi model')
+        data['model'] = args[1]
+        args = args[2:]
     if not data.get('key'):
         raise ValueError('Сначала сохраните ключ Kimi в настройках панели')
     binary = executable(mode)
@@ -156,7 +162,7 @@ def launch(mode, args):
     if mode == 'claude-kimi':
         env.update(ANTHROPIC_API_KEY=data['key'], ANTHROPIC_BASE_URL='https://api.kimi.com/coding/', ANTHROPIC_MODEL=model,
                    CLAUDE_CODE_SUBAGENT_MODEL=model)
-        for tier in ('OPUS', 'SONNET', 'HAIKU'):
+        for tier in ('FABLE', 'OPUS', 'SONNET', 'HAIKU'):
             env['ANTHROPIC_DEFAULT_' + tier + '_MODEL'] = model
     else:
         home = os.path.expanduser('~/.config/cc-panel/kimi-native')
@@ -175,8 +181,55 @@ def launch(mode, args):
 
 
 
+def launch_local(identity, args):
+    here = Path(__file__).resolve().parent
+    if (here.parent / 'integrations').is_dir():
+        sys.path.insert(0, str(here.parent))
+    from integrations.relay import Bindings, read_json
+    directory = Path(os.path.expanduser('~/.config/cc-panel/integrations'))
+    binding = Bindings(directory).get(identity)
+    relay = read_json(directory / 'model-relay.json', {})
+    port, token = relay.get('port'), relay.get('token')
+    if not isinstance(port, int) or not 1 <= port <= 65535 or not isinstance(token, str) or not token:
+        raise ValueError('Local model relay is unavailable; restart the panel')
+    import http.client
+    import hmac
+    import secrets
+    nonce = secrets.token_hex(16)
+    connection = http.client.HTTPConnection('127.0.0.1', port, timeout=3)
+    try:
+        connection.request('GET', '/health/'+nonce)
+        response = connection.getresponse()
+        body = response.read(4096)
+        proof = json.loads(body).get('proof', '') if response.status == 200 else ''
+        expected = hmac.new(token.encode(), nonce.encode(), 'sha256').hexdigest()
+        if not isinstance(proof, str) or not hmac.compare_digest(proof, expected):
+            raise ValueError('Local model relay could not be verified')
+    finally:
+        connection.close()
+    binary = executable('claude-kimi')
+    if not binary:
+        raise ValueError('Install Claude Code first')
+    env = dict(os.environ)
+    for key in ('ANTHROPIC_API_KEY','ANTHROPIC_AUTH_TOKEN','CLAUDE_CODE_USE_BEDROCK','CLAUDE_CODE_USE_VERTEX','CLAUDE_CODE_USE_FOUNDRY'):
+        env.pop(key, None)
+    model = binding['model']
+    env.update(ANTHROPIC_BASE_URL=f'http://127.0.0.1:{port}/providers/{identity}',
+               ANTHROPIC_AUTH_TOKEN=token, ANTHROPIC_MODEL=model, CLAUDE_CODE_SUBAGENT_MODEL=model,
+               CLAUDE_CODE_ATTRIBUTION_HEADER='0')
+    for tier in ('FABLE','OPUS','SONNET','HAIKU'):
+        env['ANTHROPIC_DEFAULT_'+tier+'_MODEL'] = model
+    os.execve(binary, [binary, '--model', model, *args], env)
+
+
 if __name__ == "__main__":
-    if len(sys.argv) > 1 and sys.argv[1] in ('kimi', 'claude-kimi'):
+    if len(sys.argv) > 2 and sys.argv[1] == 'claude-local':
+        try:
+            launch_local(sys.argv[2], sys.argv[3:])
+        except (OSError, ValueError, KeyError, TypeError, http.client.HTTPException):
+            print('Could not start local model; check profile, relay and Claude Code installation', file=sys.stderr)
+            sys.exit(1)
+    elif len(sys.argv) > 1 and sys.argv[1] in ('kimi', 'claude-kimi'):
         try:
             launch(sys.argv[1], sys.argv[2:])
         except (ValueError, OSError):

@@ -22,7 +22,10 @@ after a reboot.
 - Claude / Codex subscription limits with a pace forecast; Kimi usage windows and reset times.
 - Server CPU/RAM indicators beside the message composer.
 - Phone friendly: home-screen app, message box, question controls and file attachments up to 200 MB.
-- UI in 16 languages, switchable in Settings; extensible file-based locales.
+- One Settings hub for agents, model sources, GitHub/Telegram connections and application preferences.
+- LM Studio profiles: discover known Tailscale nodes or add a custom address, port and API key.
+- Local models in Claude Code, with session speed/TTFT measurements and a separate benchmark; no subscription quotas.
+- UI in 16 languages, switchable in Settings → Application; extensible file-based locales.
 - Telegram bot integration: receive agent questions with answer buttons in your private chat.
 - One-command installation on Linux and macOS, autostart and panel updates; in-panel agent setup and login.
 
@@ -30,7 +33,7 @@ after a reboot.
 
 ## Install
 
-New installations open in English. Change **Settings → Interface language** at any
+New installations open in English. Change **Settings → Application → Interface language** at any
 time; the choice is saved in your browser and preserves message drafts. For Russian
 from the first launch, set `PANEL_LANGUAGE=ru` on the installer:
 
@@ -144,7 +147,7 @@ the panel opens the queued question, selects your answer and confirms it in the
 correct session. Claude through Kimi uses the same Claude adapter; native Kimi uses
 recognized active terminal menus. Custom text and multiple selections use the panel.
 
-1. Open **⋯ → Integrations** on a phone, or **Telegram → Configure** in the sidebar.
+1. Open **Settings → Connections → Telegram → Configure** on desktop or phone.
 2. Paste your existing bot token from [@BotFather](https://t.me/BotFather) and save.
 3. Follow **Link my Telegram** and press **Start** in the bot's private chat.
 4. Answer a question using its buttons. The bot confirms when the answer reaches the agent.
@@ -179,16 +182,49 @@ Backend and browser regression tests: [docs/TESTING.md](docs/TESTING.md).
 
 [MIT](LICENSE)
 
+### LM Studio Connector
+
+<img src="docs/screenshots/desktop-models.png" width="760" alt="Unified model settings with a demo local server">
+
+1. Enable the LM Studio server on the machine hosting your model, with its
+   Anthropic-compatible `/v1/messages` API reachable over your tailnet.
+2. Open **Settings → Models**. Choose **Find servers** to probe known Tailscale
+   peers on port 1234, or enter comma-separated custom ports. This checks addresses
+   returned by `tailscale status --json`; it does not scan arbitrary networks.
+3. Add a discovered server, or use **Add server** with a custom HTTP/HTTPS URL
+   and optional API key. Saving checks the connection and lists available models.
+4. **Test tools** explicitly verifies a synthetic tool call. **Measure speed**
+   runs a small synthetic benchmark; neither test sends an existing conversation.
+5. In **New session**, select **Claude** and the local server/model as its source.
+   Install Claude Code under **Settings → Agents** if needed.
+
+The selected server and model are pinned to the session, including restarts and
+recovery. A missing profile or binding leaves a shell; it never falls back to a
+cloud provider. Add a separate profile to change servers while sessions use the
+original one. API keys can be rotated without changing the pinned address.
+
+Local models have no subscription quota cards. The panel reports observed
+streaming tokens/s and time to first token from real session responses when the
+server provides token usage. Native benchmark results are stored separately.
+Context length and loaded state come from the model API. Missing GPU, RAM or
+other hardware statistics are not estimated. Small context windows and models
+without tool support may be unsuitable for coding-agent workloads.
+
+Profiles and keys live in `~/.config/cc-panel/integrations/lmstudio.json` (0600).
+`model-bindings.json` stores private session bindings and `model-relay.json` stores
+loopback relay credentials. A local authenticated relay forwards requests to the
+pinned server and records timing/usage only; it does not store conversation text.
+An in-progress local-model request may need retrying when the panel service updates.
+
 ### Kimi Code
 
-Open the sidebar integrations and choose **Kimi → Настроить ключ**. Save a Kimi Code API key
-and choose a model. Create a session with **Claude · Kimi** (Claude Code through the Kimi
-Anthropic-compatible endpoint) or **Kimi Code** (the native CLI). Install Claude or Kimi
-from the integrations if needed. An existing `~/.config/cc-kimi/env` key is detected automatically.
+Open **Settings → Models → Kimi → Configure**. Save a Kimi Code API key
+and choose a model. Create a session with **Claude Code** and a **Kimi** model source (the Anthropic-compatible endpoint), or choose **Kimi Code** for the native CLI. Install Claude or Kimi
+under **Settings → Agents** if needed. An existing `~/.config/cc-kimi/env` key is detected automatically.
 
 The key stays on the server in a private file; API responses and tmux commands do not contain it.
-Clearing the password field preserves the key; **Удалить ключ** removes it from the panel.
-Model/key changes apply on the next agent launch. Native sessions/configuration use
+Leaving the password field empty preserves the key; **Remove key** removes it from the panel.
+The model setting is the default for new native Kimi sessions; existing sessions keep their selected model. Key changes apply on the next agent launch. Native sessions/configuration use
 `~/.config/cc-panel/kimi-native/`, preserving the user's independent Kimi configuration.
 
 Kimi quota cards show the account’s returned monthly total/coding and short-period limits,

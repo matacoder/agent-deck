@@ -48,12 +48,14 @@ test('failed update permits retry and leaves unsent text intact', async ({ app, 
   await app.open({ width: 1280, height: 800 });
   await page.locator('#msg').fill('Keep this');
   app.updateError = 'GitHub is unavailable';
+  await page.evaluate(()=>openSettings('app'));
   await page.locator('#b_update').click();
   await expect(page.locator('#b_update')).toHaveText('Обновление не удалось · повторить');
   await expect(page.locator('#toast')).toContainText('GitHub is unavailable');
   await expect(page.locator('#msg')).toHaveValue('Keep this');
   await expect(page.locator('#b_send')).toBeEnabled();
   app.updateError = null;
+  await page.evaluate(()=>openSettings('app'));
   await page.locator('#b_update').click();
   await expect.poll(() => app.updates.length).toBe(2);
   await expect(page.locator('#b_update')).toBeDisabled();
@@ -75,11 +77,13 @@ test('update waits for a pending message instead of interrupting its send', asyn
   const gate = app.holdSend();
   await page.locator('#b_send').click();
   await expect.poll(() => app.sends.length).toBe(1);
+  await page.evaluate(()=>openSettings('app'));
   await page.locator('#b_update').click();
   await expect(page.locator('#toast')).toContainText('Дождитесь окончания отправки');
   expect(app.updates).toEqual([]);
   gate.release();
   await expect(page.locator('#send_state')).toContainText('Отправлено');
+  await page.evaluate(()=>openSettings('app'));
   await page.locator('#b_update').click();
   await expect.poll(() => app.updates.length).toBe(1);
 });
