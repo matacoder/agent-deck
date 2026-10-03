@@ -120,3 +120,16 @@ test('shell sessions hide image attachment controls', async ({ app, page }) => {
   await expect(page.locator('#send_state')).toContainText('Отправлено');
   expect(app.sends[0].name).toBe('shell');
 });
+
+test('successful and pending composer statuses stay neutral and only failures turn red', async ({app,page}) => {
+  await app.open();
+  const neutral=await page.locator('#send_state').evaluate(el=>getComputedStyle(el).color);
+  for(const status of [{text:'Загружаю файлы…',phase:'pending'},{text:'Отправляю…',phase:'pending'},{text:'Отправлено',phase:'success'}]) {
+    await page.evaluate(status=>{sendStates.set(active,status);renderSendState();renderSendState()},status);
+    await expect(page.locator('#send_state')).not.toHaveClass(/error/);
+    expect(await page.locator('#send_state').evaluate(el=>getComputedStyle(el).color)).toBe(neutral);
+  }
+  await page.evaluate(()=>{sendStates.set(active,{text:'Не отправлено',error:true});renderSendState()});
+  await expect(page.locator('#send_state')).toHaveClass(/error/);
+  expect(await page.locator('#send_state').evaluate(el=>getComputedStyle(el).color)).not.toBe(neutral);
+});

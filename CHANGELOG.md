@@ -10,6 +10,8 @@ Versions follow [semver](https://semver.org). Install a version with `sudo ./upd
   out of API responses, browser storage and tmux command history.
 - Show actual Kimi monthly total/coding quotas, five-hour windows and reset times; only
   show legacy weekly limits when the account returns them.
+- Compact quota cards with icon controls and expandable details; show Kimi CLI version
+  and saved key status. Keep composer progress/success neutral and real errors red.
 - Add backend credential/launch and mobile Chromium/WebKit regression coverage.
 
 ## 0.3.0 — 2026-10-03

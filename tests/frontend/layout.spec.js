@@ -57,7 +57,7 @@ test('usage bars remain thin, accessible and explain the forecast without affect
     expect(bounds.height).toBeLessThanOrEqual(8);
     expect(bounds.width).toBeLessThan(390);
   }
-  await expect(page.locator('#integ')).toContainText('60% использовано');
+  await expect(page.locator('#integ')).toContainText('60%');
   await expect(page.locator('#integ')).toContainText('Быстрее нормы');
   await expect(page.locator('#integ')).toContainText('При таком темпе лимит закончится');
   expect((await page.locator('main > .bar').boundingBox()).height).toBe(headerBefore.height);

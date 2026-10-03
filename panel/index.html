@@ -61,6 +61,7 @@ aside{width:240px;flex:none;background:var(--side);border-right:1px solid var(--
 .uw .forecast{grid-column:1/-1;font-size:10.5px;color:var(--mut);margin-top:-3px}
 .uw .pc{font-family:var(--mono);color:var(--fg);min-width:30px;text-align:right}
 .uw .rs{grid-column:1/-1;font-size:10.5px;color:var(--dim);margin-top:-3px}
+.quota-details{grid-column:1/-1}.quota-details summary{display:flex;justify-content:space-between;align-items:center;gap:6px;list-style:none;cursor:pointer}.quota-details summary::-webkit-details-marker{display:none}.quota-explanation{padding:6px 0;color:var(--mut);font-size:11px;line-height:1.5}.quota-details .rs,.quota-details .pace{margin:0}
 .usage .err{font-size:11px;color:var(--dim)}
 .ihead{display:flex;align-items:center;gap:10px;width:100%;padding:7px 10px;font-size:11.5px;color:var(--mut);text-align:left}
 .ihead:hover{background:var(--side2)}.ihead.open{border-bottom:1px solid var(--bd)}
@@ -891,7 +892,7 @@ async function uploadImages(files){
   if(agentOf(cur())==="shell"){toast("Выберите сессию Claude или Codex");return}
   if(attachmentsFor(name).length+files.length>4){toast("Можно приложить до 4 файлов");return}
   uploading=true;renderAttachments();
-  sendStates.set(name,{text:"Загружаю файлы…"});renderSendState();
+  sendStates.set(name,{text:"Загружаю файлы…",phase:"pending"});renderSendState();
   let failed=false;
   for(const file of files){
     try{
@@ -906,7 +907,7 @@ async function uploadImages(files){
     }catch(e){failed=true;toast(e.message);sendStates.set(name,{text:"Не удалось приложить: "+e.message,error:true})}
   }
   uploading=false;
-  if(!failed)sendStates.set(name,{text:"Файлы приложены · нажмите ↑ для отправки"});
+  if(!failed)sendStates.set(name,{text:"Файлы приложены · нажмите ↑ для отправки",phase:"success"});
   renderAttachments();renderSendState();
 }
 $("image_files").addEventListener("cancel",()=>{choosingImages=false});
@@ -921,20 +922,22 @@ const sendStates=new Map();
 function renderSendState(){
   const status=sendStates.get(active),d=$("send_state");
   d.textContent=status?status.text:(isMobile()?"Enter — новая строка · ↑ — отправить":"Enter — отправить · Shift+Enter — новая строка");
-  d.classList.toggle("error",!!status&&status.error);
+  d.classList.toggle("error",Boolean(status&&status.error));
+  d.classList.toggle("pending",Boolean(status&&status.phase==="pending"));
+  d.classList.toggle("success",Boolean(status&&status.phase==="success"));
 }
 async function send(){
   const t=$("msg");if(sending||uploading||panelUpdating||!active||(!t.value.trim()&&!attachmentsFor(active).length))return;
   const name=active,text=t.value,images=attachmentsFor(active).slice();
   sending=true;renderAttachments();
-  sendStates.set(name,{text:"Отправляю…"});renderSendState();
+  sendStates.set(name,{text:"Отправляю…",phase:"pending"});renderSendState();
   try{
     await api("/api/send",{name,text,attachments:images.map(x=>x.attachment)});
     imageAttachments.set(name,attachmentsFor(name).filter(x=>!images.includes(x)));
     for(const image of images)if(image.preview)URL.revokeObjectURL(image.preview);
     if(messageDrafts.get(name)===text)messageDrafts.delete(name);
     if(active===name&&t.value===text){t.value="";t.style.height=""}
-    sendStates.set(name,{text:"Отправлено в "+AGENTS[agentOf(sessions.find(s=>s.name===name))].label+" · "+new Date().toLocaleTimeString("ru-RU",{hour:"2-digit",minute:"2-digit"})});
+    sendStates.set(name,{text:"Отправлено в "+AGENTS[agentOf(sessions.find(s=>s.name===name))].label+" · "+new Date().toLocaleTimeString("ru-RU",{hour:"2-digit",minute:"2-digit"}),phase:"success"});
     await load();
     if(active===name)$("pre").scrollTop=$("pre").scrollHeight;
   }catch(e){
@@ -1012,34 +1015,36 @@ function fmtWhen(ts){
   const d=new Date(ts*1000),hm=d.toLocaleTimeString("ru-RU",{hour:"2-digit",minute:"2-digit"});
   return d.toDateString()===new Date().toDateString()?"сегодня "+hm:d.toLocaleDateString("ru-RU",{weekday:"short"})+" "+hm;
 }
+function compactReset(ts){
+  if(!ts)return "↻ —";
+  const minutes=Math.max(0,Math.round((ts*1000-Date.now())/60000)),days=Math.floor(minutes/1440),hours=Math.floor(minutes%1440/60);
+  const duration=days?`${days}д ${hours}ч`:hours?`${hours}ч ${minutes%60}м`:`${minutes}м`;
+  return "↻ "+duration;
+}
 function usageBlock(u){
-  const box=el("div","usage");
-  if(!u)return null;
+  const box=el("div","usage");if(!u)return null;
   if(u.error&&!(u.windows||[]).length){box.append(el("div","err",u.error));return box}
   for(const w of u.windows||[]){
     const p=Math.round(w.percent||0),fill=el("i",p>=90?"bad":p>=70?"warn":"");fill.style.width=Math.min(p,100)+"%";
-    const pc=pace(w),bar=el("span","usage-meter",fill),row=el("div","uw",el("span","",w.label),el("span","pc",p+"% использовано"),bar);
+    const labels={"Общий · месяц":"месяц · всё","Kimi Code · месяц":"месяц · код","5 часов":"5 ч"};
+    const pc=pace(w),bar=el("span","usage-meter",fill),row=el("div","uw",el("span","",labels[w.label]||w.label),el("span","pc",p+"%"),bar);
     bar.setAttribute("role","progressbar");bar.setAttribute("aria-label","Использование лимита: "+w.label);
     bar.setAttribute("aria-valuemin","0");bar.setAttribute("aria-valuemax","100");bar.setAttribute("aria-valuenow",String(Math.max(0,Math.min(p,100))));
+    const details=el("details","quota-details"),summary=el("summary","",el("span","rs",compactReset(w.resets_at))),body=el("div","quota-explanation");
+    summary.title=fmtReset(w.resets_at)||"Данные о лимите";summary.setAttribute("aria-label","Подробности лимита: "+w.label);
     if(pc&&pc.norm!==undefined){
       const tick=el("b","");tick.style.left=(pc.elapsed*100)+"%";tick.title=`норма к этому моменту: ${pc.norm}%`;bar.append(tick);
-      let cls,txt;
-      if(pc.diff<=0){cls="good";txt=`✓ В пределах нормы · норма ${pc.norm}%`}
-      else if(pc.diff<=3){cls="good";txt=`≈ В пределах нормы · норма ${pc.norm}%`}
-      else{
-        cls=pc.hitAt?"crit":"over";
-        txt=`▲ Быстрее нормы на ${pc.diff} п.п. · норма ${pc.norm}%`;
-      }
-      row.append(el("span","pace "+cls,txt));
-      if(pc.hitAt)row.append(el("span","forecast","При таком темпе лимит закончится ≈ "+fmtWhen(pc.hitAt)));
-      else if(pc.forecast!==undefined)row.append(el("span","forecast","Прогноз к сбросу: ≈ "+pc.forecast+"% использовано"));
+      const cls=pc.diff<=3?"good":pc.hitAt?"crit":"over";
+      summary.append(el("span","pace "+cls,pc.diff<=3?"✓":"▲ +"+pc.diff+" п.п."));
+      body.append(el("div","",`Норма сейчас: ${pc.norm}%. `+(pc.diff<=3?"В пределах нормы.":`Быстрее нормы на ${pc.diff} п.п.`)));
+      if(pc.hitAt)body.append(el("div","forecast","При таком темпе лимит закончится ≈ "+fmtWhen(pc.hitAt)));
+      else if(pc.forecast!==undefined)body.append(el("div","forecast","Прогноз к сбросу: ≈ "+pc.forecast+"%"));
     }
-    row.append(el("span","rs",fmtReset(w.resets_at)));
-    box.append(row);
+    body.append(el("div","",fmtReset(w.resets_at)));details.append(summary,body);row.append(details);box.append(row);
   }
-  if(u.stale)box.append(el("div","err","данные могут быть устаревшими"));
-  return box;
+  if(u.stale)box.append(el("div","err","⚠ данные устарели"));return box;
 }
+
 let integOpen=(()=>{try{const v=localStorage.getItem("cc.integ."+(isMobile()?"m":"d"));return v===null?!isMobile():v==="1"}catch(e){return !isMobile()}})();
 function toggleInteg(){integOpen=!integOpen;try{localStorage.setItem("cc.integ."+(isMobile()?"m":"d"),integOpen?"1":"0")}catch(e){}renderInteg()}
 function integSummary(){
@@ -1080,9 +1085,11 @@ function renderInteg(){
     blocks.push(blk);
   }
   const ks=lastAg.kimi||{},kc=lastAg.kimi_config||{};
-  const kr=[btn(kc.configured?"Изменить ключ":"Настроить ключ",kc.configured?"connected":"go",openKimi)];
+  const keyLabel=kc.configured?"Изменить ключ Kimi":"Настроить ключ Kimi";
+  const keyButton=btn("⚿",kc.configured?"connected":"go",openKimi,keyLabel);keyButton.setAttribute("aria-label",keyLabel);
+  const kr=[keyButton];
   kr.push(btn(ks.installed?"⟳":"Установить Kimi","",()=>agentAction("install","kimi")));
-  const kb=el("div","iblk",irow("◈",kc.configured?"Kimi ✓":"Kimi",kc.configured?kc.model:"Ключ не настроен",kr));
+  const kb=el("div","iblk",irow("◈",kc.configured?"Kimi ✓":"Kimi",ks.version||"",kr));
   const ku=kc.configured&&usageBlock(usageData.kimi);if(ku)kb.append(ku);blocks.push(kb);
   blocks.push(el("div","iblk",irow(GH_ICON,ghLogin||"GitHub","",[ghLogin?btn("Репозитории","",openNew):btn("Подключить","go",ghConnect)])));
   $("integ").replaceChildren(...blocks);
