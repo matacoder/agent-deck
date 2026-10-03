@@ -190,6 +190,8 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 .acts{display:flex;justify-content:flex-end;gap:8px;padding:14px 18px;border-top:1px solid var(--bd)}
 .acts button{padding:8px 16px;border-radius:7px;background:var(--side2)}
 .acts button.pri{background:var(--acc);color:#fff;font-weight:600}
+.settings-account{margin-top:24px;padding-top:16px;border-top:1px solid var(--bd)}
+.settings-account button{min-height:44px;width:100%;text-align:left;color:var(--bad);padding:8px 0}
 .integration-card{border:1px solid var(--bd);border-radius:14px;padding:16px;background:var(--bg);margin:4px 0 14px}
 .integration-heading{display:flex;align-items:center;gap:12px}
 .integration-heading h4{margin:0;font-size:15px;font-weight:600;color:var(--fg2)}
@@ -325,7 +327,7 @@ body.is-shell .agent-only{display:none!important}
     </div>
     <div id="tabs"></div>
     <div id="integ"></div>
-    <div class="side-foot"><span id="foot"></span><span id="ver"></span><button id="b_drafts" onclick="showClosedDrafts()" style="display:none">Черновики закрытых сессий</button><button class="settingsbtn" onclick="openSettings()" aria-label="Настройки" title="Настройки">⚙</button><button onclick="logout()">Выйти</button></div>
+    <div class="side-foot"><span id="foot"></span><span id="ver"></span><button id="b_drafts" onclick="showClosedDrafts()" style="display:none">Черновики закрытых сессий</button><button class="settingsbtn" onclick="openSettings()" aria-label="Настройки" title="Настройки">⚙</button></div>
   </aside>
   <div id="scrim" onclick="drawer(false)"></div>
   <main>
@@ -432,7 +434,7 @@ body.is-shell .agent-only{display:none!important}
 
 <dialog id="settings_dlg"><form class="dlg" onsubmit="event.preventDefault();saveLanguage()">
   <div class="dlg-body"><h3>Настройки</h3><label for="ui_language">Язык интерфейса</label>
-  <select id="ui_language"></select><p>Язык сохраняется в этом браузере. Сообщения и вывод агентов не переводятся.</p></div>
+  <select id="ui_language"></select><p>Язык сохраняется в этом браузере. Сообщения и вывод агентов не переводятся.</p><div class="settings-account"><button type="button" onclick="logout()">Выйти</button></div></div>
   <div class="acts"><button type="button" onclick="$('settings_dlg').close()">Отмена</button><button class="pri">Применить</button></div>
 </form></dialog>
 <dialog id="kimi_dlg"><form class="dlg" onsubmit="event.preventDefault();saveKimi()">

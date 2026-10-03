@@ -2,6 +2,11 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z`.
 
+## 0.9.1 — 2026-10-03
+
+- Move sign out from the sidebar footer into a separate account section in Settings
+  to avoid accidental taps beside the settings button on phones.
+
 ## 0.9.0 — 2026-10-03
 
 - Add complete interface catalogs for Spanish, Brazilian Portuguese, German, French,
