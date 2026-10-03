@@ -2,6 +2,14 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z`.
 
+## 0.4.1 — 2026-10-03
+
+- Fix the live terminal for browsers that omit the Origin header on same-origin WebSocket
+  handshakes (Safari): the panel rejected them with 403, showing ttyd's "press Enter to
+  reconnect". Foreign origins are still rejected, and ttyd's own -O re-checks origins.
+- Clarify the desktop toolbar: the view toggle is now "Живой терминал / Экран", and the
+  shell-session button reads "Новый терминал" instead of two near-identical "Терминал" labels.
+
 ## 0.4.0 — 2026-10-03
 
 - Configure a shared Kimi Code API key and model in the sidebar; detect existing cc-kimi keys.

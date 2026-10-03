@@ -295,8 +295,8 @@ body.is-shell .agent-only{display:none!important}
       <div id="title">—</div>
       <div class="seg" id="seg"><button data-m="screen" onclick="setMode('screen')">Экран</button><button data-m="term" onclick="setMode('term')">Терм</button></div>
       <button class="act d-only" id="b_link" title="Открыть последнюю ссылку из терминала" onclick="openLink()" style="display:none">🔗 Ссылка</button>
-      <button class="act d-only" id="b_mode" title="Терминал / экран с полем ввода" onclick="setMode(curMode()==='term'?'screen':'term')">⌨ Экран</button>
-      <button class="act d-only" title="Открыть обычный терминал в папке этой сессии" onclick="termHere()">&gt;_ Терминал здесь</button>
+      <button class="act d-only" id="b_mode" title="Переключить вид: живой терминал или экран с полем ввода" onclick="setMode(curMode()==='term'?'screen':'term')">⌨ Экран</button>
+      <button class="act d-only" title="Создать новую сессию-терминал (bash) в папке текущей сессии" onclick="termHere()">&gt;_ Новый терминал</button>
       <button class="act d-only agent-only" title="Перезапустить агента, продолжив разговор" onclick="restart('continue')">↻ Продолжить</button>
       <button class="act d-only agent-only" title="Перезапустить агента с новым разговором" onclick="restart('new')">✚ Новый</button>
       <button class="act d-only" title="Открыть терминал в новой вкладке" onclick="popout()">↗</button>
@@ -336,7 +336,7 @@ body.is-shell .agent-only{display:none!important}
 <div id="sheet"><div class="scrim" onclick="sheet(false)"></div><div class="panel">
   <div class="cap" id="sheetCap"></div>
   <button id="s_link" onclick="sheet(false);openLink()"><span class="i">🔗</span>Открыть ссылку из терминала</button>
-  <button onclick="sheet(false);termHere()"><span class="i">&gt;_</span>Терминал в этой папке</button>
+  <button onclick="sheet(false);termHere()"><span class="i">&gt;_</span>Новый терминал в этой папке</button>
   <button class="agent-only" onclick="sheet(false);restart('continue')"><span class="i">↻</span>Перезапустить, продолжив разговор</button>
   <button class="agent-only" onclick="sheet(false);restart('new')"><span class="i">✚</span>Перезапустить с новым разговором</button>
   <button onclick="sheet(false);popout()"><span class="i">↗</span>Терминал в новой вкладке</button>
@@ -577,7 +577,7 @@ function show(){
   $("empty").style.display=s?"none":"grid";
   if(!s)$("empty").textContent=load.done?"Нет сессий. Создайте новую через меню ☰ → ＋.":"Загружаю сессии…";
   renderTitle();renderSendState();renderAttachments();
-  $("b_mode").textContent=m==="term"?"⌨ Экран":"▣ Терминал";
+  $("b_mode").textContent=m==="term"?"⌨ Экран":"▣ Живой терминал";
   for(const b of $("seg").children)b.classList.toggle("on",b.dataset.m===m);
   for(const[n,f]of frames)f.classList.toggle("on",!!s&&m==="term"&&n===active);
   $("screen").classList.toggle("on",!!s&&m==="screen");

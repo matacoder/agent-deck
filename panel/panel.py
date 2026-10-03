@@ -977,7 +977,9 @@ class Handler(BaseHTTPRequestHandler):
     def proxy_tty(self):
         """Raw pass-through to ttyd (HTTP + websocket upgrade)."""
         upgrade = "websocket" in self.headers.get("Upgrade", "").lower()
-        if upgrade and not self.same_origin(required=True):
+        # Safari sends no Origin on same-origin WebSocket handshakes; a present-but-foreign
+        # Origin is still rejected here, and ttyd's own -O re-checks what it receives.
+        if upgrade and not self.same_origin():
             return self.send_json(403, {"error": "неверный источник WebSocket"})
         backend = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         try:

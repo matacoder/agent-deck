@@ -73,7 +73,12 @@ class HTTPTests(PanelCase):
                 self.assertEqual(self.request("POST", "/login", "", headers)[0], 403)
                 self.assertEqual(self.request("POST", "/logout", "", headers)[0], 403)
                 self.assertEqual(self.request("GET", "/t/", headers={**headers, "Upgrade": "websocket"})[0], 403)
-        self.assertEqual(self.request("GET", "/t/", headers={"Cookie": cookie, "Upgrade": "websocket"})[0], 403)
+        self.assertEqual(self.request("GET", "/t/", headers={"Cookie": cookie, "Upgrade": "websocket",
+                                                             "Sec-Fetch-Site": "cross-site"})[0], 403)
+        # Safari omits Origin on same-origin WebSocket handshakes: no Origin must pass the origin
+        # check (ttyd's own -O re-checks), so the request reaches the proxy and fails only on the
+        # missing test backend with 502, not on a 403.
+        self.assertEqual(self.request("GET", "/t/", headers={"Cookie": cookie, "Upgrade": "websocket"})[0], 502)
         self.assertEqual(self.request("POST", "/api/send", "{}", {"Cookie": cookie, "Sec-Fetch-Site": "same-site"})[0], 403)
         self.panel.tmux.assert_not_called()
 
