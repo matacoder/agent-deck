@@ -318,15 +318,49 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 #closed_drafts pre{white-space:pre-wrap;overflow:auto;max-height:200px;overflow-wrap:anywhere}
 body.is-shell .agent-only{display:none!important}
 
-#settings_dlg{width:min(850px,calc(100vw - 32px));max-height:90dvh}
-.settings-hub{min-height:460px;max-height:90dvh}.hub-heading{display:flex;justify-content:space-between;align-items:center;padding:12px 20px;border-bottom:1px solid var(--bd)}
-.hub-heading h3{margin:0}.hub-heading button{min-width:44px;border-radius:8px}.settings-hub .pri{background:var(--acc);color:white;padding:10px 14px;border-radius:8px}.hub-nav button{padding:10px;border-radius:8px}.hub-card h4{font-size:15px;font-weight:600}.ihead{flex-wrap:wrap}.ihead>span:first-child{flex-basis:100%;text-align:left;font-weight:600}.hub-heading button{font-size:24px}.hub-nav{display:flex;gap:4px;padding:12px;flex-wrap:wrap;border-bottom:1px solid var(--bd)}
-.hub-nav button{flex:1}.hub-nav button.on{background:var(--acc);color:white}.hub-content section[hidden]{display:none}
-.settings-hub button,.settings-hub select,.settings-hub summary{min-height:44px}.hub-card{border:1px solid var(--bd);border-radius:12px;padding:16px;margin-bottom:12px;overflow-wrap:anywhere}.hub-card h4{margin:0 0 8px}.hub-card p{color:var(--mut);margin:6px 0 12px}.hub-card .acts{padding:0;flex-wrap:wrap}.hub-card select{width:100%;margin:8px 0}.hub-card details{margin-top:10px}.hub-card details button{margin:4px}
-#kimi_dlg[hidden],#integrations_dlg[hidden]{display:none}#kimi_dlg .dlg,#integrations_dlg .dlg{max-height:none;width:100%;border:1px solid var(--bd);border-radius:12px;margin:12px 0}.hub-content{overflow-y:auto}
-#n_source{width:100%;max-width:100%;min-width:0}#source_row{min-width:0}#source_row button{min-height:44px;margin:8px 0}.iblk{overflow-wrap:anywhere}
-#lm_editor{margin:12px 0;padding:12px;border:1px solid var(--bd);border-radius:12px}#lm_editor input{max-width:100%}.side-foot{flex-wrap:wrap}.side-foot .settingsbtn{font-size:13px;min-height:44px}.hub-card .good{color:var(--ok)}
-@media(max-width:760px){#settings_dlg{width:100vw;height:100dvh;max-height:100dvh;max-width:100vw;margin:0;border-radius:0}.settings-hub{height:100%;max-height:100dvh;min-height:0}.hub-nav{display:grid;grid-template-columns:1fr 1fr}.hub-nav button{font-size:13px;white-space:normal}.hub-content{padding:14px}.hub-card{padding:12px}.hub-card .acts button{min-width:100px}.hub-heading{padding:12px 14px}}
+/* Shared spacing and surfaces for settings, forms and the session drawer. */
+dialog{box-shadow:0 24px 80px #0006;border-color:#ffffff12;border-radius:16px}
+.dlg-body{padding:22px}.dlg h3{font-size:18px;margin-bottom:20px}.dlg label{font-size:12px;margin-top:16px}
+.dlg input[type=text],.dlg input[type=password],.dlg input[type=url],.dlg select{min-height:42px;border-radius:9px;padding:10px 12px}
+.dlg p{font-size:12px;line-height:1.5}.acts{padding:16px 22px;gap:8px}.acts button{min-height:42px;padding:10px 16px}
+#settings_dlg>.settings-hub{height:min(680px,85dvh);max-height:85dvh}
+#kimi_dlg,#integrations_dlg{width:100%;height:auto;max-height:none;margin:0;border:0;border-radius:0}
+#settings_dlg{width:min(940px,calc(100vw - 48px));max-height:85dvh}
+.settings-hub{display:grid;grid-template-columns:156px minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);height:min(680px,85dvh);max-height:85dvh}
+.hub-heading{grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;padding:14px 20px;border-bottom:1px solid var(--bd)}
+.hub-heading h3{margin:0;font-size:17px}.hub-heading button{width:44px;height:44px;border-radius:10px;font-size:24px;color:var(--mut)}.hub-heading button:hover{background:var(--side2);color:var(--fg2)}
+.hub-nav{display:flex;flex-direction:column;gap:4px;padding:16px 10px;border-right:1px solid var(--bd);background:#0000000a}
+.hub-nav button{min-height:44px;text-align:left;padding:10px 12px;border-radius:9px;color:var(--mut);font-size:13px;white-space:normal;overflow-wrap:anywhere}
+.hub-nav button.on{background:#0a84ff18;color:#69b5ff;font-weight:600}.hub-nav button:hover{background:var(--side2)}
+.hub-content{padding:20px;overflow-y:auto;min-width:0}.hub-content section[hidden]{display:none}
+.hub-card{border:1px solid var(--bd);border-radius:12px;padding:16px;margin-bottom:12px;background:#ffffff02;min-width:0;overflow-wrap:anywhere}
+.card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}.card-main{min-width:0;flex:1}.hub-card h4{margin:0;font-size:14px;font-weight:600;color:var(--fg2)}
+.hub-card p{color:var(--mut);margin:6px 0 12px;font-size:12px;line-height:1.5}.card-main p{margin:5px 0 0}
+.settings-hub button,.settings-hub select,.settings-hub summary{min-height:44px}.settings-hub .pri{background:var(--acc);color:#fff;padding:10px 14px;border-radius:9px;font-weight:500}
+.card-top>.pri{background:#0a84ff18;color:#69b5ff;flex-shrink:0;max-width:48%;font-size:12px;white-space:normal}
+.hub-card .acts{padding:12px 0 0;margin-top:12px;flex-wrap:wrap}.hub-card select{width:100%;min-width:0;margin:12px 0 0}.hub-card details{margin-top:10px}.hub-card details button{margin:4px;padding:8px 12px;border-radius:8px;background:var(--side2)}
+.hub-card summary{font-size:12px;color:var(--mut);padding:12px 0;cursor:pointer}
+#kimi_dlg[hidden],#integrations_dlg[hidden]{display:none}#kimi_dlg .dlg,#integrations_dlg .dlg{max-height:none;width:100%;border:1px solid var(--bd);border-radius:12px;margin:12px 0;background:var(--bg)}
+#integrations_dlg .integration-card{border:0;padding:0;background:none;margin:0}.integration-dialog .acts{padding:14px 18px}.integration-dialog .acts button{font-size:12px}.settings-account{margin-top:24px}
+#n_source{width:100%;max-width:100%;min-width:0}#source_row{min-width:0}#source_row button{min-height:44px;margin:8px 0;color:var(--acc);font-size:12px}
+#lm_editor{margin:12px 0;padding:14px 16px;border:1px solid var(--bd);border-radius:12px}#lm_editor summary{font-size:13px;cursor:pointer;padding:8px 0}#lm_editor input{max-width:100%}.hub-card .good{color:var(--ok)}
+/* Read-only usage belongs to a compact monitor, rather than unstyled headings. */
+#integ{border:0;background:transparent;border-radius:0}.ihead{display:flex;flex-wrap:wrap;padding:10px 12px;gap:8px;border-radius:9px;background:#ffffff03;font-size:11px}.ihead.open{border:0;margin-bottom:4px}
+.ihead>span:first-child{flex-basis:100%;text-align:left;font-size:11px;font-weight:500;color:var(--mut)}.ihead .sum{gap:4px}.ihead .chev{margin-left:auto}
+.iblk{padding:12px;border-bottom:1px solid #ffffff08;min-width:0}.provider-head{font-size:12px;font-weight:600;color:var(--fg);margin-bottom:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.iblk>p{font-size:11px;color:var(--mut);margin:0}.usage{padding:0;gap:10px}.uw{font-size:11px;gap:5px}.uw .usage-meter{height:4px}.uw .rs,.uw .pace{font-size:10px}.local-caption{font-size:10px;color:var(--mut);margin-bottom:8px}
+.local-stats{display:flex;gap:14px;align-items:baseline;font-size:12px;font-variant-numeric:tabular-nums}.local-stats small{font-size:10px;color:var(--mut);margin-left:3px}.local-model{min-width:0;margin-top:8px;font-size:10px;color:var(--mut)}
+.local-model summary{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;padding:6px 0;min-width:0}.local-model[open] summary{color:var(--fg)}.local-model div{padding:4px 0 8px;overflow-wrap:anywhere;line-height:1.5}
+.side-foot{display:grid;grid-template-columns:1fr auto;gap:8px;padding:12px;color:var(--mut);font-size:10px}.side-foot #ver{font-size:10px}.side-foot .settingsbtn{grid-column:1/-1;text-align:left;min-height:44px;font-size:12px;border-radius:9px;background:var(--side2);padding:10px 12px;color:var(--fg)}.side-foot #b_drafts{grid-column:1/-1;text-align:left}
+@media(max-width:760px){
+ #settings_dlg>.settings-hub{height:100%;max-height:100dvh}
+ #settings_dlg{width:100vw;height:100dvh;max-height:100dvh;max-width:100vw;margin:0;border-radius:0}.settings-hub{height:100%;max-height:100dvh;display:flex;flex-direction:column;min-height:0}
+ .hub-heading{padding:12px 16px;flex-shrink:0}.hub-heading h3{font-size:18px}.hub-nav{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;padding:8px 12px;border-right:0;border-bottom:1px solid var(--bd);flex-shrink:0;background:none}
+ .hub-nav button{flex:1;min-width:0;text-align:center;font-size:12px;padding:8px 4px;line-height:1.3}.hub-content{padding:16px;flex:1;min-height:0}.hub-card{padding:14px;margin-bottom:10px}.card-top{gap:10px}.card-top>.pri{padding:8px 10px}
+ .hub-card .acts button{flex:1;min-width:0;white-space:normal;font-size:12px}.dlg-body{padding:20px}.dlg .acts{padding:14px 20px}.dlg label{font-size:12px}.dlg h3{font-size:18px}
+ #integ{margin:6px 12px 12px}.ihead{padding:10px 12px;font-size:12px;gap:10px}.ihead>span:first-child{font-size:12px}.iblk{padding:12px}.provider-head{font-size:13px}.usage{padding:0;gap:10px}.uw{font-size:12px;gap:5px}.uw .usage-meter{height:4px}.uw .rs,.uw .pace,.uw .forecast{font-size:11px}.local-stats{font-size:14px}.local-stats small,.local-caption,.local-model{font-size:11px}
+ .side-foot{padding:12px 16px calc(12px + var(--sab));font-size:11px}.side-foot .settingsbtn{font-size:14px}
+}
 </style></head><body>
 <div id="app">
   <aside>
@@ -1193,13 +1227,23 @@ function renderInteg(){
   if(!integOpen){$("integ").replaceChildren(head);return}
   const blocks=[head];
   for(const a of ["claude","codex","kimi"]){
-    const u=usageData[a],blk=el("div","iblk",el("strong","",AGENTS[a].label));
+    const u=usageData[a],blk=el("div","iblk",el("div","provider-head",AGENTS[a].label));
     const ub=usageBlock(u);if(ub)blk.append(ub);else blk.append(el("p","",tr("Нет данных")));
     blocks.push(blk);
   }
-  for(const p of lmData.profiles||[]){const m=p.performance||{};blocks.push(el("div","iblk",el("strong","",p.name),el("p","",performanceText(m))))}
+  for(const p of lmData.profiles||[])blocks.push(localUsage(p));
   $("integ").replaceChildren(...blocks);
   if($("settings_dlg").open&&!$("settings_dlg").contains(document.activeElement))renderHub();
+}
+function localUsage(profile){
+  const sample=profile.performance||{},box=el("div","iblk local-usage",el("div","provider-head",profile.name));
+  box.append(el("div","local-caption",sample.source==="session"?tr("Последний ответ"):sample.source==="benchmark"?tr("Тест скорости"):tr("Без лимитов")));
+  const stats=el("div","local-stats");
+  if(Number.isFinite(sample.tokens_per_second))stats.append(el("span","",sample.tokens_per_second.toFixed(1),el("small","","tok/s")));
+  if(Number.isFinite(sample.time_to_first_token_seconds))stats.append(el("span","",sample.time_to_first_token_seconds.toFixed(2),el("small","","s TTFT")));
+  box.append(stats);
+  if(sample.model){const summary=el("summary","",sample.model);summary.title=sample.model;box.append(el("details","local-model",summary,el("div","",sample.model)))}
+  return box;
 }
 let hubSection="agents",lmData={profiles:[],discovery:{}},lmTimer=null,returnToNew=false;
 function settingsSection(section){
@@ -1214,26 +1258,26 @@ async function openSettings(section="agents"){
   clearInterval(lmTimer);lmTimer=setInterval(()=>{if($("settings_dlg").open&&lmData.discovery?.phase==="running")loadLM(false)},2000);
 }
 $("settings_dlg").addEventListener("close",()=>{if($("settings_dlg").open)return;clearInterval(lmTimer);closeKimi();closeIntegrations();$("lm_key").value="";if(returnToNew){returnToNew=false;$("dlg").showModal();renderSources()}});
-function card(name,status,label,action,secondary=[]){const c=el("div","hub-card",el("h4","",name),el("p","",status),btn(label,"pri",action));if(secondary.length){const d=el("details","",el("summary","",tr("Другие действия")));for(const [text,fn] of secondary)d.append(btn(text,"",fn));c.append(d)}return c}
+function card(name,status,label,action,secondary=[]){const c=el("div","hub-card",el("div","card-top",el("div","card-main",el("h4","",name),el("p","",status)),btn(label,"pri",action)));if(secondary.length){const d=el("details","",el("summary","",tr("Другие действия")));for(const [text,fn] of secondary)d.append(btn(text,"",fn));c.append(d)}return c}
 function renderHub(){
   const selections=new Map([...$("model_cards").querySelectorAll("select")].map(x=>[x.dataset.profile,x.value]));
   $("hub_agents").replaceChildren(...["claude","codex","kimi"].map(a=>{const st=lastAg[a]||{};if(a==="kimi")return card(AGENTS[a].label,st.version||tr("Не установлен"),st.installed?(lastAg.kimi_config?.configured?tr("Обновить"):tr("Настроить ключ Kimi")):tr("Установить"),()=>st.installed&&!lastAg.kimi_config?.configured?openKimi():agentAction("install",a));return card(AGENTS[a].label,[st.version,st.installed?(st.logged_in?tr("подключён"):tr("Войти")):tr("Не установлен")].filter(Boolean).join(" · "),st.installed?(st.logged_in?tr("Обновить"):tr("Войти")):tr("Установить"),()=>agentAction(st.installed&&!st.logged_in?"login":"install",a),st.installed?[[tr("Обновить"),()=>agentAction("install",a)]]:[])}));
   const cards=[card("Kimi",lastAg.kimi_config?.configured?tr("Ключ сохранён на сервере"):tr("Ключ ещё не настроен"),tr("Настроить"),()=>openEditor("kimi"))];
   for(const p of lmData.profiles||[]){
     const c=card(p.name+" · LM Studio",p.url+" · "+tr(p.status==="online"?"подключён":p.status==="needs_key"?"Нужен ключ":p.status==="offline"?"Недоступен":"Не проверен"),tr("Проверить подключение"),()=>lmAction("probe",{id:p.id}),[[tr("Изменить"),()=>editLM(p)],[tr("Удалить"),()=>lmAction("remove",{id:p.id})]]);
-    const samples=p.measurements?Object.values(p.measurements).flatMap(group=>Object.values(group)):[p.performance||{}];for(const sample of samples)c.append(el("p","",performanceText(sample)));
+    const samples=p.measurements?Object.values(p.measurements).flatMap(group=>Object.values(group)):[p.performance||{}];for(const sample of samples)c.append(el("p","",performanceText(sample,false)));
     if(p.models?.length){const select=el("select","");select.dataset.profile=p.id;select.setAttribute("aria-label",tr("Модель"));for(const m of p.models){const o=el("option","",m.name+(m.loaded?" · "+tr("Загружена"):"")+(m.tool_tested?" · ✓ tools":""));o.value=m.id;select.append(o)}if(selections.has(p.id))select.value=selections.get(p.id);if(!select.value&&select.options.length)select.selectedIndex=0;c.append(select);const detail=el("p","");const describe=()=>{const m=p.models.find(x=>x.id===select.value);detail.textContent=[m.context_length||m.max_context_length?"Context: "+(m.context_length||m.max_context_length):"",m.quantization||"",m.tool_tested?"Tools: ✓":"Tools: ?"].filter(Boolean).join(" · ")};select.onchange=describe;describe();c.append(detail);const actions=el("div","acts",btn(tr("Проверить инструменты"),"",()=>lmAction("test",{id:p.id,model:select.value})),btn(tr("Измерить скорость"),"",()=>lmAction("benchmark",{id:p.id,model:select.value})));c.append(actions)}cards.push(c);
   }
   $("model_cards").replaceChildren(...cards);
   $("connection_cards").replaceChildren(card("GitHub",ghLogin||tr("Не подключён"),ghLogin?tr("Репозитории"):tr("Подключить"),()=>{returnToNew=false;$("settings_dlg").close();ghLogin?openNew():ghConnect()}),card("Telegram",telegramConfig.paired?tr("подключён"):tr("Не подключён"),tr("Настроить"),()=>openEditor("telegram")));
   if(panelVersion)renderVersion(panelVersion);
 }
-function performanceText(m){
+function performanceText(m,includeModel=true){
   const parts=[m.source==="session"?tr("Последний ответ"):m.source==="benchmark"?tr("Тест скорости"):tr("Без лимитов")];
   if(Number.isFinite(m.tokens_per_second))parts.push(m.tokens_per_second.toFixed(1)+" tok/s");
   if(Number.isFinite(m.time_to_first_token_seconds))parts.push("TTFT "+m.time_to_first_token_seconds.toFixed(2)+" s");
   if(Number.isFinite(m.model_load_time_seconds))parts.push(tr("Загрузка")+" "+m.model_load_time_seconds.toFixed(2)+" s");
-  if(m.model)parts.push(m.model);return parts.join(" · ");
+  if(includeModel&&m.model)parts.push(m.model);return parts.join(" · ");
 }
 async function loadLM(refresh=true){try{lmData=await api("/api/lmstudio");if($("settings_dlg").open&&refresh)renderHub();renderDiscovery()}catch(e){$("lm_progress").textContent=e.message}}
 function editLM(p){$("lm_editor").open=true;$("lm_id").value=p.id||"";$("lm_name").value=p.name||"";$("lm_url").value=p.url||"";$("lm_key").value="";$("lm_clear_key").checked=false;$("lm_editor").scrollIntoView({block:"nearest"})}

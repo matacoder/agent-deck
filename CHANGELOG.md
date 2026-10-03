@@ -2,6 +2,16 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z`.
 
+## 1.0.1 — 2026-10-03
+
+- Redesign the drawer usage monitor with aligned headings, compact metrics and
+  expandable long model names instead of multi-line blocks.
+- Unify modal spacing, controls and card actions; use a sidebar for desktop settings
+  and a compact navigation strip on phones.
+- Keep mobile modal headers fixed while content scrolls, and correct inherited
+  dialog dimensions on inline integration forms.
+- Refresh public demo screenshots and verify narrow-phone layouts across locales.
+
 ## 1.0.0 — 2026-10-03
 
 - Unify desktop and mobile settings into Agents, Models, Connections and Application.
