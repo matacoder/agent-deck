@@ -8,7 +8,7 @@ async function demo(app,page){
  app.language='en';app.version={version,latest:version,update:false,can_update:true,job:{phase:'idle'}};
  app.telegramConfig={available:true,configured:true,paired:true,enabled:true,bot:'agent_deck_demo_bot',account:'demo_user'};
  app.sessions=[
-  session('agent-deck',{group:'agent-deck',preview:`Agent Deck · v${version}\n\n✓ Telegram answer delivered to Codex\n✓ English and Russian interface\n✓ Linux and macOS installation\n\n• Settings → Interface language\n• Private Telegram pairing\n• Persistent sessions and drafts\n\nReady for the next task.`,path:'/home/demo/projects/agent-deck'}),
+  session('agent-deck',{group:'agent-deck',preview:`Agent Deck · v${version}\n\n✓ Telegram answer delivered to Codex\n✓ Interface in 16 languages\n✓ Linux and macOS installation\n\n• Settings → Interface language\n• Private Telegram pairing\n• Persistent sessions and drafts\n\nReady for the next task.`,path:'/home/demo/projects/agent-deck'}),
   session('api-tests',{agent:'claude',group:'agent-deck',activity:Date.now()/1000,path:'/home/demo/projects/agent-deck'}),
   session('terminal',{agent:'shell',group:'agent-deck',command:'bash',path:'/home/demo/projects/agent-deck'}),
   session('landing',{agent:'claude',group:'website',path:'/home/demo/projects/website'}),

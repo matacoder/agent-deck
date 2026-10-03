@@ -5,7 +5,9 @@ const path = require('node:path');
 const panelDir = path.resolve(__dirname, '../../panel');
 const html = fs.readFileSync(path.join(panelDir, 'index.html'), 'utf8');
 const loginHtml = fs.readFileSync(path.join(panelDir, 'login.html'), 'utf8').replace('{{USER}}', 'test-user').replace('{{ERROR}}', '');
-const catalogs=Object.fromEntries(['en','ru'].map(code=>[code,JSON.parse(fs.readFileSync(path.resolve(panelDir,'../locales',code+'.json'),'utf8')).messages]));
+const localeDir=path.resolve(panelDir,'../locales');
+const languages=fs.readdirSync(localeDir).filter(x=>x.endsWith('.json')).sort().map(file=>{const data=JSON.parse(fs.readFileSync(path.join(localeDir,file),'utf8'));return {code:file.slice(0,-5),name:data.name,messages:data.messages}});
+const catalogs=Object.fromEntries(languages.map(({code,messages})=>[code,messages]));
 function renderLocalized(html,language,messages){
   const start=html.indexOf('<script>');const end=start<0?html.length:start;
   const escape=x=>x.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
@@ -81,7 +83,7 @@ const test = base.extend({
           app.navigations++;
           const language=(await page.context().cookies(url.toString())).find(x=>x.name==='cc_lang')?.value||app.language;
           return route.fulfill({ contentType: 'text/html', body: renderLocalized(html.replace('__PANEL_REVISION__', app.revision),language,app.catalogs[language]) });
-        case '/api/locales': return json({languages:[{code:'en',name:'English'},{code:'ru',name:'Русский'}]});
+        case '/api/locales': return json({languages:languages.map(({code,name})=>({code,name}))});
         case '/api/ui-version': return json({ revision: app.revision });
         case '/api/sessions': {
           app.sessionRequests.push(url.searchParams.get('preview'));

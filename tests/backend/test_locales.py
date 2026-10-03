@@ -33,8 +33,14 @@ class LocaleTests(unittest.TestCase):
         english = locales.catalog('en')['messages']
         russian = locales.catalog('ru')['messages']
         self.assertEqual(english.keys(), russian.keys())
-        for code in ('en','ru'):
-            locales.validate(locales.catalog(code))
+        for item in locales.available():
+            data = locales.catalog(item['code'])
+            locales.validate(data)
+            self.assertEqual(data['messages'].keys(), english.keys(), item['code'])
+            for source, translated in data['messages'].items():
+                self.assertTrue(translated.strip(), (item['code'], source))
+                self.assertEqual(len(source) - len(source.lstrip()), len(translated) - len(translated.lstrip()), (item['code'], source))
+                self.assertEqual(len(source) - len(source.rstrip()), len(translated) - len(translated.rstrip()), (item['code'], source))
         page = (ROOT/'panel/index.html').read_text()
         for match in re.finditer(r'(?<![\w])tr\(("(?:\\.|[^"\\])*")', page):
             self.assertIn(json.loads(match.group(1)), english)
@@ -42,6 +48,19 @@ class LocaleTests(unittest.TestCase):
             locales.validate({'name':'Test','messages':{'Value {0}':'Value {1}'}})
         with self.assertRaises(ValueError):
             locales.catalog('../outside')
+
+    def test_full_language_pack_is_discovered_with_native_names(self):
+        expected = {'en','ru','es','pt-BR','de','fr','zh-CN','ja','ko','id','tr','it','pl','uk','hi','zh-TW'}
+        languages = locales.available()
+        self.assertTrue(expected <= {item['code'] for item in languages})
+        self.assertEqual(len({item['name'] for item in languages}),len(languages))
+        english = locales.catalog('en')['messages']
+        for code in expected - {'en', 'ru'}:
+            messages = locales.catalog(code)['messages']
+            for key, value in messages.items():
+                self.assertEqual(re.findall(r'--[a-z][a-z-]+',english[key]),re.findall(r'--[a-z][a-z-]+',value),(code,key))
+                if code != 'uk':
+                    self.assertIsNone(re.search(r'[\u0400-\u04ff]',value),(code,key))
 
     def test_response_localizes_errors_and_jobs_but_preserves_user_data(self):
         data={'error':'неверное имя сессии','job':{'message':'Панель обновлена до v0.8.0'},

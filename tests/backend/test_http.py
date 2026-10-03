@@ -53,12 +53,25 @@ class HTTPTests(PanelCase):
     def test_locales_are_public_and_language_cookie_localizes_login_html_and_errors(self):
         status, _, body = self.request("GET", "/api/locales")
         self.assertEqual(status, 200)
-        self.assertEqual({x['code'] for x in json.loads(body)['languages']}, {'en', 'ru'})
+        self.assertEqual({x['code'] for x in json.loads(body)['languages']}, {x['code'] for x in self.panel.locales.available()})
         _, _, body = self.request('GET', '/login', headers={'Cookie': 'cc_lang=en'})
         self.assertIn(b'<html lang="en"', body)
         self.assertIn(b'Password', body)
         self.assertNotIn('Пароль'.encode(), body)
-        cookie = self.login() + '; cc_lang=en'
+        authenticated = self.login()
+        for item in self.panel.locales.available():
+            code = item['code']
+            with self.subTest(language=code):
+                cookie = authenticated + '; cc_lang=' + code
+                _, _, body = self.request('GET', '/login', headers={'Cookie': cookie})
+                self.assertIn(('<html lang="' + code + '"').encode(), body)
+                self.assertIn(self.panel.locales.translate('Пароль', code).encode(), body)
+                _, _, body = self.request('GET', '/', headers={'Cookie': cookie})
+                self.assertIn(('<h3>' + self.panel.locales.translate('Настройки', code) + '</h3>').encode(), body)
+                status, _, body = self.request('POST', '/api/send', '{}', {'Cookie': cookie})
+                self.assertEqual(status, 400)
+                self.assertEqual(json.loads(body)['error'], self.panel.locales.translate('неверное имя сессии', code))
+        cookie = authenticated + '; cc_lang=en'
         _, _, body = self.request('GET', '/', headers={'Cookie': cookie})
         self.assertIn(b'<h3>Settings</h3>', body)
         self.assertNotIn(b'__PANEL_I18N__', body)

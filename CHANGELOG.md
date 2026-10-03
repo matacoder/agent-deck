@@ -2,6 +2,18 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z`.
 
+## 0.9.0 — 2026-10-03
+
+- Add complete interface catalogs for Spanish, Brazilian Portuguese, German, French,
+  Simplified Chinese, Japanese, Korean, Indonesian, Turkish, Italian, Polish,
+  Ukrainian, Hindi and Traditional Chinese — 16 languages including English/Russian.
+- Translate interface controls, login, errors, usage hints, Telegram confirmations
+  and attachment notices; preserve terminal output and user messages.
+- Discover every language automatically in Settings and support `PANEL_LANGUAGE`
+  during installation. Keep existing browser/server preferences.
+- Validate complete catalogs, placeholders, CLI flags and concatenation whitespace;
+  exercise all new languages at 320 px in Chromium and mobile WebKit.
+
 ## 0.8.0 — 2026-10-03
 
 - Add English and Russian interface catalogs, browser-specific language selection in Settings,

@@ -22,7 +22,7 @@ after a reboot.
 - Claude / Codex subscription limits with a pace forecast; Kimi usage windows and reset times.
 - Server CPU/RAM indicators beside the message composer.
 - Phone friendly: home-screen app, message box, question controls and file attachments up to 200 MB.
-- English and Russian UI, switchable in Settings; extensible file-based locales.
+- UI in 16 languages, switchable in Settings; extensible file-based locales.
 - Telegram bot integration: receive agent questions with answer buttons in your private chat.
 - One-command installation on Linux and macOS, autostart and panel updates; in-panel agent setup and login.
 
@@ -40,6 +40,10 @@ curl -fsSL https://raw.githubusercontent.com/matacoder/agent-deck/main/get.sh | 
 # macOS
 curl -fsSL https://raw.githubusercontent.com/matacoder/agent-deck/main/get.sh | PANEL_LANGUAGE=ru bash
 ```
+
+Available: English, Russian, Spanish, Brazilian Portuguese, German, French,
+Simplified/Traditional Chinese, Japanese, Korean, Indonesian, Turkish, Italian,
+Polish, Ukrainian and Hindi. For example, `PANEL_LANGUAGE=ja` starts in Japanese.
 
 [Adding another language](docs/localization.md) only requires a JSON catalog.
 
