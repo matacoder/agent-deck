@@ -22,7 +22,13 @@ async function demo(app,page){
  await page.evaluate(()=>document.activeElement?.blur());
 }
 test('desktop',async({app,page},info)=>{
- test.skip(info.project.name!=='desktop');await demo(app,page);await page.screenshot({path:target('desktop')});
+ test.skip(info.project.name!=='desktop');await demo(app,page);
+ await page.locator('aside .integrations-entry').click();
+ await expect(page.locator('#integrations_dlg')).toBeVisible();
+ await expect(page.locator('#telegram_state')).toContainText('demo_user');
+ await page.locator('#integrations_dlg').getByRole('button',{name:'Close',exact:true}).click();
+ await page.evaluate(()=>document.activeElement?.blur());
+ await page.screenshot({path:target('desktop')});
 });
 test('phone screens',async({app,page},info)=>{
  test.skip(info.project.name!=='phone');await demo(app,page);

@@ -84,6 +84,8 @@ aside{width:240px;flex:none;background:var(--side);border-right:1px solid var(--
 .side-gh{display:flex;align-items:center;gap:8px;margin:0 8px 8px;padding:8px 10px;border:1px solid var(--bd);border-radius:8px;color:var(--fg);text-align:left}
 .side-gh:hover{background:var(--side2)}.side-gh.need{border-color:var(--acc);color:var(--acc)}
 .side-gh svg{flex:none}.side-gh span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.integrations-entry{display:flex;align-items:center;gap:10px;width:100%;min-height:44px;padding:12px 14px;border-top:1px solid var(--bd);color:var(--fg2);font-size:13px;text-align:left}
+.integrations-entry:hover{background:var(--side2)}
 .side-foot{border-top:1px solid var(--bd);padding:8px 12px;color:var(--dim);font-size:11px;display:flex;justify-content:space-between;align-items:center;gap:8px}
 #ver{margin-left:auto;min-width:0;font:10.5px var(--mono);color:var(--dim);white-space:normal}
 #ver button{display:block;max-width:100%;margin-top:3px;color:var(--acc);text-align:left;overflow-wrap:anywhere}
@@ -327,6 +329,7 @@ body.is-shell .agent-only{display:none!important}
     </div>
     <div id="tabs"></div>
     <div id="integ"></div>
+    <button type="button" class="integrations-entry" onclick="drawer(false);openIntegrations()"><span aria-hidden="true">🔌</span>Интеграции</button>
     <div class="side-foot"><span id="foot"></span><span id="ver"></span><button id="b_drafts" onclick="showClosedDrafts()" style="display:none">Черновики закрытых сессий</button><button class="settingsbtn" onclick="openSettings()" aria-label="Настройки" title="Настройки">⚙</button></div>
   </aside>
   <div id="scrim" onclick="drawer(false)"></div>

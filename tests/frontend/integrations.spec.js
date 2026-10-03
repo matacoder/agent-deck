@@ -3,7 +3,7 @@ const { test, expect } = require('./fixtures');
 test('phone integration setup keeps token private and shows the pairing link', async ({ app, page }) => {
   await app.open({ width:390 });
   await page.getByRole('button', { name:'Действия', exact:true }).click();
-  await page.getByRole('button', { name:'Интеграции', exact:true }).click();
+  await page.locator('#sheet').getByRole('button', { name:'Интеграции', exact:true }).click();
   const dialog=page.locator('#integrations_dlg');
   await expect(dialog).toBeVisible();
   await expect(dialog.locator('#telegram_token')).toHaveAttribute('type','password');
@@ -19,7 +19,7 @@ test('phone integration setup keeps token private and shows the pairing link', a
 test('paired Telegram can be paused and a draft token is cleared on close', async ({ app,page }) => {
   app.telegramConfig={available:true,configured:true,paired:true,enabled:true,bot:'deck_test_bot',account:'tester'};
   await app.open({width:1000});
-  await page.locator('#integ').getByRole('button',{name:'Настроить',exact:true}).click();
+  await page.locator('aside .integrations-entry').click();
   const dialog=page.locator('#integrations_dlg');
   await expect(dialog.locator('#telegram_state')).toContainText('tester');
   await expect(dialog.locator('#telegram_token')).not.toBeVisible();
@@ -38,7 +38,7 @@ test('compact integration card fits a 320px phone without a full-height dialog',
   app.telegramConfig={available:true,configured:true,paired:true,enabled:true,bot:'deck_test_bot',account:'tester'};
   await app.open({width:320});
   await page.getByRole('button',{name:'Действия',exact:true}).click();
-  await page.getByRole('button',{name:'Интеграции',exact:true}).click();
+  await page.locator('#sheet').getByRole('button',{name:'Интеграции',exact:true}).click();
   const dialog=page.locator('#integrations_dlg');
   await expect(dialog.locator('#telegram_state')).toContainText('tester');
   const bounds=await dialog.boundingBox();

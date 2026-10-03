@@ -2,6 +2,11 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z`.
 
+## 0.9.2 — 2026-10-03
+
+- Add a visible Integrations button to the sidebar on desktop and mobile, so Telegram
+  settings are accessible without expanding the account and usage summary.
+
 ## 0.9.1 — 2026-10-03
 
 - Move sign out from the sidebar footer into a separate account section in Settings
