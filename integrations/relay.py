@@ -1,5 +1,6 @@
 """Loopback-only Anthropic pass-through and text-free per-request measurements."""
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from socketserver import TCPServer
 import hmac
 import http.client
 import json
@@ -128,6 +129,13 @@ class Measurements:
         return result
 
 
+class LoopbackHTTPServer(ThreadingHTTPServer):
+    def server_bind(self):
+        # HTTPServer's reverse DNS lookup can block launchd startup on macOS.
+        TCPServer.server_bind(self)
+        self.server_name, self.server_port = self.server_address[:2]
+
+
 class Relay:
     def __init__(self, directory, profiles):
         self.directory, self.profiles = Path(directory), profiles
@@ -252,7 +260,7 @@ class Relay:
                             connection.close()
                         semaphore.release()
 
-            self.server = ThreadingHTTPServer(('127.0.0.1',port),Handler)
+            self.server = LoopbackHTTPServer(('127.0.0.1',port),Handler)
             self.server.daemon_threads = True
             self.server.block_on_close = False
             private_write(self.config, {'port':self.server.server_port,'token':token})

@@ -7,7 +7,7 @@ import threading
 import unittest
 from unittest.mock import patch
 from integrations.lmstudio import LMStudio, endpoint, RemoteError, request
-from integrations.relay import Relay, read_json
+from integrations.relay import Relay, LoopbackHTTPServer, read_json
 
 
 class LMStudioTests(unittest.TestCase):
@@ -39,7 +39,7 @@ class LMStudioTests(unittest.TestCase):
                     self.respond({'content':[{'type':'tool_use','name':'deck_healthcheck','input':{'ok':True}}]})
                 else:
                     self.respond({'stats':{'tokens_per_second':42,'time_to_first_token_seconds':0.2,'total_output_tokens':20}})
-        self.server = ThreadingHTTPServer(('127.0.0.1',0),Fake)
+        self.server = LoopbackHTTPServer(('127.0.0.1',0),Fake)
         threading.Thread(target=self.server.serve_forever,daemon=True).start()
         self.addCleanup(self.server.server_close);self.addCleanup(self.server.shutdown)
         self.url = 'http://127.0.0.1:'+str(self.server.server_port)
@@ -141,3 +141,11 @@ class LMStudioTests(unittest.TestCase):
         r=c.getresponse();proof=json.loads(r.read())['proof'];c.close()
         self.assertEqual(proof,hmac.new(config['token'].encode(),nonce.encode(),'sha256').hexdigest())
         self.assertNotIn(config['token'],proof)
+
+    def test_relay_start_does_not_wait_for_reverse_dns(self):
+        relay=Relay(self.directory,self.service)
+        with patch('socket.getfqdn',side_effect=AssertionError('Reverse DNS must not block relay startup')):
+            relay.start()
+        self.addCleanup(relay.server.server_close);self.addCleanup(relay.server.shutdown)
+        self.assertEqual(relay.server.server_name,'127.0.0.1')
+        self.assertGreater(relay.server.server_port,0)
