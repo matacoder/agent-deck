@@ -158,7 +158,7 @@ INSTALLERS = {
     "claude": "curl -fsSL https://claude.ai/install.sh | bash",
     "codex": "curl -fsSL https://chatgpt.com/codex/install.sh | sh",
 }
-INSTALLERS["kimi"] = "curl -fsSL https://code.kimi.com/kimi-code/install.sh | sh"
+INSTALLERS["kimi"] = "curl -fsSL https://code.kimi.com/kimi-code/install.sh | bash"
 LOGINS = {
     "claude": "claude",  # first start asks to log in; afterwards /login switches accounts
     "codex": "codex login --device-auth",

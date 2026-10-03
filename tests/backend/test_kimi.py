@@ -74,3 +74,14 @@ class KimiTests(PanelCase):
             self.panel.action_restart({'name': 'demo', 'mode': 'new'})
         self.panel.stop_children.assert_not_called()
         self.panel.tmux.assert_not_called()
+
+    def test_native_installer_runs_in_bash_not_posix_sh(self):
+        self.panel.run_in_session = Mock()
+        self.panel.action_agent_install({'agent': 'kimi'})
+        command = self.panel.run_in_session.call_args.args[1]
+        self.assertIn('https://code.kimi.com/kimi-code/install.sh | bash', command)
+
+    def test_api_key_accepts_base64_and_other_printable_token_formats(self):
+        key = 'sk:test/with+base64==and~symbols'
+        self.panel.kimi_config.save({'key': key})
+        self.assertEqual(self.panel.kimi_config.read()['key'], key)

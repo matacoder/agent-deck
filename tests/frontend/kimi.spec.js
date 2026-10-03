@@ -28,3 +28,15 @@ test('both Kimi session modes fit the iPhone dialog and expose correct permissio
   }
   expect(await page.locator('#dlg').evaluate(el => el.scrollWidth<=el.clientWidth)).toBe(true);
 });
+
+
+test('Kimi save errors stay above the modal backdrop and retain the entered key', async ({ app, page }) => {
+  await app.open();
+  await page.route('**/api/kimi_config', route => route.fulfill({status:400,contentType:'application/json',body:JSON.stringify({error:'Ошибка сохранения ключа'})}));
+  await page.evaluate(() => openKimi());
+  await page.locator('#kimi_key').fill('sk:test/with+base64==');
+  await page.locator('#kimi_save').click();
+  await expect(page.locator('#toast')).toContainText('Ошибка сохранения ключа');
+  expect(await page.locator('#toast').evaluate(el=>{const r=el.getBoundingClientRect();const top=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);return el===top||el.contains(top)})).toBe(true);
+  await expect(page.locator('#kimi_key')).toHaveValue('sk:test/with+base64==');
+});

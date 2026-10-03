@@ -88,7 +88,7 @@ def read():
                     match = re.fullmatch(r'(?:export\s+)?ANTHROPIC_API_KEY\s*=\s*(.*?)\s*', line.strip())
                     if match:
                         key = match[1].strip('\"\'')
-                        if re.fullmatch(r'[A-Za-z0-9_.-]{16,512}', key):
+                        if re.fullmatch(r'[!-~]{1,4096}', key):
                             return {'key': key, 'model': 'k3'}
         except FileNotFoundError:
             pass
@@ -117,8 +117,8 @@ def save(data):
     key = data.get('key', '')
     if model not in MODELS:
         raise ValueError('неизвестная модель Kimi')
-    if not isinstance(key, str) or (key and not re.fullmatch(r'[A-Za-z0-9_.-]{16,512}', key)):
-        raise ValueError('неверный формат ключа Kimi')
+    if not isinstance(key, str) or (key and not re.fullmatch(r'[!-~]{1,4096}', key)):
+        raise ValueError('Ключ должен содержать до 4096 символов без пробелов и переносов строк')
     if 'clear' in data and not isinstance(data['clear'], bool):
         raise ValueError('неверный запрос')
     with _lock:

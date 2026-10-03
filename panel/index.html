@@ -426,7 +426,8 @@ async function api(path,body){
   if(!r.ok)throw new Error(j.error||r.statusText);return j;
 }
 function toast(m,info,action){
-  const t=$("toast");t.className=info?"info":"";t.replaceChildren(m);
+  const t=$("toast"),dialogs=Array.from(document.querySelectorAll("dialog[open]"));
+  (dialogs[dialogs.length-1]||document.body).append(t);t.className=info?"info":"";t.replaceChildren(m);
   if(action){const b=document.createElement("button");b.textContent=action.label;b.onclick=()=>{action.run();t.style.display="none"};t.append(b)}
   t.style.display="block";clearTimeout(t._h);t._h=setTimeout(()=>t.style.display="none",action?12000:(info?1800:5000));
 }
