@@ -363,6 +363,7 @@ body.is-shell .agent-only{display:none!important}
   <button onclick="sheet(false);popout()"><span class="i">↗</span>Терминал в новой вкладке</button>
   <button class="dng" onclick="sheet(false);kill()"><span class="i">✕</span>Закрыть сессию</button>
   <button onclick="refreshInterface()"><span class="i">↻</span>Обновить интерфейс</button>
+  <button onclick="sheet(false);openIntegrations()"><span class="i" aria-hidden="true">✈</span>Интеграции</button>
   <button id="s_update" onclick="updatePanel()" style="display:none"></button>
   <button id="s_drafts" onclick="showClosedDrafts()" style="display:none">Черновики закрытых сессий</button>
   <button onclick="sheet(false)"><span class="i"></span>Отмена</button>
@@ -408,6 +409,23 @@ body.is-shell .agent-only{display:none!important}
     <p>Один ключ для Claude · Kimi и Kimi Code. Изменения применятся при следующем запуске агента.</p>
   </div>
   <div class="acts"><button type="button" onclick="clearKimi()">Удалить ключ</button><button type="button" onclick="closeKimi()">Отмена</button><button class="pri" id="kimi_save">Сохранить</button></div>
+</form></dialog>
+<dialog id="integrations_dlg"><form class="dlg" onsubmit="event.preventDefault();saveTelegram()">
+  <div class="dlg-body"><h3>Интеграции</h3>
+    <h4>Telegram</h4>
+    <p>Получайте вопросы агентов с кнопками ответа в личном чате с ботом.</p>
+    <p id="telegram_state" role="status"></p>
+    <label for="telegram_token">Токен бота из @BotFather</label>
+    <input id="telegram_token" type="password" autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Пустое поле сохраняет текущий токен">
+    <label class="chk"><input type="checkbox" id="telegram_enabled" checked><span>Отправлять вопросы в Telegram</span></label>
+    <div id="telegram_pairing" style="display:none">
+      <p>Откройте бота по ссылке и нажмите Start. Отвечать сможет только привязанный аккаунт.</p>
+      <a id="telegram_link" target="_blank" rel="noopener noreferrer">Привязать мой Telegram</a>
+      <p>Ссылка действует 10 минут.</p>
+    </div>
+    <button type="button" id="telegram_pair" onclick="pairTelegram()" style="display:none">Привязать Telegram</button>
+  </div>
+  <div class="acts"><button type="button" onclick="clearTelegram()">Отключить</button><button type="button" onclick="$('integrations_dlg').close()">Закрыть</button><button class="pri" id="telegram_save">Сохранить</button></div>
 </form></dialog>
 <script>
 const $=id=>document.getElementById(id);
@@ -1115,6 +1133,7 @@ function renderInteg(){
   const kb=el("div","iblk",irow("◈",kc.configured?"Kimi ✓":"Kimi",ks.version||"",kr));
   const ku=kc.configured&&usageBlock(usageData.kimi);if(ku)kb.append(ku);blocks.push(kb);
   blocks.push(el("div","iblk",irow(GH_ICON,ghLogin||"GitHub","",[ghLogin?btn("Репозитории","",openNew):btn("Подключить","go",ghConnect)])));
+  blocks.push(el("div","iblk",irow("✈","Telegram",telegramConfig.paired?(telegramConfig.enabled?"подключён":"пауза"):"",[btn("Настроить","",openIntegrations)])));
   $("integ").replaceChildren(...blocks);
 }
 function closeKimi(){$("kimi_key").value="";$("kimi_dlg").close()}
@@ -1133,6 +1152,41 @@ async function saveKimi(clear=false){
   }catch(e){toast(e.message)}finally{$("kimi_save").disabled=false}
 }
 function clearKimi(){if(confirm("Удалить ключ Kimi из панели?"))saveKimi(true)}
+let telegramConfig={},integrationTimer=null,telegramDirty=false;
+for(const id of ["telegram_token","telegram_enabled"])$(id).addEventListener("input",()=>{telegramDirty=true});
+function renderTelegram(config){
+  telegramConfig=config||{};
+  const c=telegramConfig;
+  $("telegram_state").textContent=c.available===false?"Обновите панель: установите интеграции из меню обновлений":c.error||
+    (c.paired?`@${c.bot} · ${c.account||"аккаунт привязан"} · ${c.enabled?"включён":"пауза"}`:c.configured?`@${c.bot} · привяжите свой Telegram`:"Бот ещё не подключён");
+  $("telegram_enabled").checked=c.enabled!==false;
+  $("telegram_pair").style.display=c.configured?"inline-block":"none";
+  $("telegram_pair").textContent=c.paired?"Привязать другой аккаунт":"Получить ссылку привязки";
+  $("telegram_pairing").style.display=c.pair_url?"block":"none";
+  if(c.pair_url)$("telegram_link").href=c.pair_url;else $("telegram_link").removeAttribute("href");
+  renderInteg();
+}
+async function loadIntegrations(){
+  try{const data=await api("/api/integrations");renderTelegram(data.telegram)}catch(e){if($("integrations_dlg").open)$("telegram_state").textContent=e.message}
+}
+function openIntegrations(){
+  telegramDirty=false;$("telegram_token").value="";$("integrations_dlg").showModal();loadIntegrations();
+  clearInterval(integrationTimer);integrationTimer=setInterval(()=>{if(!telegramDirty)loadIntegrations()},3000);
+}
+$("integrations_dlg").addEventListener("close",()=>{$("telegram_token").value="";clearInterval(integrationTimer)});
+async function saveTelegram(clear=false){
+  $("telegram_save").disabled=true;
+  try{
+    const data=await api("/api/telegram_config",{token:$("telegram_token").value.trim(),enabled:$("telegram_enabled").checked,clear});
+    telegramDirty=false;$("telegram_token").value="";renderTelegram(data.telegram);
+    if(!clear&&!data.telegram.paired)await pairTelegram();
+    toast(clear?"Telegram отключён":"Настройки Telegram сохранены","success");
+  }catch(e){toast(e.message)}finally{$("telegram_save").disabled=false}
+}
+async function pairTelegram(){
+  try{const data=await api("/api/telegram_pair",{});renderTelegram(data.telegram)}catch(e){toast(e.message)}
+}
+function clearTelegram(){if(confirm("Отключить Telegram и удалить сохранённый токен?"))saveTelegram(true)}
 let panelUpdating=false,panelVersion=null,versionTimer=null,versionLoading=false;
 const UPDATE_PHASES=new Set(["checking","downloading","installing","restarting"]);
 function renderVersion(v){
@@ -1144,7 +1198,7 @@ function renderVersion(v){
   if(panelUpdating){label=job.message||"Обновляю панель…";action=()=>{}}
   else if(job.phase==="done"&&job.version&&job.version!==UI_PANEL_VERSION){label="Обновлено · перезагрузить интерфейс";action=refreshInterface}
   else if(job.phase==="error"){label="Обновление не удалось · повторить";action=startPanelUpdate;box.title=job.message||label}
-  else if(v.update){label="Обновить до v"+v.latest;action=startPanelUpdate}
+  else if(v.update){label=v.incomplete?"Установить интеграции":"Обновить до v"+v.latest;action=startPanelUpdate}
   if(label){
     const b=btn(label,"",action);b.id="b_update";b.disabled=panelUpdating;
     if(!v.can_update&&!panelUpdating&&job.phase!=="done"){
@@ -1322,6 +1376,7 @@ checkGithubFoot(true);setInterval(checkGithubFoot,5000);
 loadUsage();setInterval(loadUsage,60000);
 loadServer();setInterval(loadServer,3600000);
 loadVersion();
+loadIntegrations();
 document.addEventListener("visibilitychange",()=>{if(!document.hidden){checkGithubFoot(true);loadUsage();load();checkInterfaceVersion()}});
 load();setInterval(load,2500);
 </script>

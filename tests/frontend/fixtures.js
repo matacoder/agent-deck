@@ -26,6 +26,7 @@ const test = base.extend({
       uploadError: null, sendGate: null, navigations: 0, usage: {},
       version: { version: '0.1.0', update: false, can_update: true, job: { phase: 'idle' } },
       updates: [], updateError: null, kimiConfig: {configured: false, model: "k3"}, kimiSaves: [],
+      telegramConfig:{available:true,configured:false,paired:false,enabled:true},telegramSaves:[],
       sessionRequests: [], sessionGate: null, sessionCaptured: false, authExpired: false,
       async open({ active = 'tmux', mode = 'screen', width, height } = {}) {
         if (width) await page.setViewportSize({ width, height: height || 844 });
@@ -88,6 +89,16 @@ const test = base.extend({
           const data=route.request().postDataJSON();app.kimiSaves.push(data);
           app.kimiConfig={configured: data.clear?false:!!data.key||app.kimiConfig.configured, model:data.model};
           return json({ok:true,kimi:app.kimiConfig});
+        }
+        case '/api/integrations': return json({telegram:app.telegramConfig});
+        case '/api/telegram_config': {
+          const data=route.request().postDataJSON();app.telegramSaves.push(data);
+          app.telegramConfig={...app.telegramConfig,configured:!data.clear,bot:'deck_test_bot',enabled:!data.clear&&data.enabled};
+          return json({ok:true,telegram:app.telegramConfig});
+        }
+        case '/api/telegram_pair': {
+          app.telegramConfig={...app.telegramConfig,pair_url:'https://t.me/deck_test_bot?start=deck_test_pair_code'};
+          return json({ok:true,telegram:app.telegramConfig});
         }
         case '/api/agents': return json({ kimi_config:app.kimiConfig, kimi:{installed:true,logged_in:app.kimiConfig.configured,version:'2.1.1'}, codex: { installed: true, logged_in: true, version: 'test' }, claude: { installed: true, logged_in: true, version: 'test' } });
         case '/api/github/status': return json({ connected: false });

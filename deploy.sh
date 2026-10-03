@@ -16,8 +16,12 @@ from pathlib import Path
 import sys
 for path in (Path(sys.argv[1]) / "panel").glob("*.py"):
     compile(path.read_text(), str(path), "exec")
+for path in (Path(sys.argv[1]) / "integrations").glob("*.py"):
+    compile(path.read_text(), str(path), "exec")
 PYTHON
 find "$SRC/panel" -maxdepth 1 -type f -exec install -m 644 {} "$PREFIX"/ \;
+install -d -m 755 "$PREFIX/integrations"
+find "$SRC/integrations" -maxdepth 1 -type f -name '*.py' -exec install -m 644 {} "$PREFIX/integrations"/ \;
 rm -rf "$SRC/panel/__pycache__"
 
 units_changed=0

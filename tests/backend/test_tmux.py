@@ -66,3 +66,52 @@ class TmuxIntegration(PanelCase):
         while (not self.input_file.exists() or self.input_file.stat().st_size < 14) and time.monotonic() < deadline:
             time.sleep(0.01)
         self.assertEqual(self.input_file.read_bytes(), b"printf hello;\r")
+
+    def test_telegram_button_selects_a_real_terminal_question_once(self):
+        from integrations.telegram import Telegram
+        from test_telegram import FakeAPI, TOKEN
+        emulator = self.home / 'question.py'
+        answer = self.home / 'answer.txt'
+        emulator.write_text("""import os,sys,tty,time
+from pathlib import Path
+tty.setraw(0)
+selected=0
+def render():
+ print('\\x1b[2J\\x1b[HQuestion 1/1\\r\\nChoose an installation?\\r\\n',end='')
+ for i,label in enumerate(['Homebrew','Manual']):
+  print(('›' if selected==i else ' ')+' '+str(i+1)+'. '+label+'\\r')
+ print('enter to submit answer\\r',flush=True)
+render()
+while True:
+ data=os.read(0,4096)
+ if b'B' in data: selected=min(1,selected+1);render()
+ if b'A' in data: selected=max(0,selected-1);render()
+ if b'\\r' in data:
+  Path(sys.argv[1]).write_text(str(selected))
+  print('\\x1b[2J\\x1b[HAnswered\\r',flush=True)
+  while True:time.sleep(1)
+""")
+        command=shlex.join(['python3','-u',str(emulator),str(answer)])
+        self.panel.tmux('new-session','-d','-s','cc-question','-x','100','-y','35',command)
+        self.panel.tmux('set-option','-t','=cc-question:','@cc_agent','codex')
+        deadline=time.monotonic()+5
+        q=None
+        while not q and time.monotonic()<deadline:
+            q=self.panel.current_question('question')
+            time.sleep(.02)
+        self.assertIsNotNone(q)
+        transport=FakeAPI()
+        integration=Telegram(self.home/'integrations',lambda:[q],self.panel.answer_question,transport)
+        integration.start=lambda:None
+        integration.save({'token':TOKEN})
+        code=integration.pair()['pair_url'].split('?start=deck_',1)[1]
+        integration.handle({'message':{'text':'/start deck_'+code,'chat':{'id':100,'type':'private'},'from':{'id':100}}})
+        integration.deliver()
+        row=integration.database().pending()[0]
+        callback={'callback_query':{'id':'test','from':{'id':100},'message':{'message_id':row['message_id'],'chat':{'id':100,'type':'private'}},'data':f"q:{row['id']}:1"}}
+        integration.handle(callback)
+        integration.handle(callback)
+        deadline=time.monotonic()+5
+        while not answer.exists() and time.monotonic()<deadline:time.sleep(.02)
+        self.assertEqual(answer.read_text(),'1')
+        self.assertEqual(integration.database().get(row['id'])['status'],'answered')

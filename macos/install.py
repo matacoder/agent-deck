@@ -107,6 +107,8 @@ def install(home, start=True, open_browser=True):
     # Compile before stopping anything, and preserve the previous runtime for recovery.
     for source in (SOURCE / 'panel').glob('*.py'):
         compile(source.read_text(), str(source), 'exec')
+    for source in (SOURCE / 'integrations').glob('*.py'):
+        compile(source.read_text(), str(source), 'exec')
     if (target / 'VERSION').exists():
         shutil.copytree(target, runtime / 'backup', dirs_exist_ok=True, ignore=shutil.ignore_patterns('__pycache__'))
     domain = f'gui/{os.getuid()}'
@@ -116,6 +118,8 @@ def install(home, start=True, open_browser=True):
     for source in (SOURCE / 'panel').iterdir():
         if source.is_file():
             atomic_write(target / source.name, source.read_bytes(), 0o644)
+    for source in (SOURCE / 'integrations').glob('*.py'):
+        atomic_write(target / 'integrations' / source.name, source.read_bytes(), 0o644)
     atomic_write(config / 'tmux.conf', (SOURCE / 'config/tmux.conf').read_bytes(), 0o644)
     wrapper = home / '.claude/cc-session-hook.py'
     atomic_write(wrapper, (SOURCE / 'claude/cc-session-hook.py').read_bytes(), 0o755)

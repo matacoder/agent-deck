@@ -32,7 +32,7 @@ class UpdaterTests(unittest.TestCase):
         result = io.BytesIO()
         with tarfile.open(fileobj=result, mode="w:gz") as archive:
             for name, content in files.items():
-                info = tarfile.TarInfo("repo-release/panel/" + name)
+                info = tarfile.TarInfo("repo-release/" + (name if name.startswith('integrations/') else 'panel/' + name))
                 if content is None:
                     info.type = tarfile.SYMTYPE
                     info.linkname = "/tmp/escape"
@@ -128,6 +128,21 @@ class UpdaterTests(unittest.TestCase):
         ])
         self.assertEqual(updater.status(self.state)["phase"], "done")
         self.assertEqual((self.target / "VERSION").read_text(), "0.2.0")
+
+    def test_same_version_repairs_packages_missing_after_legacy_update(self):
+        (self.target/'VERSION').write_text('0.2.0')
+        release=json.dumps({'tag_name':'v0.2.0'}).encode()
+        with patch.object(updater,'available',return_value=True),patch.object(updater,'fetch',side_effect=[release,self.archive()]),patch.object(updater,'service'),patch.object(updater,'healthy'):
+            updater.run('matacoder/agent-deck',self.target,self.state,'http://127.0.0.1:8790')
+        self.assertTrue(all((self.target/name).is_file() for name in updater.REQUIRED))
+        self.assertEqual(updater.status(self.state)['phase'],'done')
+
+    def test_symlink_package_directory_is_rejected_before_service_stop(self):
+        names=updater.unpack(self.archive(),self.stage,'0.2.0')
+        (self.target/'integrations').symlink_to(self.directory,target_is_directory=True)
+        with patch.object(updater,'service') as service,self.assertRaises(ValueError):
+            updater.install(self.stage,self.target,names,self.state,'0.2.0','http://127.0.0.1:8790')
+        service.assert_not_called()
 
 
 class UpdateActionTests(PanelCase):

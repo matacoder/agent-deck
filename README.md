@@ -19,6 +19,7 @@ tmux, so it keeps working when you close the tab and comes back after a reboot.
 - Pick a GitHub repo and start working; optional git worktree per session (one branch per agent).
 - Weekly Claude / Codex subscription limits with a pace forecast.
 - Phone friendly: home-screen app, message box, quick keys for agent prompts, image attachments.
+- Telegram bot integration: receive agent questions with answer buttons in your private chat.
 - Survives disconnects and reboots; one-click install and login for Claude and Codex.
 
 ## Install
@@ -107,6 +108,14 @@ sudo /opt/agent-deck/update.sh
 ```
 
 Your settings are kept and running sessions are not interrupted. See [CHANGELOG.md](CHANGELOG.md).
+
+## Telegram
+
+Open **Integrations** in the phone actions menu, or **Telegram → Configure** in the
+sidebar. Save an existing bot token from [@BotFather](https://t.me/BotFather), open
+the pairing link and press **Start**. Questions arrive with answer buttons; only
+your linked Telegram account can answer. The bot must not have another polling
+consumer or webhook. See [integration setup and architecture](docs/integrations.md).
 
 ## Security
 

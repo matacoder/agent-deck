@@ -2,6 +2,21 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z`.
 
+## 0.7.0 — 2026-10-03
+
+- Add an Integrations section with Telegram bot configuration, expiring private-chat
+  pairing, delivery pause and token removal. Keep tokens private on the server.
+- Forward pending structured Codex and Claude questions, plus recognized active
+  terminal questions, with answer buttons. Validate the owner, message, session,
+  pane, conversation and current question before selecting and confirming an answer.
+- Persist delivery and answer claims in a private SQLite outbox; prevent repeated
+  terminal input and remove stale buttons. Do not replay uncertain answers after crashes.
+- Separate agent adapters, durable state and Telegram transport from panel HTTP/UI.
+  Install the integration package on Linux and Mac and support package repair after
+  updates made by legacy core-only updaters.
+- Verify real tmux answer delivery, authorization, stale/repeated callbacks,
+  restart recovery and mobile Chromium/WebKit setup.
+
 ## 0.6.0 — 2026-10-03
 
 - Keep Codex question navigation, arrow keys and answer confirmation visible on phones;

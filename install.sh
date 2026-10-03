@@ -118,6 +118,8 @@ say "panel code -> $PREFIX"
 install -d -m 755 "$PREFIX"
 chown -h "$DEV_USER:$DEV_USER" "$PREFIX"
 as_user find "$SRC/panel" -maxdepth 1 -type f -exec install -m 644 {} "$PREFIX"/ \;
+as_user install -d -m 755 "$PREFIX/integrations"
+as_user find "$SRC/integrations" -maxdepth 1 -type f -name '*.py' -exec install -m 644 {} "$PREFIX/integrations"/ \;
 
 say "config"
 as_user install -d -m 700 "$H/.config/cc-panel"

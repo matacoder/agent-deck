@@ -57,6 +57,14 @@ MAX_FILE_BYTES = 200 * 1024 * 1024
 UPLOAD_DIR = os.path.expanduser("~/.config/cc-panel/uploads")
 ATTACHMENT_RE = re.compile(r"^[0-9a-f]{32}(?:\.(png|jpg|webp|gif)|--[A-Za-z0-9_.-]{1,100})$")
 HERE = os.path.dirname(os.path.abspath(__file__))
+# Source packages live next to panel/; installed packages live inside the runtime.
+if os.path.isdir(os.path.join(os.path.dirname(HERE), "integrations")):
+    sys.path.insert(0, os.path.dirname(HERE))
+try:
+    from integrations.questions import parse_question, transcript_questions, matches_screen
+    from integrations.telegram import Telegram
+except ModuleNotFoundError:
+    Telegram = None  # A pre-0.7 updater installs core files first; its next run repairs packages.
 try:
     with open(os.path.join(HERE, "VERSION")) as version_file:
         VERSION = version_file.read().strip()
@@ -700,6 +708,7 @@ def _semver(v):
 def version_info():
     info = {"version": VERSION, "checkout": CHECKOUT, "repo": UPDATE_REPO,
             "can_update": updater.available(HERE, UPDATE_REPO), "job": updater.status(UPDATE_STATE)}
+    info['incomplete'] = Telegram is None
     if not UPDATE_REPO:
         return info
 
@@ -710,7 +719,7 @@ def version_info():
     rel = cached("release", 6 * 3600, fetch)
     if rel.get("latest"):
         cur, new = _semver(VERSION), _semver(rel["latest"])
-        info.update(latest=rel["latest"], url=rel["url"], update=bool(cur and new and new > cur))
+        info.update(latest=rel["latest"], url=rel["url"], update=bool(cur and new and (new > cur or (new == cur and Telegram is None))))
     return info
 
 
@@ -871,6 +880,127 @@ def usage():
 
 
 ACTIONS = {"kimi_config": lambda d: {"kimi": kimi_config.save(d)}, "agent_install": action_agent_install, "agent_login": action_agent_login, "github_login": action_github_login, "new": action_new, "restart": action_restart, "kill": action_kill, "send": action_send, "upload": action_upload, "update": action_update, "discard_upload": action_discard_upload}
+
+
+def current_question(name):
+    if not session_exists(name):
+        return None
+    agent = opt(name, "@cc_agent") or "claude"
+    instance = tmux("display-message", "-p", "-t", f"={PREFIX}{name}:",
+                    "#{pane_id}:#{pane_pid}:#{@cc_sid}").strip()
+    screen = tmux("capture-pane", "-p", "-t", f"={PREFIX}{name}:")
+    return parse_question(name, agent, instance, screen)
+
+
+def scan_questions():
+    result = []
+    for session in list_sessions():
+        if session['agent'] == 'shell' or not session['running']:
+            continue
+        with input_locks_lock:
+            lock = input_locks.setdefault(session['name'], threading.Lock())
+        with lock:
+            structured = pending_questions(session['name'])
+            if structured:
+                result.extend(structured)
+                continue
+            question = current_question(session['name'])
+            if question:
+                result.append(question)
+    return result
+
+
+transcript_paths = {}
+
+
+def pending_questions(name):
+    agent = opt(name, '@cc_agent') or 'claude'
+    sid = opt(name, '@cc_sid')
+    if agent not in ('codex', 'claude', 'claude-kimi') or not valid_sid(sid):
+        return []
+    key = (agent, sid)
+    path = transcript_paths.get(key)
+    if not path:
+        from pathlib import Path
+        root = Path(os.path.expanduser('~/.codex/sessions' if agent == 'codex' else '~/.claude/projects'))
+        path = next(root.rglob('*' + sid + '*.jsonl'), None)
+        if not path:
+            return []
+        transcript_paths[key] = path
+    instance = tmux('display-message', '-p', '-t', f'={PREFIX}{name}:', '#{pane_id}:#{pane_pid}:#{@cc_sid}').strip()
+    try:
+        return transcript_questions(path, name, agent, instance)
+    except (OSError, ValueError, TypeError, AttributeError, KeyError):
+        return []
+
+
+def answer_question(question, index):
+    with input_locks_lock:
+        lock = input_locks.setdefault(question.session, threading.Lock())
+    with lock:
+        current = current_question(question.session)
+        if question.request_id:
+            pending = pending_questions(question.session)
+            if not any(q.fingerprint == question.fingerprint for q in pending):
+                raise ValueError('Этот вопрос уже закрыт или изменился')
+            same = [q for q in pending if q.title == question.title and q.options == question.options and q.progress == question.progress]
+            if len(same) != 1:
+                raise ValueError('В сессии несколько одинаковых вопросов. Ответьте через панель.')
+            if not matches_screen(question, current):
+                # Codex async questions can be hidden behind the normal composer.
+                if question.agent == 'codex':
+                    tmux('send-keys', '-t', f'={PREFIX}{question.session}:', 'S-Left')
+                for _ in range(30):
+                    time.sleep(.05)
+                    current = current_question(question.session)
+                    if matches_screen(question, current):
+                        break
+                    if current:
+                        tmux('send-keys', '-t', f'={PREFIX}{question.session}:', 'Right')
+                else:
+                    raise ValueError('Не удалось открыть этот вопрос. Ответьте через панель.')
+            # From this point the terminal overlay is the authority for input.
+            question = current
+        if not current or current.fingerprint != question.fingerprint:
+            raise ValueError('Этот вопрос уже закрыт или изменился. Обновите панель.')
+        if not 0 <= index < len(current.options) or re.match(r'(Other\b|Type something|Другое\b|Свой ответ)', current.options[index], re.I):
+            raise ValueError('Этот вариант требует ввода текста в панели')
+        delta = index - current.selected
+        if delta:
+            tmux('send-keys', '-t', f'={PREFIX}{question.session}:', *(['Down' if delta > 0 else 'Up'] * abs(delta)))
+            for _ in range(10):
+                time.sleep(.05)
+                current = current_question(question.session)
+                if not current or current.fingerprint != question.fingerprint:
+                    raise ValueError('Вопрос изменился до подтверждения ответа')
+                if current.selected == index:
+                    break
+            else:
+                raise ValueError('Не удалось выбрать вариант. Ответьте через панель.')
+        tmux('send-keys', '-t', f'={PREFIX}{question.session}:', 'Enter')
+
+
+telegram_lock = threading.Lock()
+telegram_integration = None
+
+
+def telegram_service():
+    global telegram_integration
+    if Telegram is None:
+        raise ValueError('Нажмите «Установить интеграции» в меню обновлений панели')
+    with telegram_lock:
+        if telegram_integration is None:
+            telegram_integration = Telegram(os.path.expanduser('~/.config/cc-panel/integrations'),
+                                            scan_questions, answer_question)
+        return telegram_integration
+
+
+def integration_status():
+    return {'telegram': telegram_service().status()} if Telegram else {'telegram': {'available': False}}
+
+
+ACTIONS.update(telegram_config=lambda d: {'telegram': telegram_service().save(d)},
+               telegram_pair=lambda d: {'telegram': telegram_service().pair()})
 
 
 class PanelHTTPServer(ThreadingHTTPServer):
@@ -1050,6 +1180,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_json(200, server_info())
         if self.path == "/api/agents":
             return self.send_json(200, {**{a: agent_status(a) for a in (*INSTALLERS, "claude-kimi")}, "kimi_config": kimi_config.status()})
+        if self.path == "/api/integrations":
+            return self.send_json(200, integration_status())
         if self.path == "/api/github/status":
             return self.send_json(200, github_status())
         if self.path.startswith("/api/github/repos"):
@@ -1274,6 +1406,11 @@ def main():
         config = os.path.expanduser("~/.config/cc-panel/tmux.conf")
         tmux("-f", config, "new-session", "-d", "-s", "_keep")
     threading.Thread(target=sync_loop, daemon=True).start()
+    if Telegram:
+        try:
+            telegram_service().start()
+        except (OSError, ValueError):
+            print('Telegram integration settings could not be loaded', flush=True)
     httpd = PanelHTTPServer((BIND_HOST, BIND_PORT), Handler)
     httpd.daemon_threads = True
     print(f"cc-panel on http://{BIND_HOST}:{BIND_PORT}", flush=True)

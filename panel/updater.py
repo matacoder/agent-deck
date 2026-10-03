@@ -18,6 +18,8 @@ import urllib.request
 REPO_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]*/[A-Za-z0-9][A-Za-z0-9_.-]*")
 TAG_RE = re.compile(r"v?(\d+)\.(\d+)\.(\d+)")
 REQUIRED = {"panel.py", "index.html", "login.html", "VERSION", "updater.py", "session_hook.py"}
+PACKAGES = {"integrations/" + name for name in ("__init__.py", "questions.py", "store.py", "telegram.py")}
+REQUIRED |= PACKAGES
 ALLOWED = REQUIRED | {"icon-180.png", "icon-192.png", "icon-512.png", "manifest.webmanifest", "make_icons.py"}
 RUNNING = {"checking", "downloading", "installing", "restarting"}
 
@@ -83,24 +85,28 @@ def unpack(data, stage, version):
     with tarfile.open(fileobj=io.BytesIO(data), mode="r:gz") as archive:
         for member in archive:
             parts = member.name.split("/")
-            if len(parts) < 2 or parts[1] != "panel":
+            if len(parts) < 2 or parts[1] not in ("panel", "integrations"):
                 continue
             if member.isdir() and len(parts) <= 3:
                 continue
-            if len(parts) != 3 or parts[2] not in ALLOWED or not member.isfile():
+            name = '/'.join(parts[1:]) if parts[1] == 'integrations' else '/'.join(parts[2:])
+            package_module = parts[1] == 'integrations' and len(parts) == 3 and re.fullmatch(r'(?:[a-z][a-z0-9_]*|__init__)\.py', parts[2])
+            if len(parts) != 3 or (name not in ALLOWED and not package_module) or not member.isfile():
                 raise ValueError("Недопустимый файл в релизе")
-            name = parts[2]
             total += member.size
             if name in found or member.size > 16 * 1024 * 1024 or total > 64 * 1024 * 1024:
                 raise ValueError("Недопустимый размер или повтор файла релиза")
             with archive.extractfile(member) as stream:
+                (stage / name).parent.mkdir(parents=True, exist_ok=True)
                 (stage / name).write_bytes(stream.read())
             (stage / name).chmod(0o644)
             found.add(name)
     if not REQUIRED <= found or (stage / "VERSION").read_text().strip() != version:
         raise ValueError("Релиз неполный или версия не совпадает")
     # Reject broken backend syntax before stopping the running service.
-    for name in ("panel.py", "updater.py", "session_hook.py"):
+    for name in found:
+        if not name.endswith('.py'):
+            continue
         compile((stage / name).read_text(), name, "exec")
     return found
 
@@ -144,9 +150,10 @@ def install(stage, target, names, state, version, url):
     existing = set()
     for name in names:
         destination = target / name
-        if destination.is_symlink():
+        if destination.is_symlink() or any(p.is_symlink() for p in destination.parents if p != target and target in p.parents):
             raise ValueError("Файл панели оказался символической ссылкой")
         if destination.exists():
+            (backup / name).parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(destination, backup / name)
             existing.add(name)
     write_state(state, "installing", version=version, message="Устанавливаю файлы панели…")
@@ -155,6 +162,7 @@ def install(stage, target, names, state, version, url):
         service("stop")
         stopped = True
         for name in names:
+            (target / name).parent.mkdir(parents=True, exist_ok=True)
             os.replace(stage / name, target / name)
         write_state(state, "restarting", version=version, message="Перезапускаю панель…")
         service("start")
@@ -185,7 +193,9 @@ def run(repo, target, state, url):
             raise ValueError("Нет подходящего стабильного релиза")
         version = tag.lstrip("v")
         current = TAG_RE.fullmatch((target / "VERSION").read_text().strip())
-        if not current or tuple(map(int, match.groups())) <= tuple(map(int, current.groups())):
+        new_version, old_version = tuple(map(int, match.groups())), tuple(map(int, current.groups())) if current else ()
+        needs_repair = bool(current and new_version == old_version and any(not (target / name).is_file() for name in REQUIRED))
+        if not current or (new_version <= old_version and not needs_repair):
             write_state(state, "done", version=(target / "VERSION").read_text().strip(), message="Уже установлена последняя версия")
             return
         write_state(state, "downloading", version=version, message=f"Скачиваю v{version}…")
