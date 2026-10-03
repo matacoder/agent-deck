@@ -205,7 +205,10 @@ fi
 
 if [ -n "$MEM_MAX$CPU_QUOTA" ]; then
     say "resource limits for user-$UID_.slice"
-    props=()
+    # Hard cap only: a MemoryHigh threshold makes the kernel throttle the whole slice (tmux, panel, agents
+    # all stall at ~100% memory pressure) instead of OOM-killing the one oversized process.
+    # CPUWeight=50: under contention the rest of the server (production services) gets the CPU first.
+    props=(MemoryHigh=infinity CPUWeight=50)
     [ -n "$MEM_MAX" ] && props+=("MemoryMax=$MEM_MAX")
     [ -n "$CPU_QUOTA" ] && props+=("CPUQuota=$CPU_QUOTA")
     systemctl set-property "user-$UID_.slice" "${props[@]}"

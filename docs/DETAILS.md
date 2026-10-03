@@ -50,7 +50,7 @@ remembered in `/etc/agent-deck/install.conf`, so later runs keep them unless ove
 | `TS_AUTHKEY` | — | Join the tailnet non-interactively |
 | `WITH_DOCKER` | `1` | Rootless Docker for the user (isolated from any root Docker) |
 | `WITH_CODEX` | `1` | Codex CLI via its official installer |
-| `MEM_MAX` / `CPU_QUOTA` | — | systemd limits for everything the user runs, e.g. `8G` / `200%` |
+| `MEM_MAX` / `CPU_QUOTA` | — | Hard caps for everything the user runs, e.g. `10G` / `300%` (no throttling threshold; lower CPU priority than the rest of the server) |
 | `PUBLIC_DOMAIN` | — | Also publish at `https://<domain>` with Let's Encrypt |
 | `PUBLIC_PROXY` | `auto` | `traefik` (Dokploy present) or `caddy` (plain VPS) |
 | `TRAEFIK_DYNAMIC` | `/etc/dokploy/traefik/dynamic` | Traefik file-provider directory |
