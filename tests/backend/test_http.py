@@ -210,7 +210,7 @@ class HTTPTests(PanelCase):
             with self.subTest(body=body):
                 self.assertEqual(self.request("POST", "/api/send", body, {"Cookie": cookie})[0], 400)
         self.assertEqual(self.request("POST", "/api/unknown", "{}", {"Cookie": cookie})[0], 404)
-        for path, length in (("/api/send", 1_000_001), ("/api/upload", 12 * 1024 * 1024 + 1)):
+        for path, length in (("/api/send", 1_000_001), ("/api/upload", ((self.panel.MAX_FILE_BYTES + 2) // 3) * 4 + 10_001)):
             with self.subTest(path=path):
                 status, _, _ = self.request("POST", path, headers={"Cookie": cookie, "Content-Length": str(length)})
                 self.assertEqual(status, 413)
@@ -231,8 +231,28 @@ class HTTPTests(PanelCase):
             "name": "demo", "text": "", "attachments": [data["attachment"]],
         }), {"Cookie": cookie})
         self.assertEqual(status, 200)
-        self.assertEqual(len(self.pasted), 1)
+        self.assertEqual(len(self.pasted), 2)
+        self.assertIn("через 7 дней", self.pasted[-1])
         self.assertEqual(self.panel.tmux.call_args_list[-1].args[-1], "Enter")
+
+    def test_zip_upload_then_send_passes_file_path_and_retention_notice(self):
+        import base64
+        self.allow_session()
+        cookie = self.login()
+        content = b"PK\x03\x04\x00\xff"
+        status, _, body = self.request("POST", "/api/upload", json.dumps({
+            "name": "demo", "filename": "archive.zip", "data": base64.b64encode(content).decode(),
+        }), {"Cookie": cookie})
+        self.assertEqual(status, 200)
+        data = json.loads(body)
+        self.assertEqual(data["kind"], "file")
+        status, _, _ = self.request("POST", "/api/send", json.dumps({
+            "name": "demo", "attachments": [data["attachment"]],
+        }), {"Cookie": cookie})
+        self.assertEqual(status, 200)
+        self.assertEqual(len(self.pasted), 1)
+        self.assertIn("archive.zip", self.pasted[0])
+        self.assertIn("через 7 дней", self.pasted[0])
 
     def test_missing_ttyd_returns_bad_gateway(self):
         status, _, body = self.request("GET", "/t/?arg=cc-demo", headers={"Cookie": self.login()})

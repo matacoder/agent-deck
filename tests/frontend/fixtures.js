@@ -97,7 +97,9 @@ const test = base.extend({
         case '/api/upload': {
           app.uploads.push(route.request().postDataJSON());
           if (app.uploadError) return json({ error: app.uploadError }, 400);
-          return json({ ok: true, attachment: `${String(app.uploads.length).padStart(32, '0')}.png` });
+          const uploaded = app.uploads.at(-1), image = uploaded.data.startsWith(PNG.toString('base64').slice(0, 12));
+          const suffix = image ? '.png' : '--' + uploaded.filename.replace(/[^A-Za-z0-9_.-]/g, '_').slice(-100);
+          return json({ ok: true, attachment: String(app.uploads.length).padStart(32, '0') + suffix, kind: image ? 'image' : 'file' });
         }
         case '/api/send': {
           app.sends.push(route.request().postDataJSON());

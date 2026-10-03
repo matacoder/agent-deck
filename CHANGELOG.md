@@ -2,6 +2,13 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z`.
 
+## 0.3.0 — 2026-10-03
+
+- Attach arbitrary files, including ZIP archives, documents and text, up to 200 MB each.
+  Keep native image attachments and pass other files to Claude/Codex as local paths.
+- Run seven-day upload cleanup every minute and remind agents to save needed files in the project.
+- Regression coverage for binary/empty files, safe filenames, limits, mixed attachments and refresh.
+
 ## 0.2.0 — 2026-10-02
 
 - One-click panel updates from the latest stable GitHub release, without root, with progress,

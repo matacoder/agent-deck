@@ -29,8 +29,11 @@ systemd --user (linger):  cc-tmux  (owns the tmux server: restarts of the panel 
 - Interface updates: the page checks for a new UI every 30 s and when it returns from the background and
   reloads when idle (no draft or attachments); the mobile action menu has **Обновить интерфейс**, which keeps
   the draft and uploaded attachments.
-- Image attachments: up to four images, 8 MB each; uploads stay on the server, Codex receives them in its
-  current conversation.
+- Attachments: up to four files, 200 MB each, including ZIP, text, PDFs and images. Codex receives
+  supported images as native attachments and other files as local paths in its current conversation.
+  Claude receives local paths. Files are not automatically extracted or executed. Uploads are temporary:
+  files older than seven days are removed by a cleanup that runs every minute, or immediately when
+  their session is deleted. The agent is told to copy anything needed long-term into the project.
 - Hotkeys (desktop): `⌥1…9` switch tabs, `⌥↑/↓` previous / next, `⌥T` new session.
 
 ## Install options

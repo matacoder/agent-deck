@@ -43,6 +43,51 @@ class AttachmentTests(PanelCase):
             with self.subTest(data=str(data)[:20]), self.assertRaises(ValueError):
                 self.panel.action_upload({"name": "demo", "data": data})
 
+    def test_zip_and_arbitrary_files_keep_bytes_names_and_are_sent_as_paths(self):
+        for filename, content in (("archive.zip", b"PK\x03\x04zip data"), ("notes.txt", b"hello"),
+                                  ("empty.txt", b""), ("unknown", b"\x00\xff"), ("fake.png", b"not an image")):
+            with self.subTest(filename=filename):
+                result = self.panel.action_upload({"name": "demo", "filename": filename,
+                                                  "data": base64.b64encode(content).decode()})
+                self.assertEqual(result["kind"], "file")
+                path = self.panel.attachment_paths("demo", [result["attachment"]])[0]
+                self.assertEqual(Path(path).read_bytes(), content)
+                self.assertTrue(path.endswith("--" + filename))
+                self.pasted.clear()
+                self.panel.action_send({"name": "demo", "attachments": [result["attachment"]]})
+                self.assertEqual(len(self.pasted), 1)
+                self.assertIn(path, self.pasted[0])
+                self.assertIn("через 7 дней", self.pasted[0])
+                self.assertIn("в проекте", self.pasted[0])
+                import os
+                os.utime(path, (0, 0))
+                self.panel.cleanup_uploads()
+                self.assertFalse(Path(path).exists())
+
+    def test_file_names_and_size_limits_are_validated(self):
+        self.assertEqual(self.panel.MAX_FILE_BYTES, 200 * 1024 * 1024)
+        for filename in ("../escape.zip", "path\\evil", "bad\nname", "", [], "x" * 256):
+            with self.subTest(filename=filename), self.assertRaises(ValueError):
+                self.panel.action_upload({"name": "demo", "filename": filename, "data": "YWJj"})
+        self.panel.MAX_FILE_BYTES = 32
+        with self.assertRaises(ValueError):
+            self.panel.action_upload({"name": "demo", "filename": "big.zip", "data": base64.b64encode(b"x" * 33).decode()})
+
+    def test_file_above_twenty_megabytes_is_preserved(self):
+        content = b"x" * (20 * 1024 * 1024 + 1)
+        result = self.panel.action_upload({"name": "demo", "filename": "big.zip", "data": base64.b64encode(content).decode()})
+        path = self.panel.attachment_paths("demo", [result["attachment"]])[0]
+        self.assertEqual(Path(path).read_bytes(), content)
+
+    def test_mixed_image_and_zip_keeps_native_image_and_file_instructions(self):
+        image = self.upload()
+        archive = self.panel.action_upload({"name": "demo", "filename": "test.zip", "data": "UEsDBA=="})["attachment"]
+        paths = self.panel.attachment_paths("demo", [image, archive])
+        self.panel.action_send({"name": "demo", "text": "Inspect", "attachments": [image, archive]})
+        self.assertEqual(self.pasted[0], "\x1b[200~" + paths[0] + "\x1b[201~")
+        self.assertIn(paths[1], self.pasted[1])
+        self.assertIn("Inspect", self.pasted[1])
+
     def test_upload_rejects_missing_session_and_shell(self):
         self.panel.session_exists.return_value = False
         with self.assertRaises(ValueError):
@@ -70,13 +115,13 @@ class AttachmentTests(PanelCase):
         path = self.panel.attachment_paths("demo", [attachment])[0]
         self.panel.action_send({"name": "demo", "text": "Explain this\nimage", "attachments": [attachment]})
         self.assertEqual(self.pasted, ["\x1b[200~" + path + "\x1b[201~",
-                                     "\x1b[200~Explain this\nimage\x1b[201~"])
+                                     "\x1b[200~Explain this\nimage\n\nВложения временные: удаляются с сервера через 7 дней после загрузки. Если они нужны надолго, сохрани их в подходящем месте в проекте.\x1b[201~"])
         self.assertEqual([call.args[-1] for call in self.panel.tmux.call_args_list if call.args[0] == "send-keys"], ["Enter"])
 
     def test_image_only_send_and_claude_paths(self):
         attachment = self.upload()
         self.panel.action_send({"name": "demo", "attachments": [attachment]})
-        self.assertEqual(len(self.pasted), 1)
+        self.assertEqual(len(self.pasted), 2)
         self.panel.tmux.reset_mock()
         self.panel.opt.return_value = "claude"
         self.panel.action_send({"name": "demo", "text": "Look", "attachments": [attachment]})

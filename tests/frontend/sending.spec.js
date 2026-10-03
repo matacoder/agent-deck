@@ -29,10 +29,29 @@ test('mobile Enter creates a newline and Ctrl+Enter sends', async ({ app, page }
 test('image-only messages upload real bytes and clear the attachment on success', async ({ app, page }) => {
   await app.open();
   await attach(page);
-  expect(app.uploads).toEqual([{ name: 'tmux', data: PNG.toString('base64') }]);
+  expect(app.uploads).toEqual([{ name: 'tmux', data: PNG.toString('base64'), filename: 'screenshot.png' }]);
   await page.locator('#b_send').click();
   await expect(page.locator('#send_state')).toContainText('Отправлено');
   expect(app.sends).toEqual([{ name: 'tmux', text: '', attachments: ['00000000000000000000000000000001.png'] }]);
+  await expect(page.locator('#attachments')).toBeEmpty();
+});
+
+test('ZIP and text files preserve bytes, stay without image previews and survive refresh', async ({ app, page }) => {
+  await app.open();
+  await expect(page.locator('#image_files')).not.toHaveAttribute('accept', /.+/);
+  const zip = Buffer.from([80, 75, 3, 4, 0, 255]), text = Buffer.from('Useful notes');
+  await page.locator('#image_files').setInputFiles([
+    { name: 'archive.zip', mimeType: 'application/zip', buffer: zip },
+    { name: 'notes.txt', mimeType: 'text/plain', buffer: text },
+  ]);
+  await expect(page.locator('#attachments')).toContainText('notes.txt');
+  await expect(page.locator('#attachments img')).toHaveCount(0);
+  expect(app.uploads.map(x => [x.filename, x.data])).toEqual([['archive.zip', zip.toString('base64')], ['notes.txt', text.toString('base64')]]);
+  await page.evaluate(() => refreshInterface());
+  await expect(page.locator('#attachments')).toContainText('archive.zip');
+  await page.locator('#b_send').click();
+  await expect(page.locator('#send_state')).toContainText('Отправлено');
+  expect(app.sends[0].attachments).toHaveLength(2);
   await expect(page.locator('#attachments')).toBeEmpty();
 });
 
@@ -88,7 +107,7 @@ test('upload errors and the four-image limit are visible without sending', async
   await expect(page.locator('#attachments')).toBeEmpty();
   app.uploadError = null;
   await page.locator('#image_files').setInputFiles(Array.from({ length: 5 }, (_, i) => ({ name: `${i}.png`, mimeType: 'image/png', buffer: PNG })));
-  await expect(page.locator('#toast')).toContainText('до 4 изображений');
+  await expect(page.locator('#toast')).toContainText('до 4 файлов');
   expect(app.uploads).toHaveLength(1);
   expect(app.sends).toEqual([]);
 });

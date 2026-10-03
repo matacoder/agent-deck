@@ -47,9 +47,10 @@ BRANCH_RE = re.compile(r"^[\w][\w./-]{0,63}$")
 TRUSTED_PROXIES = [ipaddress.ip_network(n) for n in ("127.0.0.0/8", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16")]
 COOKIE = "cc_auth"
 COOKIE_DAYS = 90
-MAX_IMAGE_BYTES = 8 * 1024 * 1024
+MAX_IMAGE_BYTES = 200 * 1024 * 1024
+MAX_FILE_BYTES = 200 * 1024 * 1024
 UPLOAD_DIR = os.path.expanduser("~/.config/cc-panel/uploads")
-ATTACHMENT_RE = re.compile(r"^[0-9a-f]{32}\.(png|jpg|webp|gif)$")
+ATTACHMENT_RE = re.compile(r"^[0-9a-f]{32}(?:\.(png|jpg|webp|gif)|--[A-Za-z0-9_.-]{1,100})$")
 HERE = os.path.dirname(os.path.abspath(__file__))
 try:
     with open(os.path.join(HERE, "VERSION")) as version_file:
@@ -315,16 +316,21 @@ def action_upload(d):
     if not session_exists(name):
         raise ValueError("нет такой сессии")
     if (opt(name, "@cc_agent") or "claude") == "shell":
-        raise ValueError("изображения можно приложить к Claude или Codex")
+        raise ValueError("файлы можно приложить к Claude или Codex")
+    filename = d.get("filename")
+    if filename is not None and (not isinstance(filename, str) or not filename or len(filename) > 255
+                                 or any(c in filename for c in ("/", "\\", "\0", "\n", "\r"))):
+        raise ValueError("неверное имя файла")
+    limit = MAX_FILE_BYTES if filename else MAX_IMAGE_BYTES
     encoded = d.get("data", "")
-    if not isinstance(encoded, str) or len(encoded) > ((MAX_IMAGE_BYTES + 2) // 3) * 4:
-        raise ValueError("изображение слишком большое (максимум 8 МБ)")
+    if not isinstance(encoded, str) or len(encoded) > ((limit + 2) // 3) * 4:
+        raise ValueError("файл слишком большой")
     try:
         image = base64.b64decode(encoded, validate=True)
     except (ValueError, binascii.Error):
-        raise ValueError("неверные данные изображения") from None
-    if not image or len(image) > MAX_IMAGE_BYTES:
-        raise ValueError("изображение слишком большое или пустое")
+        raise ValueError("неверные данные файла") from None
+    if (not image and not filename) or len(image) > limit:
+        raise ValueError("файл слишком большой или пустой")
     if image.startswith(b"\x89PNG\r\n\x1a\n"):
         ext = "png"
     elif image.startswith(b"\xff\xd8\xff"):
@@ -334,18 +340,23 @@ def action_upload(d):
     elif image.startswith(b"RIFF") and image[8:12] == b"WEBP":
         ext = "webp"
     else:
-        raise ValueError("нужен PNG, JPEG, WebP или GIF")
+        ext = None
+        if not filename:
+            raise ValueError("укажите имя файла")
+    if ext and len(image) > MAX_IMAGE_BYTES:
+        raise ValueError("изображение слишком большое (максимум 200 МБ)")
     os.makedirs(folder, mode=0o700, exist_ok=True)
-    attachment = uuid.uuid4().hex + "." + ext
+    safe_name = re.sub(r"[^A-Za-z0-9_.-]", "_", filename or "file")[-100:]
+    attachment = uuid.uuid4().hex + ("." + ext if ext else "--" + safe_name)
     fd = os.open(os.path.join(folder, attachment), os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     with os.fdopen(fd, "wb") as f:
         f.write(image)
-    return {"attachment": attachment}
+    return {"attachment": attachment, "kind": "image" if ext else "file", "size": len(image)}
 
 
 def attachment_paths(name, attachments):
     if not isinstance(attachments, list) or len(attachments) > 4:
-        raise ValueError("можно приложить до 4 изображений")
+        raise ValueError("можно приложить до 4 файлов")
     folder = attachment_dir(name)
     paths = []
     for attachment in attachments:
@@ -426,7 +437,14 @@ def send_input(d):
         paths = attachment_paths(name, d.get("attachments", []))
         agent = opt(name, "@cc_agent") or "claude"
         if paths and agent == "shell":
-            raise ValueError("изображения можно приложить к Claude или Codex")
+            raise ValueError("файлы можно приложить к Claude или Codex")
+        files = [path for path in paths if "--" in os.path.basename(path)]
+        if paths:
+            text = (text + "\n\nВложения временные: удаляются с сервера через 7 дней после загрузки. "
+                    "Если они нужны надолго, сохрани их в подходящем месте в проекте.").lstrip()
+        paths = [path for path in paths if "--" not in os.path.basename(path)]
+        if files:
+            text = (text + "\n\nПриложенные файлы (прочитай их с диска):\n" + "\n".join(files)).lstrip()
         if paths and agent == "codex":
             for path in paths:
                 paste_to_tmux(name, path)
@@ -864,7 +882,7 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_json(403, {"error": "разрешены только JSON-запросы из интерфейса панели"})
         try:
             length = int(self.headers.get("Content-Length") or 0)
-            limit = 12 * 1024 * 1024 if m.group(1) == "upload" else 1_000_000
+            limit = ((MAX_FILE_BYTES + 2) // 3) * 4 + 10_000 if m.group(1) == "upload" else 1_000_000
             if length < 0 or length > limit:
                 self.close_connection = True
                 return self.send_json(413, {"error": "файл или сообщение слишком большое"})
@@ -1034,7 +1052,7 @@ def sync_loop():
             sync_state()
             if time.time() >= cleanup_at:
                 cleanup_uploads()
-                cleanup_at = time.time() + 3600
+                cleanup_at = time.time() + 60
         except Exception as e:  # keep the loop alive whatever happens
             print(f"sync error: {e}", flush=True)
         time.sleep(5)
