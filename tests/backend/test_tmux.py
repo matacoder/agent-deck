@@ -1,5 +1,6 @@
 """Real tmux integration on a private socket; no agents or live sessions are started."""
 from pathlib import Path
+import json
 import shlex
 import shutil
 import subprocess
@@ -48,6 +49,35 @@ class TmuxIntegration(PanelCase):
         while not ready.exists() and time.monotonic() < deadline:
             time.sleep(0.01)
         self.assertTrue(ready.exists(), "isolated input reader did not start")
+
+    def test_restart_resets_mouse_modes_and_preserves_launch_arguments_and_directory(self):
+        project = self.home / "project with spaces"
+        project.mkdir()
+        old = self.home / "mouse.py"
+        old.write_text("import time\nprint('\\x1b[?1003h\\x1b[?1006h', end='', flush=True)\ntime.sleep(60)\n")
+        self.panel.tmux("new-session", "-d", "-s", "cc-restart", "-c", str(project),
+                        shlex.join(["python3", str(old)]))
+        self.panel.tmux("set-option", "-t", "=cc-restart:", "@cc_agent", "codex")
+        def modes():
+            return self.panel.tmux("display-message", "-p", "-t", "=cc-restart:",
+                                   "#{mouse_any_flag}/#{mouse_sgr_flag}").strip()
+        deadline = time.monotonic() + 5
+        while modes() != "1/1" and time.monotonic() < deadline:
+            time.sleep(.02)
+        self.assertEqual(modes(), "1/1")
+        result = self.home / "launched.json"
+        stub = self.home / "agent.py"
+        stub.write_text("import json,os,sys\nfrom pathlib import Path\n"
+                        + "Path(" + repr(str(result)) + ").write_text(json.dumps([sys.argv[1:],os.getcwd()]))\n")
+        command = shlex.join(["python3", str(stub), "--no-alt-screen"])
+        with patch.object(self.panel, "agent_cmd", return_value=command), patch.object(self.panel, "stop_children"):
+            self.panel.action_restart({"name": "restart", "mode": "new"})
+        deadline = time.monotonic() + 5
+        while not result.exists() and time.monotonic() < deadline:
+            time.sleep(.02)
+        self.assertTrue(result.exists(), "restarted agent did not launch")
+        self.assertEqual(json.loads(result.read_text()), [["--no-alt-screen"], str(project)])
+        self.assertEqual(modes(), "0/0")
 
     def test_screen_capture_includes_output_older_than_two_hundred_lines(self):
         script = self.home / 'long_output.py'

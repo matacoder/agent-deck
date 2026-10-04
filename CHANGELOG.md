@@ -2,6 +2,14 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z`.
 
+## 1.0.6 — 2026-10-04
+
+- Restart agents in a fresh tmux pane so terminal mouse reports and queued input
+  cannot corrupt the launch command, including Codex's `--no-alt-screen` flag.
+- Unify interface icon sizes and use SVG marks for session and settings controls.
+- Separate panel HTML, CSS and JavaScript sources and build the compatible single-file
+  release bundle; verify generated output in CI.
+
 ## 1.0.5 — 2026-10-04
 
 - Add Pi coding harness with local LM Studio models, isolated configuration and exact conversation restoration.

@@ -177,3 +177,11 @@ arguments. Startup catalog refresh is disabled. Resume opens the exact saved
 conversation for the same project; it fails if that transcript is missing.
 The panel backend must be updated to enable the Pi selector. An active local
 model request must finish before restarting the backend, which owns the relay.
+
+## Panel source files
+
+Edit `frontend/index.html`, `frontend/style.css` and `frontend/app.js`, then run
+`python3 scripts/build-panel.py`. Commit the generated `panel/index.html` together
+with the sources. CI checks that the bundle is current. Releases retain a single
+HTML file so installed updaters can validate and install them without new asset
+allowlists or separate browser cache invalidation.

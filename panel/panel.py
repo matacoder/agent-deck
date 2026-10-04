@@ -540,15 +540,21 @@ def action_restart(d):
         sid = None
     source = saved_source(name)
     cmd = agent_cmd(agent, sid, not new, skip, name, source)
+    target = f"={PREFIX}{name}:"
+    path = tmux("display-message", "-p", "-t", target, "#{pane_current_path}").strip()
+    shell = tmux("show-options", "-gv", "default-shell").strip() or "/bin/sh"
     stop_children(name)
     if new and agent != "shell":
         if sid:
             tmux("set-option", "-t", f"={PREFIX}{name}:", "@cc_sid", sid)
         else:
             tmux("set-option", "-t", f"={PREFIX}{name}:", "-u", "@cc_sid")
-    time.sleep(0.3)
-    tmux("send-keys", "-t", f"={PREFIX}{name}:", "C-u")
-    type_line(name, "clear" + (f"; {cmd}" if cmd else ""))
+    # A killed TUI can leave mouse reporting and queued input in the old PTY.
+    # Respawning resets tmux's terminal modes and runs the command directly,
+    # so mouse reports cannot become part of the agent's shell command.
+    script = "clear; " + (f"{cmd}; " if cmd else "") + "exec " + shlex.quote(shell)
+    tmux("respawn-pane", "-k", "-t", target, "-c", path,
+         shlex.join([shell, "-lc", script]))
 
 
 def action_kill(d):

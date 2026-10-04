@@ -1,5 +1,6 @@
 import importlib.util
 import os
+import shlex
 from pathlib import Path
 import time
 from types import SimpleNamespace
@@ -43,6 +44,33 @@ class ReviewRegressions(PanelCase):
         with self.assertRaises(ValueError):
             self.panel.action_restart({"name": "demo", "mode": "continue"})
         self.panel.stop_children.assert_not_called()
+
+    def test_restart_runs_command_in_fresh_pty_without_pasting_into_shell(self):
+        sid = "11111111-1111-4111-8111-111111111111"
+        for mode in ("new", "continue"):
+            with self.subTest(mode=mode):
+                self.allow_session()
+                self.panel.opt.side_effect = lambda name, key: {
+                    "@cc_agent": "codex", "@cc_skip": "0", "@cc_sid": sid,
+                }.get(key)
+                self.panel.saved_source = Mock(return_value=None)
+                self.panel.stop_children = Mock()
+                self.panel.type_line = Mock()
+                self.panel.tmux.side_effect = lambda *args, **kwargs: (
+                    str(self.home) if args[0] == "display-message" else
+                    "/bin/bash" if args[0] == "show-options" else "")
+                self.panel.action_restart({"name": "demo", "mode": mode})
+                self.panel.stop_children.assert_called_once_with("demo")
+                self.panel.type_line.assert_not_called()
+                calls = self.panel.tmux.call_args_list
+                self.assertFalse(any(c.args[0] in ("send-keys", "paste-buffer") for c in calls))
+                respawn = next(c.args for c in calls if c.args[0] == "respawn-pane")
+                self.assertEqual(respawn[1:6], ("-k", "-t", "=cc-demo:", "-c", str(self.home)))
+                shell, flag, script = shlex.split(respawn[6])
+                self.assertEqual((shell, flag), ("/bin/bash", "-lc"))
+                expected = self.panel.agent_cmd("codex", sid, mode == "continue")
+                self.assertEqual(script, "clear; " + expected + "; exec /bin/bash")
+                self.assertEqual(self.pasted, [])
 
     def test_kill_cleans_images_and_ttl_keeps_recent_and_ignores_symlinked_folders(self):
         self.allow_session()

@@ -27,6 +27,23 @@ test('settings gear stays readable with a full height click target',async({app,p
  const button=page.locator('.settingsbtn'),icon=button.locator('svg');
  await expect(icon).toBeVisible();
  const mark=await icon.boundingBox(),target=await button.boundingBox();
- expect(mark.width).toBe(22);expect(mark.height).toBe(22);expect(target.height).toBeGreaterThanOrEqual(44);
+ expect(mark.width).toBe(16);expect(mark.height).toBe(16);expect(target.height).toBeGreaterThanOrEqual(44);
  await button.click();await expect(page.locator('#settings_dlg')).toBeVisible();
+});
+
+
+test('interface icons share the same scale on desktop and phone',async({app,page})=>{
+ for(const width of [1280,390]){
+  await app.open({width,height:900});
+  for(const selector of ['.side-top .iconbtn svg','#b_attach svg','#b_send svg']){
+   const icon=page.locator(selector);
+   const size=await icon.evaluate(e=>({width:getComputedStyle(e).width,height:getComputedStyle(e).height}));
+   expect(size).toEqual({width:'18px',height:'18px'});
+  }
+  expect(await page.locator('.settingsbtn svg').evaluate(e=>getComputedStyle(e).width)).toBe('16px');
+  await page.evaluate(()=>openSettings('agents'));
+  const close=page.locator('.hub-heading button svg');await expect(close).toBeVisible();
+  expect(await close.evaluate(e=>getComputedStyle(e).width)).toBe('18px');
+  await page.locator('.hub-heading button').click();await expect(page.locator('#settings_dlg')).toBeHidden();
+ }
 });
