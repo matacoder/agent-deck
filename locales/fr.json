@@ -346,6 +346,19 @@
     "Проверка завершена": "Vérification terminée",
     "Тест скорости": "Test de vitesse",
     "⚙ Настройки": "⚙ Paramètres",
-    "локальная модель": "modèle local"
+    "локальная модель": "modèle local",
+    "Ожидание первого токена": "En attente du premier token",
+    "Модель рассуждает": "Le modèle réfléchit",
+    "Готовит вызов инструмента": "Préparation d’un appel d’outil",
+    "Генерирует ответ": "Génération de la réponse",
+    "токенов": "tokens",
+    "Сервер не передал счётчик токенов": "Le serveur n’a pas fourni le nombre de tokens",
+    "фрагментов получено": "fragments reçus",
+    "Запрос отправлен · ждём модель": "Requête envoyée · attente du modèle",
+    "Активных запросов": "Requêtes actives",
+    "Средняя скорость с учётом ожидания": "Average speed including first-token waiting time",
+    "Остаток": "Restant",
+    "По плану к концу дня": "Reste prévu à la fin de la journée",
+    "План": "Plan"
   }
 }

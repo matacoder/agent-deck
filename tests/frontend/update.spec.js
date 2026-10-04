@@ -97,3 +97,21 @@ test('a previous completed update does not turn the next release button into rel
   await expect.poll(() => app.updates.length).toBe(1);
   expect(app.navigations).toBe(1);
 });
+
+test('older completed update does not show a permanent reload status',async({app,page})=>{
+ app.version.version='1.0.4';app.version.job={phase:'done',version:'1.0.3'};
+ await app.open({width:1000});await page.evaluate(()=>openSettings('app'));
+ await expect(page.locator('#hub_version')).toContainText('v1.0.4');
+ await expect(page.locator('#hub_version')).not.toContainText('Обновлено');
+ await expect(page.locator('#b_update')).toHaveCount(0);
+ await expect(page.locator('#b_refresh_interface')).toBeVisible();
+});
+
+test('manual interface refresh from settings preserves a draft and shows the UI revision',async({app,page})=>{
+ await app.open({width:1000});await page.locator('#msg').fill('Keep my draft');
+ await page.evaluate(()=>openSettings('app'));
+ await expect(page.locator('.version-build')).toContainText('UI');
+ await page.locator('#b_refresh_interface').click();
+ await expect.poll(()=>app.navigations).toBe(2);
+ await expect(page.locator('#msg')).toHaveValue('Keep my draft');
+});

@@ -346,6 +346,19 @@
     "Проверка завершена": "Kontrol tamamlandı",
     "Тест скорости": "Hız testi",
     "⚙ Настройки": "⚙ Ayarlar",
-    "локальная модель": "yerel model"
+    "локальная модель": "yerel model",
+    "Ожидание первого токена": "İlk token bekleniyor",
+    "Модель рассуждает": "Model düşünüyor",
+    "Готовит вызов инструмента": "Araç çağrısı hazırlanıyor",
+    "Генерирует ответ": "Yanıt oluşturuluyor",
+    "токенов": "token",
+    "Сервер не передал счётчик токенов": "Sunucu token sayısını sağlamadı",
+    "фрагментов получено": "alınan parçalar",
+    "Запрос отправлен · ждём модель": "İstek gönderildi · model bekleniyor",
+    "Активных запросов": "Etkin istekler",
+    "Средняя скорость с учётом ожидания": "Average speed including first-token waiting time",
+    "Остаток": "Kalan",
+    "По плану к концу дня": "Gün sonunda planlanan kalan miktar",
+    "План": "Plan"
   }
 }

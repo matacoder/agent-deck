@@ -98,7 +98,24 @@ class LMStudio:
 
     def status(self):
         with self.lock:
-            return {'available': True, 'profiles': [self.public(p) for p in self.profiles.values()], 'discovery': copy.deepcopy(self.job)}
+            # The relay may belong to an older panel process after a restart.
+            self.profiles = read_json(self.path, self.profiles)
+            profiles = [self.public(p) for p in self.profiles.values()]
+            live = []
+            for path in list((self.directory / 'live-requests').glob('*.json'))[:128]:
+                try:
+                    sample = read_json(path, {})
+                    age = time.time() - sample.get('updated_at', 0)
+                    if 0 <= age <= 660:
+                        sample['request_time_seconds'] = sample.get('request_time_seconds', 0) + age
+                        live.append(sample)
+                    elif age > 660:
+                        path.unlink(missing_ok=True)
+                except (ValueError, OSError, TypeError):
+                    continue
+            for profile in profiles:
+                profile['activity'] = [s for s in live if s.get('profile') == profile['id']]
+            return {'available': True, 'profiles': profiles, 'discovery': copy.deepcopy(self.job)}
 
     def get(self, identity):
         with self.lock:

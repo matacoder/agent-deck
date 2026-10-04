@@ -106,25 +106,33 @@ def saved_source(name):
 def session_source(data, agent):
     source = data.get('source')
     if source is None:
+        if agent == 'pi':
+            raise ValueError('Select a local model for Pi')
         return None
     if not isinstance(source, dict):
         raise ValueError('Invalid model source')
     kind = source.get('kind')
     if kind == 'default':
+        if agent == 'pi':
+            raise ValueError('Select a local model for Pi')
         return None
     if kind == 'kimi' and agent in ('claude', 'claude-kimi', 'kimi'):
         model = source.get('model', kimi_config.status()['model'])
         if model not in kimi_config.MODELS:
             raise ValueError('Unknown Kimi model')
         return {'kind':'kimi','model':model,'label':'Kimi · '+model}
-    if kind == 'lmstudio' and agent == 'claude':
+    if kind == 'lmstudio' and agent in ('claude', 'pi'):
         service = model_service()
         profile = service.get(source.get('profile'))
         model = source.get('model')
         models = profile.get('models', [])
         if not isinstance(model, str) or not any(m['id'] == model for m in models):
             raise ValueError('Select a model from the LM Studio profile')
-        if not kimi_config.executable('claude-kimi'):
+        if agent == 'pi':
+            from integrations.pi import executable
+            if not executable():
+                raise ValueError('Install Pi first')
+        elif not kimi_config.executable('claude-kimi'):
             raise ValueError('Install Claude Code first')
         binding = _model_relay.bindings.create(profile, model)
         return {'kind':'lmstudio','profile':profile['id'],'model':model,'binding':binding,
@@ -331,6 +339,7 @@ AGENTS = {
     "codex": ("Codex", {"codex", "codex-x86_64-un", "codex-aarch64-u"}, " --dangerously-bypass-approvals-and-sandbox"),
     "claude-kimi": ("Claude · Kimi", {"claude"}, " --dangerously-skip-permissions"),
     "kimi": ("Kimi Code", {"kimi", "kimi-code"}, " --auto"),
+    "pi": ("Pi", {"pi", "node"}, ""),
     "shell": ("Терминал", set(), ""),
 }
 SHELLS = {"bash", "zsh", "sh", "fish", "dash"}
@@ -339,6 +348,7 @@ INSTALLERS = {
     "codex": "curl -fsSL https://chatgpt.com/codex/install.sh | sh",
 }
 INSTALLERS["kimi"] = "curl -fsSL https://code.kimi.com/kimi-code/install.sh | bash"
+INSTALLERS["pi"] = 'npm install --global --prefix "$HOME/.local" @earendil-works/pi-coding-agent@1.0.2 --no-audit --no-fund'
 LOGINS = {
     "claude": "claude",  # first start asks to log in; afterwards /login switches accounts
     "codex": "codex login --device-auth",
@@ -358,7 +368,7 @@ def agent_cmd(agent, sid=None, resume=False, skip=False, name=None, source=None)
     if source is not None:
         if not isinstance(source, dict) or source.get('kind') not in ('kimi','lmstudio'):
             raise ValueError('Invalid saved model source')
-        if source['kind'] == 'lmstudio' and agent != 'claude':
+        if source['kind'] == 'lmstudio' and agent not in ('claude', 'pi'):
             raise ValueError('Saved local source is incompatible with this agent')
         if source['kind'] == 'kimi' and (agent not in ('kimi','claude-kimi') or source.get('model') not in kimi_config.MODELS):
             raise ValueError('Invalid saved Kimi source')
@@ -372,7 +382,7 @@ def agent_cmd(agent, sid=None, resume=False, skip=False, name=None, source=None)
             raise ValueError('Saved model binding differs from its profile')
         if _model_relay.server is None:
             raise ValueError('Local model relay is unavailable; restart the panel')
-        launcher = shlex.join([sys.executable, os.path.join(HERE, 'session_hook.py'), 'claude-local', source['binding']])
+        launcher = shlex.join([sys.executable, os.path.join(HERE, 'session_hook.py'), 'pi-local' if agent == 'pi' else 'claude-local', source['binding']])
     elif agent in ("kimi", "claude-kimi"):
         if not kimi_config.status()["configured"]:
             raise ValueError("Сначала сохраните ключ Kimi в настройках панели")
@@ -381,6 +391,10 @@ def agent_cmd(agent, sid=None, resume=False, skip=False, name=None, source=None)
         launcher = shlex.join([sys.executable, os.path.join(HERE, "session_hook.py"), agent])
         if source and source.get('kind') == 'kimi':
             launcher += ' --deck-model '+shlex.quote(source['model'])
+    if agent == "pi":
+        if not source or source.get('kind') != 'lmstudio' or not valid_sid(sid):
+            raise ValueError('Pi requires a saved local model and conversation ID')
+        return launcher + ' --session-id ' + shlex.quote(sid) + (' --deck-resume' if resume else '') + (' --name '+shlex.quote(name) if name else '')
     if agent == "kimi":
         if resume and not (isinstance(sid, str) and sid.startswith("session_") and valid_sid(sid[8:])):
             raise ValueError("ID разговора Kimi не сохранён. Выберите разговор вручную в терминале.")
@@ -497,8 +511,8 @@ def action_new(d):
     if session_exists(name):
         raise ValueError(f"сессия {name} уже есть")
     path = resolve_path(d, name)
-    skip = bool(d.get("skip")) and agent != "shell"
-    sid = str(uuid.uuid4()) if agent in ("claude", "claude-kimi") else None
+    skip = bool(d.get("skip")) and agent not in ("shell", "pi")
+    sid = str(uuid.uuid4()) if agent in ("claude", "claude-kimi", "pi") else None
     source = session_source(d, agent)
     if source and source.get('kind') == 'kimi' and agent == 'claude':
         agent = 'claude-kimi'
@@ -520,21 +534,27 @@ def action_restart(d):
     skip, agent = opt(name, "@cc_skip") == "1", opt(name, "@cc_agent") or "claude"
     sid = opt(name, "@cc_sid")
     new = d.get("mode") == "new"
-    if new and agent in ("claude", "claude-kimi"):
+    if new and agent in ("claude", "claude-kimi", "pi"):
         sid = str(uuid.uuid4())
     elif new and agent in ("codex", "kimi"):
         sid = None
     source = saved_source(name)
     cmd = agent_cmd(agent, sid, not new, skip, name, source)
+    target = f"={PREFIX}{name}:"
+    path = tmux("display-message", "-p", "-t", target, "#{pane_current_path}").strip()
+    shell = tmux("show-options", "-gv", "default-shell").strip() or "/bin/sh"
     stop_children(name)
     if new and agent != "shell":
         if sid:
             tmux("set-option", "-t", f"={PREFIX}{name}:", "@cc_sid", sid)
         else:
             tmux("set-option", "-t", f"={PREFIX}{name}:", "-u", "@cc_sid")
-    time.sleep(0.3)
-    tmux("send-keys", "-t", f"={PREFIX}{name}:", "C-u")
-    type_line(name, "clear" + (f"; {cmd}" if cmd else ""))
+    # A killed TUI can leave mouse reporting and queued input in the old PTY.
+    # Respawning resets tmux's terminal modes and runs the command directly,
+    # so mouse reports cannot become part of the agent's shell command.
+    script = "clear; " + (f"{cmd}; " if cmd else "") + "exec " + shlex.quote(shell)
+    tmux("respawn-pane", "-k", "-t", target, "-c", path,
+         shlex.join([shell, "-lc", script]))
 
 
 def action_kill(d):
@@ -802,6 +822,8 @@ def agent_status(agent):
         version = _version_cache[agent][1]
     if agent == "kimi":
         return {"installed": installed, "version": version, "logged_in": kimi_config.status()["configured"]}
+    if agent == "pi":
+        return {"installed": installed, "version": version, "logged_in": installed}
     auth = {"claude": os.path.join(home, ".claude", ".credentials.json"),
             "codex": os.path.join(home, ".codex", "auth.json")}[agent]
     logged_in = os.path.exists(auth)

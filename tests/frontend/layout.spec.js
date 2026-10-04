@@ -43,23 +43,21 @@ test('message input disables correction, capitalization and spelling suggestions
   }
 });
 
-test('usage bars remain thin, accessible and explain the forecast without affecting the header', async ({ app, page }) => {
+test('compact quotas show remaining and plan without affecting the header', async ({ app, page }) => {
   const now = Date.now() / 1000;
   app.usage = Object.fromEntries(['codex', 'claude'].map(agent => [agent, { windows: [{ label: 'неделя', percent: 60, secs: 604800, resets_at: now + 302400 }] }]));
   await app.open();
   const headerBefore = await page.locator('main > .bar').boundingBox();
   await page.getByRole('button', { name: 'Сессии', exact: true }).click();
-  await page.evaluate(() => { if (!integOpen) toggleInteg(); });
-  await expect(page.getByRole('progressbar')).toHaveCount(2);
-  for (const bar of await page.getByRole('progressbar').all()) {
-    await expect(bar).toHaveAttribute('aria-valuenow', '60');
-    const bounds = await bar.boundingBox();
-    expect(bounds.height).toBeLessThanOrEqual(8);
-    expect(bounds.width).toBeLessThan(390);
+  await expect(page.locator('.quota-heading')).toContainText('Остаток');
+  await expect(page.locator('.quota-heading')).toContainText('План');
+  for(const agent of ['claude','codex']){
+    const row=page.locator('.quota-strip').filter({has:page.locator('.ag.'+agent)});
+    await expect(row).toHaveAttribute('aria-label',/неделя/);
+    await expect(row.locator('.quota-percent')).toHaveText('40%');
+    await expect(row.locator('.quota-plan')).toHaveText(/^[0-9]+%$/);
+    const bounds=await row.evaluate(e=>({height:e.getBoundingClientRect().height,width:e.getBoundingClientRect().width}));expect(bounds.height).toBeLessThanOrEqual(32);expect(bounds.width).toBeLessThan(390);
   }
-  await expect(page.locator('#integ')).toContainText('60%');
-  await expect(page.locator('#integ')).toContainText('Быстрее нормы');
-  await expect(page.locator('#integ')).toContainText('При таком темпе лимит закончится');
   expect((await page.locator('main > .bar').boundingBox()).height).toBe(headerBefore.height);
 });
 

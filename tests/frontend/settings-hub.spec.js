@@ -75,7 +75,7 @@ test('drawer keeps a long local model compact and lets the user reveal its full 
  await app.open({width:320});await page.evaluate(()=>{drawer(true);integOpen=true;renderInteg()});
  const block=page.locator('.local-usage');await expect(block).toContainText('39.5');
  const bounds=await block.boundingBox();expect(bounds.height).toBeLessThan(160);
- const summary=block.locator('summary');expect(await summary.evaluate(e=>e.scrollWidth>e.clientWidth)).toBe(true);
+ const summary=block.locator('summary');await expect(summary).toHaveAttribute("title",p.performance.model+" · "+p.name);await expect(summary).toContainText("…");
  await summary.click();await expect(block.locator('.local-model div')).toHaveText(p.performance.model);
  expect(await page.locator('aside').evaluate(e=>e.scrollWidth<=e.clientWidth)).toBe(true);
 });
@@ -93,8 +93,9 @@ test('phone settings scroll content inside a fixed header and short navigation b
 test('local Claude sessions identify the model source in the drawer and header',async({app,page})=>{
  app.sessions[0].agent='claude';app.sessions[0].source={kind:'lmstudio',profile:localProfile().id,model:'qwen-coder',label:'LM Studio · Workstation · qwen-coder'};
  await app.open({width:390});await page.evaluate(()=>drawer(true));
- await expect(page.locator('.tab').filter({hasText:'tmux'}).locator('.session-source')).toHaveText('Claude · локальная модель · Workstation');
+ await expect(page.locator('.tab').filter({hasText:'tmux'}).locator('.session-source')).toHaveText('qwen-coder · Workstation');
+ await expect(page.locator('.tab').filter({hasText:'tmux'}).locator('.ag.local svg')).toBeVisible();
  await page.evaluate(()=>drawer(false));
- await expect(page.locator('#title')).toContainText('Claude · локальная модель');
- await expect(page.locator('#msg')).toHaveAttribute('placeholder','Сообщение в Claude · локальная модель…');
+ await expect(page.locator('#title')).toContainText('qwen-coder · Workstation');
+ await expect(page.locator('#msg')).toHaveAttribute('placeholder','Сообщение в qwen-coder · Workstation…');
 });

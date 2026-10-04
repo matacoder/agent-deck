@@ -346,6 +346,19 @@
     "Проверка завершена": "Check complete",
     "Тест скорости": "Speed test",
     "⚙ Настройки": "⚙ Settings",
-    "локальная модель": "local model"
+    "локальная модель": "local model",
+    "Ожидание первого токена": "Waiting for the first token",
+    "Модель рассуждает": "Model is reasoning",
+    "Готовит вызов инструмента": "Preparing a tool call",
+    "Генерирует ответ": "Generating a response",
+    "токенов": "tokens",
+    "Сервер не передал счётчик токенов": "Server did not provide token counts",
+    "фрагментов получено": "fragments received",
+    "Запрос отправлен · ждём модель": "Request sent · waiting for the model",
+    "Активных запросов": "Active requests",
+    "Средняя скорость с учётом ожидания": "Average speed including first-token waiting time",
+    "Остаток": "Remaining",
+    "По плану к концу дня": "Planned remaining at the end of today",
+    "План": "Plan"
   }
 }
