@@ -56,7 +56,7 @@ test('compact quotas show remaining and plan without affecting the header', asyn
     await expect(row).toHaveAttribute('aria-label',/неделя/);
     await expect(row.locator('.quota-percent')).toHaveText('40%');
     await expect(row.locator('.quota-plan')).toHaveText(/^[0-9]+%$/);
-    const bounds=await row.boundingBox();expect(bounds.height).toBeLessThanOrEqual(32);expect(bounds.width).toBeLessThan(390);
+    const bounds=await row.evaluate(e=>({height:e.getBoundingClientRect().height,width:e.getBoundingClientRect().width}));expect(bounds.height).toBeLessThanOrEqual(32);expect(bounds.width).toBeLessThan(390);
   }
   expect((await page.locator('main > .bar').boundingBox()).height).toBe(headerBefore.height);
 });
