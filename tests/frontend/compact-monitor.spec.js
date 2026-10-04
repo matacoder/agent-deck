@@ -6,10 +6,10 @@ test('quota monitor shows only overall period, percent and reset in compact rows
  await app.open({width:1280,height:900});
  const rows=page.locator('.quota-strip');await expect(rows).toHaveCount(3);
  await expect(page.locator('.quota-heading')).toContainText('Остаток');await expect(page.locator('.quota-heading-plan')).toHaveText('План');
- const heading=await page.locator('.quota-heading-plan').boundingBox(),planned=await rows.nth(0).locator('.quota-plan').boundingBox();
- expect(Math.abs(heading.x+heading.width-planned.x-planned.width)).toBeLessThan(1);
+ const alignment=await page.evaluate(()=>{const heading=document.querySelector('.quota-heading-plan').getBoundingClientRect(),planned=document.querySelector('.quota-strip .quota-plan').getBoundingClientRect();return Math.abs(heading.right-planned.right)});
+ expect(alignment).toBeLessThan(1);
  await expect(rows.nth(0)).toContainText('27%');await expect(rows.nth(1)).toContainText('70%');await expect(rows.nth(2)).toContainText('82%');
- for(const row of await rows.all()){expect((await row.boundingBox()).height).toBeLessThanOrEqual(32);await expect(row).toContainText('↻');}
+ for(const row of await rows.all()){expect(await row.evaluate(e=>e.getBoundingClientRect().height)).toBeLessThanOrEqual(32);await expect(row).toContainText('↻');}
 });
 
 test('local composer displays shortened model and explicitly labelled average speed',async({app,page})=>{
