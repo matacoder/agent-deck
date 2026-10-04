@@ -20,7 +20,7 @@ test('local composer displays shortened model and explicitly labelled average sp
  await expect(page.locator('#msg')).toHaveAttribute('placeholder','Сообщение в Qwen3.8 27B · RED…');
  const state=page.locator('#send_state');await expect(state).toContainText('Qwen3.8 27B');await expect(state).toContainText('TTFT 3:48');await expect(state).toContainText('≈0.7 tok/s avg');
  await expect(state.locator('.local-rate')).toHaveAttribute('title',/учётом ожидания/);
- await page.evaluate(()=>drawer(true));expect((await page.locator('.compact-local').boundingBox()).height).toBeLessThan(80);
+ await page.evaluate(()=>drawer(true));expect(await page.locator('.compact-local').evaluate(e=>e.getBoundingClientRect().height)).toBeLessThan(80);
  expect(await page.locator('aside').evaluate(e=>e.scrollWidth<=e.clientWidth)).toBe(true);
 });
 
