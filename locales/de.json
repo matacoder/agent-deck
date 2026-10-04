@@ -355,6 +355,10 @@
     "Сервер не передал счётчик токенов": "Server hat keine Tokenanzahl geliefert",
     "фрагментов получено": "Fragmente empfangen",
     "Запрос отправлен · ждём модель": "Anfrage gesendet · warten auf das Modell",
-    "Активных запросов": "Aktive Anfragen"
+    "Активных запросов": "Aktive Anfragen",
+    "Средняя скорость с учётом ожидания": "Average speed including first-token waiting time",
+    "Остаток": "Verbleibend",
+    "По плану к концу дня": "Geplanter Rest am Ende des Tages",
+    "План": "Plan"
   }
 }

@@ -2,6 +2,14 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z`.
 
+## 1.0.5 — 2026-10-04
+
+- Add Pi coding harness with local LM Studio models, isolated configuration and exact conversation restoration.
+- Show compact quota remaining and end-of-day plan, with monthly Kimi calculation and pacing colours.
+- Show local generation activity and speed beside the composer; shorten model names and improve provider icons.
+- Prevent input into a stopped local agent and preserve drafts when refreshing the interface.
+- Fix application settings layout, update status and refresh controls; use a readable 22 px settings icon.
+
 ## 1.0.4 — 2026-10-04
 
 - Show live local-model request activity: first-token waiting time, reasoning,

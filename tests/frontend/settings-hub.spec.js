@@ -75,7 +75,7 @@ test('drawer keeps a long local model compact and lets the user reveal its full 
  await app.open({width:320});await page.evaluate(()=>{drawer(true);integOpen=true;renderInteg()});
  const block=page.locator('.local-usage');await expect(block).toContainText('39.5');
  const bounds=await block.boundingBox();expect(bounds.height).toBeLessThan(160);
- const summary=block.locator('summary');expect(await summary.evaluate(e=>e.scrollWidth>e.clientWidth)).toBe(true);
+ const summary=block.locator('summary');await expect(summary).toHaveAttribute("title",p.performance.model+" · "+p.name);await expect(summary).toContainText("…");
  await summary.click();await expect(block.locator('.local-model div')).toHaveText(p.performance.model);
  expect(await page.locator('aside').evaluate(e=>e.scrollWidth<=e.clientWidth)).toBe(true);
 });

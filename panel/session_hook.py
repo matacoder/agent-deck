@@ -223,7 +223,24 @@ def launch_local(identity, args):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) > 2 and sys.argv[1] == 'claude-local':
+    if len(sys.argv) > 2 and sys.argv[1] == 'pi-local':
+        try:
+            here = Path(__file__).resolve().parent
+            if (here.parent / 'integrations').is_dir():
+                sys.path.insert(0, str(here.parent))
+            from integrations.pi import prepare_local
+            import argparse
+            parser = argparse.ArgumentParser()
+            parser.add_argument('--session-id', required=True)
+            parser.add_argument('--deck-resume', action='store_true')
+            parser.add_argument('--name')
+            options = parser.parse_args(sys.argv[3:])
+            binary, args, env = prepare_local(Path.home()/'.config/cc-panel/integrations', sys.argv[2], options.session_id, options.deck_resume, options.name)
+            os.execve(binary, args, env)
+        except (OSError, ValueError, KeyError, TypeError, http.client.HTTPException):
+            print('Could not start Pi; check local profile, relay and saved conversation', file=sys.stderr)
+            sys.exit(1)
+    elif len(sys.argv) > 2 and sys.argv[1] == 'claude-local':
         try:
             launch_local(sys.argv[2], sys.argv[3:])
         except (OSError, ValueError, KeyError, TypeError, http.client.HTTPException):

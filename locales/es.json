@@ -355,6 +355,10 @@
     "Сервер не передал счётчик токенов": "El servidor no proporcionó el recuento de tokens",
     "фрагментов получено": "fragmentos recibidos",
     "Запрос отправлен · ждём модель": "Solicitud enviada · esperando al modelo",
-    "Активных запросов": "Solicitudes activas"
+    "Активных запросов": "Solicitudes activas",
+    "Средняя скорость с учётом ожидания": "Average speed including first-token waiting time",
+    "Остаток": "Restante",
+    "По плану к концу дня": "Restante previsto al final del día",
+    "План": "Plan"
   }
 }

@@ -352,7 +352,7 @@ dialog{box-shadow:0 24px 80px #0006;border-color:#ffffff12;border-radius:16px}
 .iblk>p{font-size:11px;color:var(--mut);margin:0}.usage{padding:0;gap:10px}.uw{font-size:11px;gap:5px}.uw .usage-meter{height:4px}.uw .rs,.uw .pace{font-size:10px}.local-caption{font-size:10px;color:var(--mut);margin-bottom:8px}
 .local-stats{display:flex;gap:14px;align-items:baseline;font-size:12px;font-variant-numeric:tabular-nums}.local-stats small{font-size:10px;color:var(--mut);margin-left:3px}.local-model{min-width:0;margin-top:8px;font-size:10px;color:var(--mut)}
 .local-model summary{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;padding:6px 0;min-width:0}.local-model[open] summary{color:var(--fg)}.local-model div{padding:4px 0 8px;overflow-wrap:anywhere;line-height:1.5}
-.side-foot{display:grid;grid-template-columns:1fr auto;gap:8px;padding:12px;color:var(--mut);font-size:10px}.side-foot #ver{font-size:10px}.side-foot .settingsbtn{grid-column:1/-1;text-align:left;min-height:44px;font-size:12px;border-radius:9px;background:var(--side2);padding:10px 12px;color:var(--fg)}.side-foot #b_drafts{grid-column:1/-1;text-align:left}
+.side-foot{display:grid;grid-template-columns:1fr auto;gap:8px;padding:12px;color:var(--mut);font-size:10px}.side-foot #ver{font-size:10px}.side-foot .settingsbtn{grid-column:1/-1;display:flex;align-items:center;gap:8px;text-align:left;min-height:44px;font-size:12px;border-radius:9px;background:var(--side2);padding:10px 12px;color:var(--fg)}.settingsbtn svg{width:22px;height:22px;flex:none}.side-foot #b_drafts{grid-column:1/-1;text-align:left}
 @media(max-width:760px){
  #settings_dlg>.settings-hub{height:100%;max-height:100dvh}
  #settings_dlg{width:100vw;height:100dvh;max-height:100dvh;max-width:100vw;margin:0;border-radius:0}.settings-hub{height:100%;max-height:100dvh;display:flex;flex-direction:column;min-height:0}
@@ -369,6 +369,21 @@ dialog{box-shadow:0 24px 80px #0006;border-color:#ffffff12;border-radius:16px}
 .ag{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;font-size:22px;line-height:1}
 .ag.local{color:#5ac8c8}.ag svg{display:block;width:20px;height:20px}
 .ihead .sum .ag{width:20px;height:20px;font-size:22px}.ihead .sum>svg{width:20px;height:20px;flex:none}
+
+/* Compact quota and local-generation monitor. */
+#integ{margin:4px 8px 8px}.quota-heading{display:flex;align-items:center;justify-content:space-between;padding:6px 6px 4px;color:var(--mut);font-size:10px}.quota-github{display:flex;align-items:center;gap:4px}.quota-github svg{width:16px;height:16px}
+.quota-strip{display:grid;grid-template-columns:22px 44px 1fr;gap:8px;align-items:center;height:30px;padding:0 6px;font-size:12px;font-variant-numeric:tabular-nums}.quota-percent{font-weight:600}.quota-reset{text-align:right;white-space:nowrap;color:var(--mut);font-size:11px}
+.compact-local{padding:6px;margin-top:4px;border-top:1px solid var(--bd);min-width:0}.compact-local .local-model{margin:0;font-size:11px}.compact-local .local-model summary{display:flex;align-items:center;gap:8px;padding:0;list-style:none}.compact-local .local-model summary::-webkit-details-marker{display:none}.local-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--fg);font-weight:500}.compact-local .local-model p{margin:0 0 6px;overflow-wrap:anywhere}.local-live-line{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-top:4px;min-height:18px;font-size:10px;font-variant-numeric:tabular-nums;white-space:nowrap}.local-state{color:var(--mut);overflow:hidden;text-overflow:ellipsis}.local-rate{flex:none;color:var(--fg)}.compact-local .local-pulse{animation:local-opacity 1.4s ease-in-out infinite}@keyframes local-opacity{50%{opacity:.5}}@media(prefers-reduced-motion:reduce){.compact-local .local-pulse{animation:none}}
+
+#send_state .local-live-line{display:inline-flex;margin:0;font-size:11px;gap:10px}#send_state .composer-model{margin-right:8px}iframe[inert]{pointer-events:none}
+
+.quota-strip{grid-template-columns:22px minmax(88px,auto) 1fr}.quota-values{display:flex;align-items:baseline;gap:8px;white-space:nowrap}.quota-plan{font-size:11px;color:var(--mut);font-weight:400}
+
+#hub_app>.language-settings{display:grid;gap:10px;margin-bottom:24px}#hub_app>.language-settings label{margin:0}#hub_app>.language-settings p{margin:0;color:var(--mut);font-size:12px;line-height:1.5;font-weight:400}#hub_app>.language-settings>button{justify-self:start;margin-top:2px}#hub_version{display:flex;align-items:center;flex-wrap:wrap;gap:10px 16px;margin-top:12px}.version-info{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-right:auto}.version-number{font-weight:500;font-size:13px}.version-build{font-size:11px;color:var(--mut);font-family:var(--mono)}#hub_version button{padding:9px 12px;border-radius:8px;background:var(--side2);font-size:12px;line-height:1.4;max-width:100%;white-space:normal}#hub_version button.pri{background:var(--blue,#007aff);color:#fff}
+
+.quota-percent.good{color:var(--ok)}.quota-percent.over{color:var(--warn)}.quota-percent.crit{color:var(--bad)}
+
+.quota-heading{display:grid;grid-template-columns:22px 44px 38px 1fr;gap:8px;align-items:center}.quota-heading>span:first-child{grid-column:2}.quota-heading .quota-github{justify-self:end}.quota-heading .quota-heading-plan{text-align:right}.quota-strip{grid-template-columns:22px 44px 38px 1fr}.quota-values{display:contents}.quota-plan{text-align:right}
 </style></head><body>
 <div id="app">
   <aside>
@@ -379,7 +394,7 @@ dialog{box-shadow:0 24px 80px #0006;border-color:#ffffff12;border-radius:16px}
     </div>
     <div id="tabs"></div>
     <div id="integ"></div>
-    <div class="side-foot"><span id="foot"></span><span id="ver"></span><button id="b_drafts" onclick="showClosedDrafts()" style="display:none">Черновики закрытых сессий</button><button class="settingsbtn" onclick="openSettings()" aria-label="Настройки" title="Настройки">⚙ Настройки</button></div>
+    <div class="side-foot"><span id="foot"></span><span id="ver"></span><button id="b_drafts" onclick="showClosedDrafts()" style="display:none">Черновики закрытых сессий</button><button class="settingsbtn" onclick="openSettings()" aria-label="Настройки" title="Настройки"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9.5 3-.6 2.4-2 .9-2.2-.7-2.5 4.3 1.7 1.7v2.3l-1.7 1.7 2.5 4.3 2.2-.7 2 .9.6 2.4h5l.6-2.4 2-.9 2.2.7 2.5-4.3-1.7-1.7v-2.3l1.7-1.7-2.5-4.3-2.2.7-2-.9L14.5 3z"/><circle cx="12" cy="12" r="3"/></svg><span>Настройки</span></button></div>
   </aside>
   <div id="scrim" onclick="drawer(false)"></div>
   <main>
@@ -462,6 +477,7 @@ dialog{box-shadow:0 24px 80px #0006;border-color:#ffffff12;border-radius:16px}
       <button type="button" data-a="claude" class="on" onclick="pickAgent('claude')"><span class="ag claude">✻</span>Claude</button>
       <button type="button" data-a="codex" onclick="pickAgent('codex')"><span class="ag codex">◎</span>Codex</button>
       <button type="button" data-a="kimi" onclick="pickAgent('kimi')">Kimi Code</button>
+      <button type="button" data-a="pi" onclick="pickAgent('pi')"><span class="ag pi">π</span>Pi</button>
       <button type="button" data-a="shell" onclick="pickAgent('shell')"><span class="ag shell">$</span>Терминал</button>
     </div>
     <div id="source_row"><label for="n_source">Источник модели</label><select id="n_source"></select><button type="button" onclick="configureSource()">Настроить модели</button></div>
@@ -538,7 +554,7 @@ dialog{box-shadow:0 24px 80px #0006;border-color:#ffffff12;border-radius:16px}
   <div class="acts"><button type="button" class="integration-remove" onclick="clearTelegram()">Отключить</button><button type="button" onclick="closeIntegrations()">Закрыть</button><button class="pri" id="telegram_save">Сохранить</button></div>
 </form></div>
 </section>
-    <section id="hub_app"><form onsubmit="event.preventDefault();saveLanguage()"><label for="ui_language">Язык интерфейса</label><select id="ui_language"></select>
+    <section id="hub_app"><form class="language-settings" onsubmit="event.preventDefault();saveLanguage()"><label for="ui_language">Язык интерфейса</label><select id="ui_language"></select>
     <p>Язык сохраняется в этом браузере. Сообщения и вывод агентов не переводятся.</p><button class="pri">Применить</button></form>
     <div class="hub-card"><h4>Agent Deck</h4><div id="hub_version"></div></div><div class="settings-account"><button type="button" onclick="logout()">Выйти</button></div></section>
   </div>
@@ -627,11 +643,18 @@ const AGENTS={claude:{label:"Claude",glyph:"✻",skip:"--dangerously-skip-permis
   codex:{label:"Codex",glyph:"◎",skip:"--dangerously-bypass-approvals-and-sandbox"},
   "claude-kimi":{label:"Claude · Kimi",glyph:"✻",skip:"--dangerously-skip-permissions"},
   kimi:{label:"Kimi Code",glyph:"◈",skip:"--auto"},
+  pi:{label:"Pi",glyph:"π",skip:""},
   shell:{label:tr("Терминал"),glyph:"$"}};
 const agentOf=s=>AGENTS[s&&s.agent]?s.agent:"claude";
 const isLocal=s=>s?.source?.kind==="lmstudio";
+function shortModel(model){
+  const name=String(model||"").split("/").pop();
+  const match=name.match(/^([a-z][a-z0-9.]*)[-_].*?([0-9]+(?:\.[0-9]+)?[bm])(?:[-_]|$)/i);
+  if(match)return match[1][0].toUpperCase()+match[1].slice(1)+" "+match[2].toUpperCase();
+  return name.length>30?name.slice(0,27)+"…":name;
+}
 const localComputer=s=>lmData.profiles.find(p=>p.id===s.source.profile)?.name||s.source.label?.split(" · ")[1]||"LM Studio";
-const agentLabel=s=>isLocal(s)?(s.source.model||tr("локальная модель"))+" · "+localComputer(s):AGENTS[agentOf(s)].label;
+const agentLabel=s=>isLocal(s)?shortModel(s.source.model||tr("локальная модель"))+" · "+localComputer(s):AGENTS[agentOf(s)].label;
 function agentIcon(s){
   const icon=el("span","ag "+(isLocal(s)?"local":agentOf(s)));
   icon.setAttribute("aria-hidden","true");
@@ -712,7 +735,7 @@ function renderTabs(){
     const dot=el("span","dot "+st);dot.title=stateText(s);
     const ag=agentOf(s);
     t.append(dot,agentIcon(s),el("div","t",el("div","n",s.name),...(isLocal(s)?[el("div","s session-source",agentLabel(s))]:[]),el("div","s",shortPath(s.path))));
-    t.title=isLocal(s)?agentLabel(s):s.name;
+    t.title=isLocal(s)?s.source.model+" · "+localComputer(s):s.name;
     if(attention.has(s.name))t.append(el("span","bell"));
     else if(i<10)t.append(el("span","k","⌥"+i));
     t.onclick=()=>select(s.name);
@@ -750,9 +773,12 @@ function show(){
   renderTitle();renderSendState();renderAttachments();
   $("b_mode").textContent=m==="term"?tr("⌨ Экран"):tr("▣ Живой терминал");
   for(const b of $("seg").children)b.classList.toggle("on",b.dataset.m===m);
-  for(const[n,f]of frames)f.classList.toggle("on",!!s&&m==="term"&&n===active);
+  for(const[n,f]of frames){
+    f.classList.toggle("on",!!s&&m==="term"&&n===active);
+    const session=sessions.find(x=>x.name===n);f.inert=isLocal(session)&&!session.running;
+  }
   $("screen").classList.toggle("on",!!s&&m==="screen");
-  if(s&&m==="term"){const f=frameFor(active);f.classList.add("on");if(!isMobile())setTimeout(()=>{try{f.contentWindow.focus();f.contentWindow.term&&f.contentWindow.term.focus()}catch(e){}},30)}
+  if(s&&m==="term"){const f=frameFor(active);f.classList.add("on");f.inert=isLocal(s)&&!s.running;if(!isMobile()&&!f.inert)setTimeout(()=>{try{f.contentWindow.focus();f.contentWindow.term&&f.contentWindow.term.focus()}catch(e){}},30)}
   if(s&&m==="screen")updateScreen(s,true);
   updateLink();
 }
@@ -967,6 +993,7 @@ async function loadSessions(){
     for(const[n,f]of frames)if(!names.has(n)){f.remove();frames.delete(n);attention.delete(n)}
     const first=!load.done,previousActive=active;load.done=true;
     sessions=list;
+    for(const[n,f]of frames){const session=sessions.find(x=>x.name===n);f.inert=isLocal(session)&&!session.running}
     if(!active||!names.has(active)){
       activate(sessions.length?sessions.reduce((latest,s)=>Number(s.activity)>Number(latest.activity)?s:latest).name:null);
     }
@@ -1092,13 +1119,22 @@ let sending=false;
 const sendStates=new Map();
 function renderSendState(){
   const status=sendStates.get(active),d=$("send_state");
-  d.textContent=status?status.text:(isMobile()?tr("Enter ↵ · ↑ отправить"):tr("Enter отправить · ⇧Enter ↵"));
+  const session=cur();
+  if(isLocal(session)&&!session.running){d.textContent=agentLabel(session)+tr(" не запущен")}
+  else if(isLocal(session)&&(!status||status.phase==="success")){
+    const profile=lmData.profiles.find(p=>p.id===session.source.profile);
+    if(profile){
+      const metrics=localUsage({...profile,activity:(profile.activity||[]).filter(a=>!a.binding||a.binding===session.source.binding),performance:profile.measurements?.session?.[session.source.model]||profile.performance});
+      d.replaceChildren(el("span","composer-model",shortModel(session.source.model)),metrics.querySelector(".local-live-line"));
+    }else d.textContent=shortModel(session.source.model);
+  }else d.textContent=status?status.text:(isMobile()?tr("Enter ↵ · ↑ отправить"):tr("Enter отправить · ⇧Enter ↵"));
   d.classList.toggle("error",Boolean(status&&status.error));
   d.classList.toggle("pending",Boolean(status&&status.phase==="pending"));
   d.classList.toggle("success",Boolean(status&&status.phase==="success"));
 }
 async function send(){
   const t=$("msg");if(sending||uploading||panelUpdating||!active||(!t.value.trim()&&!attachmentsFor(active).length))return;
+  if(isLocal(cur())&&!cur().running){sendStates.set(active,{text:agentLabel(cur())+tr(" не запущен"),error:true});renderSendState();return}
   const name=active,text=t.value,images=attachmentsFor(active).slice();
   sending=true;renderAttachments();
   sendStates.set(name,{text:tr("Отправляю…"),phase:"pending"});renderSendState();
@@ -1241,42 +1277,70 @@ function integSummary(){
   head.append(gh,el("span","chev",integOpen?"▾":"▸"));
   return head;
 }
+function quotaDuration(w){
+  if(Number.isFinite(w?.secs)&&w.secs>0)return w.secs;
+  if(w?.period!=="month"||!Number.isFinite(w.resets_at))return null;
+  const reset=new Date(w.resets_at*1000),start=new Date(reset),day=reset.getUTCDate();
+  start.setUTCDate(1);start.setUTCMonth(start.getUTCMonth()-1);
+  const lastDay=new Date(Date.UTC(start.getUTCFullYear(),start.getUTCMonth()+1,0)).getUTCDate();
+  start.setUTCDate(Math.min(day,lastDay));
+  return (reset-start)/1000;
+}
+function plannedRemaining(w,instant=now()){
+  const duration=quotaDuration(w);
+  if(!Number.isFinite(w?.resets_at)||!duration)return null;
+  const end=new Date(instant*1000);end.setHours(24,0,0,0);
+  const cutoff=Math.min(end.getTime()/1000,w.resets_at);
+  return Math.round(Math.max(0,Math.min(100,100*(w.resets_at-cutoff)/duration)));
+}
+function primaryQuota(u){
+  const windows=u?.windows||[];
+  return windows.find(w=>w.period==="month"&&!/code|код/i.test(w.label||""))||windows.find(w=>w.secs>=86400)||windows[0];
+}
+function quotaTone(remaining,plan){
+  if(!Number.isFinite(remaining)||!Number.isFinite(plan))return "";
+  return remaining>=plan?"good":plan-remaining<=3?"over":"crit";
+}
 function renderInteg(){
-  const head=integSummary();head.setAttribute("aria-label",tr("Лимиты"));head.prepend(el("span","",tr("Лимиты")));
-  if(!integOpen){$("integ").replaceChildren(head);return}
-  const blocks=[head];
+  const head=el("div","quota-heading",el("span","",tr("Остаток")),el("span","quota-heading-plan",tr("План")));
+  const gh=el("span","quota-github");gh.innerHTML=GH_ICON;gh.title=ghLogin?"GitHub · "+ghLogin:tr("GitHub не подключён");gh.append(el("span",ghLogin?"good":"dim",ghLogin?"✓":"—"));head.append(gh);
+  const rows=[head];
   for(const a of ["claude","codex","kimi"]){
-    const u=usageData[a],blk=el("div","iblk",el("div","provider-head",AGENTS[a].label));
-    const ub=usageBlock(u);if(ub)blk.append(ub);else blk.append(el("p","",tr("Нет данных")));
-    blocks.push(blk);
+    const u=usageData[a],w=primaryQuota(u),row=el("div","quota-strip",agentIcon({agent:a}));
+    const percent=Number.isFinite(w?.percent)?Math.round(Math.max(0,Math.min(100,100-w.percent))):null,plan=plannedRemaining(w);
+    row.title=AGENTS[a].label+" · "+(w?tr(w.label||"")+" · "+fmtReset(w.resets_at):u?.error||tr("Нет данных"))+(u?.stale?" · "+tr("⚠ данные устарели"):"");
+    row.setAttribute("aria-label",row.title);
+    const remaining=el("span","quota-percent "+quotaTone(percent,plan),percent===null?"—":percent+"%");remaining.title=tr("Остаток");
+    const target=el("span","quota-plan",plan===null?"—":plan+"%");target.title=tr("По плану к концу дня");
+    target.setAttribute("aria-label",target.title+": "+target.textContent);
+    row.append(el("span","quota-values",remaining,target),el("span","quota-reset",w?compactReset(w.resets_at):"—"));
+    rows.push(row);
   }
-  for(const p of lmData.profiles||[])blocks.push(localUsage(p));
-  $("integ").replaceChildren(...blocks);
+  for(const p of lmData.profiles||[])rows.push(localUsage(p));
+  $("integ").replaceChildren(...rows);
+  renderSendState();
   if($("settings_dlg").open&&!$("settings_dlg").contains(document.activeElement))renderHub();
 }
 function localUsage(profile){
   const activity=profile.activity||[],live=activity[0],sample=profile.performance||{};
-  const box=el("div","iblk local-usage",el("div","provider-head",profile.name));
+  const model=live?.model||sample.model||profile.models?.find(m=>m.loaded)?.id||profile.name;
+  const box=el("div","local-usage compact-local");
   const labels={waiting:"Ожидание первого токена",thinking:"Модель рассуждает",tool:"Готовит вызов инструмента",generating:"Генерирует ответ"};
-  const caption=el("div","local-caption",tr(live?labels[live.phase]||labels.waiting:sample.source==="session"?"Последний ответ":sample.source==="benchmark"?"Тест скорости":"Без лимитов"));
-  if(live){caption.prepend(el("span","local-pulse","✦ "));box.setAttribute("aria-busy","true")}
-  box.append(caption);
-  function statsFor(m){
-    const stats=el("div","local-stats");stats.style.flexWrap="wrap";
-    if(Number.isFinite(m.tokens_per_second))stats.append(el("span","",m.tokens_per_second.toFixed(1),el("small","","tok/s")));
-    if(Number.isFinite(m.output_tokens))stats.append(el("span","",String(m.output_tokens),el("small","",tr("токенов"))));
-    if(Number.isFinite(m.time_to_first_token_seconds))stats.append(el("span","",m.time_to_first_token_seconds.toFixed(1),el("small","","s TTFT")));
-    if(!stats.childNodes.length&&!live)stats.append(el("small","",tr("Сервер не передал счётчик токенов")));
-    return stats;
-  }
-  if(live){
-    box.append(el("div","local-stats",Math.floor(live.request_time_seconds||0)+" s",el("small","",live.chunks?live.chunks+" "+tr("фрагментов получено"):tr("Запрос отправлен · ждём модель"))));
-    if(activity.length>1)box.append(el("div","local-caption",tr("Активных запросов")+": "+activity.length));
-    box.append(statsFor(live));
-    if(sample.source)box.append(el("div","local-caption",tr("Последний ответ")),statsFor(sample));
-  }else box.append(statsFor(sample));
-  const model=live?.model||sample.model;
-  if(model){const summary=el("summary","",model);summary.title=model;box.append(el("details","local-model",summary,el("div","",model)))}
+  const details=el("details","local-model"),summary=el("summary","",agentIcon({source:{kind:"lmstudio"}}),el("span","local-name",shortModel(model)));
+  summary.title=model+" · "+profile.name;summary.setAttribute("aria-label",summary.title);
+  const full=el("div","",model);details.append(summary,full,el("p","",profile.name+" · "+performanceText(sample,false)));box.append(details);
+  const line=el("div","local-live-line");
+  const seconds=Math.floor(live?.request_time_seconds||0),elapsed=Math.floor(seconds/60)+":"+String(seconds%60).padStart(2,"0");
+  const state=el("span","local-state",live?(live.phase==="waiting"?"◌ TTFT "+elapsed:(live.phase==="tool"?"⚙ ":"✦ ")+elapsed+(live.chunks?" · "+live.chunks+" Δ":"")):"✓ "+(Number.isFinite(sample.output_tokens)?sample.output_tokens+" tok":"—"));
+  state.title=live?tr(labels[live.phase]||labels.waiting):performanceText(sample,false);
+  if(live){box.setAttribute("aria-busy","true");state.classList.add("local-active")}
+  line.append(state);
+  const m=Number.isFinite(live?.tokens_per_second)?live:sample;
+  const exact=Number.isFinite(m.tokens_per_second),average=!exact&&m.output_tokens>0&&m.request_time_seconds>0;
+  const rate=exact?m.tokens_per_second:average?m.output_tokens/m.request_time_seconds:null;
+  const speed=el("span","local-rate",rate===null?"— tok/s":(average?"≈":"")+rate.toFixed(1)+" tok/s"+(average?" avg":""));
+  speed.title=(m===sample?tr("Последний ответ")+" · ":"")+(average?tr("Средняя скорость с учётом ожидания"):"tok/s");
+  line.append(speed);box.append(line);
   return box;
 }
 let hubSection="agents",lmData={profiles:[],discovery:{}},lmTimer=null,returnToNew=false;
@@ -1295,7 +1359,7 @@ $("settings_dlg").addEventListener("close",()=>{if($("settings_dlg").open)return
 function card(name,status,label,action,secondary=[]){const c=el("div","hub-card",el("div","card-top",el("div","card-main",el("h4","",name),el("p","",status)),btn(label,"pri",action)));if(secondary.length){const d=el("details","",el("summary","",tr("Другие действия")));for(const [text,fn] of secondary)d.append(btn(text,"",fn));c.append(d)}return c}
 function renderHub(){
   const selections=new Map([...$("model_cards").querySelectorAll("select")].map(x=>[x.dataset.profile,x.value]));
-  $("hub_agents").replaceChildren(...["claude","codex","kimi"].map(a=>{const st=lastAg[a]||{};if(a==="kimi")return card(AGENTS[a].label,st.version||tr("Не установлен"),st.installed?(lastAg.kimi_config?.configured?tr("Обновить"):tr("Настроить ключ Kimi")):tr("Установить"),()=>st.installed&&!lastAg.kimi_config?.configured?openKimi():agentAction("install",a));return card(AGENTS[a].label,[st.version,st.installed?(st.logged_in?tr("подключён"):tr("Войти")):tr("Не установлен")].filter(Boolean).join(" · "),st.installed?(st.logged_in?tr("Обновить"):tr("Войти")):tr("Установить"),()=>agentAction(st.installed&&!st.logged_in?"login":"install",a),st.installed?[[tr("Обновить"),()=>agentAction("install",a)]]:[])}));
+  $("hub_agents").replaceChildren(...["claude","codex","kimi","pi"].map(a=>{const st=lastAg[a]||{};if(a==="pi")return card("Pi",st.version||tr("Не установлен"),st.installed?tr("Обновить"):tr("Установить"),()=>agentAction("install",a));if(a==="kimi")return card(AGENTS[a].label,st.version||tr("Не установлен"),st.installed?(lastAg.kimi_config?.configured?tr("Обновить"):tr("Настроить ключ Kimi")):tr("Установить"),()=>st.installed&&!lastAg.kimi_config?.configured?openKimi():agentAction("install",a));return card(AGENTS[a].label,[st.version,st.installed?(st.logged_in?tr("подключён"):tr("Войти")):tr("Не установлен")].filter(Boolean).join(" · "),st.installed?(st.logged_in?tr("Обновить"):tr("Войти")):tr("Установить"),()=>agentAction(st.installed&&!st.logged_in?"login":"install",a),st.installed?[[tr("Обновить"),()=>agentAction("install",a)]]:[])}));
   const cards=[card("Kimi",lastAg.kimi_config?.configured?tr("Ключ сохранён на сервере"):tr("Ключ ещё не настроен"),tr("Настроить"),()=>openEditor("kimi"))];
   for(const p of lmData.profiles||[]){
     const c=card(p.name+" · LM Studio",p.url+" · "+tr(p.status==="online"?"подключён":p.status==="needs_key"?"Нужен ключ":p.status==="offline"?"Недоступен":"Не проверен"),tr("Проверить подключение"),()=>lmAction("probe",{id:p.id}),[[tr("Изменить"),()=>editLM(p)],[tr("Удалить"),()=>lmAction("remove",{id:p.id})]]);
@@ -1323,10 +1387,10 @@ function renderDiscovery(){const d=lmData.discovery||{};$("lm_progress").textCon
 function openEditor(kind){kind==="kimi"?openKimi():openIntegrations()}
 function configureSource(){returnToNew=true;$("dlg").close();openSettings("models")}
 function renderSources(){
-  const old=$("n_source").value;$("source_row").hidden=!["claude","kimi"].includes(newAgent);
+  const old=$("n_source").value;$("source_row").hidden=!["claude","kimi","pi"].includes(newAgent);
   const values=[];if(newAgent==="claude")values.push([{kind:"default"},"Claude"]);
   if(lastAg.kimi_config?.configured&&["claude","kimi"].includes(newAgent))for(const m of ["k3","kimi-for-coding","kimi-for-coding-highspeed"])values.push([{kind:"kimi",model:m},"Kimi · "+m]);
-  if(newAgent==="claude")for(const p of lmData.profiles||[])for(const m of p.models||[])values.push([{kind:"lmstudio",profile:p.id,model:m.id},p.name+" · "+m.name]);
+  if(["claude","pi"].includes(newAgent))for(const p of lmData.profiles||[])for(const m of p.models||[])values.push([{kind:"lmstudio",profile:p.id,model:m.id},p.name+" · "+m.name]);
   $("n_source").replaceChildren(...values.map(([v,label])=>{const o=el("option","",label);o.value=JSON.stringify(v);return o}));if([...$("n_source").options].some(o=>o.value===old))$("n_source").value=old;else if(newAgent==="kimi"&&lastAg.kimi_config?.model)$("n_source").value=JSON.stringify({kind:"kimi",model:lastAg.kimi_config.model});
 }
 function saveLanguage(){
@@ -1393,6 +1457,10 @@ async function pairTelegram(){
 function clearTelegram(){if(confirm(tr("Отключить Telegram и удалить сохранённый токен?")))saveTelegram(true)}
 let panelUpdating=false,panelVersion=null,versionTimer=null,versionLoading=false;
 const UPDATE_PHASES=new Set(["checking","downloading","installing","restarting"]);
+function versionInfo(v){
+  const revision=el("span","version-build","UI "+UI_REVISION.slice(0,7));revision.title=UI_REVISION;
+  return el("div","version-info",el("span","version-number","v"+v.version),revision);
+}
 function renderVersion(v){
   panelVersion=v;const job=v.job||{},box=$("ver"),mobile=$("s_update");
   panelUpdating=UPDATE_PHASES.has(job.phase);
@@ -1400,7 +1468,7 @@ function renderVersion(v){
   mobile.style.display="none";
   let label,action;
   if(panelUpdating){label=job.message||tr("Обновляю панель…");action=()=>{}}
-  else if(job.phase==="done"&&job.version&&job.version!==UI_PANEL_VERSION){label=tr("Обновлено · перезагрузить интерфейс");action=refreshInterface}
+  else if(job.phase==="done"&&job.version===v.version&&UI_PANEL_VERSION!==null&&job.version!==UI_PANEL_VERSION){label=tr("Обновлено · перезагрузить интерфейс");action=refreshInterface}
   else if(job.phase==="error"){label=tr("Обновление не удалось · повторить");action=startPanelUpdate;box.title=job.message||label}
   else if(v.update){label=v.incomplete?tr("Доустановить компоненты"):tr("Обновить до v")+v.latest;action=startPanelUpdate}
   if(label){
@@ -1408,9 +1476,11 @@ function renderVersion(v){
     if(!v.can_update&&!panelUpdating&&job.phase!=="done"){
       b.disabled=true;box.title=tr("Разработка: обновляйте чекаут через git. Кнопка доступна после установки панели.");
     }
-    $("hub_version").replaceChildren("v"+v.version,b);box.append(btn(tr("Обновить"),"",()=>openSettings("app")));mobile.textContent=label;mobile.style.display="flex";mobile.disabled=b.disabled;
+    $("hub_version").replaceChildren(versionInfo(v),b);box.append(btn(tr("Обновить"),"",()=>openSettings("app")));mobile.textContent=label;mobile.style.display="flex";mobile.disabled=b.disabled;
   }
-  if(!label)$("hub_version").replaceChildren("v"+v.version);renderAttachments();
+  if(!label)$("hub_version").replaceChildren(versionInfo(v));
+  if(action!==refreshInterface){const refresh=btn(tr("Обновить интерфейс"),"pri",refreshInterface);refresh.id="b_refresh_interface";refresh.disabled=panelUpdating;$("hub_version").append(refresh)}
+  renderAttachments();
 }
 let UI_PANEL_VERSION=null;
 async function loadVersion(){
@@ -1432,7 +1502,7 @@ async function startPanelUpdate(){
   clearTimeout(versionTimer);versionTimer=setTimeout(loadVersion,1000);
 }
 function updatePanel(){
-  if(panelVersion&&panelVersion.job&&panelVersion.job.phase==="done"&&panelVersion.job.version&&panelVersion.job.version!==UI_PANEL_VERSION)refreshInterface();
+  if(panelVersion&&panelVersion.job&&panelVersion.job.phase==="done"&&panelVersion.job.version===panelVersion.version&&UI_PANEL_VERSION!==null&&panelVersion.job.version!==UI_PANEL_VERSION)refreshInterface();
   else startPanelUpdate();
 }
 async function loadServer(){
@@ -1483,8 +1553,8 @@ $("n_name").addEventListener("input",e=>delete e.target.dataset.auto);
 let newAgent="claude";
 function pickAgent(a){
   newAgent=a;for(const b of $("agsel").children)b.classList.toggle("on",b.dataset.a===a);
-  $("n_skip_row").style.display=a==="shell"?"none":"";
-  if(a!=="shell")$("n_skip_lbl").textContent=tr("Без подтверждений (")+AGENTS[a].skip+")";renderSources();
+  $("n_skip_row").style.display=["shell","pi"].includes(a)?"none":"";
+  if(!["shell","pi"].includes(a))$("n_skip_lbl").textContent=tr("Без подтверждений (")+AGENTS[a].skip+")";renderSources();
 }
 async function openNew(){
   returnToNew=false;if($("settings_dlg").open)$("settings_dlg").close();drawer(false);
@@ -1494,7 +1564,7 @@ async function openNew(){
 async function createSession(){
   const name=$("n_name").value.trim();$("n_go").disabled=true;$("n_go").textContent=tr("Создаю…");
   const ok=await post("/api/new",{name,project:$("n_proj").value.trim()||name,git:$("n_git").value.trim(),
-    worktree:$("n_wt").checked,branch:$("n_branch").value.trim(),skip:$("n_skip").checked,agent:newAgent,source:["claude","kimi"].includes(newAgent)&&$("n_source").value?JSON.parse($("n_source").value):undefined});
+    worktree:$("n_wt").checked,branch:$("n_branch").value.trim(),skip:$("n_skip").checked,agent:newAgent,source:["claude","kimi","pi"].includes(newAgent)&&$("n_source").value?JSON.parse($("n_source").value):undefined});
   $("n_go").disabled=false;$("n_go").textContent=tr("Создать");
   if(ok){$("dlg").close();for(const i of["n_name","n_proj","n_git","n_branch"])$(i).value="";select(name)}
 }

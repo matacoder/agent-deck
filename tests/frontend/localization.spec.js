@@ -61,7 +61,7 @@ for(const code of pack){
   await page.locator('#msg').fill('Unsent draft 原文');
   await page.evaluate(()=>openSettings("app"));
   await page.locator('#ui_language').selectOption('en');
-  await page.locator('#hub_app button.pri').tap();
+  await page.locator('#hub_app form.language-settings button.pri').tap();
   await expect.poll(async()=> (await page.context().cookies('https://panel.test/')).find(x=>x.name==='cc_lang')?.value).toBe('en');
   await expect(page.locator('html')).toHaveAttribute('lang','en');
   await expect(page.locator('#msg')).toHaveValue('Unsent draft 原文');

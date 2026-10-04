@@ -355,6 +355,10 @@
     "Сервер не передал счётчик токенов": "Sunucu token sayısını sağlamadı",
     "фрагментов получено": "alınan parçalar",
     "Запрос отправлен · ждём модель": "İstek gönderildi · model bekleniyor",
-    "Активных запросов": "Etkin istekler"
+    "Активных запросов": "Etkin istekler",
+    "Средняя скорость с учётом ожидания": "Average speed including first-token waiting time",
+    "Остаток": "Kalan",
+    "По плану к концу дня": "Gün sonunda planlanan kalan miktar",
+    "План": "Plan"
   }
 }

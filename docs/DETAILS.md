@@ -134,6 +134,13 @@ bar) and extrapolates linearly to the reset.
   and HTTPS configuration. The panel itself and subsequent panel updates run as the unprivileged user.
 - `sudo /opt/agent-deck/update.sh` checks out the latest tag (or pass `v0.2.0` / `main`) and re-runs
   `install.sh` with the remembered options. It refuses to run with local changes in the checkout.
+- A local-model relay runs inside the panel process. Restarting the panel interrupts
+  active model requests; tmux persistence alone does not make that restart safe.
+  UI-only updates can replace `index.html` atomically without restarting the service.
+  Do not suspend an interactive agent with SIGSTOP/SIGCONT during deployment: its
+  shell can reclaim the foreground terminal, and SIGCONT does not restore it.
+  Wait for the agent to be idle before a backend restart; verify foreground terminal
+  ownership as well as process liveness afterward.
 - Releasing (maintainers): add a `## X.Y.Z` section to [CHANGELOG.md](../CHANGELOG.md), then
   `./release.sh X.Y.Z` — bumps `panel/VERSION`, tags, pushes and creates the GitHub release.
 
@@ -154,3 +161,19 @@ sudo -u dev XDG_RUNTIME_DIR=/run/user/$(id -u dev) systemctl --user status cc-pa
 sudo journalctl _UID=$(id -u dev) -f                  # logs
 grep PANEL_PASSWORD ~dev/.config/cc-panel/env         # panel password
 ```
+
+### Pi with local models
+
+Choose **Pi** in the new-session dialog, then an LM Studio profile and model.
+Pi uses the panel's authenticated loopback relay and the same local generation
+metrics as Claude sessions. No Pi cloud account is required. Install/update uses
+`npm install --global --prefix "$HOME/.local" @earendil-works/pi-coding-agent@1.0.2`
+and requires Node.js 22.19.0 or newer.
+
+Each model binding has private Pi configuration and transcripts under
+`~/.config/cc-panel/integrations/pi/<binding>/`. Relay credentials are injected
+through the child environment rather than stored in `models.json` or command
+arguments. Startup catalog refresh is disabled. Resume opens the exact saved
+conversation for the same project; it fails if that transcript is missing.
+The panel backend must be updated to enable the Pi selector. An active local
+model request must finish before restarting the backend, which owns the relay.

@@ -43,7 +43,7 @@ test('Kimi save errors stay above the modal backdrop and retain the entered key'
   await expect(page.locator('#kimi_key')).toHaveValue('sk:test/with+base64==');
 });
 
-test('Kimi quota card shows monthly limits and resets without fabricating weekly limits or monthly pace', async ({app,page}) => {
+test('Kimi compact quota shows overall monthly remainder and a calendar plan', async ({app,page}) => {
   app.kimiConfig={configured:true,model:'k3'};
   app.usage.kimi={windows:[
     {label:'Общий · месяц',percent:32,period:'month',secs:0,resets_at:Date.now()/1000+86400*15},
@@ -51,12 +51,10 @@ test('Kimi quota card shows monthly limits and resets without fabricating weekly
     {label:'5 часов',percent:1,period:'hours',secs:18000,resets_at:Date.now()/1000+17000}
   ]};
   await app.open();
-  await page.evaluate(()=>{integOpen=true;renderInteg()});
-  const card=page.locator('.iblk').filter({hasText:'месяц · код'});
-  await expect(card).toContainText('месяц · всё');
-  await expect(card).toContainText('32%');
-  await expect(card).not.toContainText('неделя');
-  const month=card.locator('.uw').filter({hasText:'месяц · всё'});
-  await expect(month.locator('.rs')).toContainText('↻');
-  await expect(month.locator('.pace')).toHaveCount(0);
+  const row=page.locator('.quota-strip').filter({has:page.locator('.ag.kimi')});
+  await expect(row.locator('.quota-percent')).toHaveText('68%');
+  await expect(row.locator('.quota-plan')).toHaveText(/^[0-9]+%$/);
+  await expect(row).toHaveAttribute('aria-label',/месяц/);
+  await expect(row.locator('.quota-reset')).toContainText('↻');
+  await expect(row).not.toContainText('неделя');
 });
