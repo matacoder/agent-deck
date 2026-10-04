@@ -89,6 +89,7 @@ class Measurements:
     def __init__(self, started):
         self.started, self.first = started, None
         self.usage, self.buffer = {}, b''
+        self.phase, self.chunks = 'waiting', 0
 
     def event(self, data):
         if not isinstance(data, dict):
@@ -96,6 +97,8 @@ class Measurements:
         if data.get('type') == 'content_block_delta':
             delta = data.get('delta', {})
             if isinstance(delta, dict) and any(delta.get(k) for k in ('text', 'thinking', 'partial_json')):
+                self.chunks += 1
+                self.phase = 'thinking' if delta.get('thinking') else 'tool' if delta.get('partial_json') else 'generating'
                 if self.first is None:
                     self.first = time.monotonic()
         usage = data.get('usage') or data.get('message', {}).get('usage')
@@ -234,6 +237,8 @@ class Relay:
                     connection = None
                     headers_sent = False
                     streaming = False
+                    live_path = None
+                    last_publish = 0
                     try:
                         length = int(self.headers.get('Content-Length','-1'))
                         if not 0 <= length <= 16*1024*1024:
@@ -260,6 +265,15 @@ class Relay:
                             headers['Authorization'] = 'Bearer '+profile['key']
                             headers['x-api-key'] = profile['key']
                         measurement = Measurements(time.monotonic())
+                        if match[2] == '/v1/messages':
+                            live_path = relay.directory / 'live-requests' / (secrets.token_hex(12) + '.json')
+                        def publish():
+                            if live_path:
+                                try:
+                                    private_write(live_path, dict(measurement.result(), profile=binding['profile'], model=binding['model'], binding=match[1], phase=measurement.phase, chunks=measurement.chunks, updated_at=time.time()))
+                                except OSError:
+                                    pass  # Telemetry must never interrupt model output.
+                        publish()
                         body = json.dumps(normalize_system_messages(payload)).encode()
                         connection.request('POST',upstream.path.rstrip('/')+match[2],body,headers)
                         response = connection.getresponse()
@@ -283,6 +297,9 @@ class Relay:
                             self.wfile.flush()
                             if streaming:
                                 measurement.feed(chunk)
+                                if time.monotonic() - last_publish >= 0.25:
+                                    publish()
+                                    last_publish = time.monotonic()
                             elif len(collected) < 1024*1024:
                                 collected.extend(chunk)
                         if not streaming:
@@ -302,6 +319,11 @@ class Relay:
                         if not headers_sent:
                             self.error(502, 'Local model request failed; check server and credentials')
                     finally:
+                        if live_path:
+                            try:
+                                live_path.unlink(missing_ok=True)
+                            except OSError:
+                                pass
                         if connection:
                             connection.close()
                         semaphore.release()

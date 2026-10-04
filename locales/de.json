@@ -346,6 +346,15 @@
     "Проверка завершена": "Prüfung abgeschlossen",
     "Тест скорости": "Geschwindigkeitstest",
     "⚙ Настройки": "⚙ Einstellungen",
-    "локальная модель": "lokales Modell"
+    "локальная модель": "lokales Modell",
+    "Ожидание первого токена": "Warten auf das erste Token",
+    "Модель рассуждает": "Modell denkt nach",
+    "Готовит вызов инструмента": "Werkzeugaufruf wird vorbereitet",
+    "Генерирует ответ": "Antwort wird generiert",
+    "токенов": "Tokens",
+    "Сервер не передал счётчик токенов": "Server hat keine Tokenanzahl geliefert",
+    "фрагментов получено": "Fragmente empfangen",
+    "Запрос отправлен · ждём модель": "Anfrage gesendet · warten auf das Modell",
+    "Активных запросов": "Aktive Anfragen"
   }
 }

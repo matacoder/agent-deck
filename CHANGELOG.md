@@ -2,6 +2,17 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z`.
 
+## 1.0.4 — 2026-10-04
+
+- Show live local-model request activity: first-token waiting time, reasoning,
+  tool-call generation, streamed fragment counts and available token statistics.
+  Retain measurements of the last completed response while a new request runs.
+- Read relay measurements across panel processes and expire stale activity without
+  storing conversation text or treating stream fragments as tokens.
+- Label local sessions with their model and computer instead of Claude, use a
+  monitor icon, and enlarge session and quota-chip provider marks.
+- Add regressions for stream phases, cross-process metrics and local session identity.
+
 ## 1.0.3 — 2026-10-03
 
 - Identify Claude sessions backed by local models in the sidebar, header and

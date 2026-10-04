@@ -362,6 +362,13 @@ dialog{box-shadow:0 24px 80px #0006;border-color:#ffffff12;border-radius:16px}
  #integ{margin:6px 12px 12px}.ihead{padding:10px 12px;font-size:12px;gap:10px}.ihead>span:first-child{font-size:12px}.iblk{padding:12px}.provider-head{font-size:13px}.usage{padding:0;gap:10px}.uw{font-size:12px;gap:5px}.uw .usage-meter{height:4px}.uw .rs,.uw .pace,.uw .forecast{font-size:11px}.local-stats{font-size:14px}.local-stats small,.local-caption,.local-model{font-size:11px}
  .side-foot{padding:12px 16px calc(12px + var(--sab));font-size:11px}.side-foot .settingsbtn{font-size:14px}
 }
+
+.local-pulse{display:inline-block;color:var(--blue,#58a6ff);animation:local-breathe 1.4s ease-in-out infinite}@keyframes local-breathe{50%{opacity:.3;transform:scale(.8)}}@media(prefers-reduced-motion:reduce){.local-pulse{animation:none}}
+
+/* Keep provider marks readable alongside the GitHub mark. */
+.ag{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;font-size:22px;line-height:1}
+.ag.local{color:#5ac8c8}.ag svg{display:block;width:20px;height:20px}
+.ihead .sum .ag{width:20px;height:20px;font-size:22px}.ihead .sum>svg{width:20px;height:20px;flex:none}
 </style></head><body>
 <div id="app">
   <aside>
@@ -623,7 +630,15 @@ const AGENTS={claude:{label:"Claude",glyph:"✻",skip:"--dangerously-skip-permis
   shell:{label:tr("Терминал"),glyph:"$"}};
 const agentOf=s=>AGENTS[s&&s.agent]?s.agent:"claude";
 const isLocal=s=>s?.source?.kind==="lmstudio";
-const agentLabel=s=>AGENTS[agentOf(s)].label+(isLocal(s)?" · "+tr("локальная модель"):"");
+const localComputer=s=>lmData.profiles.find(p=>p.id===s.source.profile)?.name||s.source.label?.split(" · ")[1]||"LM Studio";
+const agentLabel=s=>isLocal(s)?(s.source.model||tr("локальная модель"))+" · "+localComputer(s):AGENTS[agentOf(s)].label;
+function agentIcon(s){
+  const icon=el("span","ag "+(isLocal(s)?"local":agentOf(s)));
+  icon.setAttribute("aria-hidden","true");
+  if(isLocal(s))icon.innerHTML='<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg>';
+  else icon.textContent=AGENTS[agentOf(s)].glyph;
+  return icon;
+}
 const state=s=>{
   const recent=now()-s.activity<BUSY_SEC;
   if(agentOf(s)==="shell")return recent?"busy":"sh";
@@ -661,7 +676,7 @@ function renderQuickTabs(){
   if(signature!==quickSignature){
     const left=box.scrollLeft;box.replaceChildren();quickButtons.clear();
     for(const s of sessions){
-      const button=el("button","quick-tab",el("span","dot"),el("span","ag "+agentOf(s),AGENTS[agentOf(s)].glyph),el("span","label",s.name),el("span","bell"));
+      const button=el("button","quick-tab",el("span","dot"),agentIcon(s),el("span","label",s.name),el("span","bell"));
       button.type="button";button.setAttribute("aria-label",tr("Открыть сессию ")+s.name);
       button.onclick=()=>select(s.name);box.append(button);quickButtons.set(s.name,button);
     }
@@ -696,7 +711,8 @@ function renderTabs(){
     const t=el("div","tab"+(s.name===active?" on":""));
     const dot=el("span","dot "+st);dot.title=stateText(s);
     const ag=agentOf(s);
-    t.append(dot,el("span","ag "+ag,AGENTS[ag].glyph),el("div","t",el("div","n",s.name),...(isLocal(s)?[el("div","s session-source",agentLabel(s)+" · "+(lmData.profiles.find(p=>p.id===s.source.profile)?.name||s.source.label?.split(" · ")[1]||"LM Studio"))]:[]),el("div","s",shortPath(s.path))));
+    t.append(dot,agentIcon(s),el("div","t",el("div","n",s.name),...(isLocal(s)?[el("div","s session-source",agentLabel(s))]:[]),el("div","s",shortPath(s.path))));
+    t.title=isLocal(s)?agentLabel(s):s.name;
     if(attention.has(s.name))t.append(el("span","bell"));
     else if(i<10)t.append(el("span","k","⌥"+i));
     t.onclick=()=>select(s.name);
@@ -1208,7 +1224,7 @@ function integSummary(){
   head.title=integOpen?tr("Свернуть"):tr("Лимиты и аккаунты");
   for(const a of["claude","codex","kimi"]){
     const st=lastAg[a]||{},u=usageData[a],sum=el("span","sum");
-    const g=el("span","ag "+a,AGENTS[a].glyph);sum.append(g);
+    const g=agentIcon({agent:a});sum.append(g);
     if(!st.installed||!st.logged_in){sum.append(el("span","dim",st.installed?tr("войти"):tr("нет")))}
     else{
       const w=u&&(u.windows||[]).find(x=>x.period==="month")||u&&(u.windows||[]).find(x=>x.secs>=86400)||(u&&(u.windows||[])[0]);
@@ -1239,13 +1255,28 @@ function renderInteg(){
   if($("settings_dlg").open&&!$("settings_dlg").contains(document.activeElement))renderHub();
 }
 function localUsage(profile){
-  const sample=profile.performance||{},box=el("div","iblk local-usage",el("div","provider-head",profile.name));
-  box.append(el("div","local-caption",sample.source==="session"?tr("Последний ответ"):sample.source==="benchmark"?tr("Тест скорости"):tr("Без лимитов")));
-  const stats=el("div","local-stats");
-  if(Number.isFinite(sample.tokens_per_second))stats.append(el("span","",sample.tokens_per_second.toFixed(1),el("small","","tok/s")));
-  if(Number.isFinite(sample.time_to_first_token_seconds))stats.append(el("span","",sample.time_to_first_token_seconds.toFixed(2),el("small","","s TTFT")));
-  box.append(stats);
-  if(sample.model){const summary=el("summary","",sample.model);summary.title=sample.model;box.append(el("details","local-model",summary,el("div","",sample.model)))}
+  const activity=profile.activity||[],live=activity[0],sample=profile.performance||{};
+  const box=el("div","iblk local-usage",el("div","provider-head",profile.name));
+  const labels={waiting:"Ожидание первого токена",thinking:"Модель рассуждает",tool:"Готовит вызов инструмента",generating:"Генерирует ответ"};
+  const caption=el("div","local-caption",tr(live?labels[live.phase]||labels.waiting:sample.source==="session"?"Последний ответ":sample.source==="benchmark"?"Тест скорости":"Без лимитов"));
+  if(live){caption.prepend(el("span","local-pulse","✦ "));box.setAttribute("aria-busy","true")}
+  box.append(caption);
+  function statsFor(m){
+    const stats=el("div","local-stats");stats.style.flexWrap="wrap";
+    if(Number.isFinite(m.tokens_per_second))stats.append(el("span","",m.tokens_per_second.toFixed(1),el("small","","tok/s")));
+    if(Number.isFinite(m.output_tokens))stats.append(el("span","",String(m.output_tokens),el("small","",tr("токенов"))));
+    if(Number.isFinite(m.time_to_first_token_seconds))stats.append(el("span","",m.time_to_first_token_seconds.toFixed(1),el("small","","s TTFT")));
+    if(!stats.childNodes.length&&!live)stats.append(el("small","",tr("Сервер не передал счётчик токенов")));
+    return stats;
+  }
+  if(live){
+    box.append(el("div","local-stats",Math.floor(live.request_time_seconds||0)+" s",el("small","",live.chunks?live.chunks+" "+tr("фрагментов получено"):tr("Запрос отправлен · ждём модель"))));
+    if(activity.length>1)box.append(el("div","local-caption",tr("Активных запросов")+": "+activity.length));
+    box.append(statsFor(live));
+    if(sample.source)box.append(el("div","local-caption",tr("Последний ответ")),statsFor(sample));
+  }else box.append(statsFor(sample));
+  const model=live?.model||sample.model;
+  if(model){const summary=el("summary","",model);summary.title=model;box.append(el("details","local-model",summary,el("div","",model)))}
   return box;
 }
 let hubSection="agents",lmData={profiles:[],discovery:{}},lmTimer=null,returnToNew=false;
@@ -1546,7 +1577,7 @@ loadMetrics();setInterval(loadMetrics,5000);
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)loadMetrics()});
 
 checkGithubFoot(true);setInterval(checkGithubFoot,5000);
-loadUsage();setInterval(loadUsage,60000);loadLM();setInterval(()=>{if(!document.hidden&&!$("settings_dlg").open)loadLM().then(renderInteg)},15000);
+loadUsage();setInterval(loadUsage,60000);loadLM().then(renderInteg);setInterval(()=>{if(!document.hidden&&!$("settings_dlg").open)loadLM(false).then(renderInteg)},1000);
 loadServer();setInterval(loadServer,3600000);
 loadVersion();
 loadIntegrations();

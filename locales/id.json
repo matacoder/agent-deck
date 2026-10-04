@@ -346,6 +346,15 @@
     "Проверка завершена": "Pemeriksaan selesai",
     "Тест скорости": "Tes kecepatan",
     "⚙ Настройки": "⚙ Pengaturan",
-    "локальная модель": "model lokal"
+    "локальная модель": "model lokal",
+    "Ожидание первого токена": "Menunggu token pertama",
+    "Модель рассуждает": "Model sedang menalar",
+    "Готовит вызов инструмента": "Menyiapkan panggilan alat",
+    "Генерирует ответ": "Menghasilkan jawaban",
+    "токенов": "token",
+    "Сервер не передал счётчик токенов": "Server tidak memberikan jumlah token",
+    "фрагментов получено": "fragmen diterima",
+    "Запрос отправлен · ждём модель": "Permintaan terkirim · menunggu model",
+    "Активных запросов": "Permintaan aktif"
   }
 }
