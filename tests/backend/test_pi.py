@@ -61,6 +61,9 @@ class PiLaunchTests(unittest.TestCase):
         file.write_text(json.dumps({'type': 'session', 'id': SID, 'cwd': self.tmp})+'\n')
         args = self.launch(resume=True, cwd=self.tmp)[1]
         self.assertEqual(args[args.index('--session')+1], str(file))
+        alias = self.directory/'project-alias'
+        alias.symlink_to(self.tmp, target_is_directory=True)
+        self.assertEqual(self.launch(resume=True, cwd=str(alias))[1], args)
         with self.assertRaises(ValueError): self.launch(resume=True, cwd='/different-project')
         file.unlink(); file.symlink_to(self.directory/'lmstudio.json')
         with self.assertRaises(ValueError): self.launch(resume=True, cwd=self.tmp)

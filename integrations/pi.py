@@ -22,7 +22,9 @@ def session_file(directory, sid, cwd):
             raise ValueError('Pi conversation must not be a symlink')
         with path.open() as stream:
             header = json.loads(stream.readline(65536))
-        if header.get('type') == 'session' and header.get('id') == sid and header.get('cwd') == str(Path(cwd).resolve()):
+        if (isinstance(header, dict) and header.get('type') == 'session' and header.get('id') == sid
+                and isinstance(header.get('cwd'), str)
+                and Path(header['cwd']).resolve() == Path(cwd).resolve()):
             matches.append(path)
     if len(matches) != 1:
         raise ValueError('Exact Pi conversation not found for this project')
