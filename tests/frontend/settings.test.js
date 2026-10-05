@@ -123,3 +123,15 @@ test('HTTP clipboard fallback stays inside the active modal and cleans up its te
  expect(execCopy('Exact\ntext',document)).toBe(true);expect(document.querySelector('textarea')).toBeNull();
  delete document.execCommand;
 });
+
+test('automatic update toggle keeps its compact width beside readable text',()=>{
+ document.body.innerHTML=fs.readFileSync(path.resolve(__dirname,'../../frontend/index.html'),'utf8');
+ const style=document.createElement('style');style.textContent=fs.readFileSync(path.resolve(__dirname,'../../frontend/style.css'),'utf8');document.head.append(style);
+ try{
+  const checkbox=document.querySelector('#auto_update_enabled');
+  expect(checkbox.type).toBe('checkbox');expect(checkbox.closest('label').textContent).toContain('Автоматически обновлять Agent Deck');
+  expect(getComputedStyle(checkbox).width).toBe('36px');expect(getComputedStyle(checkbox).height).toBe('21px');
+  expect(getComputedStyle(checkbox.closest('label')).display).toBe('flex');
+  expect(getComputedStyle(document.querySelector('#project_directory')).width).toBe('100%');
+ }finally{style.remove()}
+});

@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.2.1 — 2026-10-05
+
+- Fix automatic-update switch sizing: full-width field styles exclude checkboxes and radios; toggle labels retain readable width.
+
 ## 1.2.0 — 2026-10-05
 
 - Enable automatic stable-release updates for installed Linux/macOS panels with a settings toggle, 30-minute checks, single-flight installation and rollback.
