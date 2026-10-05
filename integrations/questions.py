@@ -88,6 +88,28 @@ def parse_question(session, agent, instance, screen):
     return Question(session, agent, instance, title[:1600], options, marked[0], progress)
 
 
+def transcript_model(path, agent):
+    """Model of the latest turn, so a /model switch shows up without asking the agent."""
+    model = None
+    with Path(path).open('rb') as stream:
+        if Path(path).stat().st_size > 256 * 1024:
+            stream.seek(-256 * 1024, 2)
+            stream.readline()
+        for line in stream:
+            try:
+                record = json.loads(line)
+            except (ValueError, UnicodeError):
+                continue
+            if not isinstance(record, dict):
+                continue
+            kind, body = ('turn_context', record.get('payload')) if agent == 'codex' else ('assistant', record.get('message'))
+            value = body.get('model') if record.get('type') == kind and isinstance(body, dict) else None
+            # Claude marks locally generated error turns as <synthetic>.
+            if isinstance(value, str) and 0 < len(value) <= 120 and value.isprintable() and not value.startswith('<'):
+                model = value
+    return model
+
+
 def transcript_questions(path, session, agent, instance):
     """Read only pending question tools from the agent's own conversation, not its output."""
     pending = {}

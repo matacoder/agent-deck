@@ -20,6 +20,7 @@ after a reboot.
 - Claude Code, Codex, Claude through Kimi, native Kimi Code or a plain terminal per tab; restart an agent keeping the conversation.
 - Pick a GitHub repo and start working; optional git worktree per session (one branch per agent).
 - Claude / Codex subscription limits with a pace forecast; Kimi usage windows and reset times.
+- Under the message field: the running agent and model (including after `/model`), remaining quota and today's plan, so limits stay visible on phones.
 - Server CPU/RAM indicators beside the message composer.
 - Phone friendly: home-screen app, message box, question controls and file attachments up to 200 MB.
 - One Settings hub for agents, model sources, GitHub/Telegram connections and application preferences.

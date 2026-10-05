@@ -355,6 +355,8 @@ def list_sessions(preview_name=None):
         except ValueError:
             pass
         if name == preview_name:
+            if model := session_model(agent, sid):
+                item["model"] = model
             preview_ansi = tmux("capture-pane", "-p", "-e", "-J", "-t", f"={sname}:", "-S", "-2000", check=False)
             preview = re.sub(r"\x1b\[[0-?]*[ -/]*[@-~]", "", preview_ansi).rstrip().splitlines()
             item.update(preview="\n".join(preview[-2000:]), preview_ansi=preview_ansi)
@@ -1165,6 +1167,43 @@ def scan_questions():
 
 
 transcript_paths = {}
+transcript_models = {}
+transcript_models_lock = threading.Lock()
+
+
+def transcript_path(agent, sid):
+    key = (agent, sid)
+    path = transcript_paths.get(key)
+    if not path:
+        from pathlib import Path
+        root = Path(os.path.expanduser('~/.codex/sessions' if agent == 'codex' else '~/.claude/projects'))
+        path = next(root.rglob('*' + sid + '*.jsonl'), None)
+        if path:
+            transcript_paths[key] = path
+    return path
+
+
+def session_model(agent, sid):
+    """Model of the latest turn; re-read only when the transcript changes."""
+    if agent not in ('codex', 'claude') or not valid_sid(sid):
+        return None
+    try:
+        from integrations.questions import transcript_model
+        path = transcript_path(agent, sid)
+        if not path:
+            return None
+        stat = path.stat()
+        with transcript_models_lock:
+            cached = transcript_models.get(path)
+        if cached and cached[0] == (stat.st_mtime_ns, stat.st_size):
+            return cached[1]
+        # A huge last turn can push the model record out of the tail; keep the previous answer.
+        model = transcript_model(path, agent) or (cached[1] if cached else None)
+        with transcript_models_lock:
+            transcript_models[path] = ((stat.st_mtime_ns, stat.st_size), model)
+        return model
+    except (ImportError, OSError, ValueError):
+        return None
 
 
 def pending_questions(name):
@@ -1172,15 +1211,9 @@ def pending_questions(name):
     sid = opt(name, '@cc_sid')
     if agent not in ('codex', 'claude', 'claude-kimi') or not valid_sid(sid):
         return []
-    key = (agent, sid)
-    path = transcript_paths.get(key)
+    path = transcript_path(agent, sid)
     if not path:
-        from pathlib import Path
-        root = Path(os.path.expanduser('~/.codex/sessions' if agent == 'codex' else '~/.claude/projects'))
-        path = next(root.rglob('*' + sid + '*.jsonl'), None)
-        if not path:
-            return []
-        transcript_paths[key] = path
+        return []
     instance = tmux('display-message', '-p', '-t', f'={PREFIX}{name}:', '#{pane_id}:#{pane_pid}:#{@cc_sid}').strip()
     try:
         return transcript_questions(path, name, agent, instance)

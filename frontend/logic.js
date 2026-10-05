@@ -1,5 +1,7 @@
 function shortModel(model){
   const name=String(model||"").split("/").pop();
+  const claude=name.match(/^claude-([a-z]+)-(\d+)(?:-(\d))?(?:-\d{8})?(?:\[1m\])?$/i);
+  if(claude)return claude[1][0].toUpperCase()+claude[1].slice(1)+" "+claude[2]+(claude[3]?"."+claude[3]:"");
   const match=name.match(/^([a-z][a-z0-9.]*)[-_].*?([0-9]+(?:\.[0-9]+)?[bm])(?:[-_]|$)/i);
   if(match)return match[1][0].toUpperCase()+match[1].slice(1)+" "+match[2].toUpperCase();
   return name.length>30?name.slice(0,27)+"…":name;

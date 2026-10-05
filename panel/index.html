@@ -289,7 +289,12 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
   #pre{font-size:13px;line-height:1.5;padding:12px}
   .composer{padding-top:10px}
   .keys{gap:4px}
-  .keys:not(.expanded) .key-extra{display:none}
+  /* One row filled to the screen edge; fitKeys() hides what does not fit and "…" reveals it. */
+  .keys:not(.expanded){flex-wrap:nowrap;overflow:hidden}
+  .keys:not(.expanded) .key-overflow{display:none!important}
+  .keys #b_keymore{order:1;flex:none}
+  .keys #b_keymore.all-fit{display:none!important}
+  .keys .key{flex:none}
   .keys .key-primary{min-width:36px;padding:0 6px}
   .keyboard-hide{width:36px;padding:0}
   .seg{flex:none}
@@ -375,7 +380,7 @@ dialog{box-shadow:0 24px 80px #0006;border-color:#ffffff12;border-radius:16px}
 .quota-strip{display:grid;grid-template-columns:22px 44px 1fr;gap:8px;align-items:center;height:30px;padding:0 6px;font-size:12px;font-variant-numeric:tabular-nums}.quota-percent{font-weight:600}.quota-reset{text-align:right;white-space:nowrap;color:var(--mut);font-size:11px}
 .compact-local{padding:6px;margin-top:4px;border-top:1px solid var(--bd);min-width:0}.compact-local .local-model{margin:0;font-size:11px}.compact-local .local-model summary{display:flex;align-items:center;gap:8px;padding:0;list-style:none}.compact-local .local-model summary::-webkit-details-marker{display:none}.local-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--fg);font-weight:500}.compact-local .local-model p{margin:0 0 6px;overflow-wrap:anywhere}.local-live-line{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-top:4px;min-height:18px;font-size:10px;font-variant-numeric:tabular-nums;white-space:nowrap}.local-state{color:var(--mut);overflow:hidden;text-overflow:ellipsis}.local-rate{flex:none;color:var(--fg)}.compact-local .local-pulse{animation:local-opacity 1.4s ease-in-out infinite}@keyframes local-opacity{50%{opacity:.5}}@media(prefers-reduced-motion:reduce){.compact-local .local-pulse{animation:none}}
 
-#send_state .local-live-line{display:inline-flex;margin:0;font-size:11px;gap:10px}#send_state .composer-model{margin-right:8px}iframe[inert]{pointer-events:none}
+#send_state .local-live-line{display:inline-flex;margin:0;font-size:11px;gap:10px}#send_state .composer-model{margin-right:8px}#send_state .session-status{display:inline-flex;align-items:baseline;gap:8px;font-size:11px;font-variant-numeric:tabular-nums;white-space:nowrap}#send_state .session-status .composer-model{margin-right:0;overflow:hidden;text-overflow:ellipsis}#send_state .session-status .quota-values{display:inline-flex;gap:6px}iframe[inert]{pointer-events:none}
 
 .quota-strip{grid-template-columns:22px minmax(88px,auto) 1fr}.quota-values{display:flex;align-items:baseline;gap:8px;white-space:nowrap}.quota-plan{font-size:11px;color:var(--mut);font-weight:400}
 
@@ -609,6 +614,8 @@ dialog{box-shadow:0 24px 80px #0006;border-color:#ffffff12;border-radius:16px}
 <script>
 function shortModel(model){
   const name=String(model||"").split("/").pop();
+  const claude=name.match(/^claude-([a-z]+)-(\d+)(?:-(\d))?(?:-\d{8})?(?:\[1m\])?$/i);
+  if(claude)return claude[1][0].toUpperCase()+claude[1].slice(1)+" "+claude[2]+(claude[3]?"."+claude[3]:"");
   const match=name.match(/^([a-z][a-z0-9.]*)[-_].*?([0-9]+(?:\.[0-9]+)?[bm])(?:[-_]|$)/i);
   if(match)return match[1][0].toUpperCase()+match[1].slice(1)+" "+match[2].toUpperCase();
   return name.length>30?name.slice(0,27)+"…":name;
@@ -943,7 +950,7 @@ function show(){
   $("screen").classList.toggle("on",!!s&&m==="screen");
   if(s&&m==="term"){const f=frameFor(active);f.classList.add("on");f.inert=isLocal(s)&&!s.running;if(!isMobile()&&!f.inert)setTimeout(()=>{try{f.contentWindow.focus();f.contentWindow.term&&f.contentWindow.term.focus()}catch(e){}},30)}
   if(s&&m==="screen")updateScreen(s,true);
-  updateLink();
+  updateLink();fitKeys();
 }
 function reconnectTerminal(){
   if(!active)return;
@@ -1308,7 +1315,12 @@ function renderSendState(){
       const metrics=localUsage({...profile,activity:(profile.activity||[]).filter(a=>!a.binding||a.binding===session.source.binding),performance:profile.measurements?.session?.[session.source.model]||profile.performance});
       d.replaceChildren(el("span","composer-model",shortModel(session.source.model)),metrics.querySelector(".local-live-line"));
     }else d.textContent=shortModel(session.source.model);
-  }else d.textContent=status?status.text:(isMobile()?tr("Enter ↵ · ↑ отправить"):tr("Enter отправить · ⇧Enter ↵"));
+  }else{
+    const line=session&&(!status||status.phase==="success")?sessionStatus(session):null;
+    // The status is live for screen readers; re-rendering identical text every second would be re-announced.
+    if(line){if(d.textContent!==line.textContent||d.firstElementChild?.title!==line.title)d.replaceChildren(line)}
+    else d.textContent=status?status.text:(isMobile()?tr("Enter ↵ · ↑ отправить"):tr("Enter отправить · ⇧Enter ↵"));
+  }
   d.classList.toggle("error",Boolean(status&&status.error));
   d.classList.toggle("pending",Boolean(status&&status.phase==="pending"));
   d.classList.toggle("success",Boolean(status&&status.phase==="success"));
@@ -1337,7 +1349,17 @@ async function send(){
 $("session_keys").addEventListener("pointerdown",e=>{if(e.target.closest("button"))e.preventDefault()});
 function key(k){if(active&&!sending&&!uploading&&!panelUpdating)post("/api/send",{name:active,key:k})}
 async function logout(){try{stashDrafts()}catch(e){}await fetch("/logout",{method:"POST"});location.href="/login"}
-function toggleKeys(){const expanded=$("keys").classList.toggle("expanded");$("b_keymore").setAttribute("aria-expanded",String(expanded))}
+function toggleKeys(){const expanded=$("keys").classList.toggle("expanded");$("b_keymore").setAttribute("aria-expanded",String(expanded));fitKeys()}
+function fitKeys(){
+  const box=$("keys"),more=$("b_keymore"),keys=[...box.children].filter(k=>k!==more);
+  for(const k of keys)k.classList.remove("key-overflow");
+  more.classList.remove("all-fit");
+  if(!isMobile()||box.classList.contains("expanded")||!box.clientWidth)return;
+  if(box.scrollWidth<=box.clientWidth){more.classList.add("all-fit");return}
+  // Hide from the end so the answer keys (↑ ↓ ⏎) stay reachable on the narrowest screens.
+  for(const k of keys.reverse()){if(box.scrollWidth<=box.clientWidth)break;if(k.offsetParent)k.classList.add("key-overflow")}
+}
+if(window.ResizeObserver)new ResizeObserver(()=>fitKeys()).observe($("keys"));
 function hideKeyboard(){
   const focused=document.activeElement;
   if(focused&&typeof focused.blur==="function")focused.blur();
@@ -1460,19 +1482,33 @@ function integSummary(){
   head.append(gh,el("span","chev",integOpen?"▾":"▸"));
   return head;
 }
+function quotaValues(w){
+  const percent=Number.isFinite(w?.percent)?Math.round(Math.max(0,Math.min(100,100-w.percent))):null,plan=plannedRemaining(w,now());
+  const remaining=el("span","quota-percent "+quotaTone(percent,plan),percent===null?"—":percent+"%");remaining.title=tr("Остаток");
+  const target=el("span","quota-plan",plan===null?"—":plan+"%");target.title=tr("По плану к концу дня");
+  target.setAttribute("aria-label",target.title+": "+target.textContent);
+  return el("span","quota-values",remaining,target);
+}
+const QUOTA_OF={claude:"claude",codex:"codex","claude-kimi":"kimi",kimi:"kimi"};
+// Mobile hides the sidebar quotas, so the composer shows what runs here and how much quota is left.
+function sessionStatus(session){
+  const agent=agentOf(session),quota=QUOTA_OF[agent];
+  if(!quota||!session.running)return null;
+  const model=session.source?.model||session.model,w=primaryQuota(usageData[quota]);
+  const line=el("span","session-status",el("span","composer-model",AGENTS[agent].label+(model?" · "+shortModel(model):"")));
+  line.title=AGENTS[agent].label+(model?" · "+model:"")+(w?" · "+tr("Остаток")+" / "+tr("По плану к концу дня")+" · "+fmtReset(w.resets_at):"");
+  if(w)line.append(quotaValues(w),el("span","quota-reset",compactReset(w.resets_at)));
+  return line;
+}
 function renderInteg(){
   const head=el("div","quota-heading",el("span","",tr("Остаток")),el("span","quota-heading-plan",tr("План")));
   const gh=el("span","quota-github");gh.innerHTML=GH_ICON;gh.title=ghLogin?"GitHub · "+ghLogin:tr("GitHub не подключён");gh.append(el("span",ghLogin?"good":"dim",ghLogin?"✓":"—"));head.append(gh);
   const rows=[head];
   for(const a of ["claude","codex","kimi"]){
     const u=usageData[a],w=primaryQuota(u),row=el("div","quota-strip",agentIcon({agent:a}));
-    const percent=Number.isFinite(w?.percent)?Math.round(Math.max(0,Math.min(100,100-w.percent))):null,plan=plannedRemaining(w,now());
     row.title=AGENTS[a].label+" · "+(w?tr(w.label||"")+" · "+fmtReset(w.resets_at):u?.error||tr("Нет данных"))+(u?.stale?" · "+tr("⚠ данные устарели"):"");
     row.setAttribute("aria-label",row.title);
-    const remaining=el("span","quota-percent "+quotaTone(percent,plan),percent===null?"—":percent+"%");remaining.title=tr("Остаток");
-    const target=el("span","quota-plan",plan===null?"—":plan+"%");target.title=tr("По плану к концу дня");
-    target.setAttribute("aria-label",target.title+": "+target.textContent);
-    row.append(el("span","quota-values",remaining,target),el("span","quota-reset",w?compactReset(w.resets_at):"—"));
+    row.append(quotaValues(w),el("span","quota-reset",w?compactReset(w.resets_at):"—"));
     rows.push(row);
   }
   for(const p of lmData.profiles||[])rows.push(localUsage(p));

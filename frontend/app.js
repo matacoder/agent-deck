@@ -222,7 +222,7 @@ function show(){
   $("screen").classList.toggle("on",!!s&&m==="screen");
   if(s&&m==="term"){const f=frameFor(active);f.classList.add("on");f.inert=isLocal(s)&&!s.running;if(!isMobile()&&!f.inert)setTimeout(()=>{try{f.contentWindow.focus();f.contentWindow.term&&f.contentWindow.term.focus()}catch(e){}},30)}
   if(s&&m==="screen")updateScreen(s,true);
-  updateLink();
+  updateLink();fitKeys();
 }
 function reconnectTerminal(){
   if(!active)return;
@@ -587,7 +587,12 @@ function renderSendState(){
       const metrics=localUsage({...profile,activity:(profile.activity||[]).filter(a=>!a.binding||a.binding===session.source.binding),performance:profile.measurements?.session?.[session.source.model]||profile.performance});
       d.replaceChildren(el("span","composer-model",shortModel(session.source.model)),metrics.querySelector(".local-live-line"));
     }else d.textContent=shortModel(session.source.model);
-  }else d.textContent=status?status.text:(isMobile()?tr("Enter ↵ · ↑ отправить"):tr("Enter отправить · ⇧Enter ↵"));
+  }else{
+    const line=session&&(!status||status.phase==="success")?sessionStatus(session):null;
+    // The status is live for screen readers; re-rendering identical text every second would be re-announced.
+    if(line){if(d.textContent!==line.textContent||d.firstElementChild?.title!==line.title)d.replaceChildren(line)}
+    else d.textContent=status?status.text:(isMobile()?tr("Enter ↵ · ↑ отправить"):tr("Enter отправить · ⇧Enter ↵"));
+  }
   d.classList.toggle("error",Boolean(status&&status.error));
   d.classList.toggle("pending",Boolean(status&&status.phase==="pending"));
   d.classList.toggle("success",Boolean(status&&status.phase==="success"));
@@ -616,7 +621,17 @@ async function send(){
 $("session_keys").addEventListener("pointerdown",e=>{if(e.target.closest("button"))e.preventDefault()});
 function key(k){if(active&&!sending&&!uploading&&!panelUpdating)post("/api/send",{name:active,key:k})}
 async function logout(){try{stashDrafts()}catch(e){}await fetch("/logout",{method:"POST"});location.href="/login"}
-function toggleKeys(){const expanded=$("keys").classList.toggle("expanded");$("b_keymore").setAttribute("aria-expanded",String(expanded))}
+function toggleKeys(){const expanded=$("keys").classList.toggle("expanded");$("b_keymore").setAttribute("aria-expanded",String(expanded));fitKeys()}
+function fitKeys(){
+  const box=$("keys"),more=$("b_keymore"),keys=[...box.children].filter(k=>k!==more);
+  for(const k of keys)k.classList.remove("key-overflow");
+  more.classList.remove("all-fit");
+  if(!isMobile()||box.classList.contains("expanded")||!box.clientWidth)return;
+  if(box.scrollWidth<=box.clientWidth){more.classList.add("all-fit");return}
+  // Hide from the end so the answer keys (↑ ↓ ⏎) stay reachable on the narrowest screens.
+  for(const k of keys.reverse()){if(box.scrollWidth<=box.clientWidth)break;if(k.offsetParent)k.classList.add("key-overflow")}
+}
+if(window.ResizeObserver)new ResizeObserver(()=>fitKeys()).observe($("keys"));
 function hideKeyboard(){
   const focused=document.activeElement;
   if(focused&&typeof focused.blur==="function")focused.blur();
@@ -739,19 +754,33 @@ function integSummary(){
   head.append(gh,el("span","chev",integOpen?"▾":"▸"));
   return head;
 }
+function quotaValues(w){
+  const percent=Number.isFinite(w?.percent)?Math.round(Math.max(0,Math.min(100,100-w.percent))):null,plan=plannedRemaining(w,now());
+  const remaining=el("span","quota-percent "+quotaTone(percent,plan),percent===null?"—":percent+"%");remaining.title=tr("Остаток");
+  const target=el("span","quota-plan",plan===null?"—":plan+"%");target.title=tr("По плану к концу дня");
+  target.setAttribute("aria-label",target.title+": "+target.textContent);
+  return el("span","quota-values",remaining,target);
+}
+const QUOTA_OF={claude:"claude",codex:"codex","claude-kimi":"kimi",kimi:"kimi"};
+// Mobile hides the sidebar quotas, so the composer shows what runs here and how much quota is left.
+function sessionStatus(session){
+  const agent=agentOf(session),quota=QUOTA_OF[agent];
+  if(!quota||!session.running)return null;
+  const model=session.source?.model||session.model,w=primaryQuota(usageData[quota]);
+  const line=el("span","session-status",el("span","composer-model",AGENTS[agent].label+(model?" · "+shortModel(model):"")));
+  line.title=AGENTS[agent].label+(model?" · "+model:"")+(w?" · "+tr("Остаток")+" / "+tr("По плану к концу дня")+" · "+fmtReset(w.resets_at):"");
+  if(w)line.append(quotaValues(w),el("span","quota-reset",compactReset(w.resets_at)));
+  return line;
+}
 function renderInteg(){
   const head=el("div","quota-heading",el("span","",tr("Остаток")),el("span","quota-heading-plan",tr("План")));
   const gh=el("span","quota-github");gh.innerHTML=GH_ICON;gh.title=ghLogin?"GitHub · "+ghLogin:tr("GitHub не подключён");gh.append(el("span",ghLogin?"good":"dim",ghLogin?"✓":"—"));head.append(gh);
   const rows=[head];
   for(const a of ["claude","codex","kimi"]){
     const u=usageData[a],w=primaryQuota(u),row=el("div","quota-strip",agentIcon({agent:a}));
-    const percent=Number.isFinite(w?.percent)?Math.round(Math.max(0,Math.min(100,100-w.percent))):null,plan=plannedRemaining(w,now());
     row.title=AGENTS[a].label+" · "+(w?tr(w.label||"")+" · "+fmtReset(w.resets_at):u?.error||tr("Нет данных"))+(u?.stale?" · "+tr("⚠ данные устарели"):"");
     row.setAttribute("aria-label",row.title);
-    const remaining=el("span","quota-percent "+quotaTone(percent,plan),percent===null?"—":percent+"%");remaining.title=tr("Остаток");
-    const target=el("span","quota-plan",plan===null?"—":plan+"%");target.title=tr("По плану к концу дня");
-    target.setAttribute("aria-label",target.title+": "+target.textContent);
-    row.append(el("span","quota-values",remaining,target),el("span","quota-reset",w?compactReset(w.resets_at):"—"));
+    row.append(quotaValues(w),el("span","quota-reset",w?compactReset(w.resets_at):"—"));
     rows.push(row);
   }
   for(const p of lmData.profiles||[])rows.push(localUsage(p));

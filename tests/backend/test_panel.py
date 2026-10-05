@@ -1,3 +1,4 @@
+import json
 import base64
 from pathlib import Path
 import tempfile
@@ -185,6 +186,27 @@ class SessionTests(PanelCase):
         self.assertEqual(sessions[0]["group"], "repo")
         self.assertEqual(sessions[0]["preview_ansi"], capture)
         self.assertEqual(sessions[0]["preview"].splitlines(), [str(i) for i in range(10, 2010)])
+
+    def test_only_the_previewed_session_reports_its_transcript_model_and_reads_change_only(self):
+        sid = "11111111-1111-4111-8111-111111111111"
+        folder = self.home / ".claude/projects/-repo"
+        folder.mkdir(parents=True)
+        path = folder / (sid + ".jsonl")
+        path.write_text(json.dumps({"type": "assistant", "message": {"model": "claude-opus-5-5"}}) + "\n")
+        line = f"cc-NAME\t1\t0\t/tmp\tclaude\t2\tclaude\t{sid}\t0\t\t\n"
+        self.panel.tmux = Mock(side_effect=lambda command, *args, **kwargs: (line.replace("NAME", "demo") + line.replace("NAME", "other")) if command == "list-sessions" else "")
+        from integrations import questions
+        with patch.object(questions, "transcript_model", wraps=questions.transcript_model) as read:
+            sessions = {s["name"]: s for s in self.panel.list_sessions("demo")}
+            self.assertEqual(sessions["demo"]["model"], "claude-opus-5-5")
+            self.assertNotIn("model", sessions["other"])
+            self.panel.list_sessions("demo")
+            self.assertEqual(read.call_count, 1)
+            with path.open("a") as stream:
+                stream.write(json.dumps({"type": "assistant", "message": {"model": "claude-sonnet-5-5"}}) + "\n")
+            self.assertEqual(self.panel.list_sessions("demo")[0]["model"], "claude-sonnet-5-5")
+        self.assertIsNone(self.panel.session_model("shell", sid))
+        self.assertIsNone(self.panel.session_model("claude", "../escape"))
 
     def test_project_names_and_paths_cannot_escape_home(self):
         for project in ("../escape", "/tmp", "reserved.worktrees", "a..b"):

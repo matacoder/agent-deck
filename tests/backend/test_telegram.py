@@ -7,7 +7,7 @@ from unittest.mock import Mock, patch
 
 from support import PanelCase, ROOT
 sys.path.insert(0, str(ROOT))
-from integrations.questions import parse_question, transcript_questions, matches_screen, QuestionNotReady
+from integrations.questions import parse_question, transcript_questions, transcript_model, matches_screen, QuestionNotReady
 from integrations.store import Store
 from integrations.telegram import API, Telegram, TelegramError
 
@@ -97,6 +97,21 @@ enter submit   ctrl+] skip   shift+→ main prompt
         self.assertEqual(self.transcript([call,result],'claude'),[])
         call['message']['content'][0]['input']['questions'][0]['multiSelect']=True
         self.assertEqual(self.transcript([call],'claude'),[])
+
+    def test_transcript_model_follows_latest_turn_and_ignores_synthetic_and_other_records(self):
+        with tempfile.TemporaryDirectory(dir='/tmp') as directory:
+            path=Path(directory)/'session.jsonl'
+            def model(records,agent):
+                path.write_text('\n'.join(json.dumps(r) for r in records)+'\npartial unfinished record')
+                return transcript_model(path,agent)
+            opus={'type':'assistant','message':{'model':'claude-opus-5-5','content':[]}}
+            self.assertEqual(model([{'type':'assistant','message':{'model':'claude-sonnet-5-5'}},opus,
+                                    {'type':'assistant','message':{'model':'<synthetic>'}},{'type':'user','message':{'model':'spoofed'}}],'claude'),'claude-opus-5-5')
+            codex=[{'type':'turn_context','payload':{'model':'gpt-6.1'}},{'type':'turn_context','payload':{'model':'gpt-6.1-sol'}},
+                   {'type':'response_item','payload':{'model':'other'}}]
+            self.assertEqual(model(codex,'codex'),'gpt-6.1-sol')
+            self.assertIsNone(model([opus],'codex'))
+            self.assertIsNone(model([{'type':'assistant','message':{'model':'x'*121}}],'claude'))
 
     def test_structured_answer_matches_title_pane_options_and_progress(self):
         q=question()

@@ -5,6 +5,10 @@ test.each([
  ['models/qwen3.8-27b-turbo-fable','Qwen3.8 27B'],
  ['llama-3.1-8b-instruct','Llama 8B'],
  ['short-model','short-model'],
+ ['claude-opus-5-5','Opus 5.5'],
+ ['claude-sonnet-4-5-20250929','Sonnet 4.5'],
+ ['claude-fable-5-1[1m]','Fable 5.1'],
+ ['gpt-6.1-sol','gpt-6.1-sol'],
  ['', ''],
  ['abcdefghijklmnopqrstuvwxyz0123456789','abcdefghijklmnopqrstuvwxyz0…'],
 ])('shortens model %s', (raw,expected)=>expect(shortModel(raw)).toBe(expected));
