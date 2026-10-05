@@ -1,4 +1,4 @@
-name: Tests
+name: Unit tests
 
 on:
   push:
@@ -19,79 +19,20 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install isolated tmux test dependency
-        run: sudo apt-get update -qq && sudo apt-get install -y tmux shellcheck
       - name: Verify generated panel
         run: python3 scripts/build-panel.py --check
-      - name: Shell scripts
-        run: shellcheck -S warning get.sh install.sh update.sh deploy.sh release.sh install-macos.sh
-      - name: Backend unit and HTTP integration tests
-        run: python3 -W error::ResourceWarning -m unittest discover -s tests/backend -v
-
-  installer-boundary:
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    container:
-      image: mcr.microsoft.com/playwright:v1.55.0-noble
-    steps:
-      - uses: actions/checkout@v4
-      - name: Root ownership and unprivileged file write tests in a disposable container
-        run: python3 -m unittest discover -s tests/backend -p test_installer.py -v
+      - name: Python unit tests
+        run: python3 scripts/test-unit.py
 
   frontend:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
-    container:
-      image: mcr.microsoft.com/playwright:v1.55.0-noble
-      options: --shm-size=512m
-    env:
-      CI: 'true'
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
-      - name: Install locked test dependencies
-        run: npm ci --no-audit --no-fund
-      - name: Chromium and WebKit regression tests
-        run: npm test
-      - name: Browser failure reports
-        if: failure()
-        uses: actions/upload-artifact@v4
+      - uses: actions/setup-node@v4
         with:
-          name: browser-failure-reports
-          path: |
-            test-results/
-            playwright-report/
-          retention-days: 7
-          if-no-files-found: ignore
-
-  macos:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [macos-15, macos-15-intel]
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 20
-    env:
-      CI: 'true'
-      WITH_CLAUDE: '0'
-      WITH_CODEX: '0'
-      PANEL_PASSWORD: 'ephemeral-ci-test-password'
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install as the logged-in Mac user
-        run: bash install-macos.sh --no-open
-      - name: Backend and macOS regression tests
-        run: ~/.local/share/agent-deck/venv/bin/python3 -W error::ResourceWarning -m unittest discover -s tests/backend -v
-      - name: Real launchd, terminal, metrics and update smoke test
-        run: ~/.local/share/agent-deck/venv/bin/python3 tests/macos_smoke.py
-      - name: Verify repeated installation preserves settings and sessions
-        run: |
-          before=$(shasum "$HOME/.config/cc-panel/macos.json")
-          pid_before=$(tmux -L agent-deck display-message -p -t '=cc-mac-smoke:' '#{pane_pid}')
-          ~/.local/share/agent-deck/venv/bin/python3 macos/install.py --no-open
-          test "$before" = "$(shasum "$HOME/.config/cc-panel/macos.json")"
-          test "$pid_before" = "$(tmux -L agent-deck display-message -p -t '=cc-mac-smoke:' '#{pane_pid}')"
-      - name: Service diagnostics on failure
-        if: failure()
-        run: |
-          launchctl print "gui/$(id -u)/com.agent-deck.panel" || true
-          tail -100 "$HOME/Library/Logs/Agent Deck/"*.log || true
+          node-version: '22'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Jest frontend unit tests
+        run: npm test

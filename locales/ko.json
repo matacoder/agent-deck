@@ -359,6 +359,11 @@
     "Средняя скорость с учётом ожидания": "Average speed including first-token waiting time",
     "Остаток": "남은 한도",
     "По плану к концу дня": "오늘 종료 시 예상 잔여 한도",
-    "План": "계획"
+    "План": "계획",
+    "Папка проектов": "Project directory",
+    "Используется для новых сессий. Существующие сессии остаются в своих папках.": "Used for new sessions. Existing sessions keep their current directories.",
+    "Папка проектов сохранена": "Project directory saved",
+    "Переименовать": "Rename",
+    "Переименовать сессию": "Rename session"
   }
 }

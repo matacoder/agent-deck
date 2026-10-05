@@ -78,6 +78,11 @@ try:
 except ModuleNotFoundError:
     LMStudio = None
 
+from integrations.names import unique_name
+from integrations.preferences import ProjectDirectory
+project_directory = ProjectDirectory(os.path.expanduser('~'), PROJECTS)
+
+
 _lmstudio = None
 _model_relay = None
 _lm_lock = threading.RLock()
@@ -279,7 +284,7 @@ def token_valid(token):
         return False
     return hmac.compare_digest(sig, hmac.new(COOKIE_KEY, exp.encode(), hashlib.sha256).hexdigest())
 
-os.makedirs(PROJECTS, exist_ok=True)
+os.makedirs(project_directory.get(), exist_ok=True)
 
 
 def tmux(*args, check=True):
@@ -306,15 +311,16 @@ def list_sessions(preview_name=None):
     out = tmux("list-sessions", "-F", fmt, check=False)
     result = []
     for line in out.splitlines():
-        sname, created, attached, path, cmd, activity, agent, sid, skip, source = (line.split("\t") + [""] * 10)[:10]
+        sname, created, attached, path, cmd, activity, agent, sid, skip, source, title = (line.split("\t") + [""] * 11)[:11]
         if not sname.startswith(PREFIX):
             continue
         name = sname[len(PREFIX):]
-        rel = os.path.relpath(path, PROJECTS) if path.startswith(PROJECTS + os.sep) else path
+        root = project_directory.get()
+        rel = os.path.relpath(path, root) if path.startswith(root + os.sep) else path
         group = rel.split(os.sep)[0].removesuffix(".worktrees") if not rel.startswith("/") else "другое"
         agent = agent or "claude"
         item = {
-            "name": name, "created": int(created or 0), "attached": int(attached or 0),
+            "name": name, "title": title or name, "created": int(created or 0), "attached": int(attached or 0),
             "activity": int(activity or 0), "group": group, "agent": agent,
             "path": path, "running": is_running(agent, cmd), "command": cmd,
             "sid": sid or None, "skip": skip == "1",
@@ -449,7 +455,7 @@ def add_worktree(repo, project, name, branch):
         raise ValueError("неверное имя ветки")
     if not os.path.exists(os.path.join(repo, ".git")):
         raise ValueError(f"{project} не git-репозиторий: укажите Git URL или сделайте git init")
-    wt = os.path.join(PROJECTS, f"{project}.worktrees", name)
+    wt = os.path.join(project_directory.get(), f"{project}.worktrees", name)
     if os.path.exists(wt):
         return wt
     exists = subprocess.run(["git", "-C", repo, "rev-parse", "--verify", "--quiet", f"refs/heads/{branch}"],
@@ -474,7 +480,7 @@ def resolve_path(d, name):
     project = d.get("project") or name
     if not isinstance(project, str) or not PROJ_RE.fullmatch(project) or ".." in project or project.endswith(".worktrees"):
         raise ValueError("неверное имя проекта")
-    path = os.path.join(PROJECTS, project)
+    path = os.path.join(project_directory.get(), project)
     git = (d.get("git") or "").strip()
     if git and not os.path.exists(path):
         if not GIT_RE.match(git):
@@ -502,14 +508,21 @@ def create_session(name, path, agent, skip, sid=None, command=None, source=None)
         type_line(name, command)
 
 
+session_creation_lock = threading.Lock()
+
+
 def action_new(d):
+    with session_creation_lock:
+        return _action_new(d)
+
+
+def _action_new(d):
     name, agent = d.get("name", ""), d.get("agent") or "claude"
     if not isinstance(name, str) or not NAME_RE.fullmatch(name):
         raise ValueError("имя сессии: латиница, цифры, - и _, до 32 символов")
     if agent not in AGENTS:
         raise ValueError("неизвестный агент")
-    if session_exists(name):
-        raise ValueError(f"сессия {name} уже есть")
+    name = unique_name(name, session_exists, 32)
     path = resolve_path(d, name)
     skip = bool(d.get("skip")) and agent not in ("shell", "pi")
     sid = str(uuid.uuid4()) if agent in ("claude", "claude-kimi", "pi") else None
@@ -525,6 +538,20 @@ def action_new(d):
             if source.get('binding'):
                 _model_relay.bindings.remove(source['binding'])
             raise
+    return {"name": name}
+
+
+def action_rename(d):
+    name, title = d.get('name', ''), d.get('title', '')
+    if not isinstance(name, str) or not NAME_RE.fullmatch(name) or not session_exists(name):
+        raise ValueError('Session not found')
+    if not isinstance(title, str) or not title.strip() or len(title) > 100 or not title.isprintable():
+        raise ValueError('Invalid session title')
+    with session_creation_lock:
+        used = {(s.get('title') or s['name']).casefold() for s in list_sessions() if s['name'] != name}
+        title = unique_name(title.strip(), lambda value: value.casefold() in used, 100)
+        tmux('set-option', '-t', f'={PREFIX}{name}:', '@cc_title', title)
+    return {'name': name, 'title': title}
 
 
 def action_restart(d):
@@ -1038,6 +1065,8 @@ def usage():
 
 
 ACTIONS = {
+    'rename': action_rename,
+    'project_directory': lambda d: {'directory': project_directory.save(d.get('directory'))},
     'lm_save': action_lm_save,
     'lm_probe': lambda d: {'profile':model_service().probe(d.get('id'))},
     'lm_test': lambda d: model_service().test(d),
@@ -1381,8 +1410,10 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send_json(200, {"repos": github_repos("refresh=1" in self.path)})
             except (RuntimeError, subprocess.TimeoutExpired) as e:
                 return self.send_json(502, {"error": str(e)})
+        if self.path == "/api/project_directory":
+            return self.send_json(200, {"directory": project_directory.get()})
         if self.path == "/api/projects":
-            dirs = sorted(e.name for e in os.scandir(PROJECTS)
+            dirs = sorted(e.name for e in os.scandir(project_directory.get())
                           if e.is_dir() and not e.name.startswith(".") and not e.name.endswith(".worktrees"))
             return self.send_json(200, {"projects": dirs})
         self.send_json(404, {"error": "not found"})
@@ -1503,10 +1534,10 @@ def tmux_server_pid():
 
 def live_sessions():
     fmt = ("#{session_name}\t#{pane_current_path}\t#{pane_current_command}\t#{@cc_sid}\t#{@cc_skip}\t"
-           "#{session_created}\t#{@cc_agent}\t#{@cc_source}")
+           "#{session_created}\t#{@cc_agent}\t#{@cc_source}\t#{@cc_title}")
     live = {}
     for line in tmux("list-sessions", "-F", fmt, check=False).splitlines():
-        sname, path, cmd, sid, skip, created, agent, raw_source = (line.split("\t") + [""] * 8)[:8]
+        sname, path, cmd, sid, skip, created, agent, raw_source, title = (line.split("\t") + [""] * 9)[:9]
         agent = agent or "claude"
         try:
             source = json.loads(raw_source or "null")
@@ -1515,7 +1546,7 @@ def live_sessions():
         if sname.startswith(PREFIX):
             live[sname[len(PREFIX):]] = {"path": path, "sid": sid or None, "skip": skip == "1", "agent": agent,
                                          "running": is_running(agent, cmd) if agent != "shell" else False,
-                                         "created": int(created or 0), "source": source}
+                                         "created": int(created or 0), "source": source, "title": title or sname[len(PREFIX):]}
     return live
 
 
@@ -1567,6 +1598,8 @@ def restore_session(name, info):
         create_session(name, path, agent, skip, sid, resume)
     else:
         create_session(name, path, agent, skip, sid, resume, source)
+    if info.get('title'):
+        tmux('set-option', '-t', f'={PREFIX}{name}:', '@cc_title', info['title'])
     print(f"restored {name} ({agent}{', resumed' if resume else ', shell only'})", flush=True)
 
 

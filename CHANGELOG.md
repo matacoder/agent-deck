@@ -2,6 +2,24 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z`.
 
+## 1.0.7 — 2026-10-05
+
+- Automatically bind the macOS panel to its own connected Tailscale IPv4 address,
+  including when reinstalling an older localhost-only installation.
+- Detect both command-line and application-bundled Tailscale clients, fall back to
+  localhost when unavailable, and preserve explicit bind addresses and credentials.
+- Add a saved `--projects-dir` installation option, forwarded by the bootstrap,
+  so directories such as `~/dev` can be selected without editing configuration.
+- Change the project directory from Application settings, with immediate use for new
+  sessions and persistence across panel restarts and macOS reinstalls.
+- Keep mobile connection-name fields at a readable size and constrain settings
+  to the visible keyboard viewport. Add numeric suffixes to duplicate connection
+  and session names, and rename session labels without interrupting conversations.
+- Replace browser end-to-end and installation smoke jobs with Python unit tests
+  and Jest frontend unit tests.
+- Rerun the macOS installer to apply this network setting; panel-only updates do
+  not rewrite launchd configuration.
+
 ## 1.0.6 — 2026-10-04
 
 - Restart agents in a fresh tmux pane so terminal mouse reports and queued input

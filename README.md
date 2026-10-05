@@ -76,22 +76,34 @@ curl -fsSL https://raw.githubusercontent.com/matacoder/agent-deck/main/get.sh | 
 ```
 
 The installer sets up Homebrew if needed (follow its prompts), Python, tmux, ttyd,
-GitHub CLI, Claude Code and Codex, then opens `http://127.0.0.1:8790`.
+GitHub CLI, Claude Code and Codex, then opens the panel at the Mac’s Tailscale IPv4
+address when Tailscale is connected, or `http://127.0.0.1:8790` otherwise.
 It prints your panel login and password. Sign in to your own Claude/Codex accounts
 from the sidebar. Existing installations and agent credentials are reused.
 Homebrew may ask to install Apple's command-line tools on a fresh Mac.
 
 The panel starts when you log in to your Mac and runs as your user. It uses a separate
 `agent-deck` tmux server and preserves your `.tmux.conf` and other tmux sessions.
-It is local-only by default; Docker and Tailscale are not required. A sleeping or
+Without a connected Tailscale client it is local-only; Docker and Tailscale are not required. A sleeping or
 powered-off Mac cannot run agents or serve the panel.
 
 Run the same command to reinstall/update, or update the panel from its sidebar.
 Settings/password: `~/.config/cc-panel/macos.json`; logs: `~/Library/Logs/Agent Deck/`.
+To choose your project directory during installation (for example `~/dev`):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/matacoder/agent-deck/main/get.sh | bash -s -- --projects-dir "$HOME/dev"
+```
+
+The path is saved for future reinstalls. It can also be changed immediately in
+**Settings → Application → Project directory** without moving existing sessions. `PROJECTS_DIR` is also supported as an
+installation environment variable; `--projects-dir` takes precedence.
 To change the port, use `... | BIND_PORT=8791 bash`. Use `WITH_CLAUDE=0` or
 `WITH_CODEX=0` before `bash` to skip either agent. For phone access, install Tailscale
-separately and rerun with `BIND_HOST=<your Mac's Tailscale IPv4 address>`; the panel
-password is still required. Keep the Mac awake while using remote sessions.
+separately, connect it and rerun the installer; it automatically selects the Mac’s
+Tailscale IPv4 address, including for older localhost installations. The panel password
+is still required. Explicit `BIND_HOST` overrides are remembered; use
+`... | BIND_HOST=127.0.0.1 bash` to keep access local-only. Keep the Mac awake while using remote sessions.
 
 To stop autostart without deleting sessions or settings:
 

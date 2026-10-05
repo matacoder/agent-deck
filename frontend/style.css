@@ -383,3 +383,10 @@ dialog{box-shadow:0 24px 80px #0006;border-color:#ffffff12;border-radius:16px}
 .ag,.ihead .sum .ag{width:var(--icon-lg);height:var(--icon-lg);font-size:var(--icon-lg)}
 .ag svg,.ihead .sum>svg,.telegram-mark svg{width:var(--icon-lg);height:var(--icon-lg)}
 .quota-github svg,.server-metric svg{width:var(--icon-sm);height:var(--icon-sm)}
+
+@media(max-width:760px){
+  .settings-hub input:not([type=hidden]):not([type=checkbox]){font-size:16px}
+  #settings_dlg{top:var(--app-top);bottom:auto;height:var(--app-h);max-height:var(--app-h);overflow:hidden}
+  #settings_dlg>.settings-hub{height:100%;max-height:100%}
+  .hub-content{overscroll-behavior:contain;scroll-padding:16px}
+}

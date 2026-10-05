@@ -89,25 +89,17 @@ tmux sessions: name `cc-<name>`, options `@cc_agent` (claude\|codex\|shell),
 **Before any commit:**
 
 ```bash
-# Backend (Python 3.10+, tmux required)
-python3 -W error::ResourceWarning -m unittest discover -s tests/backend -v
-
-# Frontend (Node 18+)
 npm ci
-npx playwright install --with-deps chromium webkit   # one-time
-npm test
+python3 scripts/build-panel.py --check
+npm run test:all
 ```
 
-Or in one go: `npm run test:all`.
-
-Test rules:
-- All credentials, uploads, state, and secrets live in **tmpdir**. Never touch `~/.config/cc-panel/`.
-- tmux tests use a **private socket** (`-L`), not the production server.
-- External HTTP calls are **not allowed** in unit tests (mock or ephemeral loopback).
-- If you add a new endpoint or format — **add a test**. No test, no merge.
-- Regressions listed in `docs/REVIEW-FIXES.md` must stay green. Each row of that table is covered by a test.
-
-CI checks Python 3.10/3.12 and ShellCheck on `*.sh`.
+The active test suite is Python unit tests and Jest/jsdom frontend unit tests.
+Do not add browser E2E or macOS installation smoke jobs. Legacy integration and
+Playwright sources are retained for reference, excluded from normal tests and CI.
+All settings and secrets in tests must stay in temporary directories. Mock external
+commands and network calls. New endpoints and behavior require unit coverage.
+CI checks Python 3.10/3.12 and Jest on Node 22.
 
 ## 5. Release / Changelog
 

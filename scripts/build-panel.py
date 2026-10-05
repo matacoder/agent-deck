@@ -15,7 +15,10 @@ def main():
     for marker, name in (("__PANEL_STYLE__", "style.css"), ("__PANEL_SCRIPT__", "app.js")):
         if page.count(marker) != 1:
             raise SystemExit(f"Expected one {marker} in the panel template")
-        page = page.replace(marker, (source / name).read_text())
+        content = (source / name).read_text()
+        if name == "app.js":
+            content = (source / "logic.js").read_text() + (source / "settings.js").read_text() + content
+        page = page.replace(marker, content)
     target = ROOT / "panel/index.html"
     if args.check:
         if target.read_text() != page:

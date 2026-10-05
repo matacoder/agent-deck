@@ -33,6 +33,7 @@ __PANEL_STYLE__</style></head><body>
       <button class="act d-only agent-only" title="Перезапустить агента, продолжив разговор" onclick="restart('continue')">↻ Продолжить</button>
       <button class="act d-only agent-only" title="Перезапустить агента с новым разговором" onclick="restart('new')">✚ Новый</button>
       <button class="act d-only" title="Открыть терминал в новой вкладке" onclick="popout()">↗</button>
+      <button class="act d-only" onclick="openRename()">Переименовать</button>
       <button class="act dng d-only" title="Закрыть сессию" onclick="kill()">✕</button>
       <button class="iconbtn m-only" onclick="sheet(true)" aria-label="Действия"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg></button>
     </div>
@@ -87,6 +88,7 @@ __PANEL_STYLE__</style></head><body>
   <button onclick="sheet(false);popout()"><span class="i">↗</span>Терминал в новой вкладке</button>
   <button class="dng" onclick="sheet(false);kill()"><span class="i">✕</span>Закрыть сессию</button>
   <button onclick="refreshInterface()"><span class="i">↻</span>Обновить интерфейс</button>
+  <button onclick="sheet(false);openRename()">Переименовать</button>
   <button onclick="sheet(false);openSettings()"><span class="i" aria-hidden="true">⚙</span>Настройки</button>
   <button id="s_update" onclick="updatePanel()" style="display:none"></button>
   <button id="s_drafts" onclick="showClosedDrafts()" style="display:none">Черновики закрытых сессий</button>
@@ -124,6 +126,7 @@ __PANEL_STYLE__</style></head><body>
   <div class="acts"><button type="button" onclick="$('dlg').close()">Отмена</button><button class="pri" id="n_go">Создать</button></div>
 </form></dialog>
 
+<dialog id="rename_dlg"><form class="dlg" onsubmit="event.preventDefault();saveSessionTitle()"><h3>Переименовать сессию</h3><label for="session_title">Название</label><input type="text" id="session_title" required maxlength="100"><div class="acts"><button type="button" onclick="$('rename_dlg').close()">Отмена</button><button class="pri" id="rename_save">Сохранить</button></div></form></dialog>
 <dialog id="settings_dlg"><div class="dlg settings-hub">
   <div class="hub-heading"><h3>Настройки</h3><button type="button" onclick="$('settings_dlg').close()" aria-label="Закрыть"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></div>
   <nav class="hub-nav" aria-label="Настройки">
@@ -147,7 +150,7 @@ __PANEL_STYLE__</style></head><body>
 </form></div>
 
       <details id="lm_editor"><summary>Добавить сервер</summary><form onsubmit="event.preventDefault();saveLM()">
-        <input type="hidden" id="lm_id"><label for="lm_name">Название</label><input id="lm_name" required maxlength="100">
+        <input type="hidden" id="lm_id"><label for="lm_name">Название</label><input type="text" id="lm_name" required maxlength="100">
         <label for="lm_url">Адрес сервера</label><input id="lm_url" type="url" required placeholder="http://100.64.0.1:1234">
         <label for="lm_key">API-ключ</label><input id="lm_key" type="password" autocomplete="new-password" placeholder="Вставьте ключ; пустое поле сохраняет текущий">
         <label class="chk"><input type="checkbox" id="lm_clear_key"><span>Удалить ключ</span></label>
@@ -181,6 +184,7 @@ __PANEL_STYLE__</style></head><body>
 </section>
     <section id="hub_app"><form class="language-settings" onsubmit="event.preventDefault();saveLanguage()"><label for="ui_language">Язык интерфейса</label><select id="ui_language"></select>
     <p>Язык сохраняется в этом браузере. Сообщения и вывод агентов не переводятся.</p><button class="pri">Применить</button></form>
+    <form class="hub-card" onsubmit="event.preventDefault();saveProjectDirectory()"><label for="project_directory">Папка проектов</label><input type="text" id="project_directory" autocomplete="off" autocapitalize="off" spellcheck="false" required><p>Используется для новых сессий. Существующие сессии остаются в своих папках.</p><div class="acts"><button class="pri" id="project_directory_save">Сохранить</button></div></form>
     <div class="hub-card"><h4>Agent Deck</h4><div id="hub_version"></div></div><div class="settings-account"><button type="button" onclick="logout()">Выйти</button></div></section>
   </div>
 </div></dialog>

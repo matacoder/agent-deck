@@ -7,6 +7,7 @@ import json
 import math
 from pathlib import Path
 import secrets
+from .names import unique_name
 import shutil
 import subprocess
 import threading
@@ -140,7 +141,9 @@ class LMStudio:
             identity = data.get('id') or secrets.token_hex(12)
             old = self.get(identity) if data.get('id') else {}
             p = old if old.get('url') == url else {'models': [], 'status': 'unchecked', 'error': '', 'performance': {}, 'measurements': {}}
-            p.update(id=identity, name=name.strip(), url=url, key='' if data.get('clear_key') else key or (old.get('key', '') if old.get('url') == url else ''))
+            used = {p['name'].casefold() for key, p in self.profiles.items() if key != identity}
+            name = unique_name(name.strip(), lambda candidate: candidate.casefold() in used, 100)
+            p.update(id=identity, name=name, url=url, key='' if data.get('clear_key') else key or (old.get('key', '') if old.get('url') == url else ''))
             self.profiles[identity] = p
             self.persist()
             return self.public(p)

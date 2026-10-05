@@ -14,7 +14,7 @@ if [ "$(uname -s)" = Darwin ]; then
     curl -fsSL "https://github.com/matacoder/agent-deck/archive/refs/tags/$mac_version.tar.gz" -o "$mac_stage/release.tar.gz"
     tar -xzf "$mac_stage/release.tar.gz" -C "$mac_stage" --strip-components=1
     [ -f "$mac_stage/install-macos.sh" ] || { echo "This release does not support macOS yet." >&2; exit 1; }
-    bash "$mac_stage/install-macos.sh"
+    bash "$mac_stage/install-macos.sh" "$@"
     exit
 fi
 # Keep this bootstrap check self-contained: never source code from an unchecked checkout.

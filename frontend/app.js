@@ -85,12 +85,6 @@ const AGENTS={claude:{label:"Claude",glyph:"✻",skip:"--dangerously-skip-permis
   shell:{label:tr("Терминал"),glyph:"$"}};
 const agentOf=s=>AGENTS[s&&s.agent]?s.agent:"claude";
 const isLocal=s=>s?.source?.kind==="lmstudio";
-function shortModel(model){
-  const name=String(model||"").split("/").pop();
-  const match=name.match(/^([a-z][a-z0-9.]*)[-_].*?([0-9]+(?:\.[0-9]+)?[bm])(?:[-_]|$)/i);
-  if(match)return match[1][0].toUpperCase()+match[1].slice(1)+" "+match[2].toUpperCase();
-  return name.length>30?name.slice(0,27)+"…":name;
-}
 const localComputer=s=>lmData.profiles.find(p=>p.id===s.source.profile)?.name||s.source.label?.split(" · ")[1]||"LM Studio";
 const agentLabel=s=>isLocal(s)?shortModel(s.source.model||tr("локальная модель"))+" · "+localComputer(s):AGENTS[agentOf(s)].label;
 function agentIcon(s){
@@ -133,12 +127,12 @@ if(active&&$("msg").value)messageDrafts.set(active,$("msg").value);
 let quickSignature=null,quickActive=null;
 const quickButtons=new Map();
 function renderQuickTabs(){
-  const box=$("quick_tabs"),signature=JSON.stringify(sessions.map(s=>[s.name,agentOf(s)]));
+  const box=$("quick_tabs"),signature=JSON.stringify(sessions.map(s=>[s.name,s.title,agentOf(s)]));
   if(signature!==quickSignature){
     const left=box.scrollLeft;box.replaceChildren();quickButtons.clear();
     for(const s of sessions){
-      const button=el("button","quick-tab",el("span","dot"),agentIcon(s),el("span","label",s.name),el("span","bell"));
-      button.type="button";button.setAttribute("aria-label",tr("Открыть сессию ")+s.name);
+      const button=el("button","quick-tab",el("span","dot"),agentIcon(s),el("span","label",sessionTitle(s)),el("span","bell"));
+      button.type="button";button.setAttribute("aria-label",tr("Открыть сессию ")+sessionTitle(s));
       button.onclick=()=>select(s.name);box.append(button);quickButtons.set(s.name,button);
     }
     box.scrollLeft=left;quickSignature=signature;
@@ -146,7 +140,7 @@ function renderQuickTabs(){
   document.body.classList.toggle("has-quick-tabs",sessions.length>0);
   for(const s of sessions){
     const button=quickButtons.get(s.name);button.classList.toggle("on",s.name===active);
-    button.setAttribute("aria-pressed",String(s.name===active));button.title=s.name+" · "+stateText(s);
+    button.setAttribute("aria-pressed",String(s.name===active));button.title=sessionTitle(s)+" · "+stateText(s);
     button.children[0].className="dot "+state(s);button.children[3].style.display=attention.has(s.name)?"":"none";
   }
   if(active!==quickActive&&isMobile()){
@@ -164,7 +158,7 @@ function renderQuickTabs(){
 function renderTabs(){
   renderQuickTabs();
   const q=$("q").value.trim().toLowerCase(),box=$("tabs");
-  const list=sessions.filter(s=>!q||(s.name+" "+s.group+" "+s.path).toLowerCase().includes(q));
+  const list=sessions.filter(s=>!q||(s.name+" "+sessionTitle(s)+" "+s.group+" "+s.path).toLowerCase().includes(q));
   box.replaceChildren();let grp=null,i=0;
   for(const s of list){
     if(s.group!==grp){grp=s.group;box.append(el("div","grp",grp))}
@@ -172,11 +166,11 @@ function renderTabs(){
     const t=el("div","tab"+(s.name===active?" on":""));
     const dot=el("span","dot "+st);dot.title=stateText(s);
     const ag=agentOf(s);
-    t.append(dot,agentIcon(s),el("div","t",el("div","n",s.name),...(isLocal(s)?[el("div","s session-source",agentLabel(s))]:[]),el("div","s",shortPath(s.path))));
+    t.append(dot,agentIcon(s),el("div","t",el("div","n",sessionTitle(s)),...(isLocal(s)?[el("div","s session-source",agentLabel(s))]:[]),el("div","s",shortPath(s.path))));
     t.title=isLocal(s)?s.source.model+" · "+localComputer(s):s.name;
     if(attention.has(s.name))t.append(el("span","bell"));
     else if(i<10)t.append(el("span","k","⌥"+i));
-    t.onclick=()=>select(s.name);
+    t.dataset.session=s.name;t.onclick=()=>select(s.name);
     box.append(t);
   }
   if(!sessions.length)box.append(el("div","grp",tr("сессий пока нет")));
@@ -192,7 +186,7 @@ function renderTitle(){
   $("msg").placeholder=s?tr("Сообщение в ")+agentLabel(s)+"…":tr("Сообщение агенту…");
   if(!s){t.textContent=isMobile()?"Agent Deck":"—";return}
   const st=state(s);
-  t.append(el("b","",s.name),el("span","path"," — "+s.path.replace(/^\/home\/[^/]+/,"~")),el("span","st",stateText(s)+" · "+shortPath(s.path)+(s.source?.label?" · "+s.source.label:"")));
+  t.append(el("b","",sessionTitle(s)),el("span","path"," — "+s.path.replace(/^\/home\/[^/]+/,"~")),el("span","st",stateText(s)+" · "+shortPath(s.path)+(s.source?.label?" · "+s.source.label:"")));
 }
 
 function frameFor(name){
@@ -453,7 +447,15 @@ async function loadSessions(){
 async function post(path,body,confirmText){
   if(panelUpdating){toast(tr("Панель обновляется. Дождитесь завершения."));return false}
   if(confirmText&&!confirm(confirmText))return false;
-  try{await api(path,body);await load();return true}catch(e){toast(e.message);return false}
+  try{const result=await api(path,body);await load();return result}catch(e){toast(e.message);return false}
+}
+function openRename(){
+  const s=cur();if(!s)return;
+  $("session_title").value=sessionTitle(s);$("rename_dlg").dataset.session=s.name;
+  $("rename_dlg").showModal();$("session_title").focus({preventScroll:true});
+}
+async function saveSessionTitle(){
+  await saveSessionName({request:api,input:$("session_title"),button:$("rename_save"),dialog:$("rename_dlg"),refresh:load,notify:toast});
 }
 function restart(m){
   const s=cur();if(!s)return;const a=agentLabel(s);
@@ -464,7 +466,7 @@ async function termHere(){
   const names=new Set(sessions.map(x=>x.name));
   let base=s.name.replace(/-sh\d*$/,"").slice(0,27)+"-sh",n=base,i=2;
   while(names.has(n))n=base+(i++);
-  if(await post("/api/new",{name:n,agent:"shell",path:s.path}))select(n);
+  const created=await post("/api/new",{name:n,agent:"shell",path:s.path});if(created)select(created.name||n);
 }
 async function kill(){
   if(!active)return;const n=active;
@@ -715,37 +717,13 @@ function integSummary(){
   head.append(gh,el("span","chev",integOpen?"▾":"▸"));
   return head;
 }
-function quotaDuration(w){
-  if(Number.isFinite(w?.secs)&&w.secs>0)return w.secs;
-  if(w?.period!=="month"||!Number.isFinite(w.resets_at))return null;
-  const reset=new Date(w.resets_at*1000),start=new Date(reset),day=reset.getUTCDate();
-  start.setUTCDate(1);start.setUTCMonth(start.getUTCMonth()-1);
-  const lastDay=new Date(Date.UTC(start.getUTCFullYear(),start.getUTCMonth()+1,0)).getUTCDate();
-  start.setUTCDate(Math.min(day,lastDay));
-  return (reset-start)/1000;
-}
-function plannedRemaining(w,instant=now()){
-  const duration=quotaDuration(w);
-  if(!Number.isFinite(w?.resets_at)||!duration)return null;
-  const end=new Date(instant*1000);end.setHours(24,0,0,0);
-  const cutoff=Math.min(end.getTime()/1000,w.resets_at);
-  return Math.round(Math.max(0,Math.min(100,100*(w.resets_at-cutoff)/duration)));
-}
-function primaryQuota(u){
-  const windows=u?.windows||[];
-  return windows.find(w=>w.period==="month"&&!/code|код/i.test(w.label||""))||windows.find(w=>w.secs>=86400)||windows[0];
-}
-function quotaTone(remaining,plan){
-  if(!Number.isFinite(remaining)||!Number.isFinite(plan))return "";
-  return remaining>=plan?"good":plan-remaining<=3?"over":"crit";
-}
 function renderInteg(){
   const head=el("div","quota-heading",el("span","",tr("Остаток")),el("span","quota-heading-plan",tr("План")));
   const gh=el("span","quota-github");gh.innerHTML=GH_ICON;gh.title=ghLogin?"GitHub · "+ghLogin:tr("GitHub не подключён");gh.append(el("span",ghLogin?"good":"dim",ghLogin?"✓":"—"));head.append(gh);
   const rows=[head];
   for(const a of ["claude","codex","kimi"]){
     const u=usageData[a],w=primaryQuota(u),row=el("div","quota-strip",agentIcon({agent:a}));
-    const percent=Number.isFinite(w?.percent)?Math.round(Math.max(0,Math.min(100,100-w.percent))):null,plan=plannedRemaining(w);
+    const percent=Number.isFinite(w?.percent)?Math.round(Math.max(0,Math.min(100,100-w.percent))):null,plan=plannedRemaining(w,now());
     row.title=AGENTS[a].label+" · "+(w?tr(w.label||"")+" · "+fmtReset(w.resets_at):u?.error||tr("Нет данных"))+(u?.stale?" · "+tr("⚠ данные устарели"):"");
     row.setAttribute("aria-label",row.title);
     const remaining=el("span","quota-percent "+quotaTone(percent,plan),percent===null?"—":percent+"%");remaining.title=tr("Остаток");
@@ -790,10 +768,13 @@ async function openSettings(section="agents"){
   drawer(false);sheet(false);settingsSection(section);
   if(!$("settings_dlg").open)$("settings_dlg").showModal();
   renderHub();
-  await Promise.allSettled([loadLM(),loadIntegrations(),checkGithubFoot(),(async()=>{const data=await api("/api/locales");$("ui_language").replaceChildren(...data.languages.map(x=>{const o=el("option","",x.name);o.value=x.code;return o}));$("ui_language").value=I18N.language})()]);
+  await Promise.allSettled([(async()=>{const data=await api("/api/project_directory");$("project_directory").value=data.directory})(),loadLM(),loadIntegrations(),checkGithubFoot(),(async()=>{const data=await api("/api/locales");$("ui_language").replaceChildren(...data.languages.map(x=>{const o=el("option","",x.name);o.value=x.code;return o}));$("ui_language").value=I18N.language})()]);
   clearInterval(lmTimer);lmTimer=setInterval(()=>{if($("settings_dlg").open&&lmData.discovery?.phase==="running")loadLM(false)},2000);
 }
 $("settings_dlg").addEventListener("close",()=>{if($("settings_dlg").open)return;clearInterval(lmTimer);closeKimi();closeIntegrations();$("lm_key").value="";if(returnToNew){returnToNew=false;$("dlg").showModal();renderSources()}});
+async function saveProjectDirectory(){
+  await saveDirectorySetting({request:api,input:$("project_directory"),button:$("project_directory_save"),notify:toast,translate:tr});
+}
 function card(name,status,label,action,secondary=[]){const c=el("div","hub-card",el("div","card-top",el("div","card-main",el("h4","",name),el("p","",status)),btn(label,"pri",action)));if(secondary.length){const d=el("details","",el("summary","",tr("Другие действия")));for(const [text,fn] of secondary)d.append(btn(text,"",fn));c.append(d)}return c}
 function renderHub(){
   const selections=new Map([...$("model_cards").querySelectorAll("select")].map(x=>[x.dataset.profile,x.value]));
@@ -1004,13 +985,13 @@ async function createSession(){
   const ok=await post("/api/new",{name,project:$("n_proj").value.trim()||name,git:$("n_git").value.trim(),
     worktree:$("n_wt").checked,branch:$("n_branch").value.trim(),skip:$("n_skip").checked,agent:newAgent,source:["claude","kimi","pi"].includes(newAgent)&&$("n_source").value?JSON.parse($("n_source").value):undefined});
   $("n_go").disabled=false;$("n_go").textContent=tr("Создать");
-  if(ok){$("dlg").close();for(const i of["n_name","n_proj","n_git","n_branch"])$(i).value="";select(name)}
+  if(ok){$("dlg").close();for(const i of["n_name","n_proj","n_git","n_branch"])$(i).value="";select(ok.name||name)}
 }
 
 /* ⌥1..9 — табы, ⌥↑/⌥↓ — пред./след., ⌥T — новая (работает и внутри терминала) */
 function hotkeys(e){
   if(!e.altKey||e.ctrlKey||e.metaKey)return;
-  const vis=[...$("tabs").querySelectorAll(".tab")].map(t=>t.querySelector(".n").textContent);
+  const vis=[...$("tabs").querySelectorAll(".tab")].map(t=>t.dataset.session);
   let target=null;
   if(/^Digit[1-9]$/.test(e.code))target=vis[+e.code.slice(5)-1];
   else if(e.code==="ArrowUp"||e.code==="ArrowDown"){const i=vis.indexOf(active);target=vis[(i+(e.code==="ArrowUp"?-1:1)+vis.length)%vis.length]}
@@ -1037,7 +1018,7 @@ function refreshInterface(){
   location.reload();
 }
 function canAutoRefresh(){
-  return !document.hidden&&!panelUpdating&&!sending&&!uploading&&!choosingImages&&!Array.from(imageAttachments.values()).some(images=>images.length)&&!Array.from(messageDrafts.values()).some(Boolean)&&!$("msg").value&&!$("dlg").open&&!$("draft_dlg").open&&!$("settings_dlg").open&&
+  return !document.hidden&&!panelUpdating&&!sending&&!uploading&&!choosingImages&&!Array.from(imageAttachments.values()).some(images=>images.length)&&!Array.from(messageDrafts.values()).some(Boolean)&&!$("msg").value&&!$("dlg").open&&!$("draft_dlg").open&&!$("settings_dlg").open&&!$("rename_dlg").open&&
     !$("sheet").classList.contains("on")&&!document.body.classList.contains("drawer")&&
     (!cur()||(curMode()==="screen"&&$("pre").scrollTop+$("pre").clientHeight>=$("pre").scrollHeight-40))&&
     !String(window.getSelection())&&

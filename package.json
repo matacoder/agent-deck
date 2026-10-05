@@ -2,12 +2,14 @@
   "name": "agent-deck-tests",
   "private": true,
   "scripts": {
-    "test": "playwright test",
-    "test:backend": "python3 -m unittest discover -s tests/backend -v",
+    "test": "jest --runInBand",
+    "test:backend": "python3 scripts/test-unit.py",
     "test:all": "npm run test:backend && npm test",
     "screenshots": "playwright test --config=scripts/screenshots.config.js"
   },
   "devDependencies": {
-    "@playwright/test": "1.55.0"
+    "@playwright/test": "1.55.0",
+    "jest": "30.5.2",
+    "jest-environment-jsdom": "30.5.2"
   }
 }

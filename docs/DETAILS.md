@@ -185,3 +185,9 @@ Edit `frontend/index.html`, `frontend/style.css` and `frontend/app.js`, then run
 with the sources. CI checks that the bundle is current. Releases retain a single
 HTML file so installed updaters can validate and install them without new asset
 allowlists or separate browser cache invalidation.
+
+Project-directory settings are stored in `~/.config/cc-panel/projects.json`.
+The panel reads them on startup and applies UI changes immediately for new
+sessions. Explicit installer `--projects-dir`/`PROJECTS_DIR` values override the
+saved preference; otherwise macOS reinstalls retain it. Session labels are stored
+in tmux `@cc_title` and restored from session state; internal IDs remain stable.
