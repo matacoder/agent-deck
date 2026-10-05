@@ -76,7 +76,25 @@ import tempfile
 import threading
 
 MODELS = ('k3', 'kimi-for-coding', 'kimi-for-coding-highspeed')
+# Tool search needs Anthropic's server-side tool_reference expansion, so other
+# endpoints receive every schema (~30k tokens, mostly claude.ai-only tools) on
+# each request. AskUserQuestion stays: Telegram relays questions from it.
+LOCAL_TOOLS = 'Bash,Read,Edit,Write,Glob,Grep,AskUserQuestion,EnterPlanMode,ExitPlanMode'
+KIMI_TOOLS = LOCAL_TOOLS + ',Agent,WebFetch,Skill'
 _lock = threading.Lock()
+
+
+def kimi_context(model):
+    return 1048576 if model == 'k3' else 262144
+
+
+def provider_args(tools, context=None):
+    # Flag settings outrank the user's settings.json env, which may enable tool search for Anthropic.
+    # Claude Code assumes 200k for unknown models, so auto-compact needs the real window.
+    env = {'ENABLE_TOOL_SEARCH': 'false'}
+    if context:
+        env['CLAUDE_CODE_MAX_CONTEXT_TOKENS'] = str(context)
+    return ['--tools', tools, '--settings', json.dumps({'env': env})]
 
 
 def config_path():
@@ -164,6 +182,7 @@ def launch(mode, args):
                    CLAUDE_CODE_SUBAGENT_MODEL=model)
         for tier in ('FABLE', 'OPUS', 'SONNET', 'HAIKU'):
             env['ANTHROPIC_DEFAULT_' + tier + '_MODEL'] = model
+        args = [*provider_args(KIMI_TOOLS, kimi_context(model)), *args]
     else:
         home = os.path.expanduser('~/.config/cc-panel/kimi-native')
         hook = shlex.join([sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'session_hook.py')])
@@ -172,13 +191,31 @@ def launch(mode, args):
             '[providers.deck]', 'type = "kimi"', 'base_url = "https://api.kimi.com/coding/v1"',
             'api_key_env = "AGENT_DECK_KIMI_API_KEY"', '[models.' + json.dumps(model) + ']',
             'provider = "deck"', 'model = ' + json.dumps(model),
-            'max_context_size = ' + str(1048576 if model == 'k3' else 262144),
+            'max_context_size = ' + str(kimi_context(model)),
             'capabilities = ["thinking", "image_in", "video_in", "tool_use"]',
             '[[hooks]]', 'event = "SessionStart"', 'command = ' + json.dumps(hook), 'timeout = 5', ''])
         atomic_write(os.path.join(home, 'config.toml'), content)
         env.update(KIMI_CODE_HOME=home, AGENT_DECK_KIMI_API_KEY=data['key'])
     os.execve(binary, [binary, *args], env)
 
+
+
+def local_context(directory, binding):
+    """Context window LM Studio actually loaded for the bound model."""
+    from integrations.lmstudio import LMStudio, models
+    profile = LMStudio(directory).get(binding['profile'])
+    if profile['url'] != binding['url']:
+        return None
+    found = []
+    try:
+        found = models(profile['url'], profile.get('key', ''))
+    except (OSError, ValueError, http.client.HTTPException):
+        pass  # An unreachable server keeps the window seen at the last profile check.
+    for model in found + profile.get('models', []):
+        size = model.get('context_length') if isinstance(model, dict) and model.get('id') == binding['model'] else None
+        if type(size) is int and size > 0:
+            return size
+    return None
 
 
 def launch_local(identity, args):
@@ -219,7 +256,8 @@ def launch_local(identity, args):
                CLAUDE_CODE_ATTRIBUTION_HEADER='0')
     for tier in ('FABLE','OPUS','SONNET','HAIKU'):
         env['ANTHROPIC_DEFAULT_'+tier+'_MODEL'] = model
-    os.execve(binary, [binary, '--model', model, *args], env)
+    tuning = provider_args(LOCAL_TOOLS, local_context(directory, binding))
+    os.execve(binary, [binary, '--model', model, *tuning, *args], env)
 
 
 if __name__ == "__main__":

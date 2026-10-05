@@ -222,6 +222,13 @@ Context length and loaded state come from the model API. Missing GPU, RAM or
 other hardware statistics are not estimated. Small context windows and models
 without tool support may be unsuitable for coding-agent workloads.
 
+Claude Code started against a local model receives a compact tool set (shell,
+files, search, questions and plan mode) instead of roughly 30k tokens of
+Anthropic-only tool schemas on every request. Its auto-compact window is the
+context length LM Studio reports for the loaded model at launch, or the value
+from the last profile check when the server does not answer. Reload the model
+with a different context length, then restart the session to apply it.
+
 Profiles and keys live in `~/.config/cc-panel/integrations/lmstudio.json` (0600).
 `model-bindings.json` stores private session bindings and `model-relay.json` stores
 loopback relay credentials. A local authenticated relay forwards requests to the
@@ -256,6 +263,8 @@ older default `~/projects` settings pick up `~/dev` when that directory exists.
 Open **Settings → Models → Kimi → Configure**. Save a Kimi Code API key
 and choose a model. Create a session with **Claude Code** and a **Kimi** model source (the Anthropic-compatible endpoint), or choose **Kimi Code** for the native CLI. Install Claude or Kimi
 under **Settings → Agents** if needed. An existing `~/.config/cc-kimi/env` key is detected automatically.
+Claude through Kimi uses the compact tool set described for local models plus
+subagents, web fetch and skills, and compacts at the model's real window (1M for K3).
 
 The key stays on the server in a private file; API responses and tmux commands do not contain it.
 Leaving the password field empty preserves the key; **Remove key** removes it from the panel.

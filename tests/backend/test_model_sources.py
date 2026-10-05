@@ -58,8 +58,12 @@ class ModelSourceTests(PanelCase):
         self.panel.action_lm_save({'id':p['id'],'name':'Renamed','url':p['url'],'key':'rotated-key'})
         self.assertEqual(self.panel.model_service().get(p['id'])['key'],'rotated-key')
 
-    def test_local_launcher_uses_private_loopback_token_and_clears_other_providers(self):
+    def launch_local(self, live_models=None, stored_context=None):
         p=self.profile();directory=self.home/'.config/cc-panel/integrations'
+        if stored_context:
+            service=self.panel.model_service()
+            service.profiles[p['id']]['models']=[{'id':'qwen-coder','context_length':stored_context}]
+            service.persist()
         binding=Bindings(directory).create(p,'qwen-coder')
         private_write(directory/'model-relay.json',{'port':12345,'token':'relay-token'})
         cfg=self.panel.kimi_config
@@ -68,9 +72,36 @@ class ModelSourceTests(PanelCase):
         connection.getresponse.return_value.read.return_value=json.dumps({'proof':hmac.new(b'relay-token',b'0'*32,'sha256').hexdigest()}).encode()
         self.enterContext(patch('http.client.HTTPConnection',return_value=connection))
         self.enterContext(patch('secrets.token_hex',return_value='0'*32))
-        with patch.object(cfg,'executable',return_value='/test/claude'),patch.object(cfg.os,'execve') as execute,patch.dict(cfg.os.environ,{'ANTHROPIC_API_KEY':'inherited-secret','CLAUDE_CODE_USE_BEDROCK':'1'}):
+        live=patch('integrations.lmstudio.models',side_effect=OSError('offline')) if live_models is None else patch('integrations.lmstudio.models',return_value=live_models)
+        with live as models,patch.object(cfg,'executable',return_value='/test/claude'),patch.object(cfg.os,'execve') as execute,patch.dict(cfg.os.environ,{'ANTHROPIC_API_KEY':'inherited-secret','CLAUDE_CODE_USE_BEDROCK':'1'}):
             cfg.launch_local(binding,['--resume','11111111-1111-4111-8111-111111111111'])
-        binary,args,env=execute.call_args.args
+        models.assert_called_once_with(p['url'],'private-test-key')
+        return p,binding,*execute.call_args.args
+
+    @staticmethod
+    def flag_env(args):
+        return json.loads(args[args.index('--settings')+1])['env']
+
+    def test_local_launcher_uses_loaded_lmstudio_window_and_compact_tool_set(self):
+        _,_,_,args,env=self.launch_local([{'id':'other','context_length':4096},{'id':'qwen-coder','context_length':99072}],stored_context=8192)
+        # Flag settings, not process env: the user's settings.json env would override the latter.
+        self.assertEqual(self.flag_env(args),{'ENABLE_TOOL_SEARCH':'false','CLAUDE_CODE_MAX_CONTEXT_TOKENS':'99072'})
+        self.assertNotIn('CLAUDE_CODE_MAX_CONTEXT_TOKENS',env)
+        self.assertEqual(args[3:5],['--tools',self.panel.kimi_config.LOCAL_TOOLS])
+        self.assertIn('AskUserQuestion',args[4].split(','))
+        self.assertNotIn('WebSearch',args[4].split(','))
+        self.assertEqual(args[-2:],['--resume','11111111-1111-4111-8111-111111111111'])
+
+    def test_unreachable_lmstudio_uses_window_from_last_profile_check(self):
+        _,_,_,args,_=self.launch_local(None,stored_context=65536)
+        self.assertEqual(self.flag_env(args)['CLAUDE_CODE_MAX_CONTEXT_TOKENS'],'65536')
+
+    def test_unknown_lmstudio_window_keeps_claude_default(self):
+        _,_,_,args,_=self.launch_local([{'id':'qwen-coder','context_length':None}])
+        self.assertEqual(self.flag_env(args),{'ENABLE_TOOL_SEARCH':'false'})
+
+    def test_local_launcher_uses_private_loopback_token_and_clears_other_providers(self):
+        p,binding,binary,args,env=self.launch_local([])
         self.assertEqual(args[:3],['/test/claude','--model','qwen-coder'])
         self.assertEqual(env['ANTHROPIC_AUTH_TOKEN'],'relay-token')
         self.assertEqual(env['ANTHROPIC_BASE_URL'],'http://127.0.0.1:12345/providers/'+binding)
@@ -83,9 +114,20 @@ class ModelSourceTests(PanelCase):
         cfg=self.panel.kimi_config;cfg.save({'key':'test-key','model':'k3'})
         with patch.object(cfg,'executable',return_value='/test/claude'),patch.object(cfg.os,'execve') as execute:
             cfg.launch('claude-kimi',['--deck-model','kimi-for-coding','--resume','id'])
-        self.assertEqual(execute.call_args.args[1],['/test/claude','--resume','id'])
+        args=execute.call_args.args[1]
+        self.assertEqual(args[:3]+args[-2:],['/test/claude','--tools',cfg.KIMI_TOOLS,'--resume','id'])
         self.assertEqual(execute.call_args.args[2]['ANTHROPIC_MODEL'],'kimi-for-coding')
+        self.assertEqual(self.flag_env(args)['CLAUDE_CODE_MAX_CONTEXT_TOKENS'],'262144')
         self.assertEqual(cfg.status()['model'],'k3')
+
+    def test_claude_kimi_k3_gets_full_window_and_native_kimi_keeps_its_arguments(self):
+        cfg=self.panel.kimi_config;cfg.save({'key':'test-key','model':'k3'})
+        with patch.object(cfg,'executable',return_value='/test/bin'),patch.object(cfg.os,'execve') as execute:
+            cfg.launch('claude-kimi',[])
+            self.assertEqual(self.flag_env(execute.call_args.args[1])['CLAUDE_CODE_MAX_CONTEXT_TOKENS'],'1048576')
+            self.assertIn('Agent',execute.call_args.args[1][2].split(','))
+            cfg.launch('kimi',['--auto'])
+        self.assertEqual(execute.call_args.args[1],['/test/bin','--auto'])
 
     def test_restore_uses_snapshot_source_instead_of_missing_tmux_options(self):
         path=self.home/'projects/demo';path.mkdir(parents=True)

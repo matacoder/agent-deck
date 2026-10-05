@@ -2,6 +2,12 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.2.2 — 2026-10-05
+
+- Claude Code on LM Studio and Kimi starts with a compact tool set instead of ~30k tokens of Anthropic-only tool schemas per request; questions and plan mode keep working.
+- Local sessions auto-compact at the context length LM Studio loaded for the model (last profile check as fallback); Claude through Kimi uses the model's real window instead of an assumed 200k.
+- Tool search stays off for third-party endpoints even when the user's Claude settings enable it.
+
 ## 1.2.1 — 2026-10-05
 
 - Fix automatic-update switch sizing: full-width field styles exclude checkboxes and radios; toggle labels retain readable width.
