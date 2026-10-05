@@ -389,3 +389,44 @@ class ReviewFixTests(PanelCase):
         handler.request_version, handler.wfile, handler.log_request = 'HTTP/1.1', io.BytesIO(), Mock()
         handler.send_body(200, b'x', 'text/html')
         self.assertIn(b'X-Content-Type-Options: nosniff', handler.wfile.getvalue())
+
+
+class WebQuestionTests(PanelCase):
+    def question(self, **values):
+        from integrations.questions import Question
+        data = dict(session='demo', agent='claude', instance='%1:1:sid', title='Proceed?',
+                    options=('Yes', 'No', 'Type something'), selected=0)
+        return Question(**{**data, **values})
+
+    def test_payload_marks_free_text_options_and_carries_the_fingerprint(self):
+        question = self.question(progress='Question 1/2')
+        payload = self.panel.question_payload(question)
+        self.assertEqual(payload['id'], question.fingerprint)
+        self.assertEqual(payload['options'], [{'label': 'Yes', 'text': False}, {'label': 'No', 'text': False},
+                                              {'label': 'Type something', 'text': True}])
+        self.assertEqual((payload['selected'], payload['progress']), (0, 'Question 1/2'))
+
+    def test_transcript_question_wins_and_invalid_names_never_reach_tmux(self):
+        structured = self.question(request_id='tool-1')
+        with patch.object(self.panel, 'session_exists', return_value=True), \
+             patch.object(self.panel, 'pending_questions', return_value=[structured]), \
+             patch.object(self.panel, 'current_question') as screen:
+            self.assertIs(self.panel.session_question('demo'), structured)
+            screen.assert_not_called()
+        with patch.object(self.panel, 'session_exists') as exists:
+            for name in (None, '', '../demo', 'a b', 7):
+                self.assertIsNone(self.panel.session_question(name))
+            exists.assert_not_called()
+
+    def test_answer_requires_the_shown_question_and_an_integer_index(self):
+        question = self.question()
+        with patch.object(self.panel, 'session_question', return_value=question), \
+             patch.object(self.panel, 'answer_question') as answer:
+            for bad in ({'index': '1'}, {'index': True}, {'index': None}):
+                with self.assertRaises(ValueError):
+                    self.panel.action_answer({'name': 'demo', 'id': question.fingerprint, **bad})
+            with self.assertRaises(ValueError):
+                self.panel.action_answer({'name': 'demo', 'id': 'other', 'index': 1})
+            answer.assert_not_called()
+            self.panel.action_answer({'name': 'demo', 'id': question.fingerprint, 'index': 1})
+            answer.assert_called_once_with(question, 1)

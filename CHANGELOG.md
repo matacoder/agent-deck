@@ -2,6 +2,18 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.3.0 — 2026-10-05
+
+- Answer agent questions with one tap: the question and its options appear above the message field (`GET /api/question`, `POST /api/answer`); free-text options stay on the key row.
+- Phone landscape keeps the phone layout and safe-area insets; the keyboard hides quick tabs and the status line, the header compacts, and controls are at least 44 px.
+- Quick tabs end with "+ New session"; long-press a tab for its actions. "Jump to latest" appears when the output is scrolled up. File uploads show progress.
+- Desktop header: title, Screen/Term switch, link and one "⋯" menu; the mobile action sheet is grouped with "Close session" last.
+- Styled confirmation dialog replaces browser `confirm()`; toasts appear at the top, are announced to screen readers and can be dismissed.
+- New session: one-row agent picker, Git URL/worktree under "Git and worktree", branch only with worktree.
+- Settings: Kimi and Telegram editors open in place, new Network section, language applies on change, optional message autocorrect (off by default).
+- Text contrast meets WCAG AA, minimum text size 11 px, SVG icons instead of emoji, session state shown as text and keyboard-focusable session rows; the sidebar monitor only re-renders on change.
+- Login page uses the same iOS status-bar style as the app.
+
 ## 1.2.4 — 2026-10-05
 
 - Fix Claude quotas showing "—" after a panel update: the last successful Claude/Codex usage is kept in `~/.config/cc-panel/usage-cache.json` (0600) and served after restarts instead of a fresh request.

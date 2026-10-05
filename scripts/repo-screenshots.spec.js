@@ -17,6 +17,8 @@ async function demo(app,page){
  ];
  const now=Date.now()/1000;
  app.usage={codex:{plan:'Plus',windows:[{label:'5 часов',percent:34,secs:18000,resets_at:now+5400},{label:'неделя',percent:28,secs:604800,resets_at:now+345600}]},claude:{plan:'Max',windows:[{label:'неделя',percent:41,secs:604800,resets_at:now+345600}]}};
+ await page.route('**/api/decks',route=>route.fulfill({contentType:'application/json',body:JSON.stringify({decks:[],discovery:{phase:'idle',results:[]}})}));
+ await page.route('**/api/network',route=>route.fulfill({contentType:'application/json',body:JSON.stringify({name:'demo-server',public_url:'',bind_host:'100.64.0.1',bind_port:8790})}));
  await page.route('**/api/agents',route=>route.fulfill({contentType:'application/json',body:JSON.stringify({codex:{installed:true,logged_in:true,version:'0.160.0'},claude:{installed:true,logged_in:true},kimi:{installed:true,logged_in:false},kimi_config:{configured:false}})}));
  await app.open({active:'agent-deck',mode:'screen'});
  await expect(page.locator('#ver')).toContainText(version);

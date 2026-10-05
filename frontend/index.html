@@ -10,39 +10,58 @@
 <title>Agent Deck</title>
 <style>
 __PANEL_STYLE__</style></head><body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+  <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24"><path d="m9.5 3-.6 2.4-2 .9-2.2-.7-2.5 4.3 1.7 1.7v2.3l-1.7 1.7 2.5 4.3 2.2-.7 2 .9.6 2.4h5l.6-2.4 2-.9 2.2.7 2.5-4.3-1.7-1.7v-2.3l1.7-1.7-2.5-4.3-2.2.7-2-.9L14.5 3z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></symbol>
+  <symbol id="i-terminal" viewBox="0 0 24 24"><path d="m4 17 6-6-6-6M12 19h8"/></symbol>
+  <symbol id="i-restart" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></symbol>
+  <symbol id="i-chat-plus" viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.4A8 8 0 1 1 21 12z"/><path d="M12 9v6M9 12h6"/></symbol>
+  <symbol id="i-external" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14.9-3.9L4 8"/><path d="M4 4v4h4M4 13a8 8 0 0 0 14.9 3.9L20 16"/><path d="M20 20v-4h-4"/></symbol>
+  <symbol id="i-pencil" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16v4zM13 7l4 4"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></symbol>
+  <symbol id="i-arrow-down" viewBox="0 0 24 24"><path d="M12 5v14M6 13l6 6 6-6"/></symbol>
+  <symbol id="i-arrow-up" viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></symbol>
+  <symbol id="i-paperclip" viewBox="0 0 24 24"><path d="M21 11.5l-8.5 8.5a6 6 0 0 1-8.5-8.5L13 3a4 4 0 0 1 5.7 5.7l-9 9a2 2 0 0 1-2.8-2.8l8.5-8.5"/></symbol>
+  <symbol id="i-keyboard-hide" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="12" rx="2"/><path d="M5 7h2m3 0h2m3 0h2m2 0h1M6 11h12m-9 8 3 3 3-3"/></symbol>
+  <symbol id="i-cpu" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 2v4m6-4v4M9 18v4m6-4v4M2 9h4m-4 6h4m12-6h4m-4 6h4"/><rect x="9" y="9" width="6" height="6" rx="1"/></symbol>
+  <symbol id="i-ram" viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="11" rx="2"/><path d="M6 9v5m4-5v5m4-5v5m4-5v5M6 17v3m4-3v3m4-3v3m4-3v3"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></symbol>
+  <symbol id="i-logout" viewBox="0 0 24 24"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 17l5-5-5-5M15 12H3"/></symbol>
+  <symbol id="i-telegram" viewBox="0 0 24 24"><path d="m21 3-4 18-6-5-4 3v-6L3 10 21 3Z"/><path d="m7 13 10-6-6 9"/></symbol>
+</svg>
 <div id="app">
   <aside>
-    <div class="deck-switch"><label for="deck_select">Agent Deck</label><select id="deck_select" onchange="switchDeck(this.value)"><option value="">Этот Agent Deck</option></select><button type="button" onclick="openSettings('app')" aria-label="Подключить Agent Deck">＋</button></div>
+    <div class="deck-switch" id="deck_switch" hidden><label for="deck_select">Agent Deck</label><select id="deck_select" onchange="switchDeck(this.value)"><option value="">Этот Agent Deck</option></select><button type="button" onclick="openSettings('network')" aria-label="Подключить Agent Deck" title="Подключить Agent Deck"><svg class="ui-icon"><use href="#i-plus"/></svg></button></div>
     <div id="srv"></div>
     <div class="side-top">
-      <input id="q" class="search" placeholder="Поиск…" autocomplete="off" autocapitalize="off" spellcheck="false">
-      <button class="iconbtn" title="Новая сессия (⌥T)" onclick="openNew()"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
+      <input id="q" class="search" placeholder="Поиск…" aria-label="Поиск…" autocomplete="off" autocapitalize="off" spellcheck="false">
+      <button class="iconbtn accent" title="Новая сессия (⌥T)" aria-label="Новая сессия" onclick="openNew()"><svg class="ui-icon"><use href="#i-plus"/></svg></button>
     </div>
     <div id="tabs"></div>
     <div id="integ"></div>
-    <div class="side-foot"><span id="foot"></span><span id="ver"></span><button id="b_drafts" onclick="showClosedDrafts()" style="display:none">Черновики закрытых сессий</button><button class="settingsbtn" onclick="openSettings()" aria-label="Настройки" title="Настройки"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9.5 3-.6 2.4-2 .9-2.2-.7-2.5 4.3 1.7 1.7v2.3l-1.7 1.7 2.5 4.3 2.2-.7 2 .9.6 2.4h5l.6-2.4 2-.9 2.2.7 2.5-4.3-1.7-1.7v-2.3l1.7-1.7-2.5-4.3-2.2.7-2-.9L14.5 3z"/><circle cx="12" cy="12" r="3"/></svg><span>Настройки</span></button></div>
+    <div class="side-foot"><span id="foot"></span><span id="ver"></span><button id="b_drafts" onclick="showClosedDrafts()" style="display:none"><svg class="ui-icon"><use href="#i-file"/></svg><span>Черновики закрытых сессий</span></button><button class="settingsbtn" onclick="openSettings()"><svg class="ui-icon"><use href="#i-gear"/></svg><span>Настройки</span></button></div>
   </aside>
   <div id="scrim" onclick="drawer(false)"></div>
   <main>
     <div class="bar">
-      <button class="iconbtn m-only" style="position:relative" onclick="drawer(true)" aria-label="Сессии"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg><span id="menuBadge"></span></button>
+      <button class="iconbtn m-only" style="position:relative" onclick="drawer(true)" aria-label="Сессии"><svg class="ui-icon"><use href="#i-menu"/></svg><span id="menuBadge"></span></button>
       <div id="title">—</div>
-      <div class="seg" id="seg"><button data-m="screen" onclick="setMode('screen')">Экран</button><button data-m="term" onclick="setMode('term')">Терм</button></div>
-      <button class="act d-only" id="b_link" title="Открыть последнюю ссылку из терминала" onclick="openLink()" style="display:none">🔗 Ссылка</button>
-      <button class="act d-only" id="b_mode" title="Переключить вид: живой терминал или экран с полем ввода" onclick="setMode(curMode()==='term'?'screen':'term')">⌨ Экран</button>
-      <button class="act d-only" title="Создать новую сессию-терминал (bash) в папке текущей сессии" onclick="termHere()">&gt;_ Новый терминал</button>
-      <button class="act d-only agent-only" title="Перезапустить агента, продолжив разговор" onclick="restart('continue')">↻ Продолжить</button>
-      <button class="act d-only agent-only" title="Перезапустить агента с новым разговором" onclick="restart('new')">✚ Новый</button>
-      <button class="act d-only" title="Открыть терминал в новой вкладке" onclick="popout()">↗</button>
-      <button class="act d-only" onclick="openRename()">Переименовать</button>
-      <button class="act dng d-only" title="Закрыть сессию" onclick="kill()">✕</button>
-      <button class="iconbtn m-only" onclick="sheet(true)" aria-label="Действия"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg></button>
+      <div class="seg" id="seg" role="group" aria-label="Вид"><button data-m="screen" onclick="setMode('screen')">Экран</button><button data-m="term" onclick="setMode('term')">Терм</button></div>
+      <button class="act d-only" id="b_link" title="Открыть последнюю ссылку из терминала" onclick="openLink()" style="display:none"><svg class="ui-icon"><use href="#i-link"/></svg><span>Ссылка</span></button>
+      <button class="iconbtn" id="b_actions" onclick="sheet(true)" aria-label="Действия" title="Действия" aria-haspopup="menu"><svg class="ui-icon"><use href="#i-more"/></svg></button>
     </div>
     <div id="stage">
-      <div id="empty">Загружаю сессии…</div>
+      <div id="empty"><span id="empty_text">Загружаю сессии…</span><button type="button" class="pri" id="empty_new" onclick="openNew()" hidden><svg class="ui-icon"><use href="#i-plus"/></svg><span>Новая сессия</span></button></div>
       <div id="screen">
-        <div id="pre"></div>
+        <div id="pre_wrap"><div id="pre"></div><button type="button" id="jump" onclick="jumpToLatest()"><svg class="ui-icon"><use href="#i-arrow-down"/></svg><span>К новому выводу</span></button></div>
         <div class="composer" id="session_composer">
+          <div id="question" hidden></div>
           <div id="screen_keys"><div class="keys-row" id="session_keys">
           <div class="keys" id="keys">
             <button class="key key-primary question-key" onclick="key('S-Left')" aria-label="Предыдущий вопрос" title="Вопросы Codex: Shift+←">?←</button>
@@ -58,21 +77,21 @@ __PANEL_STYLE__</style></head><body>
             <button class="key" id="b_reconnect" onclick="reconnectTerminal()" hidden>Переподключить терминал</button>
             <button class="key key-extra" id="b_wrap" onclick="toggleWrap()" aria-pressed="true">Перенос</button>
           </div>
-          <button class="keyboard-hide" id="b_keyboard" onpointerdown="event.preventDefault()" onclick="hideKeyboard()" aria-label="Скрыть клавиатуру" title="Скрыть клавиатуру"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="2" y="3" width="20" height="12" rx="2"/><path d="M5 7h2m3 0h2m3 0h2m2 0h1M6 11h12m-9 8 3 3 3-3"/></svg></button>
+          <button class="keyboard-hide" id="b_keyboard" onpointerdown="event.preventDefault()" onclick="hideKeyboard()" aria-label="Скрыть клавиатуру" title="Скрыть клавиатуру"><svg class="ui-icon"><use href="#i-keyboard-hide"/></svg></button>
           </div>
           </div>
           <div id="attachments" aria-label="Приложенные файлы"></div>
           <input type="file" id="image_files" multiple hidden>
           <div class="inrow">
-            <button class="attachbtn agent-only" id="b_attach" onclick="chooseImages()" aria-label="Приложить файл" title="Приложить файл до 200 МБ · хранится 7 дней"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5l-8.5 8.5a6 6 0 0 1-8.5-8.5L13 3a4 4 0 0 1 5.7 5.7l-9 9a2 2 0 0 1-2.8-2.8l8.5-8.5"/></svg></button>
-            <textarea id="msg" rows="1" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" placeholder="Сообщение агенту…" enterkeyhint="send"></textarea>
-            <button class="sendbtn" id="b_send" onclick="send()" aria-label="Отправить"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>
+            <button class="attachbtn agent-only" id="b_attach" onclick="chooseImages()" aria-label="Приложить файл" title="Приложить файл до 200 МБ · хранится 7 дней"><svg class="ui-icon"><use href="#i-paperclip"/></svg></button>
+            <textarea id="msg" rows="1" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" placeholder="Сообщение агенту…" enterkeyhint="enter"></textarea>
+            <button class="sendbtn" id="b_send" onclick="send()" aria-label="Отправить"><svg class="ui-icon" style="stroke-width:2.6"><use href="#i-arrow-up"/></svg></button>
           </div>
           <div class="composer-status">
           <div id="send_state" class="send-state" role="status" aria-live="polite">Enter ↵ · ↑ отправить</div>
           <div id="server_metrics" class="server-metrics" role="img" aria-label="CPU: нет данных; RAM: нет данных" title="CPU: нет данных; RAM: нет данных">
-            <span class="server-metric" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 2v4m6-4v4M9 18v4m6-4v4M2 9h4m-4 6h4m12-6h4m-4 6h4"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg><span id="metric_cpu">—</span></span>
-            <span class="server-metric" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="2" y="6" width="20" height="11" rx="2"/><path d="M6 9v5m4-5v5m4-5v5m4-5v5M6 17v3m4-3v3m4-3v3m4-3v3"/></svg><span id="metric_ram">—</span></span>
+            <span class="server-metric" aria-hidden="true"><svg class="ui-icon"><use href="#i-cpu"/></svg><span id="metric_cpu">—</span></span>
+            <span class="server-metric" aria-hidden="true"><svg class="ui-icon"><use href="#i-ram"/></svg><span id="metric_ram">—</span></span>
           </div>
           </div>
         </div>
@@ -83,118 +102,128 @@ __PANEL_STYLE__</style></head><body>
   </main>
 </div>
 
-<div id="sheet"><div class="scrim" onclick="sheet(false)"></div><div class="panel">
+<div id="sheet"><div class="scrim" onclick="sheet(false)"></div><div class="panel" role="menu" aria-labelledby="sheetCap">
   <div class="cap" id="sheetCap"></div>
-  <button id="s_link" onclick="sheet(false);openLink()"><span class="i">🔗</span>Открыть ссылку из терминала</button>
-  <button onclick="sheet(false);termHere()"><span class="i">&gt;_</span>Новый терминал в этой папке</button>
-  <button class="agent-only" onclick="sheet(false);restart('continue')"><span class="i">↻</span>Перезапустить, продолжив разговор</button>
-  <button class="agent-only" onclick="sheet(false);restart('new')"><span class="i">✚</span>Перезапустить с новым разговором</button>
-  <button onclick="sheet(false);popout()"><span class="i">↗</span>Терминал в новой вкладке</button>
-  <button class="dng" onclick="sheet(false);kill()"><span class="i">✕</span>Закрыть сессию</button>
-  <button onclick="refreshInterface()"><span class="i">↻</span>Обновить интерфейс</button>
-  <button onclick="sheet(false);openRename()">Переименовать</button>
-  <button onclick="sheet(false);openSettings()"><span class="i" aria-hidden="true">⚙</span>Настройки</button>
-  <button id="s_update" onclick="updatePanel()" style="display:none"></button>
-  <button id="s_drafts" onclick="showClosedDrafts()" style="display:none">Черновики закрытых сессий</button>
-  <button onclick="sheet(false)"><span class="i"></span>Отмена</button>
-</div></div>
-<div id="toast"></div>
+  <div class="sheet-group">
+    <button onclick="sheet(false);openRename()"><svg class="ui-icon"><use href="#i-pencil"/></svg><span>Переименовать</span></button>
+    <button id="s_link" onclick="sheet(false);openLink()"><svg class="ui-icon"><use href="#i-link"/></svg><span>Открыть ссылку из терминала</span></button>
+    <button onclick="sheet(false);termHere()"><svg class="ui-icon"><use href="#i-terminal"/></svg><span>Новый терминал в этой папке</span></button>
+    <button class="agent-only" onclick="sheet(false);restart('continue')"><svg class="ui-icon"><use href="#i-restart"/></svg><span>Перезапустить, продолжив разговор</span></button>
+    <button class="agent-only" onclick="sheet(false);restart('new')"><svg class="ui-icon"><use href="#i-chat-plus"/></svg><span>Перезапустить с новым разговором</span></button>
+    <button onclick="sheet(false);popout()"><svg class="ui-icon"><use href="#i-external"/></svg><span>Терминал в новой вкладке</span></button>
+  </div>
+  <div class="sheet-group">
+    <button onclick="sheet(false);openNew()"><svg class="ui-icon"><use href="#i-plus"/></svg><span>Новая сессия</span></button>
+    <button onclick="sheet(false);openSettings()"><svg class="ui-icon"><use href="#i-gear"/></svg><span>Настройки</span></button>
+    <button onclick="refreshInterface()"><svg class="ui-icon"><use href="#i-refresh"/></svg><span>Обновить интерфейс</span></button>
+    <button id="s_update" onclick="updatePanel()" style="display:none"><svg class="ui-icon"><use href="#i-download"/></svg><span id="s_update_label"></span></button>
+    <button id="s_drafts" onclick="showClosedDrafts()" style="display:none"><svg class="ui-icon"><use href="#i-file"/></svg><span>Черновики закрытых сессий</span></button>
+  </div>
+  <div class="sheet-group">
+    <button class="dng" onclick="sheet(false);kill()"><svg class="ui-icon"><use href="#i-x"/></svg><span>Закрыть сессию</span></button>
+  </div>
+</div><button class="sheet-cancel" onclick="sheet(false)">Отмена</button></div>
+<div id="toast" role="status" aria-live="polite"></div>
+<dialog id="confirm_dlg"><form class="dlg" method="dialog"><div class="dlg-body"><h3 id="confirm_title"></h3><p id="confirm_text"></p></div><div class="acts"><button value="cancel">Отмена</button><button value="ok" class="pri" id="confirm_ok">OK</button></div></form></dialog>
 <dialog id="draft_dlg"><div class="dlg"><div class="dlg-body"><h3>Черновики закрытых сессий</h3><div id="closed_drafts"></div></div><div class="acts"><button type="button" onclick="$('draft_dlg').close()">Закрыть</button></div></div></dialog>
 
 <dialog id="dlg"><form class="dlg" method="dialog" onsubmit="event.preventDefault();createSession()">
   <div class="dlg-body">
     <h3>Новая сессия</h3>
-    <div class="agsel" id="agsel">
-      <button type="button" data-a="claude" class="on" onclick="pickAgent('claude')"><span class="ag claude">✻</span>Claude</button>
-      <button type="button" data-a="codex" onclick="pickAgent('codex')"><span class="ag codex">◎</span>Codex</button>
-      <button type="button" data-a="kimi" onclick="pickAgent('kimi')">Kimi Code</button>
-      <button type="button" data-a="pi" onclick="pickAgent('pi')"><span class="ag pi">π</span>Pi</button>
-      <button type="button" data-a="shell" onclick="pickAgent('shell')"><span class="ag shell">$</span>Терминал</button>
+    <div class="agsel" id="agsel" role="group" aria-label="Агент">
+      <button type="button" data-a="claude" class="on" onclick="pickAgent('claude')"><span class="ag claude">✻</span><span>Claude</span></button>
+      <button type="button" data-a="codex" onclick="pickAgent('codex')"><span class="ag codex">◎</span><span>Codex</span></button>
+      <button type="button" data-a="kimi" onclick="pickAgent('kimi')"><span class="ag kimi">◈</span><span>Kimi Code</span></button>
+      <button type="button" data-a="pi" onclick="pickAgent('pi')"><span class="ag pi">π</span><span>Pi</span></button>
+      <button type="button" data-a="shell" onclick="pickAgent('shell')"><span class="ag shell">$</span><span>Терминал</span></button>
     </div>
     <div id="source_row"><label for="n_source">Источник модели</label><select id="n_source"></select><button type="button" onclick="configureSource()">Настроить модели</button></div>
-    <div class="gh" id="gh">
-      <div class="gh-head"><span id="gh_state">GitHub…</span><button type="button" id="gh_refresh" onclick="loadRepos(true)" style="display:none">обновить</button></div>
-      <div id="gh_body"></div>
-    </div>
     <div class="two">
       <div><label for="n_name">Имя сессии</label><input type="text" id="n_name" placeholder="myapp-auth" autocapitalize="off" autocorrect="off" spellcheck="false" required></div>
       <div><label for="n_proj">Проект (~/projects)</label><input type="text" id="n_proj" list="projlist" placeholder="= имя" autocapitalize="off" autocorrect="off" spellcheck="false"><datalist id="projlist"></datalist></div>
     </div>
-    <label for="n_git">Git URL — склонировать, если папки ещё нет</label>
-    <input type="text" id="n_git" placeholder="https://github.com/user/repo.git" autocapitalize="off" autocorrect="off" spellcheck="false">
-    <label class="chk"><input type="checkbox" id="n_wt"><span>Отдельный git worktree</span></label>
-    <label for="n_branch">Ветка worktree (по умолчанию = имя)</label>
-    <input type="text" id="n_branch" placeholder="feature-x" autocapitalize="off" autocorrect="off" spellcheck="false">
-    <label class="chk" id="n_skip_row"><input type="checkbox" id="n_skip"><span id="n_skip_lbl">Без подтверждений (--dangerously-skip-permissions)</span></label>
+    <div class="gh" id="gh">
+      <div class="gh-head"><span id="gh_state">GitHub…</span><button type="button" id="gh_refresh" onclick="loadRepos(true)" style="display:none">обновить</button></div>
+      <div id="gh_body"></div>
+    </div>
+    <details class="adv" id="n_adv"><summary><span>Git и worktree</span><small id="n_adv_hint"></small></summary><div class="adv-body">
+      <label for="n_git">Git URL — склонировать, если папки ещё нет</label>
+      <input type="text" id="n_git" placeholder="https://github.com/user/repo.git" autocapitalize="off" autocorrect="off" spellcheck="false">
+      <label class="chk"><input type="checkbox" id="n_wt" onchange="renderAdvanced()"><span>Отдельный git worktree</span></label>
+      <div id="n_branch_row" hidden><label for="n_branch">Ветка worktree (по умолчанию = имя)</label>
+      <input type="text" id="n_branch" placeholder="feature-x" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
+    </div></details>
+    <label class="chk warn" id="n_skip_row"><input type="checkbox" id="n_skip"><span><span id="n_skip_lbl">Без подтверждений</span> <code id="n_skip_flag">--dangerously-skip-permissions</code></span></label>
   </div>
   <div class="acts"><button type="button" onclick="$('dlg').close()">Отмена</button><button class="pri" id="n_go">Создать</button></div>
 </form></dialog>
 
-<dialog id="rename_dlg"><form class="dlg" onsubmit="event.preventDefault();saveSessionTitle()"><h3>Переименовать сессию</h3><label for="session_title">Название</label><input type="text" id="session_title" required maxlength="100"><div class="acts"><button type="button" onclick="$('rename_dlg').close()">Отмена</button><button class="pri" id="rename_save">Сохранить</button></div></form></dialog>
+<dialog id="rename_dlg"><form class="dlg" onsubmit="event.preventDefault();saveSessionTitle()"><div class="dlg-body"><h3>Переименовать сессию</h3><label for="session_title">Название</label><input type="text" id="session_title" required maxlength="100"></div><div class="acts"><button type="button" onclick="$('rename_dlg').close()">Отмена</button><button class="pri" id="rename_save">Сохранить</button></div></form></dialog>
 <dialog id="settings_dlg"><div class="dlg settings-hub">
-  <div class="hub-heading"><h3>Настройки</h3><button type="button" onclick="$('settings_dlg').close()" aria-label="Закрыть"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></div>
+  <div class="hub-heading"><h3>Настройки</h3><button type="button" onclick="$('settings_dlg').close()" aria-label="Закрыть"><svg class="ui-icon"><use href="#i-x"/></svg></button></div>
   <nav class="hub-nav" aria-label="Настройки">
     <button type="button" data-section="agents" onclick="settingsSection('agents')">Агенты</button>
     <button type="button" data-section="models" onclick="settingsSection('models')">Модели</button>
     <button type="button" data-section="connections" onclick="settingsSection('connections')">Подключения</button>
+    <button type="button" data-section="network" onclick="settingsSection('network')">Сеть</button>
     <button type="button" data-section="app" onclick="settingsSection('app')">Приложение</button>
   </nav>
   <div class="dlg-body hub-content">
     <section id="hub_agents"></section>
-    <section id="hub_models"><div id="model_cards"></div><div id="kimi_dlg" hidden><form class="dlg" onsubmit="event.preventDefault();saveKimi()">
-  <div class="dlg-body"><h3>Настройки Kimi</h3>
-    <p id="kimi_state"></p>
-    <label for="kimi_key">API-ключ Kimi Code</label>
-    <input id="kimi_key" type="password" autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Вставьте ключ; пустое поле сохраняет текущий">
-    <label for="kimi_model">Модель для новых запусков</label>
-    <select id="kimi_model"><option value="k3">K3</option><option value="kimi-for-coding">Kimi for coding</option><option value="kimi-for-coding-highspeed">Kimi for coding · highspeed</option></select>
-    <p>Один ключ для Claude · Kimi и Kimi Code. Изменения применятся при следующем запуске агента.</p>
-  </div>
-  <div class="acts"><button type="button" onclick="clearKimi()">Удалить ключ</button><button type="button" onclick="closeKimi()">Отмена</button><button class="pri" id="kimi_save">Сохранить</button></div>
-</form></div>
-
-      <details id="lm_editor"><summary>Добавить сервер</summary><form onsubmit="event.preventDefault();saveLM()">
+    <section id="hub_models"><div id="kimi_dlg" class="hub-card editor" hidden><form onsubmit="event.preventDefault();saveKimi()">
+      <h3>Настройки Kimi</h3>
+      <p id="kimi_state"></p>
+      <label for="kimi_key">API-ключ Kimi Code</label>
+      <input id="kimi_key" type="password" autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Вставьте ключ; пустое поле сохраняет текущий">
+      <label for="kimi_model">Модель для новых запусков</label>
+      <select id="kimi_model"><option value="k3">K3</option><option value="kimi-for-coding">Kimi for coding</option><option value="kimi-for-coding-highspeed">Kimi for coding · highspeed</option></select>
+      <p>Один ключ для Claude · Kimi и Kimi Code. Изменения применятся при следующем запуске агента.</p>
+      <div class="acts"><button type="button" class="integration-remove" onclick="clearKimi()">Удалить ключ</button><button type="button" onclick="closeKimi()">Отмена</button><button class="pri" id="kimi_save">Сохранить</button></div>
+    </form></div>
+      <div id="model_cards"></div>
+      <details id="lm_editor" class="hub-card"><summary>Добавить сервер</summary><form onsubmit="event.preventDefault();saveLM()">
         <input type="hidden" id="lm_id"><label for="lm_name">Название</label><input type="text" id="lm_name" required maxlength="100">
         <label for="lm_url">Адрес сервера</label><input id="lm_url" type="url" required placeholder="http://100.64.0.1:1234">
         <label for="lm_key">API-ключ</label><input id="lm_key" type="password" autocomplete="new-password" placeholder="Вставьте ключ; пустое поле сохраняет текущий">
         <label class="chk"><input type="checkbox" id="lm_clear_key"><span>Удалить ключ</span></label>
         <div class="acts"><button type="button" onclick="resetLM()">Отмена</button><button class="pri">Сохранить</button></div>
       </form></details>
-      <div class="hub-card"><h4>Tailscale</h4><p>Поиск серверов на известных узлах</p><label for="lm_ports">Порты</label><input id="lm_ports" value="1234" inputmode="numeric">
+      <div class="hub-card"><h4>Tailscale</h4><p>Поиск серверов на известных узлах</p><label for="lm_ports">Порты</label><input id="lm_ports" type="text" value="1234" inputmode="numeric">
       <div class="acts"><button type="button" onclick="discoverLM()">Найти серверы</button><button type="button" id="lm_cancel" onclick="discoverLM(true)" hidden>Остановить</button></div>
       <p id="lm_progress" role="status"></p><div id="lm_results"></div></div>
     </section>
-    <section id="hub_connections"><div id="connection_cards"></div><div id="integrations_dlg" hidden><form class="dlg integration-dialog" onsubmit="event.preventDefault();saveTelegram()">
-  <div class="dlg-body"><h3>Интеграции</h3>
-    <div class="integration-card">
-    <div class="integration-heading"><span class="telegram-mark" aria-hidden="true"><svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m21 3-4 18-6-5-4 3v-6L3 10 21 3Z"/><path d="m7 13 10-6-6 9"/></svg></span><div><h4>Telegram</h4><p>Вопросы и ответы в чате с ботом</p></div></div>
-    <p id="telegram_state" class="integration-status" role="status"></p>
-    <details id="telegram_credentials" open><summary>Токен бота</summary>
-    <label for="telegram_token">Токен бота из @BotFather</label>
-    <input id="telegram_token" type="password" autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Вставить или заменить токен">
-    <p class="integration-note">Пустое поле сохраняет текущий токен.</p>
-    </details>
-    <label class="integration-toggle"><span>Отправлять вопросы</span><input type="checkbox" role="switch" id="telegram_enabled" checked></label>
-    <div id="telegram_pairing" style="display:none">
-      <p class="integration-note">Откройте бота и нажмите Start. Ответы доступны только вашему аккаунту.</p>
-      <a class="integration-link" id="telegram_link" target="_blank" rel="noopener noreferrer">Привязать мой Telegram ↗</a>
-      <p class="integration-note">Ссылка действует 10 минут.</p>
-    </div>
-    <button type="button" class="integration-pair" id="telegram_pair" onclick="pairTelegram()" style="display:none">Привязать Telegram</button>
-    </div>
-  </div>
-  <div class="acts"><button type="button" class="integration-remove" onclick="clearTelegram()">Отключить</button><button type="button" onclick="closeIntegrations()">Закрыть</button><button class="pri" id="telegram_save">Сохранить</button></div>
-</form></div>
-</section>
-    <section id="hub_app"><form class="language-settings" onsubmit="event.preventDefault();saveLanguage()"><label for="ui_language">Язык интерфейса</label><select id="ui_language"></select>
-    <p>Язык сохраняется в этом браузере. Сообщения и вывод агентов не переводятся.</p><button class="pri">Применить</button></form>
-    <form class="hub-card" onsubmit="event.preventDefault();saveProjectDirectory()"><label for="project_directory">Папка проектов</label><input type="text" id="project_directory" autocomplete="off" autocapitalize="off" spellcheck="false" required><p>Используется для новых сессий. Существующие сессии остаются в своих папках.</p><div class="acts"><button class="pri" id="project_directory_save">Сохранить</button></div></form>
-    <div class="hub-card"><h4>Другие Agent Deck</h4><p>Управляйте другими компьютерами через этот сервер.</p><div id="deck_connections"></div>
-      <div class="deck-toolbar"><div class="deck-port"><label for="deck_port">Порт</label><input type="number" id="deck_port" min="1" max="65535" value="8790"></div><div class="deck-actions"><button type="button" id="deck_discover" onclick="discoverDecks()">Обнаружить</button><button type="button" onclick="editDeck()">Подключить</button></div></div><p id="deck_discovery_status"></p><div id="deck_discovery_results"></div>
-      <details id="deck_editor"><summary>Подключение Agent Deck</summary><form onsubmit="event.preventDefault();saveDeck()"><input type="hidden" id="deck_id"><label for="deck_name">Название</label><input type="text" id="deck_name" required maxlength="100"><label for="deck_url">Адрес Tailscale</label><input type="url" id="deck_url" required placeholder="http://100.68.39.62:8790"><label for="deck_username">Логин</label><input type="text" id="deck_username" required autocomplete="off"><label for="deck_password">Пароль</label><input type="password" id="deck_password" autocomplete="new-password"><p>Пароль хранится на основном сервере. Пустое поле сохраняет пароль существующего подключения.</p><button class="pri" id="deck_save">Подключить</button></form></details>
-    </div>
-    <form class="hub-card" onsubmit="event.preventDefault();saveNetwork()"><h4>Сеть и адрес панели</h4><p><span>Адрес в браузере</span>: <span id="network_browser"></span></p><p><span>Панель слушает</span>: <span id="network_bind"></span></p><label for="network_name">Название этого Agent Deck</label><input type="text" id="network_name" required maxlength="100"><label for="network_public_url">Публичный адрес</label><input type="url" id="network_public_url" placeholder="https://agents.example.com"><p>Для доступа по этому адресу домен и HTTPS должны быть настроены на сервере.</p><button class="pri" id="network_save">Сохранить</button></form>
-    <div class="hub-card"><h4>Agent Deck</h4><div id="hub_version"></div><label class="integration-toggle"><span>Автоматически обновлять Agent Deck</span><input type="checkbox" id="auto_update_enabled" onchange="saveAutoUpdates()"></label><p>Проверка каждые 30 минут. Обновление ждёт завершения запросов локальной модели и сохраняет сессии.</p><p id="auto_update_status"></p></div><div class="settings-account"><button type="button" onclick="logout()">Выйти</button></div></section>
+    <section id="hub_connections"><div id="connection_cards"></div><div id="integrations_dlg" class="hub-card editor" hidden><form class="integration-dialog" onsubmit="event.preventDefault();saveTelegram()">
+      <div class="integration-heading"><span class="telegram-mark" aria-hidden="true"><svg class="ui-icon"><use href="#i-telegram"/></svg></span><div><h4>Telegram</h4><p>Вопросы и ответы в чате с ботом</p></div></div>
+      <p id="telegram_state" class="integration-status" role="status"></p>
+      <details id="telegram_credentials" open><summary>Токен бота</summary>
+      <label for="telegram_token">Токен бота из @BotFather</label>
+      <input id="telegram_token" type="password" autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Вставить или заменить токен">
+      <p class="integration-note">Пустое поле сохраняет текущий токен.</p>
+      </details>
+      <label class="integration-toggle"><span>Отправлять вопросы</span><input type="checkbox" role="switch" id="telegram_enabled" checked></label>
+      <div id="telegram_pairing" style="display:none">
+        <p class="integration-note">Откройте бота и нажмите Start. Ответы доступны только вашему аккаунту.</p>
+        <a class="integration-link" id="telegram_link" target="_blank" rel="noopener noreferrer">Привязать мой Telegram ↗</a>
+        <p class="integration-note">Ссылка действует 10 минут.</p>
+      </div>
+      <button type="button" class="integration-pair" id="telegram_pair" onclick="pairTelegram()" style="display:none">Привязать Telegram</button>
+      <div class="acts"><button type="button" class="integration-remove" onclick="clearTelegram()">Отключить</button><button type="button" onclick="closeIntegrations()">Закрыть</button><button class="pri" id="telegram_save">Сохранить</button></div>
+    </form></div>
+    </section>
+    <section id="hub_network">
+      <form class="hub-card" onsubmit="event.preventDefault();saveNetwork()"><h4>Сеть и адрес панели</h4><p><span>Адрес в браузере</span>: <span id="network_browser"></span></p><p><span>Панель слушает</span>: <span id="network_bind"></span></p><label for="network_name">Название этого Agent Deck</label><input type="text" id="network_name" required maxlength="100"><label for="network_public_url">Публичный адрес</label><input type="url" id="network_public_url" placeholder="https://agents.example.com"><p>Для доступа по этому адресу домен и HTTPS должны быть настроены на сервере.</p><div class="acts"><button class="pri" id="network_save">Сохранить</button></div></form>
+      <div class="hub-card"><h4>Другие Agent Deck</h4><p>Управляйте другими компьютерами через этот сервер.</p><div id="deck_connections"></div>
+        <div class="deck-toolbar"><div class="deck-port"><label for="deck_port">Порт</label><input type="number" id="deck_port" min="1" max="65535" value="8790"></div><div class="deck-actions"><button type="button" id="deck_discover" onclick="discoverDecks()">Обнаружить</button><button type="button" onclick="editDeck()">Подключить</button></div></div><p id="deck_discovery_status"></p><div id="deck_discovery_results"></div>
+        <details id="deck_editor"><summary>Подключение Agent Deck</summary><form onsubmit="event.preventDefault();saveDeck()"><input type="hidden" id="deck_id"><label for="deck_name">Название</label><input type="text" id="deck_name" required maxlength="100"><label for="deck_url">Адрес Tailscale</label><input type="url" id="deck_url" required placeholder="http://100.68.39.62:8790"><label for="deck_username">Логин</label><input type="text" id="deck_username" required autocomplete="off"><label for="deck_password">Пароль</label><input type="password" id="deck_password" autocomplete="new-password"><p>Пароль хранится на основном сервере. Пустое поле сохраняет пароль существующего подключения.</p><button class="pri" id="deck_save">Подключить</button></form></details>
+      </div>
+    </section>
+    <section id="hub_app">
+      <div class="hub-card"><label for="ui_language">Язык интерфейса</label><select id="ui_language" onchange="saveLanguage()"></select><p>Язык сохраняется в этом браузере. Сообщения и вывод агентов не переводятся.</p>
+        <label class="toggle"><span>Автокоррекция в поле сообщения</span><input type="checkbox" role="switch" id="autocorrect_enabled" onchange="saveAutocorrect()"></label><p>Сохраняется в этом браузере. Выключена по умолчанию: iOS заменяет -- и кавычки, а агенту нужны точные символы.</p></div>
+      <form class="hub-card" onsubmit="event.preventDefault();saveProjectDirectory()"><label for="project_directory">Папка проектов</label><input type="text" id="project_directory" autocomplete="off" autocapitalize="off" spellcheck="false" required><p>Используется для новых сессий. Существующие сессии остаются в своих папках.</p><div class="acts"><button class="pri" id="project_directory_save">Сохранить</button></div></form>
+      <div class="hub-card"><h4>Agent Deck</h4><div id="hub_version"></div><label class="integration-toggle"><span>Автоматически обновлять Agent Deck</span><input type="checkbox" id="auto_update_enabled" onchange="saveAutoUpdates()"></label><p>Проверка каждые 30 минут. Обновление ждёт завершения запросов локальной модели и сохраняет сессии.</p><p id="auto_update_status"></p></div>
+      <div class="settings-account"><button type="button" onclick="logout()"><svg class="ui-icon"><use href="#i-logout"/></svg><span>Выйти</span></button></div>
+    </section>
   </div>
 </div></dialog>
 <script>

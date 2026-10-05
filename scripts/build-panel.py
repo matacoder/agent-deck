@@ -17,7 +17,8 @@ def main():
             raise SystemExit(f"Expected one {marker} in the panel template")
         content = (source / name).read_text()
         if name == "app.js":
-            content = (source / "logic.js").read_text() + (source / "settings.js").read_text() + (source / "decks.js").read_text() + content
+            parts = ("logic.js", "settings.js", "decks.js", "questions.js")
+            content = "".join((source / part).read_text() for part in parts) + content
         page = page.replace(marker, content)
     target = ROOT / "panel/index.html"
     if args.check:

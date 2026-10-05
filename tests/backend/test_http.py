@@ -91,6 +91,20 @@ class HTTPTests(PanelCase):
         self.panel.list_sessions.assert_not_called()
         self.assertEqual(self.request("POST", "/api/update", "{}")[0], 401)
 
+    def test_question_endpoints_require_login_origin_and_return_json(self):
+        self.assertEqual(self.request("GET", "/api/question?name=demo")[0], 401)
+        cookie = self.login()
+        with patch.object(self.panel, "session_question", Mock(return_value=None)) as lookup:
+            status, headers, body = self.request("GET", "/api/question?name=demo", headers={"Cookie": cookie})
+            self.assertEqual(status, 200)
+            self.assertTrue(headers["Content-Type"].startswith("application/json"))
+            self.assertEqual(json.loads(body), {"question": None})
+            lookup.assert_called_once_with("demo")
+        with patch.dict(self.panel.ACTIONS, {"answer": Mock(return_value=None)}):
+            self.assertEqual(self.request("POST", "/api/answer", '{"name":"demo","id":"x","index":0}',
+                                          {"Cookie": cookie, "Origin": "http://sibling.test"})[0], 403)
+            self.panel.ACTIONS["answer"].assert_not_called()
+
     def test_update_rejects_cross_origin_and_non_json_requests(self):
         cookie = self.login()
         with patch.dict(self.panel.ACTIONS, {"update": Mock(return_value={"job": {"phase": "checking"}})}):

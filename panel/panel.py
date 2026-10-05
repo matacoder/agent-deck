@@ -1270,6 +1270,37 @@ def pending_questions(name):
         return []
 
 
+FREE_TEXT_OPTION = re.compile(r'(Other\b|Type something|Другое\b|Свой ответ)', re.I)
+
+
+def session_question(name):
+    """The question the web composer offers as buttons: transcript first, then the screen menu."""
+    if not isinstance(name, str) or not NAME_RE.fullmatch(name) or not session_exists(name):
+        return None
+    with input_locks_lock:
+        lock = input_locks.setdefault(name, threading.Lock())
+    with lock:
+        pending = pending_questions(name)
+        return pending[0] if pending else current_question(name)
+
+
+def question_payload(question):
+    return {'id': question.fingerprint, 'title': question.title, 'progress': question.progress,
+            'selected': question.selected,
+            'options': [{'label': label, 'text': bool(FREE_TEXT_OPTION.match(label))} for label in question.options]}
+
+
+def action_answer(d):
+    index = d.get('index')
+    if not isinstance(index, int) or isinstance(index, bool):
+        raise ValueError('неверный запрос')
+    question = session_question(d.get('name'))
+    # The fingerprint binds the tap to the exact question the user saw.
+    if not question or question.fingerprint != d.get('id'):
+        raise ValueError('Этот вопрос уже закрыт или изменился. Обновите панель.')
+    answer_question(question, index)
+
+
 def answer_question(question, index):
     with input_locks_lock:
         lock = input_locks.setdefault(question.session, threading.Lock())
@@ -1301,7 +1332,7 @@ def answer_question(question, index):
             question = current
         if not current or current.fingerprint != question.fingerprint:
             raise ValueError('Этот вопрос уже закрыт или изменился. Обновите панель.')
-        if not 0 <= index < len(current.options) or re.match(r'(Other\b|Type something|Другое\b|Свой ответ)', current.options[index], re.I):
+        if not 0 <= index < len(current.options) or FREE_TEXT_OPTION.match(current.options[index]):
             raise ValueError('Этот вариант требует ввода текста в панели')
         delta = index - current.selected
         if delta:
@@ -1338,7 +1369,8 @@ def integration_status():
 
 
 ACTIONS.update(telegram_config=lambda d: {'telegram': telegram_service().save(d)},
-               telegram_pair=lambda d: {'telegram': telegram_service().pair()})
+               telegram_pair=lambda d: {'telegram': telegram_service().pair()},
+               answer=action_answer)
 
 
 class PanelHTTPServer(ThreadingHTTPServer):
@@ -1569,6 +1601,9 @@ class Handler(BaseHTTPRequestHandler):
         if parsed.path == "/api/sessions":
             preview_name = parse_qs(parsed.query).get("preview", [None])[0]
             return self.send_json(200, {"sessions": list_sessions(preview_name)})
+        if parsed.path == "/api/question":
+            question = session_question(parse_qs(parsed.query).get("name", [None])[0])
+            return self.send_json(200, {"question": question_payload(question) if question else None})
         if self.path == "/api/usage":
             return self.send_json(200, usage())
         if self.path == "/api/version":

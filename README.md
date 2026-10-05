@@ -22,8 +22,8 @@ after a reboot.
 - Claude / Codex subscription limits with a pace forecast; Kimi usage windows and reset times.
 - Under the message field: the running agent and model (including after `/model`), remaining quota and today's plan, so limits stay visible on phones.
 - Server CPU/RAM indicators beside the message composer.
-- Phone friendly: home-screen app, message box, question controls and file attachments up to 200 MB.
-- One Settings hub for agents, model sources, GitHub/Telegram connections and application preferences.
+- Phone friendly (tuned for large iPhones, portrait and landscape): home-screen app, one-tap answers to agent questions, quick session tabs with long-press actions, and file attachments up to 200 MB with upload progress.
+- One Settings hub for agents, model sources, GitHub/Telegram connections, network and application preferences.
 - LM Studio profiles: discover known Tailscale nodes or add a custom address, port and API key.
 - Local models in Claude Code, with session speed/TTFT measurements and a separate benchmark; no subscription quotas.
 - UI in 16 languages, switchable in Settings → Application; extensible file-based locales.
@@ -238,11 +238,11 @@ An in-progress local-model request may need retrying when the panel service upda
 
 ### Multiple Agent Deck instances
 
-Use **Settings → Application → Other Agent Deck instances** on the server whose
+Use **Settings → Network → Other Agent Deck instances** on the server whose
 web address you normally open. Click **Discover** to search online Tailscale peers
 on port 8790 (or a custom port), or enter a remote `http://100.x.y.z:8790` URL.
 Provide that instance's panel login and password, then connect. Select the instance
-in the sidebar to manage its sessions, files, models and live terminal through the
+in the sidebar (the switcher appears once an instance is connected) to manage its sessions, files, models and live terminal through the
 gateway. Your browser does not need direct access to the remote Tailscale address.
 The gateway and remote computer must both be connected to the tailnet.
 

@@ -112,6 +112,55 @@ class TmuxIntegration(PanelCase):
             time.sleep(0.01)
         self.assertEqual(self.input_file.read_bytes(), b"printf hello;\r")
 
+    def test_panel_answer_button_selects_the_shown_option_and_rejects_stale_ids(self):
+        emulator = self.home / 'menu.py'
+        answer = self.home / 'menu-answer.txt'
+        emulator.write_text("""import os,sys,tty,time
+from pathlib import Path
+tty.setraw(0)
+selected=0
+labels=['Allow once','Allow always','Type something else']
+def render():
+ print('\\x1b[2J\\x1b[H────────\\r\\nDo you want to run this command?\\r\\n',end='')
+ for i,label in enumerate(labels):
+  print(('❯' if selected==i else ' ')+' '+str(i+1)+'. '+label+'\\r')
+ print('Enter to confirm\\r',flush=True)
+render()
+while True:
+ data=os.read(0,4096)
+ if b'B' in data: selected=min(2,selected+1);render()
+ if b'A' in data: selected=max(0,selected-1);render()
+ if b'\\r' in data:
+  Path(sys.argv[1]).write_text(str(selected))
+  print('\\x1b[2J\\x1b[HAnswered\\r',flush=True)
+  while True:time.sleep(1)
+""")
+        command = shlex.join(['python3', '-u', str(emulator), str(answer)])
+        self.panel.tmux('new-session', '-d', '-s', 'cc-menu', '-x', '100', '-y', '35', command)
+        self.panel.tmux('set-option', '-t', '=cc-menu:', '@cc_agent', 'claude')
+        deadline = time.monotonic() + 5
+        question = None
+        while not question and time.monotonic() < deadline:
+            question = self.panel.session_question('menu')
+            time.sleep(.02)
+        self.assertIsNotNone(question)
+        payload = self.panel.question_payload(question)
+        self.assertEqual([o['label'] for o in payload['options']], ['Allow once', 'Allow always', 'Type something else'])
+        self.assertEqual([o['text'] for o in payload['options']], [False, False, True])
+        with self.assertRaises(ValueError):
+            self.panel.action_answer({'name': 'menu', 'id': 'stale', 'index': 1})
+        with self.assertRaises(ValueError):
+            self.panel.action_answer({'name': 'menu', 'id': payload['id'], 'index': 2})
+        with self.assertRaises(ValueError):
+            self.panel.action_answer({'name': 'menu', 'id': payload['id'], 'index': True})
+        self.assertFalse(answer.exists())
+        self.panel.action_answer({'name': 'menu', 'id': payload['id'], 'index': 1})
+        deadline = time.monotonic() + 5
+        while not answer.exists() and time.monotonic() < deadline:
+            time.sleep(.02)
+        self.assertEqual(answer.read_text(), '1')
+        self.assertIsNone(self.panel.session_question('../menu'))
+
     def test_telegram_button_selects_a_real_terminal_question_once(self):
         from integrations.telegram import Telegram
         from test_telegram import FakeAPI, TOKEN

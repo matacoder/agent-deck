@@ -20,7 +20,9 @@ async function gatewayApi(path,body){return api(path,body,true)}
 
 const BUSY_SEC=6;
 const UI_REVISION="__PANEL_REVISION__";
-const isMobile=()=>matchMedia("(max-width:760px)").matches;
+// Phone landscape (932×430 on a Pro Max) keeps the phone layout; keep in sync with the mobile block in style.css.
+const MOBILE_QUERY="(max-width:760px),(pointer:coarse) and (max-height:500px)";
+const isMobile=()=>matchMedia(MOBILE_QUERY).matches;
 let sessions=[],active=null,mode=null,clockSkew=0;
 const frames=new Map(),wasBusy=new Map(),attention=new Set();
 try{active=deckLocalStorage.getItem("cc.active");mode=deckLocalStorage.getItem("cc.mode."+(isMobile()?"m":"d"))}catch(e){}
@@ -58,10 +60,13 @@ async function api(path,body,gateway=false){
 }
 function toast(m,info,action){
   const t=$("toast"),dialogs=Array.from(document.querySelectorAll("dialog[open]"));
-  (dialogs[dialogs.length-1]||document.body).append(t);t.className=info==="success"?"success":info?"info":"";t.replaceChildren(m);
-  if(action){const b=document.createElement("button");b.textContent=action.label;b.onclick=()=>{action.run();t.style.display="none"};t.append(b)}
-  t.style.display="block";clearTimeout(t._h);t._h=setTimeout(()=>t.style.display="none",action?12000:(info?1800:5000));
+  (dialogs[dialogs.length-1]||document.body).append(t);t.className=info==="success"?"success":info?"info":"";t.replaceChildren(el("span","",m));
+  if(action){const b=document.createElement("button");b.textContent=action.label;b.onclick=e=>{e.stopPropagation();action.run();hideToast()};t.append(b)}
+  t.setAttribute("role",info?"status":"alert");
+  t.classList.add("on");clearTimeout(t._h);t._h=setTimeout(hideToast,action?12000:(info?2200:8000));
 }
+function hideToast(){$("toast").classList.remove("on")}
+$("toast").addEventListener("click",hideToast);
 
 /* tmux (set-clipboard on) sends selections as OSC 52 -> put them on the browser clipboard.
    Over plain HTTP there is no Clipboard API, so copy via execCommand right after the mouse-up
@@ -119,8 +124,18 @@ const curMode=()=>mode||(isMobile()?"screen":"term");
 
 function drawer(on){document.body.classList.toggle("drawer",on);if(on)$("q").blur()}
 function sheet(on){
-  if(on){if(!active)return;$("sheetCap").textContent=active;$("s_link").style.display=lastUrl(cur())?"":"none"}
+  if(on){
+    const s=cur(),groups=$("sheet").querySelectorAll(".sheet-group");
+    $("sheetCap").textContent=s?sessionTitle(s):"Agent Deck";
+    groups[0].hidden=groups[2].hidden=!s;
+    $("s_link").style.display=lastUrl(s)?"":"none";
+  }
   $("sheet").classList.toggle("on",on);
+  $("b_actions").setAttribute("aria-expanded",String(on));
+}
+addEventListener("keydown",e=>{if(e.key==="Escape"&&$("sheet").classList.contains("on"))sheet(false)});
+async function confirmAction(title,{text="",confirm=tr("Продолжить"),danger=false}={}){
+  return askConfirm($("confirm_dlg"),{title,text,confirm,danger});
 }
 const cur=()=>sessions.find(x=>x.name===active);
 const messageDrafts=new Map();
@@ -142,10 +157,17 @@ function renderQuickTabs(){
     for(const s of sessions){
       const button=el("button","quick-tab",el("span","dot"),agentIcon(s),el("span","label",sessionTitle(s)),el("span","bell"));
       button.type="button";button.setAttribute("aria-label",tr("Открыть сессию ")+sessionTitle(s));
-      button.onclick=()=>select(s.name);box.append(button);quickButtons.set(s.name,button);
+      onLongPress(button,()=>{select(s.name);sheet(true)});
+      button.addEventListener("click",e=>{if(button.dataset.longPress){delete button.dataset.longPress;e.preventDefault();return}select(s.name)});
+      box.append(button);quickButtons.set(s.name,button);
+    }
+    if(sessions.length){
+      const add=el("button","quick-tab quick-new",svgIcon("plus"));add.type="button";
+      add.setAttribute("aria-label",tr("Новая сессия"));add.onclick=openNew;box.append(add);
     }
     box.scrollLeft=left;quickSignature=signature;
   }
+  box.classList.toggle("more-right",box.scrollLeft+box.clientWidth<box.scrollWidth-4);
   document.body.classList.toggle("has-quick-tabs",sessions.length>0);
   for(const s of sessions){
     const button=quickButtons.get(s.name);button.classList.toggle("on",s.name===active);
@@ -163,10 +185,26 @@ function renderQuickTabs(){
   }
   quickActive=active;
 }
+$("quick_tabs").addEventListener("scroll",e=>{const box=e.target;box.classList.toggle("more-right",box.scrollLeft+box.clientWidth<box.scrollWidth-4)},{passive:true});
+// Session actions are under the thumb: long-press a quick tab instead of reaching for "⋯" at the top.
+function onLongPress(node,run){
+  let timer=null,start=null;
+  const cancel=()=>{clearTimeout(timer);timer=null};
+  node.addEventListener("pointerdown",e=>{
+    if(e.pointerType==="mouse")return;
+    start=[e.clientX,e.clientY];cancel();
+    timer=setTimeout(()=>{timer=null;node.dataset.longPress="1";navigator.vibrate?.(10);run()},500);
+  });
+  node.addEventListener("pointermove",e=>{if(timer&&start&&Math.hypot(e.clientX-start[0],e.clientY-start[1])>10)cancel()});
+  for(const type of ["pointerup","pointercancel","pointerleave"])node.addEventListener(type,cancel);
+  node.addEventListener("contextmenu",e=>e.preventDefault());
+}
 
 function renderTabs(){
   renderQuickTabs();
   const q=$("q").value.trim().toLowerCase(),box=$("tabs");
+  // The list is rebuilt on every poll; keep keyboard focus on the same session row.
+  const focused=box.contains(document.activeElement)?document.activeElement.dataset.session:null;
   const list=sessions.filter(s=>!q||(s.name+" "+sessionTitle(s)+" "+s.group+" "+s.path).toLowerCase().includes(q));
   box.replaceChildren();let grp=null,i=0;
   for(const s of list){
@@ -174,15 +212,20 @@ function renderTabs(){
     i++;const st=state(s);
     const t=el("div","tab"+(s.name===active?" on":""));
     const dot=el("span","dot "+st);dot.title=stateText(s);
-    const ag=agentOf(s);
-    t.append(dot,agentIcon(s),el("div","t",el("div","n",sessionTitle(s)),...(isLocal(s)?[el("div","s session-source",agentLabel(s))]:[]),el("div","s",shortPath(s.path))));
+    // State is spelled out next to the path so it does not depend on the dot colour alone.
+    const word=attention.has(s.name)?["ready",tr("готово")]:st==="busy"?["busy",tr("работает")]:st==="off"?["off",tr("остановлен")]:null;
+    const sub=el("div","s",...(word?[el("span","state "+word[0],word[1])," · "]:[]),shortPath(s.path));
+    t.append(dot,agentIcon(s),el("div","t",el("div","n",sessionTitle(s)),...(isLocal(s)?[el("div","s session-source",agentLabel(s))]:[]),sub));
     t.title=isLocal(s)?s.source.model+" · "+localComputer(s):s.name;
     if(attention.has(s.name))t.append(el("span","bell"));
     else if(i<10)t.append(el("span","k","⌥"+i));
     t.dataset.session=s.name;t.onclick=()=>select(s.name);
+    t.tabIndex=0;t.setAttribute("role","button");if(s.name===active)t.setAttribute("aria-current","true");
+    t.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();select(s.name)}};
     box.append(t);
   }
-  if(!sessions.length)box.append(el("div","grp",tr("сессий пока нет")));
+  if(!sessions.length)box.append(el("div","empty-list",tr("сессий пока нет")));
+  if(focused)box.querySelector(`[data-session="${CSS.escape(focused)}"]`)?.focus({preventScroll:true});
   const busy=sessions.filter(s=>state(s)==="busy").length;
   $("foot").textContent=tr("{0} сессий · {1} работают",[sessions.length,busy])+(attention.size?tr(" · {0} готово",[attention.size]):"");
   $("menuBadge").textContent=attention.size;$("menuBadge").classList.toggle("on",attention.size>0);
@@ -193,7 +236,8 @@ function renderTitle(){
   document.body.classList.toggle("is-shell",!!s&&agentOf(s)==="shell");
   document.body.classList.toggle("is-codex",!!s&&agentOf(s)==="codex");
   $("msg").placeholder=s?tr("Сообщение в ")+agentLabel(s)+"…":tr("Сообщение агенту…");
-  if(!s){t.textContent=isMobile()?"Agent Deck":"—";return}
+  $("seg").hidden=!s;
+  if(!s){t.textContent=isMobile()?"Agent Deck":"";return}
   const st=state(s);
   t.append(el("b","",sessionTitle(s)),el("span","path"," — "+s.path.replace(/^\/(?:home|Users)\/[^/]+/,"~")),el("span","st",stateText(s)+" · "+shortPath(s.path)+(s.source?.label?" · "+s.source.label:"")));
 }
@@ -210,10 +254,9 @@ function frameFor(name){
 function show(){
   const s=cur(),m=curMode();
   $("empty").style.display=s?"none":"grid";
-  if(!s)$("empty").textContent=load.done?tr("Нет сессий. Создайте новую через меню ☰ → ＋."):tr("Загружаю сессии…");
-  renderTitle();renderSendState();renderAttachments();
-  $("b_mode").textContent=m==="term"?tr("⌨ Экран"):tr("▣ Живой терминал");
-  for(const b of $("seg").children)b.classList.toggle("on",b.dataset.m===m);
+  if(!s){$("empty_text").textContent=load.done?tr("Сессий пока нет"):tr("Загружаю сессии…");$("empty_new").hidden=!load.done}
+  renderTitle();renderSendState();renderAttachments();renderQuestion();
+  for(const b of $("seg").children){b.classList.toggle("on",b.dataset.m===m);b.setAttribute("aria-pressed",String(b.dataset.m===m))}
   for(const[n,f]of frames){
     f.classList.toggle("on",!!s&&m==="term"&&n===active);
     const session=sessions.find(x=>x.name===n);f.inert=isLocal(session)&&!session.running;
@@ -364,10 +407,19 @@ function joinUrlLines(lines){
   }
   return out;
 }
+const atBottom=p=>p.scrollTop+p.clientHeight>=p.scrollHeight-40;
+function updateJump(fresh){
+  const p=$("pre"),j=$("jump"),away=!atBottom(p);
+  j.classList.toggle("on",away);
+  if(!away)j.classList.remove("fresh");else if(fresh)j.classList.add("fresh");
+}
+function jumpToLatest(){const p=$("pre");p.scrollTo({top:p.scrollHeight,behavior:"smooth"});$("jump").classList.remove("on","fresh")}
+$("pre").addEventListener("scroll",()=>updateJump(false),{passive:true});
 function updateScreen(s,force){
-  const p=$("pre"),stick=force||p.scrollTop+p.clientHeight>=p.scrollHeight-40;
+  const p=$("pre"),stick=force||atBottom(p);
   const raw=s.preview_ansi??unwrapUrls(s.preview||"");
-  if(p.dataset.raw!==raw){
+  const changed=p.dataset.raw!==raw;
+  if(changed){
     p.dataset.raw=raw;p.replaceChildren();
     const lines=joinUrlLines(ansiLines(raw));
     if(!lines.length)p.append(el("div","preview-empty",tr("В tmux пока нет текста. Можно переключиться в «Терм» и проверить сессию.")));
@@ -387,6 +439,7 @@ function updateScreen(s,force){
     }
   }
   if(stick)p.scrollTop=p.scrollHeight;
+  updateJump(changed&&!stick);
 }
 function activate(name){
   if(name===active)return;
@@ -458,11 +511,44 @@ async function loadSessions(){
     const s=cur(),m=curMode();
     if(first||active!==previousActive||!s||(m==="term"&&!frames.has(active)))show();
     else if(m==="screen")updateScreen(s);
+    loadQuestion();
   }catch(e){toast(e.message)}
 }
-async function post(path,body,confirmText){
+let question={name:null,data:null,expanded:false,busy:null},loadingQuestion=false;
+async function loadQuestion(){
+  const s=cur();
+  if(!s||agentOf(s)==="shell"||!s.running){if(question.data)setQuestion(s?.name||null,null);return}
+  if(loadingQuestion||question.busy!==null||document.hidden)return;
+  loadingQuestion=true;const name=s.name;
+  try{const data=await api("/api/question?name="+encodeURIComponent(name));if(active===name)setQuestion(name,data.question)}
+  catch(e){/* Questions are an optional shortcut; the key row still works. */}
+  finally{loadingQuestion=false}
+}
+function setQuestion(name,data){
+  const same=question.name===name&&JSON.stringify(question.data)===JSON.stringify(data);
+  if(same)return;
+  const keepExpanded=question.name===name&&question.data?.id===data?.id;
+  question={name,data,expanded:keepExpanded&&question.expanded,busy:null};renderQuestion();
+}
+function renderQuestion(){
+  const data=question.name===active?question.data:null;
+  renderQuestionCard({box:$("question"),question:data,expanded:question.expanded,busyIndex:question.busy,translate:tr,
+    onToggle:()=>{question.expanded=!question.expanded;renderQuestion()},onAnswer:answerQuestion});
+}
+async function answerQuestion(index){
+  const name=active,data=question.data;
+  if(!data||question.busy!==null||panelUpdating)return;
+  question.busy=index;renderQuestion();
+  try{
+    await api("/api/answer",{name,id:data.id,index});
+    sendStates.set(name,{text:tr("Ответ отправлен: {0}",[data.options[index].label]),phase:"success"});
+    question={name,data:null,expanded:false,busy:null};
+  }catch(e){toast(e.message);question.busy=null}
+  renderQuestion();renderSendState();await load();loadQuestion();
+}
+async function post(path,body,ask){
   if(panelUpdating){toast(tr("Панель обновляется. Дождитесь завершения."));return false}
-  if(confirmText&&!confirm(confirmText))return false;
+  if(ask&&!await confirmAction(ask.title,ask))return false;
   try{const result=await api(path,body);await load();return result}catch(e){toast(e.message);return false}
 }
 function openRename(){
@@ -475,7 +561,8 @@ async function saveSessionTitle(){
 }
 function restart(m){
   const s=cur();if(!s)return;const a=agentLabel(s);
-  post("/api/restart",{name:active,mode:m},m==="new"?tr("Перезапустить {0} в «{1}» с НОВЫМ разговором?",[a,active]):tr("Перезапустить {0} в «{1}», продолжив разговор?",[a,active]));
+  const title=m==="new"?tr("Перезапустить {0} в «{1}» с НОВЫМ разговором?",[a,sessionTitle(s)]):tr("Перезапустить {0} в «{1}», продолжив разговор?",[a,sessionTitle(s)]);
+  post("/api/restart",{name:active,mode:m},{title,confirm:tr("Перезапустить")});
 }
 async function termHere(){
   const s=cur();if(!s)return;
@@ -485,8 +572,8 @@ async function termHere(){
   const created=await post("/api/new",{name:n,agent:"shell",path:s.path});if(created)select(created.name||n);
 }
 async function kill(){
-  if(!active)return;const n=active;
-  await post("/api/kill",{name:n},tr("Закрыть сессию «{0}»? Агент будет остановлен.",[n]));
+  const s=cur();if(!s)return;
+  await post("/api/kill",{name:s.name},{title:tr("Закрыть сессию «{0}»? Агент будет остановлен.",[sessionTitle(s)]),confirm:tr("Закрыть сессию"),danger:true});
 }
 function popout(){if(active)window.open(activePath("/t/?arg="+encodeURIComponent("=cc-"+active)),"_blank")}
 let uploading=false,choosingImages=false;
@@ -516,6 +603,20 @@ function renderAttachments(){
   }
   $("b_attach").disabled=!active||sending||uploading||panelUpdating;
   $("b_send").disabled=sending||uploading||panelUpdating;
+}
+// XHR instead of fetch: large phone videos take minutes and need visible progress.
+function uploadRequest(body,progress){
+  return new Promise((resolve,reject)=>{
+    const xhr=new XMLHttpRequest();xhr.open("POST",activePath("/api/upload"));xhr.setRequestHeader("Content-Type","application/json");
+    xhr.upload.onprogress=e=>{if(e.lengthComputable)progress(Math.round(e.loaded/e.total*100))};
+    xhr.onerror=()=>reject(new Error(tr("Не удалось загрузить файл: нет соединения")));
+    xhr.onload=()=>{
+      if(xhr.status===401){try{stashDrafts()}catch(e){}location.href="/login";return reject(new Error("login required"))}
+      let data={};try{data=JSON.parse(xhr.responseText)}catch(e){data={error:xhr.statusText}}
+      xhr.status>=200&&xhr.status<300?resolve(data):reject(new Error(data.error||xhr.statusText));
+    };
+    xhr.send(JSON.stringify(body));
+  });
 }
 function chooseImages(){
   if(!active||sending||uploading||panelUpdating)return;
@@ -556,7 +657,9 @@ async function uploadImages(files){
       let image=file;
       if(["image/heic","image/heif"].includes(file.type)){try{image=await prepareImage(file)}catch(e){image=file}}
       const data=await readImageData(image);
-      const result=await api("/api/upload",{name,data,filename:file.name||"file"});
+      const result=await uploadRequest({name,data,filename:file.name||"file"},percent=>{
+        sendStates.set(name,{text:tr("Загружаю файлы…")+" "+percent+"%",phase:"pending"});if(active===name)renderSendState();
+      });
       imageAttachments.set(name,[...attachmentsFor(name),{attachment:result.attachment,label:file.name||tr("Файл"),preview:result.kind==="image"||(result.kind===undefined&&isImage)?URL.createObjectURL(image):null}]);
     }catch(e){failed=true;toast(e.message);sendStates.set(name,{text:tr("Не удалось приложить: ")+e.message,error:true})}
   }
@@ -657,11 +760,6 @@ async function agentAction(kind,agent){
   const name=kind==="install"?"install-"+agent:agent+"-login";
   if(await post("/api/agent_"+kind,{agent})){select(name);if(isMobile())setMode("screen")}
 }
-function irow(glyphHtml,name,ver,right){
-  const r=el("div","irow");const g=el("span","");g.innerHTML=glyphHtml;
-  const nm=el("span","nm",name);if(ver)nm.append(el("small","",ver));
-  r.append(g,nm,...right);return r;
-}
 function btn(label,cls,fn,title){const b=el("button",cls||"",label);b.onclick=fn;if(title)b.title=title;return b}
 let lastGh=0,lastAg={},usageData={};
 async function checkGithubFoot(force){
@@ -681,78 +779,11 @@ function fmtReset(ts){
   const abs=m<1440&&d.getDate()===new Date().getDate()?hm:d.toLocaleDateString(DATE_LOCALE,{weekday:"short",day:"numeric",month:"short"})+" "+hm;
   return tr("сброс через {0} · {1}",[rel,abs]);
 }
-/* pace: compare used % with the share of the window that has already elapsed */
-function pace(w){
-  if(!w.resets_at||!w.secs)return null;
-  const now=Date.now()/1000,left=w.resets_at-now,elapsed=Math.min(Math.max(1-left/w.secs,0),1);
-  if(elapsed<0.03||left<=0)return {elapsed};             // too early to judge
-  const used=w.percent||0,norm=elapsed*100,diff=Math.round(used-norm);
-  const res={elapsed,norm:Math.round(norm),diff};
-  if(used>0){
-    const rate=used/(w.secs*elapsed);                       // % per second so far
-    const hitAt=now+(100-used)/rate;                        // when 100% is reached at this pace
-    res.forecast=Math.round(used/elapsed);                  // projected % at reset
-    if(hitAt<w.resets_at&&elapsed>=0.1)res.hitAt=hitAt;   // early in the window the forecast is noise
-  }
-  return res;
-}
-function fmtWhen(ts){
-  const d=new Date(ts*1000),hm=d.toLocaleTimeString(DATE_LOCALE,{hour:"2-digit",minute:"2-digit"});
-  return d.toDateString()===new Date().toDateString()?tr("сегодня ")+hm:d.toLocaleDateString(DATE_LOCALE,{weekday:"short"})+" "+hm;
-}
 function compactReset(ts){
   if(!ts)return "↻ —";
   const minutes=Math.max(0,Math.round((ts*1000-Date.now())/60000)),days=Math.floor(minutes/1440),hours=Math.floor(minutes%1440/60);
   const duration=days?tr("{0}д {1}ч",[days,hours]):hours?tr("{0}ч {1}м",[hours,minutes%60]):tr("{0}м",[minutes]);
   return "↻ "+duration;
-}
-function usageBlock(u){
-  const box=el("div","usage");if(!u)return null;
-  if(u.error&&!(u.windows||[]).length){box.append(el("div","err",u.error));return box}
-  for(const w of u.windows||[]){
-    const p=Math.round(w.percent||0),fill=el("i",p>=90?"bad":p>=70?"warn":"");fill.style.width=Math.min(p,100)+"%";
-    const labels={"Общий · месяц":tr("месяц · всё"),"Kimi Code · месяц":tr("месяц · код"),"5 часов":tr("5 ч")};
-    const pc=pace(w),bar=el("span","usage-meter",fill),row=el("div","uw",el("span","",labels[w.label]||tr(w.label)),el("span","pc",p+"%"),bar);
-    bar.setAttribute("role","progressbar");bar.setAttribute("aria-label",tr("Использование лимита: ")+tr(w.label));
-    bar.setAttribute("aria-valuemin","0");bar.setAttribute("aria-valuemax","100");bar.setAttribute("aria-valuenow",String(Math.max(0,Math.min(p,100))));
-    const details=el("details","quota-details"),summary=el("summary","",el("span","rs",compactReset(w.resets_at))),body=el("div","quota-explanation");
-    summary.title=fmtReset(w.resets_at)||tr("Данные о лимите");summary.setAttribute("aria-label",tr("Подробности лимита: ")+tr(w.label));
-    if(pc&&pc.norm!==undefined){
-      const tick=el("b","");tick.style.left=(pc.elapsed*100)+"%";tick.title=tr("норма к этому моменту: {0}%",[pc.norm]);bar.append(tick);
-      const cls=pc.diff<=3?"good":pc.hitAt?"crit":"over";
-      summary.append(el("span","pace "+cls,pc.diff<=3?"✓":"▲ +"+pc.diff+tr(" п.п.")));
-      body.append(el("div","",tr("Норма сейчас: {0}%. ",[pc.norm])+(pc.diff<=3?tr("В пределах нормы."):tr("Быстрее нормы на {0} п.п.",[pc.diff]))));
-      if(pc.hitAt)body.append(el("div","forecast",tr("При таком темпе лимит закончится ≈ ")+fmtWhen(pc.hitAt)));
-      else if(pc.forecast!==undefined)body.append(el("div","forecast",tr("Прогноз к сбросу: ≈ ")+pc.forecast+"%"));
-    }
-    body.append(el("div","",fmtReset(w.resets_at)));details.append(summary,body);row.append(details);box.append(row);
-  }
-  if(u.stale)box.append(el("div","err",tr("⚠ данные устарели")));return box;
-}
-
-let integOpen=(()=>{try{const v=deckLocalStorage.getItem("cc.integ."+(isMobile()?"m":"d"));return v===null?!isMobile():v==="1"}catch(e){return !isMobile()}})();
-function toggleInteg(){integOpen=!integOpen;try{deckLocalStorage.setItem("cc.integ."+(isMobile()?"m":"d"),integOpen?"1":"0")}catch(e){}renderInteg()}
-function integSummary(){
-  const head=el("button","ihead"+(integOpen?" open":""));head.type="button";head.onclick=toggleInteg;
-  head.title=integOpen?tr("Свернуть"):tr("Лимиты и аккаунты");
-  for(const a of["claude","codex","kimi"]){
-    const st=lastAg[a]||{},u=usageData[a],sum=el("span","sum");
-    const g=agentIcon({agent:a});sum.append(g);
-    if(!st.installed||!st.logged_in){sum.append(el("span","dim",st.installed?tr("войти"):tr("нет")))}
-    else{
-      const w=u&&(u.windows||[]).find(x=>x.period==="month")||u&&(u.windows||[]).find(x=>x.secs>=86400)||(u&&(u.windows||[])[0]);
-      if(w){
-        const pc=pace(w),p=Math.round(w.percent||0);
-        const cls=!pc||pc.diff===undefined?"":pc.diff<=3?"good":pc.hitAt?"crit":"over";
-        sum.append(el("span","",p+"%"));
-        if(cls)sum.append(el("span",cls,cls==="good"?"✓":"▲"));
-      }else sum.append(el("span","dim","—"));
-    }
-    head.append(sum);
-  }
-  const gh=el("span","sum");gh.innerHTML=GH_ICON;gh.append(el("span",ghLogin?"good":"dim",ghLogin?"✓":"—"));
-  head.append(gh,el("span","chev",integOpen?"▾":"▸"));
-  return head;
 }
 function quotaValues(w){
   const percent=Number.isFinite(w?.percent)?Math.round(Math.max(0,Math.min(100,100-w.percent))):null,plan=plannedRemaining(w,now());
@@ -772,9 +803,15 @@ function sessionStatus(session){
   if(w)line.append(quotaValues(w),el("span","quota-reset",compactReset(w.resets_at)));
   return line;
 }
+let quotaHelpOpen=false,hubSignature="";
 function renderInteg(){
-  const head=el("div","quota-heading",el("span","",tr("Остаток")),el("span","quota-heading-plan",tr("План")));
-  const gh=el("span","quota-github");gh.innerHTML=GH_ICON;gh.title=ghLogin?"GitHub · "+ghLogin:tr("GitHub не подключён");gh.append(el("span",ghLogin?"good":"dim",ghLogin?"✓":"—"));head.append(gh);
+  const summary=el("summary","",el("span","",tr("Остаток")),el("span","quota-heading-plan",tr("План")));
+  const gh=el("span","quota-github");gh.innerHTML=GH_ICON;gh.title=ghLogin?"GitHub · "+ghLogin:tr("GitHub не подключён");gh.append(el("span",ghLogin?"good":"dim",ghLogin?"✓":"—"));summary.append(gh);
+  summary.setAttribute("aria-label",tr("Что означают лимиты"));
+  // Phones have no hover, so the explanation and exact reset times open on tap instead of living in title.
+  const help=el("div","quota-help",el("div","",tr("Остаток — сколько лимита осталось. План — сколько должно остаться к концу дня при равномерном расходе.")));
+  const head=el("details","quota-heading",summary,help);head.open=quotaHelpOpen;
+  head.addEventListener("toggle",()=>{quotaHelpOpen=head.open});
   const rows=[head];
   for(const a of ["claude","codex","kimi"]){
     const u=usageData[a],w=primaryQuota(u),row=el("div","quota-strip",agentIcon({agent:a}));
@@ -782,11 +819,15 @@ function renderInteg(){
     row.setAttribute("aria-label",row.title);
     row.append(quotaValues(w),el("span","quota-reset",w?compactReset(w.resets_at):"—"));
     rows.push(row);
+    if(w||u?.error)help.append(el("div","",row.title));
   }
   for(const p of lmData.profiles||[])rows.push(localUsage(p));
-  $("integ").replaceChildren(...rows);
+  // Rebuilding identical nodes every second drops hover, focus and screen-reader position.
+  const next=el("div","",...rows);
+  if(next.innerHTML!==$("integ").innerHTML)$("integ").replaceChildren(...next.childNodes);
   renderSendState();
-  if($("settings_dlg").open&&!$("settings_dlg").contains(document.activeElement))renderHub();
+  const signature=JSON.stringify([lastAg,ghLogin,telegramConfig,lmData.profiles,panelVersion]);
+  if($("settings_dlg").open&&signature!==hubSignature&&!$("settings_dlg").contains(document.activeElement)){hubSignature=signature;renderHub()}
 }
 const openLocalModels=new Set(); // renderInteg rebuilds every second; keep user-opened rows open.
 function localUsage(profile){
@@ -815,13 +856,19 @@ function localUsage(profile){
 }
 let hubSection="agents",lmData={profiles:[],discovery:{}},lmTimer=null,returnToNew=false,lmRefreshPending=null,lmModelsChecked=0;
 function settingsSection(section){
-  hubSection=section;for(const name of ["agents","models","connections","app"])$("hub_"+name).hidden=name!==section;
-  for(const b of document.querySelectorAll(".hub-nav button"))b.classList.toggle("on",b.dataset.section===section);
+  hubSection=section;for(const name of ["agents","models","connections","network","app"])$("hub_"+name).hidden=name!==section;
+  for(const b of document.querySelectorAll(".hub-nav button")){
+    b.classList.toggle("on",b.dataset.section===section);b.setAttribute("aria-current",String(b.dataset.section===section));
+    if(b.dataset.section===section&&isMobile())requestAnimationFrame(()=>b.scrollIntoView({inline:"nearest",block:"nearest"}));
+  }
+  updateHubNavFade();
   if(section==="models"&&$("settings_dlg").open)refreshLMModels();
 }
+function updateHubNavFade(){const nav=document.querySelector(".hub-nav");nav.classList.toggle("more-right",nav.scrollLeft+nav.clientWidth<nav.scrollWidth-4)}
+document.querySelector(".hub-nav").addEventListener("scroll",updateHubNavFade,{passive:true});
 async function openSettings(section="agents"){
   drawer(false);sheet(false);settingsSection(section);
-  if(!$("settings_dlg").open)$("settings_dlg").showModal();
+  if(!$("settings_dlg").open)$("settings_dlg").showModal();updateHubNavFade();
   renderHub();
   await Promise.allSettled([loadDeckSettings(),(async()=>{const data=await api("/api/project_directory");$("project_directory").value=data.directory})(),refreshLMModels(),loadIntegrations(),checkGithubFoot(),(async()=>{const data=await api("/api/locales");$("ui_language").replaceChildren(...data.languages.map(x=>{const o=el("option","",x.name);o.value=x.code;return o}));$("ui_language").value=I18N.language})()]);
   clearInterval(lmTimer);lmTimer=setInterval(()=>{if(!document.hidden&&$("settings_dlg").open){if(lmData.discovery?.phase==="running")loadLM(false);if(hubSection==="models"&&Date.now()-lmModelsChecked>30000)refreshLMModels()}},2000);
@@ -837,6 +884,8 @@ async function loadDeckSettings(){
   panelOrigins=current?[current.url,location.origin]:[location.origin,"http://"+network.bind_host+":"+network.bind_port,"http://127.0.0.1:"+network.bind_port,"http://localhost:"+network.bind_port];
   if(!current&&network.public_url)panelOrigins.push(network.public_url);
   populateDeckSelector($("deck_select"),data.decks,selectedDeck,network.name);
+  // Most installs have a single machine; the switcher appears once another Agent Deck is connected.
+  $("deck_switch").hidden=!data.decks.length&&!selectedDeck;
   $("network_name").value=network.name;$("network_public_url").value=network.public_url;
   $("network_bind").textContent="http://"+network.bind_host+":"+network.bind_port;
   $("network_browser").textContent=location.origin;
@@ -864,7 +913,7 @@ async function saveDeck(){
   catch(e){$("deck_password").value="";toast(e.message)}finally{button.disabled=false}
 }
 async function removeDeck(identity){
-  if(!confirm(tr("Отключить этот Agent Deck?")))return;
+  if(!await confirmAction(tr("Отключить этот Agent Deck?"),{confirm:tr("Удалить"),danger:true}))return;
   try{await gatewayApi("/api/decks_remove",{id:identity});if(identity===selectedDeck)switchDeck("");else await loadDeckSettings()}catch(e){toast(e.message)}
 }
 function renderDeckDiscovery(discovery){
@@ -882,7 +931,7 @@ async function saveNetwork(){
   try{await gatewayApi("/api/network_save",{name:$("network_name").value.trim(),public_url:$("network_public_url").value.trim()});await loadDeckSettings();toast(tr("Настройки сохранены"),"success")}
   catch(e){toast(e.message)}finally{button.disabled=false}
 }
-function card(name,status,label,action,secondary=[]){const c=el("div","hub-card",el("div","card-top",el("div","card-main",el("h4","",name),el("p","",status)),btn(label,"pri",action)));if(secondary.length){const d=el("details","",el("summary","",tr("Другие действия")));for(const [text,fn] of secondary)d.append(btn(text,"",fn));c.append(d)}return c}
+function card(name,status,label,action,secondary=[],hidden=false){const c=el("div","hub-card",el("div","card-top",el("div","card-main",el("h4","",name),el("p","",status)),btn(label,"pri",action)));if(secondary.length){const d=el("details","",el("summary","",tr("Другие действия")));for(const [text,fn] of secondary)d.append(btn(text,"",fn));c.append(d)}c.hidden=hidden;return c}
 function openCardDetails(box){return new Set([...box.querySelectorAll(".hub-card")].filter(c=>c.querySelector("details[open]")).map(c=>c.querySelector("h4").textContent))}
 function restoreCardDetails(box,open){for(const c of box.querySelectorAll(".hub-card")){const d=c.querySelector("details");if(d&&open.has(c.querySelector("h4").textContent))d.open=true}}
 function renderHub(){
@@ -892,11 +941,11 @@ function renderHub(){
   restoreCardDetails($("hub_agents"),openAgents);
   // Rebuilding during a running test/benchmark would re-enable its buttons and allow a duplicate run.
   if($("model_cards").getAttribute("aria-busy")!=="true")renderModelCards(selections,openModels);
-  $("connection_cards").replaceChildren(card("GitHub",ghLogin||tr("Не подключён"),ghLogin?tr("Репозитории"):tr("Подключить"),()=>{returnToNew=false;$("settings_dlg").close();ghLogin?openNew():ghConnect()}),card("Telegram",telegramConfig.paired?tr("подключён"):tr("Не подключён"),tr("Настроить"),()=>openEditor("telegram")));
+  $("connection_cards").replaceChildren(card("GitHub",ghLogin||tr("Не подключён"),ghLogin?tr("Репозитории"):tr("Подключить"),()=>{returnToNew=false;$("settings_dlg").close();ghLogin?openNew():ghConnect()}),card("Telegram",telegramConfig.paired?tr("подключён"):tr("Не подключён"),tr("Настроить"),()=>openEditor("telegram"),[],!$("integrations_dlg").hidden));
   if(panelVersion)renderVersion(panelVersion);
 }
 function renderModelCards(selections,open){
-  const cards=[card("Kimi",lastAg.kimi_config?.configured?tr("Ключ сохранён на сервере"):tr("Ключ ещё не настроен"),tr("Настроить"),()=>openEditor("kimi"))];
+  const cards=[card("Kimi",lastAg.kimi_config?.configured?tr("Ключ сохранён на сервере"):tr("Ключ ещё не настроен"),tr("Настроить"),()=>openEditor("kimi"),[],!$("kimi_dlg").hidden)];
   for(const p of lmData.profiles||[]){
     const c=card(p.name+" · LM Studio",p.url+" · "+tr(p.status==="online"?"подключён":p.status==="needs_key"?"Нужен ключ":p.status==="offline"?"Недоступен":"Не проверен"),tr("Обновить модели"),()=>lmAction("probe",{id:p.id}),[[tr("Изменить"),()=>editLM(p)],[tr("Удалить"),()=>lmAction("remove",{id:p.id})]]);
     const samples=p.measurements?Object.values(p.measurements).flatMap(group=>Object.values(group)):[p.performance||{}];for(const sample of samples)c.append(el("p","",performanceText(sample,false)));
@@ -948,12 +997,20 @@ function saveLanguage(){
   document.cookie="cc_lang="+encodeURIComponent($("ui_language").value)+"; Path=/; Max-Age=31536000; SameSite=Lax"+(location.protocol==="https:"?"; Secure":"");
   location.reload();
 }
-function closeKimi(){$("kimi_key").value="";$("kimi_dlg").hidden=true}
+// Off by default: iOS smart punctuation turns -- into an em dash and straightens nothing back.
+function applyAutocorrect(){
+  let on=false;try{on=localStore.getItem("cc.autocorrect")==="1"}catch(e){}
+  const msg=$("msg");msg.setAttribute("autocorrect",on?"on":"off");msg.setAttribute("autocapitalize",on?"sentences":"none");msg.spellcheck=on;
+  $("autocorrect_enabled").checked=on;
+}
+function saveAutocorrect(){try{localStore.setItem("cc.autocorrect",$("autocorrect_enabled").checked?"1":"0")}catch(e){}applyAutocorrect()}
+applyAutocorrect();
+function closeKimi(){$("kimi_key").value="";$("kimi_dlg").hidden=true;if($("settings_dlg").open)renderHub()}
 function openKimi(){
   const config=lastAg.kimi_config||{};
   $("kimi_key").value="";$("kimi_model").value=config.model||"k3";
   $("kimi_state").textContent=config.configured?tr("Ключ сохранён на сервере"):tr("Ключ ещё не настроен");
-  openSettings("models");$("kimi_dlg").hidden=false;$("kimi_dlg").scrollIntoView({block:"nearest"});
+  $("kimi_dlg").hidden=false;openSettings("models");$("kimi_dlg").scrollIntoView({block:"nearest"});$("kimi_key").focus({preventScroll:true});
 }
 
 async function saveKimi(clear=false){
@@ -963,7 +1020,7 @@ async function saveKimi(clear=false){
     closeKimi();await checkGithubFoot();await loadUsage();renderHub();renderSources();toast(clear?tr("Ключ Kimi удалён"):tr("Настройки Kimi сохранены"),"success");
   }catch(e){toast(e.message)}finally{$("kimi_save").disabled=false}
 }
-function clearKimi(){if(confirm(tr("Удалить ключ Kimi из панели?")))saveKimi(true)}
+async function clearKimi(){if(await confirmAction(tr("Удалить ключ Kimi из панели?"),{confirm:tr("Удалить ключ"),danger:true}))saveKimi(true)}
 let telegramConfig={},integrationTimer=null,telegramDirty=false;
 for(const id of ["telegram_token","telegram_enabled"])$(id).addEventListener("input",()=>{telegramDirty=true});
 function renderTelegram(config){
@@ -987,10 +1044,10 @@ async function loadIntegrations(){
   try{const data=await api("/api/integrations");renderTelegram(data.telegram)}catch(e){if(!$("integrations_dlg").hidden)$("telegram_state").textContent=e.message}
 }
 function openIntegrations(){
-  telegramDirty=false;$("telegram_token").value="";$("telegram_credentials").open=!telegramConfig.configured;openSettings("connections");$("integrations_dlg").hidden=false;loadIntegrations();
+  telegramDirty=false;$("telegram_token").value="";$("telegram_credentials").open=!telegramConfig.configured;$("integrations_dlg").hidden=false;openSettings("connections");loadIntegrations();
   clearInterval(integrationTimer);integrationTimer=setInterval(()=>{if(!document.hidden&&!telegramDirty)loadIntegrations()},3000);
 }
-function closeIntegrations(){$("telegram_token").value="";clearInterval(integrationTimer);$("integrations_dlg").hidden=true}
+function closeIntegrations(){$("telegram_token").value="";clearInterval(integrationTimer);$("integrations_dlg").hidden=true;if($("settings_dlg").open)renderHub()}
 async function saveTelegram(clear=false){
   $("telegram_save").disabled=true;
   try{
@@ -1003,7 +1060,7 @@ async function saveTelegram(clear=false){
 async function pairTelegram(){
   try{const data=await api("/api/telegram_pair",{});renderTelegram(data.telegram)}catch(e){toast(e.message)}
 }
-function clearTelegram(){if(confirm(tr("Отключить Telegram и удалить сохранённый токен?")))saveTelegram(true)}
+async function clearTelegram(){if(await confirmAction(tr("Отключить Telegram и удалить сохранённый токен?"),{confirm:tr("Отключить"),danger:true}))saveTelegram(true)}
 let panelUpdating=false,panelVersion=null,versionTimer=null,versionLoading=false;
 const UPDATE_PHASES=new Set(["checking","downloading","installing","restarting"]);
 function versionInfo(v){
@@ -1025,7 +1082,7 @@ function renderVersion(v){
     if(!v.can_update&&!panelUpdating&&job.phase!=="done"){
       b.disabled=true;box.title=tr("Разработка: обновляйте чекаут через git. Кнопка доступна после установки панели.");
     }
-    $("hub_version").replaceChildren(versionInfo(v),b);box.append(btn(tr("Обновить"),"",()=>openSettings("app")));mobile.textContent=label;mobile.style.display="flex";mobile.disabled=b.disabled;
+    $("hub_version").replaceChildren(versionInfo(v),b);box.append(btn(tr("Обновить"),"",()=>openSettings("app")));$("s_update_label").textContent=label;mobile.style.display="flex";mobile.disabled=b.disabled;
   }
   if(!label)$("hub_version").replaceChildren(versionInfo(v));
   if(action!==refreshInterface){const refresh=btn(tr("Обновить интерфейс"),"pri",refreshInterface);refresh.id="b_refresh_interface";refresh.disabled=panelUpdating;$("hub_version").append(refresh)}
@@ -1100,8 +1157,8 @@ function renderRepos(){
   const sel=$("n_git").value;
   for(const r of repos.filter(r=>!q||(r.full_name+" "+r.description).toLowerCase().includes(q)).slice(0,100)){
     const url="https://github.com/"+r.full_name+".git";
-    const row=el("div","repo"+(sel===url?" sel":""),el("span","rn",r.full_name));
-    if(r.private)row.append(el("span","lock","🔒"));
+    const row=el("button","repo"+(sel===url?" sel":""),el("span","rn",r.full_name));row.type="button";
+    if(r.private){const lock=el("span","lock",svgIcon("lock"));lock.title=tr("Приватный");row.append(lock)}
     row.append(el("span","rm",(r.pushed_at||"").slice(0,10)));
     row.title=r.description||"";row.onclick=()=>pickRepo(r);list.append(row);
   }
@@ -1109,7 +1166,7 @@ function renderRepos(){
 }
 function pickRepo(r){
   const repo=r.full_name.split("/")[1];
-  $("n_git").value="https://github.com/"+r.full_name+".git";$("n_proj").value=repo;
+  $("n_git").value="https://github.com/"+r.full_name+".git";$("n_proj").value=repo;renderAdvanced();
   if(!$("n_name").value||$("n_name").dataset.auto){$("n_name").value=repo.replace(/[^A-Za-z0-9_-]/g,"-").slice(0,32);$("n_name").dataset.auto="1"}
   renderRepos();
 }
@@ -1119,7 +1176,7 @@ let newAgent="claude";
 function pickAgent(a){
   newAgent=a;for(const b of $("agsel").children)b.classList.toggle("on",b.dataset.a===a);
   $("n_skip_row").style.display=["shell","pi"].includes(a)?"none":"";
-  if(!["shell","pi"].includes(a))$("n_skip_lbl").textContent=tr("Без подтверждений (")+AGENTS[a].skip+")";renderSources();
+  if(!["shell","pi"].includes(a))$("n_skip_flag").textContent=AGENTS[a].skip;renderSources();
 }
 async function openNew(){
   returnToNew=false;if($("settings_dlg").open)$("settings_dlg").close();drawer(false);
@@ -1131,8 +1188,14 @@ async function createSession(){
   const ok=await post("/api/new",{name,project:$("n_proj").value.trim()||name,git:$("n_git").value.trim(),
     worktree:$("n_wt").checked,branch:$("n_branch").value.trim(),skip:$("n_skip").checked,agent:newAgent,source:["claude","kimi","pi"].includes(newAgent)&&$("n_source").value?JSON.parse($("n_source").value):undefined});
   $("n_go").disabled=false;$("n_go").textContent=tr("Создать");
-  if(ok){$("dlg").close();for(const i of["n_name","n_proj","n_git","n_branch"])$(i).value="";select(ok.name||name)}
+  if(ok){$("dlg").close();for(const i of["n_name","n_proj","n_git","n_branch"])$(i).value="";$("n_wt").checked=false;$("n_adv").open=false;renderAdvanced();select(ok.name||name)}
 }
+function renderAdvanced(){
+  $("n_branch_row").hidden=!$("n_wt").checked;
+  const git=$("n_git").value.trim().replace(/^https:\/\/github\.com\//,"").replace(/\.git$/,"");
+  $("n_adv_hint").textContent=[git,$("n_wt").checked?"worktree":""].filter(Boolean).join(" · ");
+}
+$("n_git").addEventListener("input",renderAdvanced);
 
 /* ⌥1..9 — табы, ⌥↑/⌥↓ — пред./след., ⌥T — новая (работает и внутри терминала) */
 function hotkeys(e){
