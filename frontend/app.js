@@ -66,12 +66,6 @@ function toast(m,info,action){
 /* tmux (set-clipboard on) sends selections as OSC 52 -> put them on the browser clipboard.
    Over plain HTTP there is no Clipboard API, so copy via execCommand right after the mouse-up
    (still inside the user activation window); if the browser refuses, offer a button. */
-function execCopy(text,doc){
-  const ta=doc.createElement("textarea");ta.value=text;ta.setAttribute("readonly","");
-  ta.style.cssText="position:fixed;top:-1000px;left:0;opacity:0";doc.body.appendChild(ta);ta.select();
-  let ok=false;try{ok=doc.execCommand("copy")}catch(e){}
-  ta.remove();return ok;
-}
 async function copyToClipboard(text,w){
   const done=()=>toast(tr("Скопировано: {0} симв.",[text.length]),"success");
   try{if(navigator.clipboard&&window.isSecureContext){await navigator.clipboard.writeText(text);return done()}}catch(e){}
@@ -224,11 +218,17 @@ function show(){
     f.classList.toggle("on",!!s&&m==="term"&&n===active);
     const session=sessions.find(x=>x.name===n);f.inert=isLocal(session)&&!session.running;
   }
-  placeSessionKeys({row:$("session_keys"),screen:$("screen_keys"),terminal:$("terminal_keys"),wrap:$("b_wrap"),mode:m,active:!!s});
+  placeSessionKeys({row:$("session_keys"),composer:$("session_composer"),screen:$("screen"),terminal:$("terminal_keys"),wrap:$("b_wrap"),reconnect:$("b_reconnect"),mode:m,active:!!s});
   $("screen").classList.toggle("on",!!s&&m==="screen");
   if(s&&m==="term"){const f=frameFor(active);f.classList.add("on");f.inert=isLocal(s)&&!s.running;if(!isMobile()&&!f.inert)setTimeout(()=>{try{f.contentWindow.focus();f.contentWindow.term&&f.contentWindow.term.focus()}catch(e){}},30)}
   if(s&&m==="screen")updateScreen(s,true);
   updateLink();
+}
+function reconnectTerminal(){
+  if(!active)return;
+  const frame=frames.get(active);
+  if(frame)frame.remove();
+  frames.delete(active);show();
 }
 function setMode(m){mode=m;try{deckLocalStorage.setItem("cc.mode."+(isMobile()?"m":"d"),m)}catch(e){}show()}
 
@@ -257,10 +257,12 @@ function unwrapUrls(text){
   }
   return out.join("\n");
 }
+let panelOrigins=[location.origin];
+const resolvePanelLink=u=>panelLinkTarget(u,{browserOrigin:location.origin,panelOrigins,identity:selectedDeck});
 const cleanUrl=u=>u.replace(/[.,;)\]]+$/,"");
 function lastUrl(s){const m=unwrapUrls(s&&s.preview||"").match(URL_RE);return m?cleanUrl(m[m.length-1]):null}
 function updateLink(){$("b_link").style.display=lastUrl(cur())?"":"none"}
-function openLink(){const u=lastUrl(cur());if(u)window.open(u,"_blank","noopener")}
+function openLink(){const u=lastUrl(cur());if(u)window.open(resolvePanelLink(u),"_blank","noopener")}
 const ANSI_PALETTE=["#2e3436","#cc0000","#4e9a06","#c4a000","#3465a4","#75507b","#06989a","#d3d7cf","#555753","#ef2929","#8ae234","#fce94f","#729fcf","#ad7fa8","#34e2e2","#eeeeec"];
 function ansiColor(n){
   if(!Number.isInteger(n)||n<0||n>255)return null;
@@ -378,7 +380,7 @@ function updateScreen(s,force){
       const d=el("div","ln");let i=0;
       for(const m of line.matchAll(URL_RE)){
         const u=cleanUrl(m[0]);appendStyledRange(d,runs,i,m.index);
-        const a=document.createElement("a");a.href=u;a.target="_blank";a.rel="noopener";
+        const a=document.createElement("a");a.href=resolvePanelLink(u);a.target="_blank";a.rel="noopener";
         appendStyledRange(a,runs,m.index,m.index+u.length);d.append(a);i=m.index+u.length;
       }
       appendStyledRange(d,runs,i,line.length);p.append(d);
@@ -402,12 +404,9 @@ function select(name){
   activate(name);drawer(false);renderTabs();show();load();
 }
 function showClosedDrafts(){
-  const box=$("closed_drafts");box.replaceChildren();
-  for(const[name,text]of closedDrafts){
-    const item=el("div","",el("b","",name),el("pre","",text));
-    item.append(btn(tr("Скопировать"),"",()=>copyToClipboard(text,window)),btn(tr("Удалить"),"",()=>{closedDrafts.delete(name);saveClosedDrafts();showClosedDrafts()}));box.append(item);
-  }
-  $("draft_dlg").showModal();sheet(false);
+  drawer(false);sheet(false);
+  renderClosedDraftList({box:$("closed_drafts"),drafts:closedDrafts,copy:text=>copyToClipboard(text,window),remove:name=>{closedDrafts.delete(name);saveClosedDrafts();showClosedDrafts()},translate:tr});
+  if(!$("draft_dlg").open)$("draft_dlg").showModal();
 }
 function saveClosedDrafts(){
   try{deckSessionStorage.setItem("cc.closed-drafts",JSON.stringify([...closedDrafts]))}catch(e){}
@@ -805,6 +804,9 @@ async function saveProjectDirectory(){
 let deckTimer=null;
 async function loadDeckSettings(){
   const [data,network]=await Promise.all([gatewayApi("/api/decks"),gatewayApi("/api/network")]);
+  const current=data.decks.find(deck=>deck.id===selectedDeck);
+  panelOrigins=current?[current.url,location.origin]:[location.origin,"http://"+network.bind_host+":"+network.bind_port,"http://127.0.0.1:"+network.bind_port,"http://localhost:"+network.bind_port];
+  if(!current&&network.public_url)panelOrigins.push(network.public_url);
   populateDeckSelector($("deck_select"),data.decks,selectedDeck,network.name);
   $("network_name").value=network.name;$("network_public_url").value=network.public_url;
   $("network_bind").textContent="http://"+network.bind_host+":"+network.bind_port;

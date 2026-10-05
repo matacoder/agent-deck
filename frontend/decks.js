@@ -15,4 +15,13 @@ function populateDeckSelector(select,decks,current,localName){
   }
   select.value=current;
 }
-if(typeof module!=='undefined')module.exports={instancePath,instanceStorage,populateDeckSelector};
+function panelLinkTarget(raw,{browserOrigin,panelOrigins,identity=""}){
+  let url;
+  try{url=new URL(raw)}catch(e){return raw}
+  if(url.username||url.password||!panelOrigins.includes(url.origin))return raw;
+  if(url.pathname==="/"||url.pathname==="/login")return browserOrigin+"/"+url.search+url.hash;
+  if(url.pathname.startsWith("/t/"))return browserOrigin+instancePath(identity,url.pathname+url.search)+url.hash;
+  return raw;
+}
+
+if(typeof module!=='undefined')module.exports={instancePath,instanceStorage,populateDeckSelector,panelLinkTarget};

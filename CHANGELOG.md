@@ -2,6 +2,14 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.1.4 — 2026-10-05
+
+- Open links to the current panel through the browser origin instead of its internal address; panel login links reuse the existing authenticated interface.
+
+- Show the shared message composer and attachments in live terminal mode without losing drafts while switching views.
+- Add a mobile-friendly terminal reconnect button that reconnects ttyd without restarting the session.
+- Fix closed-session draft action layout and clipboard fallback inside modal dialogs; show an empty-list state.
+
 ## 1.1.3 — 2026-10-05
 
 - Security: proxied connected-deck `/api/*` responses must be JSON; all responses send `X-Content-Type-Options: nosniff`; requests with `Transfer-Encoding`, invalid `Content-Length` or unread bodies close the connection instead of being parsed as a second request.

@@ -42,7 +42,7 @@ __PANEL_STYLE__</style></head><body>
       <div id="empty">Загружаю сессии…</div>
       <div id="screen">
         <div id="pre"></div>
-        <div class="composer">
+        <div class="composer" id="session_composer">
           <div id="screen_keys"><div class="keys-row" id="session_keys">
           <div class="keys" id="keys">
             <button class="key key-primary question-key" onclick="key('S-Left')" aria-label="Предыдущий вопрос" title="Вопросы Codex: Shift+←">?←</button>
@@ -55,6 +55,7 @@ __PANEL_STYLE__</style></head><body>
             <button class="key key-extra" onclick="key('Escape')">Esc</button>
             <button class="key key-extra" onclick="key('BTab')">⇧Tab</button><button class="key key-extra" onclick="key('Tab')">Tab</button>
             <button class="key key-extra" onclick="key('C-c')">^C</button>
+            <button class="key" id="b_reconnect" onclick="reconnectTerminal()" hidden>Переподключить терминал</button>
             <button class="key key-extra" id="b_wrap" onclick="toggleWrap()" aria-pressed="true">Перенос</button>
           </div>
           <button class="keyboard-hide" id="b_keyboard" onpointerdown="event.preventDefault()" onclick="hideKeyboard()" aria-label="Скрыть клавиатуру" title="Скрыть клавиатуру"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="2" y="3" width="20" height="12" rx="2"/><path d="M5 7h2m3 0h2m3 0h2m2 0h1M6 11h12m-9 8 3 3 3-3"/></svg></button>
@@ -98,7 +99,7 @@ __PANEL_STYLE__</style></head><body>
   <button onclick="sheet(false)"><span class="i"></span>Отмена</button>
 </div></div>
 <div id="toast"></div>
-<dialog id="draft_dlg"><div class="dlg-body"><h3>Черновики закрытых сессий</h3><div id="closed_drafts"></div><button onclick="$('draft_dlg').close()">Закрыть</button></div></dialog>
+<dialog id="draft_dlg"><div class="dlg"><div class="dlg-body"><h3>Черновики закрытых сессий</h3><div id="closed_drafts"></div></div><div class="acts"><button type="button" onclick="$('draft_dlg').close()">Закрыть</button></div></div></dialog>
 
 <dialog id="dlg"><form class="dlg" method="dialog" onsubmit="event.preventDefault();createSession()">
   <div class="dlg-body">

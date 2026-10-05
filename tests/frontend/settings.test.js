@@ -92,3 +92,34 @@ test('terminal mode moves the same session keys into a visible toolbar and resto
  expect(options.row.parentNode).toBe(options.screen);expect(options.terminal.hidden).toBe(true);expect(options.wrap.hidden).toBe(false);
  placeSessionKeys({...options,mode:'term',active:false});expect(options.terminal.hidden).toBe(true);
 });
+
+test('switching terminal views preserves the composer text, attachment controls and handlers',()=>{
+ const {placeSessionKeys}=require('../../frontend/settings');
+ document.body.innerHTML='<div id="screen"><div id="composer"><textarea>Unsent draft</textarea><button id="attach">Attach</button><div id="row"><button id="wrap">Wrap</button><button id="reconnect" hidden>Reconnect</button></div><div id="attachments">photo.png</div></div></div><div id="terminal" hidden></div>';
+ const options={row:document.querySelector('#row'),composer:document.querySelector('#composer'),screen:document.querySelector('#screen'),terminal:document.querySelector('#terminal'),wrap:document.querySelector('#wrap'),reconnect:document.querySelector('#reconnect'),active:true};
+ const attach=jest.fn();document.querySelector('#attach').onclick=attach;
+ placeSessionKeys({...options,mode:'term'});
+ expect(options.composer.parentNode).toBe(options.terminal);expect(options.reconnect.hidden).toBe(false);
+ document.querySelector('#attach').click();expect(attach).toHaveBeenCalledTimes(1);
+ placeSessionKeys({...options,mode:'screen'});
+ expect(options.composer.parentNode).toBe(options.screen);expect(options.reconnect.hidden).toBe(true);
+ expect(document.querySelector('textarea').value).toBe('Unsent draft');expect(document.querySelector('#attachments').textContent).toBe('photo.png');
+});
+
+test('closed draft actions copy exact text and delete only the chosen draft',()=>{
+ const {renderClosedDraftList}=require('../../frontend/settings');
+ const box=document.createElement('div');const drafts=new Map([['one','Text <img>\nnext'],['two','Keep me']]);
+ const copy=jest.fn();const remove=jest.fn(name=>{drafts.delete(name);render()});
+ const render=()=>renderClosedDraftList({box,drafts,copy,remove,translate:x=>x});
+ render();box.querySelector('.pri').click();expect(copy).toHaveBeenCalledWith('Text <img>\nnext');expect(box.querySelector('img')).toBeNull();
+ box.querySelector('.danger').click();expect(drafts.get('two')).toBe('Keep me');expect(box.querySelectorAll('.closed-draft')).toHaveLength(1);
+ box.querySelector('.danger').click();expect(box.textContent).toBe('Нет сохранённых черновиков');
+});
+
+test('HTTP clipboard fallback stays inside the active modal and cleans up its textarea',()=>{
+ const {execCopy}=require('../../frontend/settings');
+ document.body.innerHTML='<dialog open><button>Copy</button></dialog>';
+ document.execCommand=jest.fn(()=>{const field=document.querySelector('dialog textarea');expect(field.value).toBe('Exact\ntext');return true});
+ expect(execCopy('Exact\ntext',document)).toBe(true);expect(document.querySelector('textarea')).toBeNull();
+ delete document.execCommand;
+});

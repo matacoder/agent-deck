@@ -413,7 +413,9 @@ dialog{box-shadow:0 24px 80px #0006;border-color:#ffffff12;border-radius:16px}
 .deck-result{display:flex;align-items:center;gap:16px}.deck-info{flex:1;min-width:0}.deck-result p{margin-bottom:0}.deck-result .deck-actions{flex:none}
 @media(max-width:480px){.deck-toolbar{align-items:stretch}.deck-toolbar>.deck-actions{flex:1 1 100%}.deck-toolbar .deck-actions button{flex:1}.deck-result{align-items:flex-start;flex-direction:column;gap:12px}.deck-connection>.deck-actions{margin-top:12px}.deck-actions button{padding:10px 12px}}
 
-#terminal_keys{flex:none;border-top:1px solid var(--bd);background:var(--side);padding:8px 8px max(8px,var(--sab))}#terminal_keys[hidden]{display:none}#terminal_keys .keys{padding-bottom:0}#terminal_keys .keyboard-hide{display:none}#b_wrap[hidden]{display:none}
+#terminal_keys{flex:none;background:var(--side)}#terminal_keys[hidden]{display:none}#terminal_keys .keys{padding-bottom:0}#b_wrap[hidden]{display:none}
+
+#b_reconnect[hidden]{display:none}#b_reconnect{height:auto;min-height:36px;white-space:normal;font-family:inherit;line-height:1.3}#terminal_keys .keys{padding-bottom:8px}.closed-draft{padding:16px 0;border-bottom:1px solid var(--bd)}.closed-draft:first-child{padding-top:0}.closed-draft strong{overflow-wrap:anywhere}.closed-draft .acts{padding:0;justify-content:flex-start;flex-wrap:wrap}.closed-draft .danger{color:var(--bad)}#b_drafts{white-space:normal;min-height:44px;padding:10px 12px;border:1px solid var(--bd);border-radius:9px;background:var(--side2)}
 </style></head><body>
 <div id="app">
   <aside>
@@ -447,7 +449,7 @@ dialog{box-shadow:0 24px 80px #0006;border-color:#ffffff12;border-radius:16px}
       <div id="empty">Загружаю сессии…</div>
       <div id="screen">
         <div id="pre"></div>
-        <div class="composer">
+        <div class="composer" id="session_composer">
           <div id="screen_keys"><div class="keys-row" id="session_keys">
           <div class="keys" id="keys">
             <button class="key key-primary question-key" onclick="key('S-Left')" aria-label="Предыдущий вопрос" title="Вопросы Codex: Shift+←">?←</button>
@@ -460,6 +462,7 @@ dialog{box-shadow:0 24px 80px #0006;border-color:#ffffff12;border-radius:16px}
             <button class="key key-extra" onclick="key('Escape')">Esc</button>
             <button class="key key-extra" onclick="key('BTab')">⇧Tab</button><button class="key key-extra" onclick="key('Tab')">Tab</button>
             <button class="key key-extra" onclick="key('C-c')">^C</button>
+            <button class="key" id="b_reconnect" onclick="reconnectTerminal()" hidden>Переподключить терминал</button>
             <button class="key key-extra" id="b_wrap" onclick="toggleWrap()" aria-pressed="true">Перенос</button>
           </div>
           <button class="keyboard-hide" id="b_keyboard" onpointerdown="event.preventDefault()" onclick="hideKeyboard()" aria-label="Скрыть клавиатуру" title="Скрыть клавиатуру"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="2" y="3" width="20" height="12" rx="2"/><path d="M5 7h2m3 0h2m3 0h2m2 0h1M6 11h12m-9 8 3 3 3-3"/></svg></button>
@@ -503,7 +506,7 @@ dialog{box-shadow:0 24px 80px #0006;border-color:#ffffff12;border-radius:16px}
   <button onclick="sheet(false)"><span class="i"></span>Отмена</button>
 </div></div>
 <div id="toast"></div>
-<dialog id="draft_dlg"><div class="dlg-body"><h3>Черновики закрытых сессий</h3><div id="closed_drafts"></div><button onclick="$('draft_dlg').close()">Закрыть</button></div></dialog>
+<dialog id="draft_dlg"><div class="dlg"><div class="dlg-body"><h3>Черновики закрытых сессий</h3><div id="closed_drafts"></div></div><div class="acts"><button type="button" onclick="$('draft_dlg').close()">Закрыть</button></div></div></dialog>
 
 <dialog id="dlg"><form class="dlg" method="dialog" onsubmit="event.preventDefault();createSession()">
   <div class="dlg-body">
@@ -657,14 +660,36 @@ async function refreshModelCatalog(request){
   return request("/api/lmstudio");
 }
 
-function placeSessionKeys({row,screen,terminal,wrap,mode,active}){
+function placeSessionKeys({row,composer,screen,terminal,wrap,reconnect,mode,active}){
   const live=active&&mode==="term";
-  (live?terminal:screen).append(row);
+  (live?terminal:screen).append(composer||row);
   terminal.hidden=!live;
   wrap.hidden=live;
+  if(reconnect)reconnect.hidden=!live;
 }
 
-if(typeof module!=="undefined")module.exports={saveDirectorySetting,saveSessionName,refreshModelCatalog,placeSessionKeys};
+function execCopy(text,doc){
+  const ta=doc.createElement("textarea");ta.value=text;ta.setAttribute("readonly","");
+  ta.style.cssText="position:fixed;top:-1000px;left:0;opacity:0";(doc.querySelector("dialog[open]")||doc.body).appendChild(ta);ta.select();
+  let ok=false;try{ok=doc.execCommand("copy")}catch(e){}
+  ta.remove();return ok;
+}
+
+function renderClosedDraftList({box,drafts,copy,remove,translate}){
+  box.replaceChildren();
+  if(!drafts.size){const empty=document.createElement("p");empty.textContent=translate("Нет сохранённых черновиков");box.append(empty);return}
+  for(const [name,text] of drafts){
+    const item=document.createElement("div");item.className="closed-draft";
+    const title=document.createElement("strong");title.textContent=name;
+    const preview=document.createElement("pre");preview.textContent=text;
+    const actions=document.createElement("div");actions.className="acts";
+    const copyButton=document.createElement("button");copyButton.type="button";copyButton.className="pri";copyButton.textContent=translate("Скопировать");copyButton.onclick=()=>copy(text);
+    const removeButton=document.createElement("button");removeButton.type="button";removeButton.className="danger";removeButton.textContent=translate("Удалить");removeButton.onclick=()=>remove(name);
+    actions.append(copyButton,removeButton);item.append(title,preview,actions);box.append(item);
+  }
+}
+
+if(typeof module!=="undefined")module.exports={saveDirectorySetting,saveSessionName,refreshModelCatalog,placeSessionKeys,renderClosedDraftList,execCopy};
 function instancePath(identity,path){
   if(!identity)return path;
   if(!/^[0-9a-f]{24}$/.test(identity))throw new Error('Invalid Agent Deck identifier');
@@ -682,7 +707,16 @@ function populateDeckSelector(select,decks,current,localName){
   }
   select.value=current;
 }
-if(typeof module!=='undefined')module.exports={instancePath,instanceStorage,populateDeckSelector};
+function panelLinkTarget(raw,{browserOrigin,panelOrigins,identity=""}){
+  let url;
+  try{url=new URL(raw)}catch(e){return raw}
+  if(url.username||url.password||!panelOrigins.includes(url.origin))return raw;
+  if(url.pathname==="/"||url.pathname==="/login")return browserOrigin+"/"+url.search+url.hash;
+  if(url.pathname.startsWith("/t/"))return browserOrigin+instancePath(identity,url.pathname+url.search)+url.hash;
+  return raw;
+}
+
+if(typeof module!=='undefined')module.exports={instancePath,instanceStorage,populateDeckSelector,panelLinkTarget};
 const I18N=__PANEL_I18N__;
 const DATE_LOCALE=(()=>{try{return Intl.getCanonicalLocales(I18N.language)[0]}catch(e){return "en"}})();
 const $=id=>document.getElementById(id);
@@ -751,12 +785,6 @@ function toast(m,info,action){
 /* tmux (set-clipboard on) sends selections as OSC 52 -> put them on the browser clipboard.
    Over plain HTTP there is no Clipboard API, so copy via execCommand right after the mouse-up
    (still inside the user activation window); if the browser refuses, offer a button. */
-function execCopy(text,doc){
-  const ta=doc.createElement("textarea");ta.value=text;ta.setAttribute("readonly","");
-  ta.style.cssText="position:fixed;top:-1000px;left:0;opacity:0";doc.body.appendChild(ta);ta.select();
-  let ok=false;try{ok=doc.execCommand("copy")}catch(e){}
-  ta.remove();return ok;
-}
 async function copyToClipboard(text,w){
   const done=()=>toast(tr("Скопировано: {0} симв.",[text.length]),"success");
   try{if(navigator.clipboard&&window.isSecureContext){await navigator.clipboard.writeText(text);return done()}}catch(e){}
@@ -909,11 +937,17 @@ function show(){
     f.classList.toggle("on",!!s&&m==="term"&&n===active);
     const session=sessions.find(x=>x.name===n);f.inert=isLocal(session)&&!session.running;
   }
-  placeSessionKeys({row:$("session_keys"),screen:$("screen_keys"),terminal:$("terminal_keys"),wrap:$("b_wrap"),mode:m,active:!!s});
+  placeSessionKeys({row:$("session_keys"),composer:$("session_composer"),screen:$("screen"),terminal:$("terminal_keys"),wrap:$("b_wrap"),reconnect:$("b_reconnect"),mode:m,active:!!s});
   $("screen").classList.toggle("on",!!s&&m==="screen");
   if(s&&m==="term"){const f=frameFor(active);f.classList.add("on");f.inert=isLocal(s)&&!s.running;if(!isMobile()&&!f.inert)setTimeout(()=>{try{f.contentWindow.focus();f.contentWindow.term&&f.contentWindow.term.focus()}catch(e){}},30)}
   if(s&&m==="screen")updateScreen(s,true);
   updateLink();
+}
+function reconnectTerminal(){
+  if(!active)return;
+  const frame=frames.get(active);
+  if(frame)frame.remove();
+  frames.delete(active);show();
 }
 function setMode(m){mode=m;try{deckLocalStorage.setItem("cc.mode."+(isMobile()?"m":"d"),m)}catch(e){}show()}
 
@@ -942,10 +976,12 @@ function unwrapUrls(text){
   }
   return out.join("\n");
 }
+let panelOrigins=[location.origin];
+const resolvePanelLink=u=>panelLinkTarget(u,{browserOrigin:location.origin,panelOrigins,identity:selectedDeck});
 const cleanUrl=u=>u.replace(/[.,;)\]]+$/,"");
 function lastUrl(s){const m=unwrapUrls(s&&s.preview||"").match(URL_RE);return m?cleanUrl(m[m.length-1]):null}
 function updateLink(){$("b_link").style.display=lastUrl(cur())?"":"none"}
-function openLink(){const u=lastUrl(cur());if(u)window.open(u,"_blank","noopener")}
+function openLink(){const u=lastUrl(cur());if(u)window.open(resolvePanelLink(u),"_blank","noopener")}
 const ANSI_PALETTE=["#2e3436","#cc0000","#4e9a06","#c4a000","#3465a4","#75507b","#06989a","#d3d7cf","#555753","#ef2929","#8ae234","#fce94f","#729fcf","#ad7fa8","#34e2e2","#eeeeec"];
 function ansiColor(n){
   if(!Number.isInteger(n)||n<0||n>255)return null;
@@ -1063,7 +1099,7 @@ function updateScreen(s,force){
       const d=el("div","ln");let i=0;
       for(const m of line.matchAll(URL_RE)){
         const u=cleanUrl(m[0]);appendStyledRange(d,runs,i,m.index);
-        const a=document.createElement("a");a.href=u;a.target="_blank";a.rel="noopener";
+        const a=document.createElement("a");a.href=resolvePanelLink(u);a.target="_blank";a.rel="noopener";
         appendStyledRange(a,runs,m.index,m.index+u.length);d.append(a);i=m.index+u.length;
       }
       appendStyledRange(d,runs,i,line.length);p.append(d);
@@ -1087,12 +1123,9 @@ function select(name){
   activate(name);drawer(false);renderTabs();show();load();
 }
 function showClosedDrafts(){
-  const box=$("closed_drafts");box.replaceChildren();
-  for(const[name,text]of closedDrafts){
-    const item=el("div","",el("b","",name),el("pre","",text));
-    item.append(btn(tr("Скопировать"),"",()=>copyToClipboard(text,window)),btn(tr("Удалить"),"",()=>{closedDrafts.delete(name);saveClosedDrafts();showClosedDrafts()}));box.append(item);
-  }
-  $("draft_dlg").showModal();sheet(false);
+  drawer(false);sheet(false);
+  renderClosedDraftList({box:$("closed_drafts"),drafts:closedDrafts,copy:text=>copyToClipboard(text,window),remove:name=>{closedDrafts.delete(name);saveClosedDrafts();showClosedDrafts()},translate:tr});
+  if(!$("draft_dlg").open)$("draft_dlg").showModal();
 }
 function saveClosedDrafts(){
   try{deckSessionStorage.setItem("cc.closed-drafts",JSON.stringify([...closedDrafts]))}catch(e){}
@@ -1490,6 +1523,9 @@ async function saveProjectDirectory(){
 let deckTimer=null;
 async function loadDeckSettings(){
   const [data,network]=await Promise.all([gatewayApi("/api/decks"),gatewayApi("/api/network")]);
+  const current=data.decks.find(deck=>deck.id===selectedDeck);
+  panelOrigins=current?[current.url,location.origin]:[location.origin,"http://"+network.bind_host+":"+network.bind_port,"http://127.0.0.1:"+network.bind_port,"http://localhost:"+network.bind_port];
+  if(!current&&network.public_url)panelOrigins.push(network.public_url);
   populateDeckSelector($("deck_select"),data.decks,selectedDeck,network.name);
   $("network_name").value=network.name;$("network_public_url").value=network.public_url;
   $("network_bind").textContent="http://"+network.bind_host+":"+network.bind_port;

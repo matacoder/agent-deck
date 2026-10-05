@@ -26,3 +26,18 @@ test('selector renders machine names as text and preserves selected identity',()
  populateDeckSelector(select,[{id:ID,name:'<img src=x onerror=alert(1)>'}],ID,'Gateway');
  expect(select.options).toHaveLength(2);expect(select.value).toBe(ID);expect(select.options[1].textContent).toContain('<img');expect(select.querySelector('img')).toBeNull();
 });
+
+test('panel login links reuse the public browser origin and its authenticated cookie',()=>{
+ const {panelLinkTarget}=require('../../frontend/decks');
+ const options={browserOrigin:'https://cli.matakov.com',panelOrigins:['http://100.109.113.79:8790','http://127.0.0.1:8790']};
+ expect(panelLinkTarget('http://100.109.113.79:8790/login',options)).toBe('https://cli.matakov.com/');
+ expect(panelLinkTarget('http://127.0.0.1:8790/',options)).toBe('https://cli.matakov.com/');
+ expect(panelLinkTarget('http://100.109.113.79:3000/login',options)).toBe('http://100.109.113.79:3000/login');
+ expect(panelLinkTarget('https://example.com/login',options)).toBe('https://example.com/login');
+ expect(panelLinkTarget('http://secret@100.109.113.79:8790/login',options)).toBe('http://secret@100.109.113.79:8790/login');
+});
+
+test('remote terminal links keep the selected gateway route',()=>{
+ const {panelLinkTarget}=require('../../frontend/decks');
+ expect(panelLinkTarget('http://100.68.39.62:8790/t/?arg=cc-demo',{browserOrigin:'https://cli.matakov.com',panelOrigins:['http://100.68.39.62:8790'],identity:ID})).toBe('https://cli.matakov.com/deck/'+ID+'/t/?arg=cc-demo');
+});

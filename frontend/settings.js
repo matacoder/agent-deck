@@ -19,11 +19,33 @@ async function refreshModelCatalog(request){
   return request("/api/lmstudio");
 }
 
-function placeSessionKeys({row,screen,terminal,wrap,mode,active}){
+function placeSessionKeys({row,composer,screen,terminal,wrap,reconnect,mode,active}){
   const live=active&&mode==="term";
-  (live?terminal:screen).append(row);
+  (live?terminal:screen).append(composer||row);
   terminal.hidden=!live;
   wrap.hidden=live;
+  if(reconnect)reconnect.hidden=!live;
 }
 
-if(typeof module!=="undefined")module.exports={saveDirectorySetting,saveSessionName,refreshModelCatalog,placeSessionKeys};
+function execCopy(text,doc){
+  const ta=doc.createElement("textarea");ta.value=text;ta.setAttribute("readonly","");
+  ta.style.cssText="position:fixed;top:-1000px;left:0;opacity:0";(doc.querySelector("dialog[open]")||doc.body).appendChild(ta);ta.select();
+  let ok=false;try{ok=doc.execCommand("copy")}catch(e){}
+  ta.remove();return ok;
+}
+
+function renderClosedDraftList({box,drafts,copy,remove,translate}){
+  box.replaceChildren();
+  if(!drafts.size){const empty=document.createElement("p");empty.textContent=translate("Нет сохранённых черновиков");box.append(empty);return}
+  for(const [name,text] of drafts){
+    const item=document.createElement("div");item.className="closed-draft";
+    const title=document.createElement("strong");title.textContent=name;
+    const preview=document.createElement("pre");preview.textContent=text;
+    const actions=document.createElement("div");actions.className="acts";
+    const copyButton=document.createElement("button");copyButton.type="button";copyButton.className="pri";copyButton.textContent=translate("Скопировать");copyButton.onclick=()=>copy(text);
+    const removeButton=document.createElement("button");removeButton.type="button";removeButton.className="danger";removeButton.textContent=translate("Удалить");removeButton.onclick=()=>remove(name);
+    actions.append(copyButton,removeButton);item.append(title,preview,actions);box.append(item);
+  }
+}
+
+if(typeof module!=="undefined")module.exports={saveDirectorySetting,saveSessionName,refreshModelCatalog,placeSessionKeys,renderClosedDraftList,execCopy};
