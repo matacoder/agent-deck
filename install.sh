@@ -69,6 +69,29 @@ die() { printf '\033[1;31mxx\033[0m %s\n' "$*" >&2; exit 1; }
 [ -f "$SRC/panel/panel.py" ] || die "run from a checkout of the repository (panel/ not found next to install.sh)"
 export DEBIAN_FRONTEND=noninteractive
 
+# An in-panel self-update may have installed a newer release than this checkout; never silently downgrade.
+NEW_VERSION=$(cat "$SRC/panel/VERSION")
+if [ ! -L "$PREFIX" ] && [ -f "$PREFIX/VERSION" ] && [ ! -L "$PREFIX/VERSION" ]; then
+    OLD_VERSION=$(head -c 64 "$PREFIX/VERSION" | tr -d '[:space:]')
+    OLD_VERSION=${OLD_VERSION#v}
+    if [[ "$OLD_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] && [ "$OLD_VERSION" != "$NEW_VERSION" ] \
+        && [ "$(printf '%s\n%s\n' "$OLD_VERSION" "$NEW_VERSION" | sort -V | tail -1)" = "$OLD_VERSION" ] \
+        && [ "${FORCE_DOWNGRADE:-0}" != 1 ]; then
+        die "installed v$OLD_VERSION is newer than this checkout (v$NEW_VERSION); run update.sh to fetch the latest release, or set FORCE_DOWNGRADE=1 to downgrade"
+    fi
+fi
+
+# Remember options before anything can fail, so a re-run does not fall back to defaults.
+write_conf() {
+    install -d -m 755 "$(dirname "$CONF")"
+    local tmp
+    tmp=$(mktemp "$CONF.XXXXXX")
+    for k in $CONF_KEYS; do echo "$k=${!k}"; done > "$tmp"
+    chmod 644 "$tmp"
+    mv -f "$tmp" "$CONF"
+}
+write_conf
+
 say "packages"
 if ! grep -rqsE '^(deb .*universe|Components:.*universe)' /etc/apt/sources.list /etc/apt/sources.list.d/; then
     apt-get install -y -q software-properties-common >/dev/null && add-apt-repository -y universe >/dev/null
@@ -94,7 +117,17 @@ if [ -z "$BIND_HOST" ]; then
     fi
     if ! tailscale ip -4 >/dev/null 2>&1; then
         say "joining the tailnet${TS_AUTHKEY:+ (auth key)}: open the link below if asked"
-        if [ -n "$TS_AUTHKEY" ]; then tailscale up --authkey "$TS_AUTHKEY"; else tailscale up; fi
+        if [ -n "$TS_AUTHKEY" ]; then
+            # Pass the key through a 0600 file: command-line arguments are readable by every local user.
+            key_file=$(mktemp)
+            trap 'rm -f "$key_file"' EXIT
+            printf '%s' "$TS_AUTHKEY" > "$key_file"
+            tailscale up --auth-key="file:$key_file"
+            rm -f "$key_file"
+            trap - EXIT
+        else
+            tailscale up
+        fi
     fi
     BIND_HOST=$(tailscale ip -4 | head -1)
 fi
@@ -103,8 +136,11 @@ fi
 
 say "user $DEV_USER"
 if ! id "$DEV_USER" >/dev/null 2>&1; then
-    getent group "$DEV_UID" >/dev/null || groupadd -g "$DEV_UID" "$DEV_USER"
-    useradd -u "$DEV_UID" -g "$DEV_UID" -m -s /bin/bash "$DEV_USER"
+    # Never adopt a foreign group that already owns the preferred GID as the user's primary group.
+    if ! getent group "$DEV_USER" >/dev/null; then
+        if getent group "$DEV_UID" >/dev/null; then groupadd "$DEV_USER"; else groupadd -g "$DEV_UID" "$DEV_USER"; fi
+    fi
+    useradd -u "$DEV_UID" -g "$DEV_USER" -m -s /bin/bash "$DEV_USER"
 fi
 UID_=$(id -u "$DEV_USER")
 H=$(getent passwd "$DEV_USER" | cut -d: -f6)
@@ -116,7 +152,7 @@ say "panel code -> $PREFIX"
 # owned by the panel user: the panel runs as that user anyway, and ./deploy.sh can update it without root
 [ ! -L "$PREFIX" ] || die "panel runtime must not be a symbolic link"
 install -d -m 755 "$PREFIX"
-chown -h "$DEV_USER:$DEV_USER" "$PREFIX"
+chown -h "$DEV_USER:" "$PREFIX"
 as_user find "$SRC/panel" -maxdepth 1 -type f -exec install -m 644 {} "$PREFIX"/ \;
 as_user install -d -m 755 "$PREFIX/integrations"
 as_user find "$SRC/integrations" -maxdepth 1 -type f -name '*.py' -exec install -m 644 {} "$PREFIX/integrations"/ \;
@@ -267,11 +303,10 @@ $busy"
     *) die "PUBLIC_PROXY must be auto, traefik or caddy" ;;
     esac
 fi
-install -d -m 755 /etc/agent-deck
-for k in $CONF_KEYS; do echo "$k=${!k}"; done > "$CONF"
+write_conf   # again: BIND_HOST and PUBLIC_PROXY may have been resolved above
 
 echo
-say "Agent Deck v$(cat "$SRC/panel/VERSION") — done: http://$BIND_HOST:$PANEL_PORT  (user: $DEV_USER)"
+say "Agent Deck v$NEW_VERSION — done: http://$BIND_HOST:$PANEL_PORT  (user: $DEV_USER)"
 [ -z "$PUBLIC_DOMAIN" ] || echo "    public: https://$PUBLIC_DOMAIN"
 if [ -n "$NEW_PASS" ]; then
     echo "    password: $NEW_PASS"

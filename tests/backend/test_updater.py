@@ -114,6 +114,72 @@ class UpdaterTests(unittest.TestCase):
         self.assertFalse((self.target / "updater.py").exists())
         self.assertEqual([call.args for call in service.call_args_list], [("stop",), ("start",), ("stop",), ("start",)])
 
+    def test_rollback_restores_files_and_starts_panel_when_stop_fails(self):
+        names = updater.unpack(self.archive(), self.stage, "0.2.0")
+        old_files = {"VERSION": "0.1.0", "panel.py": "# old backend"}
+        for name, text in old_files.items():
+            (self.target / name).write_text(text)
+        calls = []
+
+        def service(action):
+            calls.append(action)
+            if calls == ["stop", "start", "stop"]:
+                raise updater.subprocess.TimeoutExpired("systemctl", 30)
+
+        with patch.object(updater, "service", side_effect=service), patch.object(updater, "healthy", side_effect=RuntimeError("bad release")):
+            with self.assertRaisesRegex(RuntimeError, "bad release"):
+                updater.install(self.stage, self.target, names, self.state, "0.2.0", "http://127.0.0.1:8790")
+        for name, text in old_files.items():
+            self.assertEqual((self.target / name).read_text(), text)
+        self.assertFalse((self.target / "updater.py").exists())
+        self.assertEqual(calls, ["stop", "start", "stop", "start"])
+
+    def test_version_file_is_replaced_last(self):
+        names = updater.unpack(self.archive(), self.stage, "0.2.0")
+        replaced = []
+        original = updater.os.replace
+
+        def replace(source, destination):
+            if Path(destination).parent != self.state.parent:
+                replaced.append(Path(destination).relative_to(self.target).as_posix())
+            original(source, destination)
+
+        with patch.object(updater, "service"), patch.object(updater, "healthy"), patch.object(updater.os, "replace", side_effect=replace):
+            updater.install(self.stage, self.target, names, self.state, "0.2.0", "http://127.0.0.1:8790")
+        installed = [name for name in replaced if name in names]
+        self.assertEqual(installed[-1], "VERSION")
+        self.assertEqual(sorted(installed), sorted(names))
+
+    def test_run_removes_stale_staging_directories_only(self):
+        (self.target / "VERSION").write_text("0.2.0")
+        stale = self.target / ".update-crashed"
+        (stale / "backup").mkdir(parents=True)
+        (stale / "panel.py").write_text("# partial")
+        outside = self.directory / "outside"
+        outside.mkdir()
+        (outside / "keep").write_text("keep")
+        (self.target / ".update-link").symlink_to(outside)
+        (self.target / ".update-file").write_text("not a directory")
+        with patch.object(updater, "available", return_value=True), patch.object(updater, "fetch", return_value=b'{"tag_name":"v0.1.0"}'):
+            updater.run("matacoder/agent-deck", self.target, self.state, "http://127.0.0.1:8790")
+        self.assertFalse(stale.exists())
+        self.assertTrue((self.target / ".update-link").is_symlink())
+        self.assertTrue((outside / "keep").exists())
+        self.assertTrue((self.target / ".update-file").exists())
+        self.assertTrue(self.stage.exists())
+
+    def test_every_tracked_panel_file_is_allowed_in_releases(self):
+        # A panel file outside the allow-list would make every one-click update reject the release.
+        try:
+            listed = updater.subprocess.run(["git", "-C", str(ROOT), "ls-files", "panel"], capture_output=True, text=True, check=True).stdout.split()
+            files = [name[len("panel/"):] for name in listed]
+        except (OSError, updater.subprocess.CalledProcessError):
+            files = []
+        if not files:
+            files = [path.name for path in (ROOT / "panel").iterdir() if path.is_file()]
+        self.assertTrue(files)
+        self.assertEqual(sorted(set(files) - updater.ALLOWED), [])
+
     def test_download_failure_does_not_stop_the_running_panel(self):
         with patch.object(updater, "available", return_value=True), patch.object(updater, "fetch", side_effect=OSError("offline")), patch.object(updater, "service") as service:
             updater.run("matacoder/agent-deck", self.target, self.state, "http://127.0.0.1:8790")

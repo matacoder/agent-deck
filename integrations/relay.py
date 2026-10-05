@@ -1,6 +1,7 @@
 """Loopback-only Anthropic pass-through and text-free per-request measurements."""
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from socketserver import TCPServer
+import errno
 import hmac
 import http.client
 import json
@@ -328,7 +329,13 @@ class Relay:
                             connection.close()
                         semaphore.release()
 
-            self.server = LoopbackHTTPServer(('127.0.0.1',port),Handler)
+            try:
+                self.server = LoopbackHTTPServer(('127.0.0.1',port),Handler)
+            except OSError as error:
+                if error.errno != errno.EADDRINUSE or not port:
+                    raise
+                # Another process took the saved port; pick a free one and persist it below.
+                self.server = LoopbackHTTPServer(('127.0.0.1',0),Handler)
             self.server.daemon_threads = True
             self.server.block_on_close = False
             private_write(self.config, {'port':self.server.server_port,'token':token})

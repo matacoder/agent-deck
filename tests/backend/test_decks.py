@@ -4,8 +4,12 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
-from support import PanelCase
-from integrations.decks import RemoteDecks, deck_url, remote_path
+import importlib.util
+import threading
+import time
+
+from support import PanelCase, ROOT
+from integrations.decks import RemoteDecks, UnavailableDecks, deck_url, remote_path
 from integrations.preferences import ProjectDirectory, NetworkSettings
 
 ID = 'a'*24
@@ -22,7 +26,7 @@ class RemoteDeckTests(PanelCase):
 
     def test_only_tailnet_ip_origins_and_deck_paths_are_allowed(self):
         self.assertEqual(deck_url(URL+'/'),URL)
-        for invalid in ('http://127.0.0.1:8790','http://192.168.1.1','http://example.com','http://100.68.39.62/path',URL+'?a=b',URL+'#x','http://user:pass@100.68.39.62','file:///tmp/x'):
+        for invalid in ('http://127.0.0.1:8790','http://192.168.1.1','http://example.com','http://100.68.39.62/path',URL+'?a=b',URL+'#x','http://user:pass@100.68.39.62','file:///tmp/x','https://100.68.39.62:8790'):
             with self.subTest(url=invalid), self.assertRaises(ValueError):deck_url(invalid)
         for path in ('/api/sessions?preview=demo','/api/github/repos?refresh=1','/t/ws','/t/?arg=%3Dcc-demo'):
             self.assertEqual(remote_path(path),path)
@@ -160,4 +164,68 @@ class RemoteDeckTests(PanelCase):
         self.assertNotIn(b'GATEWAY_SECRET',sent)
         reply=handler.connection.sendall.call_args.args[0]
         self.assertIn(b'101 Switching Protocols',reply);self.assertNotIn(b'Set-Cookie',reply)
+        backend.close.assert_called_once()
+
+    def test_https_is_rejected_with_a_concrete_reason(self):
+        with self.assertRaisesRegex(ValueError, 'https:// is not supported'):
+            deck_url('https://100.68.39.62:8790')
+
+    def test_remote_api_must_answer_json_and_html_is_not_relayed(self):
+        service=self.enterContext(patch.object(self.panel,'remote_decks'))
+        for ctype in ('text/html','application/javascript','application/jsonp',None):
+            with self.subTest(ctype=ctype):
+                service.request.return_value=(200,{'Content-Type':ctype} if ctype else {},b'<script>alert(1)</script>')
+                handler=self.handler();handler.get_request()
+                handler.send_body.assert_not_called()
+                self.assertEqual(handler.send_json.call_args.args[0],502)
+        service.request.return_value=(400,{'Content-Type':'application/json; charset=utf-8'},b'{"error":"x"}')
+        handler=self.handler();handler.get_request()
+        handler.send_body.assert_called_once_with(400,b'{"error":"x"}','application/json; charset=utf-8')
+
+    def test_corrupt_configuration_fails_soft_without_overwriting(self):
+        directory=self.home/'.config/cc-panel/integrations'
+        directory.mkdir(parents=True)
+        target=self.home/'real.json';target.write_text('{}')
+        for content in ('[]','{"x":1}','{"x":{"id":"x"}}','not json',None):
+            with self.subTest(content=content):
+                path=directory/'decks.json'
+                if path.exists() or path.is_symlink():path.unlink()
+                if content is None:path.symlink_to(target)
+                else:path.write_text(content)
+                with self.assertRaises(ValueError):RemoteDecks(directory,'http://127.0.0.1:8790')
+                spec=importlib.util.spec_from_file_location('isolated_panel_decks',ROOT/'panel/panel.py')
+                panel=importlib.util.module_from_spec(spec)
+                with patch('builtins.print') as output:spec.loader.exec_module(panel)
+                self.assertIsInstance(panel.remote_decks,UnavailableDecks)
+                self.assertEqual(panel.remote_decks.status()['decks'],[])
+                self.assertIn(str(path),output.call_args.args[0])
+                with self.assertRaisesRegex(ValueError,'decks.json'):panel.remote_decks.save(PROFILE)
+                if content is not None:self.assertEqual(path.read_text(),content)
+
+    def test_parallel_requests_share_one_login(self):
+        def login(profile):
+            time.sleep(.1)
+            return 'cc_auth=fresh'
+        login_mock=self.enterContext(patch.object(self.decks,'login',side_effect=login))
+        cookies=[]
+        threads=[threading.Thread(target=lambda:cookies.append(self.decks.authentication(ID)[1])) for _ in range(5)]
+        for thread in threads:thread.start()
+        for thread in threads:thread.join(5)
+        self.assertEqual(login_mock.call_count,1)
+        self.assertEqual({c.split(';')[0] for c in cookies},{'cc_auth=fresh'})
+        # A request that saw an older cookie rejected reuses the newer one instead of logging in again.
+        self.decks.authentication(ID,stale='cc_auth=old')
+        self.assertEqual(login_mock.call_count,1)
+        self.decks.authentication(ID,stale='cc_auth=fresh')
+        self.assertEqual(login_mock.call_count,2)
+
+    def test_terminal_websocket_transport_error_after_upgrade_sends_no_http_error(self):
+        handler=self.handler();handler.path='/deck/'+ID+'/t/ws';handler.headers.update({'Upgrade':'websocket','Sec-WebSocket-Key':'key','Sec-WebSocket-Version':'13'})
+        handler.connection=Mock()
+        backend=Mock();backend.recv.side_effect=[b'HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\n\r\n',ConnectionResetError()]
+        with patch.object(self.panel,'remote_decks') as service,patch.object(self.panel.select,'select',return_value=([backend],[],[])):
+            service.terminal_socket.return_value=(backend,URL,'cc_auth=remote.cookie')
+            handler.get_request()
+        handler.send_json.assert_not_called()
+        self.assertEqual(handler.connection.sendall.call_count,1)
         backend.close.assert_called_once()

@@ -9,7 +9,6 @@ import re
 import secrets
 import shutil
 import socket
-import ssl
 import subprocess
 import threading
 from pathlib import Path
@@ -18,6 +17,7 @@ from urllib.parse import urlencode, urlsplit, unquote
 from .names import unique_name
 from .relay import private_write, read_json
 
+PUBLIC = ('id', 'name', 'url', 'username')
 IDENTITY = re.compile(r'[0-9a-f]{24}\Z')
 TAILNET = ipaddress.ip_network('100.64.0.0/10')
 
@@ -28,13 +28,14 @@ def deck_url(raw):
     try:
         parsed = urlsplit(raw.strip())
         address = ipaddress.ip_address(parsed.hostname or '')
-        port = parsed.port or (443 if parsed.scheme == 'https' else 80)
-        if (parsed.scheme not in ('http', 'https') or address.version != 4 or address not in TAILNET
+        port = parsed.port or 80
+        # HTTPS cannot work: certificates do not cover bare IPs, and Tailscale already encrypts.
+        if (parsed.scheme != 'http' or address.version != 4 or address not in TAILNET
                 or parsed.username or parsed.password or parsed.query or parsed.fragment or parsed.path not in ('', '/')
                 or not 1 <= port <= 65535):
             raise ValueError()
     except ValueError:
-        raise ValueError('Use an http(s) URL with a Tailscale IPv4 address and port') from None
+        raise ValueError('Use an http:// URL with a Tailscale IPv4 address and port; Tailscale already encrypts the connection, so https:// is not supported') from None
     return f'{parsed.scheme}://{address}:{port}'
 
 
@@ -54,8 +55,7 @@ def remote_path(raw):
 def http_request(url, method, path, body=None, headers=None, timeout=30, limit=300*1024*1024):
     """No redirects, environment proxies, DNS targets or credential-bearing exceptions."""
     parsed = urlsplit(url)
-    connection_type = http.client.HTTPSConnection if parsed.scheme == 'https' else http.client.HTTPConnection
-    connection = connection_type(parsed.hostname, parsed.port, timeout=timeout)
+    connection = http.client.HTTPConnection(parsed.hostname, parsed.port, timeout=timeout)
     try:
         connection.request(method, path, body=body, headers=headers or {})
         response = connection.getresponse()
@@ -73,15 +73,19 @@ class RemoteDecks:
         self.path = self.directory / 'decks.json'
         self.local_url = local_url
         self.lock = threading.RLock()
-        self.profiles = read_json(self.path, {})
-        self.cookies = {}
-        self.discovery = {'phase': 'idle', 'results': []}
         if self.directory.is_symlink() or self.path.is_symlink():
             raise ValueError('Deck configuration must not be a symlink')
+        self.profiles = read_json(self.path, {})
+        if not isinstance(self.profiles, dict) or not all(isinstance(p, dict) and set(PUBLIC) <= p.keys() for p in self.profiles.values()):
+            raise ValueError('Deck configuration must be a JSON object of saved connections')
+        self.cookies = {}
+        # One login per deck at a time: parallel requests after a restart would trip the remote rate limit.
+        self.login_locks = {}
+        self.discovery = {'phase': 'idle', 'results': []}
 
     def status(self):
         with self.lock:
-            return {'decks': [{k: p[k] for k in ('id', 'name', 'url', 'username')} for p in self.profiles.values()],
+            return {'decks': [{k: p[k] for k in PUBLIC} for p in self.profiles.values()],
                     'discovery': copy.deepcopy(self.discovery)}
 
     def get(self, identity):
@@ -144,7 +148,7 @@ class RemoteDecks:
                 else:self.profiles.pop(identity, None)
                 raise
             self.cookies[identity] = cookie
-        return {k: profile[k] for k in ('id','name','url','username')}
+        return {k: profile[k] for k in PUBLIC}
 
     def remove(self, identity):
         self.get(identity)
@@ -156,16 +160,20 @@ class RemoteDecks:
                 raise
             self.cookies.pop(identity, None)
 
-    def authentication(self, identity, language='en', refresh=False):
+    def authentication(self, identity, language='en', stale=None):
+        """Pass the rejected cookie as `stale` to force a new login unless another request already did."""
         profile = self.get(identity)
         with self.lock:
-            cookie = self.cookies.get(identity)
-        if refresh or not cookie:
-            cookie = self.login(profile)
+            gate = self.login_locks.setdefault(identity, threading.Lock())
+        with gate:
             with self.lock:
-                if self.profiles.get(identity) != profile:
-                    raise ValueError('Agent Deck connection changed; retry the request')
-                self.cookies[identity] = cookie
+                cookie = self.cookies.get(identity)
+            if not cookie or (stale is not None and cookie == stale):
+                cookie = self.login(profile)
+                with self.lock:
+                    if self.profiles.get(identity) != profile:
+                        raise ValueError('Agent Deck connection changed; retry the request')
+                    self.cookies[identity] = cookie
         if re.fullmatch(r'[a-z]{2,3}(?:-[A-Za-z0-9]{2,8})*', language):
             cookie += '; cc_lang=' + language
         return profile, cookie
@@ -174,8 +182,10 @@ class RemoteDecks:
         path = remote_path(path)
         if method not in ('GET','POST'):
             raise ValueError('Unsupported remote method')
-        for refresh in (False, True):
-            profile, cookie = self.authentication(identity, language, refresh)
+        stale = None
+        for _ in range(2):
+            profile, cookie = self.authentication(identity, language, stale)
+            stale = cookie.split('; cc_lang=', 1)[0]
             try:
                 result = http_request(profile['url'], method, path, body,
                     {'Cookie': cookie, 'Origin': profile['url'], 'Content-Type': 'application/json', 'Accept-Encoding': 'identity'})
@@ -193,12 +203,8 @@ class RemoteDecks:
         profile, cookie = self.authentication(identity, language)
         parsed = urlsplit(profile['url'])
         try:
-            connection = socket.create_connection((parsed.hostname, parsed.port), timeout=10)
-            if parsed.scheme == 'https':
-                connection = ssl.create_default_context().wrap_socket(connection, server_hostname=parsed.hostname)
-            return connection, profile['url'], cookie
+            return socket.create_connection((parsed.hostname, parsed.port), timeout=10), profile['url'], cookie
         except OSError:
-            if 'connection' in locals():connection.close()
             raise ValueError('Remote terminal is unavailable over Tailscale') from None
 
     def discover(self, port=8790):
@@ -245,3 +251,17 @@ class RemoteDecks:
             server = next((v for k,v in headers.items() if k.lower() == 'server'), '')
             return status == 200 and ('cc-panel/' in server or b'<title>Agent Deck' in body)
         except (OSError, http.client.HTTPException, ValueError):return False
+
+
+class UnavailableDecks:
+    """Stands in when decks.json is unreadable so the panel still starts and never overwrites it."""
+    def __init__(self, message):
+        self.message = message
+
+    def status(self):
+        return {'decks': [], 'discovery': {'phase': 'idle', 'results': []}}
+
+    def unavailable(self, *args, **kwargs):
+        raise ValueError(self.message)
+
+    get = save = remove = discover = request = terminal_socket = authentication = unavailable

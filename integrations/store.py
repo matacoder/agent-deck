@@ -71,7 +71,10 @@ class Store:
         with self.connect() as db:
             return [dict(row) for row in db.execute("SELECT * FROM questions WHERE status IN ('pending','sent')")]
 
-    def expire(self, fingerprints):
+    def expire(self, fingerprints, present=None):
+        # An answered/closed row retires as soon as its prompt is absent from the current scan,
+        # so an identical prompt that reappears later is delivered again.
+        present = fingerprints if present is None else present
         stale = []
         with self.connect() as db:
             for row in db.execute("SELECT * FROM questions WHERE status IN ('pending','sent')"):
@@ -80,7 +83,7 @@ class Store:
             db.executemany("UPDATE questions SET status='expired' WHERE id=?", [(r['id'],) for r in stale])
             rows = db.execute("SELECT id,fingerprint FROM questions WHERE status IN ('answered','expired','uncertain')").fetchall()
             db.executemany("UPDATE questions SET status='retired' WHERE id=?",
-                           [(r['id'],) for r in rows if r['fingerprint'] not in fingerprints])
+                           [(r['id'],) for r in rows if r['fingerprint'] not in present])
             db.execute("DELETE FROM questions WHERE created < ? AND status NOT IN ('pending','sent')",
                        (time.time() - 7 * 86400,))
         return stale

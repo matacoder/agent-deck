@@ -384,6 +384,10 @@
     "Agent Deck подключён": "Agent Deck connected",
     "Отключить этот Agent Deck?": "Disconnect this Agent Deck?",
     "Настройки сохранены": "Settings saved",
-    "Обновить модели": "Refresh models"
+    "Обновить модели": "Refresh models",
+    "Контекст: {0}": "Context: {0}",
+    "Инструменты: ✓": "Tools: ✓",
+    "Инструменты: ?": "Tools: ?",
+    " сред.": " avg"
   }
 }

@@ -34,7 +34,12 @@ for u in "$SRC"/systemd/*.service; do
     cmp -s "$tmp" "$dst" || { install -m 644 "$tmp" "$dst"; units_changed=1; }
     rm -f "$tmp"
 done
-cmp -s "$SRC/config/tmux.conf" "$HOME/.tmux.conf" || { install -m 644 "$SRC/config/tmux.conf" "$HOME/.tmux.conf"; tmux source-file "$HOME/.tmux.conf" 2>/dev/null || true; }
+if ! cmp -s "$SRC/config/tmux.conf" "$HOME/.tmux.conf"; then
+    # Keep the user's previous config, as install.sh does.
+    [ ! -f "$HOME/.tmux.conf" ] || cp "$HOME/.tmux.conf" "$HOME/.tmux.conf.bak.$(date +%s)"
+    install -m 644 "$SRC/config/tmux.conf" "$HOME/.tmux.conf"
+    tmux source-file "$HOME/.tmux.conf" 2>/dev/null || true
+fi
 install -m 755 "$SRC/claude/cc-session-hook.py" "$HOME/.claude/cc-session-hook.py"
 python3 "$SRC/claude/register-hooks.py"
 

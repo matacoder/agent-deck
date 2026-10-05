@@ -246,3 +246,83 @@ class CacheTests(PanelCase):
     def test_disabled_release_checks_do_not_use_network(self):
         self.assertEqual(self.panel.version_info()["version"], self.panel.VERSION)
         self.panel.http_json.assert_not_called()
+
+
+class ReviewFixTests(PanelCase):
+    def fake_tmux(self, sessions):
+        def run(*args, **kwargs):
+            if args[0] == 'list-sessions':
+                fields = args[2].split('\t')
+                return '\n'.join('\t'.join(s.get(f, '') for f in fields) for s in sessions)
+            if args[0] == 'set-option':
+                return ''
+            raise AssertionError('unexpected tmux command')
+        self.panel.tmux = Mock(side_effect=run)
+
+    def test_renamed_title_round_trips_and_rename_checks_titles(self):
+        self.fake_tmux([{'#{session_name}': 'cc-one', '#{@cc_agent}': 'shell', '#{@cc_title}': 'Backend'},
+                        {'#{session_name}': 'cc-two', '#{@cc_agent}': 'shell'}])
+        titles = {s['name']: s['title'] for s in self.panel.list_sessions()}
+        self.assertEqual(titles, {'one': 'Backend', 'two': 'two'})
+        self.panel.session_exists = Mock(return_value=True)
+        self.assertNotEqual(self.panel.action_rename({'name': 'two', 'title': 'backend'})['title'].casefold(), 'backend')
+
+    def handler(self, raw_headers, path='/api/nope'):
+        import http.client, io
+        handler = object.__new__(self.panel.Handler)
+        handler.headers = http.client.parse_headers(io.BytesIO(raw_headers + b'\r\n'))
+        handler.path, handler.command, handler.close_connection = path, 'POST', False
+        handler.rfile = io.BytesIO(b'{}GET /api/version HTTP/1.1\r\n\r\n')
+        handler.send_json, handler.redirect = Mock(), Mock()
+        handler.same_origin = Mock(return_value=True)
+        return handler
+
+    def test_unread_bodies_close_connection_and_bad_framing_returns_json(self):
+        token = self.panel.make_token()
+        for raw, code in ((b'Content-Length: 2\r\n', 401),
+                          (b'Content-Length: 2\r\nCookie: cc_auth=' + token.encode() + b'\r\n', 404),
+                          (b'Content-Length: 2\r\nContent-Type: text/plain\r\nCookie: cc_auth=' + token.encode() + b'\r\n', 404),
+                          (b'Transfer-Encoding: chunked\r\n', 411),
+                          (b'Content-Length: 2\r\nTransfer-Encoding: chunked\r\n', 411),
+                          (b'Content-Length: invalid\r\n', 400),
+                          (b'Content-Length: 2\r\nContent-Length: 40\r\n', 400)):
+            with self.subTest(raw=raw):
+                handler = self.handler(raw)
+                handler.do_POST()
+                self.assertEqual(handler.send_json.call_args.args[0], code)
+                self.assertTrue(handler.close_connection)
+                self.assertNotIn('invalid literal', str(handler.send_json.call_args))
+        handler = self.handler(b'Content-Length: 2\r\n')
+        handler.post_request = Mock(side_effect=lambda: handler.read_body(2))
+        handler.do_POST()
+        self.assertFalse(handler.close_connection)
+
+    def test_malformed_foreign_cookie_does_not_hide_auth_or_language(self):
+        token = self.panel.make_token()
+        handler = self.handler(b'Cookie: pref={"a":1}; cc_auth=' + token.encode() + b'; cc_lang=en\r\n', '/api/sessions')
+        self.assertTrue(handler.authorized())
+        self.assertEqual(handler.language(), 'en')
+        handler = self.handler(b'Cookie: pref={"a":1}; cc_auth=forged.value\r\n', '/api/sessions')
+        self.assertFalse(handler.authorized())
+        self.assertEqual(handler.send_json.call_args.args[0], 401)
+
+    def test_upload_rejects_symlinked_upload_directories(self):
+        self.allow_session()
+        target = self.home / 'elsewhere'
+        target.mkdir()
+        Path(self.panel.UPLOAD_DIR).symlink_to(target)
+        with self.assertRaises(ValueError):
+            self.upload()
+        Path(self.panel.UPLOAD_DIR).unlink()
+        Path(self.panel.UPLOAD_DIR).mkdir()
+        (Path(self.panel.UPLOAD_DIR) / 'demo').symlink_to(target)
+        with self.assertRaises(ValueError):
+            self.upload()
+        self.assertEqual([p for p in target.rglob('*') if p.is_file()], [])
+
+    def test_send_body_sets_nosniff(self):
+        import io
+        handler = object.__new__(self.panel.Handler)
+        handler.request_version, handler.wfile, handler.log_request = 'HTTP/1.1', io.BytesIO(), Mock()
+        handler.send_body(200, b'x', 'text/html')
+        self.assertIn(b'X-Content-Type-Options: nosniff', handler.wfile.getvalue())

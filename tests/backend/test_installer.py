@@ -25,6 +25,59 @@ class InstallerGuardTests(unittest.TestCase):
                 self.assertIn("Refusing untrusted root checkout", result.stderr)
 
 
+def block(script, begin, end):
+    text = (ROOT / script).read_text()
+    start = text.index(begin)
+    return text[start:text.index(end, start) + len(end)]
+
+
+class InstallerScriptTests(unittest.TestCase):
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.directory = Path(temporary.name)
+
+    def bash(self, source, env=None):
+        return subprocess.run(["bash", "-c", "set -euo pipefail\n" + source], capture_output=True, text=True,
+                              env={**os.environ, **(env or {})})
+
+    def test_truncated_get_sh_defines_functions_only(self):
+        lines = (ROOT / "get.sh").read_text().rstrip("\n").splitlines()
+        self.assertEqual(lines[-1], 'main "$@"')
+        result = subprocess.run(["bash", "-c", "\n".join(lines[:-1])], capture_output=True, text=True)
+        self.assertEqual((result.returncode, result.stdout, result.stderr), (0, "", ""))
+
+    def test_tailscale_auth_key_is_never_passed_in_argv(self):
+        text = (ROOT / "install.sh").read_text()
+        self.assertNotIn('--authkey "$TS_AUTHKEY"', text)
+        self.assertIn('tailscale up --auth-key="file:$key_file"', text)
+
+    def test_install_options_are_written_atomically(self):
+        conf = self.directory / "etc/install.conf"
+        source = block("install.sh", "write_conf() {", "\n}\n") + "write_conf"
+        result = self.bash(source, {"CONF": str(conf), "CONF_KEYS": "DEV_USER PANEL_PORT", "DEV_USER": "alice", "PANEL_PORT": "8791"})
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(conf.read_text(), "DEV_USER=alice\nPANEL_PORT=8791\n")
+        self.assertEqual(conf.stat().st_mode & 0o777, 0o644)
+        self.assertEqual(sorted(path.name for path in conf.parent.iterdir()), ["install.conf"])
+
+    def test_installer_refuses_silent_downgrade(self):
+        source = block("install.sh", "NEW_VERSION=$(cat", "\nfi\n")
+        prefix, checkout = self.directory / "prefix", self.directory / "src/panel"
+        prefix.mkdir()
+        checkout.mkdir(parents=True)
+        helpers = "die() { echo \"$*\" >&2; exit 1; }\n"
+        for installed, new, force, refused in (("0.10.0", "0.9.0", "", True), ("0.10.0", "0.9.0", "1", False),
+                                               ("0.9.0", "0.10.0", "", False), ("0.9.0", "0.9.0", "", False)):
+            with self.subTest(installed=installed, new=new, force=force):
+                (prefix / "VERSION").write_text(installed + "\n")
+                (checkout / "VERSION").write_text(new + "\n")
+                result = self.bash(helpers + source, {"PREFIX": str(prefix), "SRC": str(checkout.parent), "FORCE_DOWNGRADE": force})
+                self.assertEqual(result.returncode != 0, refused, result.stderr)
+                if refused:
+                    self.assertIn("FORCE_DOWNGRADE=1", result.stderr)
+
+
 @unittest.skipUnless(os.geteuid() == 0, "run in the disposable rootless container for root ownership tests")
 class RootOwnershipTests(unittest.TestCase):
     def setUp(self):

@@ -136,6 +136,22 @@ class HTTPTests(PanelCase):
         self.assertEqual(self.request("GET", "/api/sessions", headers={"Cookie": cookie})[0], 500)
         self.assertEqual(self.panel.actions_in_progress, 0)
 
+    def test_unread_or_unframed_bodies_cannot_smuggle_a_second_request(self):
+        cookie = self.login()
+        smuggled = b"GET /api/version HTTP/1.1\r\nHost: x\r\n\r\n"
+        for head, code in ((b"POST /api/nope HTTP/1.1\r\nCookie: " + cookie.encode() + b"\r\n", b"404"),
+                           (b"POST /api/send HTTP/1.1\r\n", b"401"),
+                           (b"POST /api/send HTTP/1.1\r\nTransfer-Encoding: chunked\r\n", b"411")):
+            with self.subTest(code=code), socket.create_connection(self.server.server_address, timeout=5) as client:
+                length = b"" if code == b"411" else b"Content-Length: %d\r\n" % len(smuggled)
+                client.sendall(head + b"Host: x\r\n" + length + b"\r\n" + smuggled)
+                received = b""
+                while chunk := client.recv(65536):
+                    received += chunk
+                self.assertTrue(received.startswith(b"HTTP/1.1 " + code))
+                self.assertEqual(received.count(b"HTTP/1.1 "), 1)
+                self.assertIn(b"application/json", received)
+
     def test_delayed_parallel_login_bodies_reserve_the_limit_before_password_check(self):
         clients = []
         host = f"{self.server.server_address[0]}:{self.server.server_address[1]}"

@@ -173,11 +173,13 @@ def install(stage, target, names, state, version, url):
             shutil.copy2(destination, backup / name)
             existing.add(name)
     write_state(state, "installing", version=version, message="Устанавливаю файлы панели…")
+    # VERSION goes last: a crash mid-swap must not leave mixed files reported as up to date.
+    ordered = sorted(names - {"VERSION"}) + (["VERSION"] if "VERSION" in names else [])
     stopped = False
     try:
         service("stop")
         stopped = True
-        for name in names:
+        for name in ordered:
             (target / name).parent.mkdir(parents=True, exist_ok=True)
             os.replace(stage / name, target / name)
         write_state(state, "restarting", version=version, message="Перезапускаю панель…")
@@ -185,15 +187,35 @@ def install(stage, target, names, state, version, url):
         healthy(url)
     except Exception:
         if stopped:
-            # Stop a failed new version before restoring all files from the previous version.
-            service("stop")
-            for name in names:
-                if name in existing:
-                    os.replace(backup / name, target / name)
-                else:
-                    (target / name).unlink(missing_ok=True)
-            service("start")
+            try:
+                rollback(backup, target, ordered, existing)
+            except Exception:
+                pass  # Report the update failure itself; it explains why the rollback ran.
         raise
+
+
+def rollback(backup, target, ordered, existing):
+    try:
+        # Stop a failed new version best-effort: a stop error must not prevent restoring files.
+        try:
+            service("stop")
+        except Exception:
+            pass
+        # Old VERSION first, so an interrupted rollback is retried by the next update.
+        for name in reversed(ordered):
+            if name in existing:
+                os.replace(backup / name, target / name)
+            else:
+                (target / name).unlink(missing_ok=True)
+    finally:
+        service("start")
+
+
+def remove_stale_stages(target):
+    # The flock makes this job the only writer, so any staging directory left here is from a crash.
+    for entry in target.iterdir():
+        if entry.name.startswith(".update-") and entry.is_dir() and not entry.is_symlink():
+            shutil.rmtree(entry, ignore_errors=True)
 
 
 def run(repo, target, state, url):
@@ -201,6 +223,7 @@ def run(repo, target, state, url):
         if not available(target, repo):
             raise ValueError("Обновление доступно только для установленной панели без root")
         target = Path(target)
+        remove_stale_stages(target)
         write_state(state, "checking", message="Проверяю последний релиз…")
         release = json.loads(fetch(f"https://api.github.com/repos/{repo}/releases/latest", 1024 * 1024))
         tag = release.get("tag_name", "")

@@ -2,6 +2,7 @@
 import json
 import os
 from pathlib import Path
+import sys
 import tempfile
 import threading
 
@@ -15,12 +16,21 @@ class ProjectDirectory:
         if self.current == str(self.home / 'projects') and (self.home / 'dev').is_dir():
             self.current = str(self.home / 'dev')
         if self.path.exists():
-            if self.path.is_symlink():
-                raise ValueError('Project settings must not be a symlink')
-            saved = json.loads(self.path.read_text())
-            self.current = self.validate(saved['directory'])
-            if self.current == str(self.home / 'projects') and not saved.get('custom') and (self.home / 'dev').is_dir():
-                self.current = str(self.home / 'dev')
+            # Saved data is re-validated at startup; a stale value must not crash-loop the panel.
+            try:
+                self.current = self.load()
+            except (ValueError, KeyError, TypeError, OSError) as error:
+                print(f'Agent Deck: ignoring {self.path} ({error}); using {self.current}. '
+                      'Choose the project folder again in the panel settings.', file=sys.stderr)
+
+    def load(self):
+        if self.path.is_symlink():
+            raise ValueError('Project settings must not be a symlink')
+        saved = json.loads(self.path.read_text())
+        current = self.validate(saved['directory'])
+        if current == str(self.home / 'projects') and not saved.get('custom') and (self.home / 'dev').is_dir():
+            current = str(self.home / 'dev')
+        return current
 
     def validate(self, raw):
         if not isinstance(raw, str) or not raw.strip():
@@ -65,8 +75,19 @@ class NetworkSettings:
         self.lock = threading.RLock()
         self.data = {'name':'', 'public_url':''}
         if self.path.exists():
-            if self.path.is_symlink():raise ValueError('Network settings must not be a symlink')
-            self.data.update(json.loads(self.path.read_text()))
+            try:
+                self.data.update(self.load())
+            except (ValueError, KeyError, TypeError, OSError) as error:
+                print(f'Agent Deck: ignoring {self.path} ({error}); using default network settings. '
+                      'Save the Agent Deck name again in the panel settings.', file=sys.stderr)
+
+    def load(self):
+        if self.path.is_symlink():
+            raise ValueError('Network settings must not be a symlink')
+        saved = json.loads(self.path.read_text())
+        if not isinstance(saved, dict) or not all(isinstance(saved.get(key, ''), str) for key in self.data):
+            raise TypeError('expected a JSON object with string name and public_url')
+        return {key: saved[key] for key in self.data if key in saved}
 
     def get(self):
         with self.lock:return dict(self.data)

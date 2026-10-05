@@ -28,7 +28,6 @@ import sys
 import threading
 import time
 import uuid
-from http.cookies import SimpleCookie
 from urllib.parse import parse_qs
 from urllib.parse import urlsplit
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -79,13 +78,22 @@ except ModuleNotFoundError:
     LMStudio = None
 
 from integrations.names import unique_name
-from integrations.decks import RemoteDecks, remote_path
+from integrations.decks import RemoteDecks, UnavailableDecks, remote_path
 from integrations.preferences import ProjectDirectory, NetworkSettings
 project_directory = ProjectDirectory(os.path.expanduser('~'), PROJECTS)
 
 
 network_settings = NetworkSettings(os.path.expanduser('~'))
-remote_decks = RemoteDecks(os.path.expanduser('~/.config/cc-panel/integrations'), f'http://{BIND_HOST}:{BIND_PORT}')
+_decks_dir = os.path.expanduser('~/.config/cc-panel/integrations')
+try:
+    remote_decks = RemoteDecks(_decks_dir, f'http://{BIND_HOST}:{BIND_PORT}')
+except (OSError, ValueError) as _error:
+    # A broken connection list must not take the whole panel down; the file is left untouched.
+    _decks_message = (f'Agent Deck connections are disabled: {os.path.join(_decks_dir, "decks.json")} '
+                      f'could not be loaded ({_error}). Fix or remove this file (it must be a regular JSON object '
+                      'file, not a symlink) and restart cc-panel.')
+    print(_decks_message, flush=True)
+    remote_decks = UnavailableDecks(_decks_message)
 
 
 _lmstudio = None
@@ -321,7 +329,7 @@ def session_group(path):
 
 def list_sessions(preview_name=None):
     fmt = ("#{session_name}\t#{session_created}\t#{session_attached}\t#{pane_current_path}\t"
-           "#{pane_current_command}\t#{window_activity}\t#{@cc_agent}\t#{@cc_sid}\t#{@cc_skip}\t#{@cc_source}")
+           "#{pane_current_command}\t#{window_activity}\t#{@cc_agent}\t#{@cc_sid}\t#{@cc_skip}\t#{@cc_source}\t#{@cc_title}")
     out = tmux("list-sessions", "-F", fmt, check=False)
     result = []
     for line in out.splitlines():
@@ -650,6 +658,8 @@ def action_upload(d):
     if ext and len(image) > MAX_IMAGE_BYTES:
         raise ValueError("изображение слишком большое (максимум 200 МБ)")
     os.makedirs(folder, mode=0o700, exist_ok=True)
+    if os.path.islink(UPLOAD_DIR) or os.path.islink(folder):
+        raise ValueError("папка загрузок не должна быть символической ссылкой")
     safe_name = re.sub(r"[^A-Za-z0-9_.-]", "_", filename or "file")[-100:]
     attachment = uuid.uuid4().hex + ("." + ext if ext else "--" + safe_name)
     fd = os.open(os.path.join(folder, attachment), os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
@@ -1266,9 +1276,16 @@ class Handler(BaseHTTPRequestHandler):
         except ValueError:
             return False
 
+    def cookie(self, name):
+        # SimpleCookie drops the whole header when any foreign cookie is malformed.
+        for part in self.headers.get("Cookie", "").split(";"):
+            key, separator, value = part.partition("=")
+            if separator and key.strip() == name:
+                return value.strip()
+        return None
+
     def authorized(self):
-        cookie = SimpleCookie(self.headers.get("Cookie", ""))
-        if COOKIE in cookie and token_valid(cookie[COOKIE].value):
+        if token_valid(self.cookie(COOKIE)):
             return True
         if self.path.startswith("/api/") or self.path.startswith("/t") or self.path.startswith("/deck/"):
             self.send_json(401, {"error": "login required"})
@@ -1288,8 +1305,7 @@ class Handler(BaseHTTPRequestHandler):
         if locales is None:
             return 'ru'
         allowed = {item['code'] for item in locales.available()}
-        cookie = SimpleCookie(self.headers.get('Cookie', ''))
-        choice = cookie['cc_lang'].value if 'cc_lang' in cookie else DEFAULT_LANGUAGE
+        choice = self.cookie('cc_lang') or DEFAULT_LANGUAGE
         return choice if choice in allowed else 'en'
 
     def localized_page(self, page):
@@ -1328,7 +1344,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self.login_page("Слишком много попыток. Подождите минуту.")
             # Reserve before reading a possibly delayed request body.
             failed_logins[ip] = (count + 1, now)
-        form = parse_qs(self.rfile.read(length).decode("utf-8", "replace"))
+        form = parse_qs(self.read_body(length).decode("utf-8", "replace"))
         user, pwd = form.get("username", [""])[0], form.get("password", [""])[0]
         ok = hmac.compare_digest(user.encode(), PANEL_USER.encode()) & hmac.compare_digest(pwd.encode(), PANEL_PASSWORD.encode())
         if not ok:
@@ -1359,6 +1375,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", ctype)
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
+        self.send_header("X-Content-Type-Options", "nosniff")
         self.end_headers()
         self.wfile.write(body)
 
@@ -1367,14 +1384,41 @@ class Handler(BaseHTTPRequestHandler):
             obj = locales.response(obj, self.language())
         self.send_body(code, json.dumps(obj, ensure_ascii=False).encode(), "application/json")
 
-    def do_GET(self):
+    def framing_rejected(self):
+        """Unframed or unread bodies would be parsed as the next keep-alive request."""
+        lengths = self.headers.get_all("Content-Length") or []
+        if "Transfer-Encoding" in self.headers:
+            code, error = 411, "Transfer-Encoding is not supported; send the request with Content-Length"
+        elif len(lengths) > 1 or (lengths and not re.fullmatch(r"\d{1,12}", lengths[0].strip())):
+            code, error = 400, "неверный размер запроса"
+        else:
+            self.body_pending = bool(lengths) and int(lengths[0]) > 0
+            return False
+        self.close_connection = True
+        self.send_json(code, {"error": error})
+        return True
+
+    def read_body(self, length):
+        body = self.rfile.read(length)
+        self.body_pending = len(body) != length
+        return body
+
+    def handle_safely(self, handler):
+        if self.framing_rejected():
+            return
         try:
-            return self.get_request()
+            return handler()
         except (BrokenPipeError, ConnectionResetError):
             pass
         except Exception:
             self.close_connection = True
             self.send_json(500, {"error": "не удалось обработать запрос"})
+        finally:
+            if getattr(self, "body_pending", False):
+                self.close_connection = True
+
+    def do_GET(self):
+        return self.handle_safely(self.get_request)
 
     def get_request(self):
         if self.path == '/api/locales':
@@ -1442,13 +1486,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_json(404, {"error": "not found"})
 
     def do_POST(self):
-        try:
-            return self.post_request()
-        except (BrokenPipeError, ConnectionResetError):
-            pass
-        except Exception:
-            self.close_connection = True
-            self.send_json(500, {"error": "не удалось обработать запрос"})
+        return self.handle_safely(self.post_request)
 
     def post_request(self):
         global actions_in_progress
@@ -1475,7 +1513,7 @@ class Handler(BaseHTTPRequestHandler):
             if length < 0 or length > limit:
                 self.close_connection = True
                 return self.send_json(413, {"error": "файл или сообщение слишком большое"})
-            data = json.loads(self.rfile.read(length) or b"{}")
+            data = json.loads(self.read_body(length) or b"{}")
             if not isinstance(data, dict):
                 raise ValueError("неверный запрос")
             action = m.group(1)
@@ -1528,9 +1566,12 @@ class Handler(BaseHTTPRequestHandler):
                 if not 0 <= length <= limit:
                     self.close_connection = True
                     return self.send_json(413, {'error':'Request is too large'})
-                body = self.rfile.read(length)
+                body = self.read_body(length)
             status, headers, payload = remote_decks.request(identity,self.command,path,body,self.language())
             ctype = next((v for k,v in headers.items() if k.lower()=='content-type'), 'application/octet-stream')
+            # Remote HTML/JS under /api/* would run with the gateway origin.
+            if path.startswith('/api/') and ctype.split(';',1)[0].strip().lower() != 'application/json':
+                raise ValueError('Remote Agent Deck returned a non-JSON API response')
             # ttyd's absolute base path must stay on the gateway, including its WebSocket URL.
             if path.startswith('/t') and 'text/html' in ctype:
                 prefix = '/deck/'+identity+'/t/'
@@ -1562,13 +1603,16 @@ class Handler(BaseHTTPRequestHandler):
             clean = [row for row in rows[1:] if ':' in row and row.split(':',1)[0].lower() in allowed]
             self.connection.sendall(('HTTP/1.1 101 Switching Protocols\r\n'+'\r\n'.join(clean)+'\r\n\r\n').encode('latin-1')+pending)
             self.close_connection = True
-            while True:
-                readable,_,_ = select.select([self.connection,backend],[],[],300)
-                if not readable:break
-                for connection in readable:
-                    chunk = connection.recv(65536)
-                    if not chunk:return
-                    (backend if connection is self.connection else self.connection).sendall(chunk)
+            try:
+                while True:
+                    readable,_,_ = select.select([self.connection,backend],[],[],300)
+                    if not readable:break
+                    for connection in readable:
+                        chunk = connection.recv(65536)
+                        if not chunk:return
+                        (backend if connection is self.connection else self.connection).sendall(chunk)
+            except OSError:
+                pass  # The socket is already upgraded; an HTTP error response would corrupt the stream.
         finally:backend.close()
 
     def proxy_tty(self):

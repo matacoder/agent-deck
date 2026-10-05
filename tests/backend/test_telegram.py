@@ -235,6 +235,95 @@ class TelegramTests(unittest.TestCase):
         self.assertNotEqual(first['id'], second['id'])
 
 
+    def test_answered_prompt_lingering_on_screen_is_not_resent(self):
+        self.pair(); self.service.deliver()
+        row = self.service.database().pending()[0]
+        self.service.handle(self.callback(row))
+        for _ in range(3):
+            self.service.deliver()  # The answered menu is still visible for a few scans.
+        sent = [d for m, d in self.api.calls if m == 'sendMessage' and 'reply_markup' in d]
+        self.assertEqual(len(sent), 1)
+
+    def deliver_at(self, *moments):
+        for moment in moments:
+            with patch('integrations.telegram.time.monotonic', return_value=moment):
+                self.service.deliver()
+
+    def test_answered_prompt_missing_for_one_scan_is_not_resent(self):
+        self.pair(); self.deliver_at(100)
+        row = self.service.database().pending()[0]
+        self.service.handle(self.callback(row))
+        self.questions = []
+        self.deliver_at(102)  # One flickering scan while the answered menu still lingers.
+        self.questions = [question()]
+        self.deliver_at(104)
+        sent = [d for m, d in self.api.calls if m == 'sendMessage' and 'reply_markup' in d]
+        self.assertEqual(len(sent), 1)
+
+    def test_identical_prompt_reappearing_after_answer_is_sent_again(self):
+        self.pair(); self.deliver_at(100)
+        row = self.service.database().pending()[0]
+        self.service.handle(self.callback(row))
+        self.questions = []
+        self.deliver_at(102, 104)  # Gone for two scans, still inside the 6 s grace window.
+        self.questions = [question()]
+        self.deliver_at(106)
+        sent = [d for m, d in self.api.calls if m == 'sendMessage' and 'reply_markup' in d]
+        self.assertEqual(len(sent), 2)
+        self.assertNotEqual(self.service.database().pending()[0]['id'], row['id'])
+
+    def test_failed_callback_acknowledgement_does_not_wedge_polling(self):
+        self.pair(); self.service.deliver()
+        row = self.service.database().pending()[0]
+        start = self.service.database().offset()
+        updates = [[{'update_id': start, **self.callback(row)},
+                    {'update_id': start + 1, 'callback_query': {'id': 'other', 'from': {'id': 100},
+                     'message': {'message_id': 999, 'chat': {'id': 100, 'type': 'private'}}, 'data': 'x'}}]]
+        original = self.api.call
+
+        def call(token, method, **data):
+            if method == 'getUpdates':
+                if not updates:
+                    self.service.stop.set()
+                    return []
+                return updates.pop(0)
+            if method == 'answerCallbackQuery' and data['callback_query_id'] == 'callback':
+                original(token, method, **data)
+                raise TelegramError('Telegram: запрос не выполнен')
+            return original(token, method, **data)
+        self.api.call = call
+        self.service.poll_loop()
+        self.assertEqual(self.service.database().offset(), start + 2)
+        self.answer.assert_called_once()
+        acknowledged = [d['callback_query_id'] for m, d in self.api.calls if m == 'answerCallbackQuery']
+        self.assertEqual(acknowledged, ['callback', 'other'])
+        self.assertEqual(self.service.database().get(row['id'])['status'], 'answered')
+
+    def test_failed_keyboard_edit_still_acknowledges_callback(self):
+        self.pair(); self.service.deliver()
+        row = self.service.database().pending()[0]
+        original = self.api.call
+
+        def call(token, method, **data):
+            if method == 'editMessageReplyMarkup':
+                raise TelegramError('Telegram: запрос не выполнен')
+            return original(token, method, **data)
+        self.api.call = call
+        self.assertEqual(self.service.handle(self.callback(row)), 'Telegram: запрос не выполнен')
+        self.assertTrue(any(m == 'answerCallbackQuery' for m, d in self.api.calls))
+        self.assertEqual(self.service.database().get(row['id'])['status'], 'answered')
+
+    def test_corrupt_settings_file_does_not_block_service_or_clear(self):
+        for content in ('{broken', '[]'):
+            with self.subTest(content=content):
+                self.service.path.write_text(content)
+                service = Telegram(self.directory, lambda: [], self.answer, self.api)
+                self.assertFalse(service.status()['configured'])
+                self.assertIn(str(service.path), service.status()['error'])
+                service.save({'clear': True})
+                self.assertEqual(json.loads(service.path.read_text()), {})
+                self.assertEqual(service.status()['error'], '')
+
 class QuestionInputTests(PanelCase):
     def test_moves_cursor_validates_question_then_confirms(self):
         q = question()

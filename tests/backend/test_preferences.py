@@ -52,3 +52,29 @@ class ProjectDirectoryTests(PanelCase):
         self.assertEqual(handler.send_json.call_args.args, (200, {'ok': True, 'directory': str(self.home / 'dev')}))
         handler.get_request()
         self.assertEqual(handler.send_json.call_args.args, (200, {'directory': str(self.home / 'dev')}))
+
+    def test_broken_saved_settings_fall_back_to_defaults_instead_of_crashing(self):
+        from contextlib import redirect_stderr
+        from integrations.preferences import NetworkSettings
+        path = self.home / '.config/cc-panel/projects.json'
+        (self.home / 'escape').symlink_to('/tmp')
+        for content in ('{broken', '[]', '{}', json.dumps({'directory': str(self.home / 'escape')})):
+            with self.subTest(content=content):
+                path.write_text(content)
+                errors = io.StringIO()
+                with redirect_stderr(errors):
+                    settings = ProjectDirectory(self.home, self.home / 'projects')
+                self.assertEqual(settings.get(), str(self.home / 'projects'))
+                self.assertIn(str(path), errors.getvalue())
+                with self.assertRaises(ValueError):
+                    settings.save(str(self.home / 'escape'))
+        network = self.home / '.config/cc-panel/network.json'
+        for content in ('{broken', '[["name", "x"]]', '{"name": 5}'):
+            with self.subTest(content=content):
+                network.write_text(content)
+                errors = io.StringIO()
+                with redirect_stderr(errors):
+                    self.assertEqual(NetworkSettings(self.home).get(), {'name': '', 'public_url': ''})
+                self.assertIn(str(network), errors.getvalue())
+        network.write_text(json.dumps({'name': 'Deck', 'public_url': 'https://deck.example'}))
+        self.assertEqual(NetworkSettings(self.home).get()['name'], 'Deck')

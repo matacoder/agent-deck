@@ -91,6 +91,13 @@ class Telegram:
             self.config = json.loads(self.path.read_text())
         except FileNotFoundError:
             self.config = {}
+        except (ValueError, OSError):
+            self.config = None
+        if not isinstance(self.config, dict):
+            # A broken file must not block the panel or the «clear» action that rewrites it.
+            self.config = {}
+            self.error = (f'Telegram settings file {self.path} is unreadable or corrupt; '
+                          'save the Telegram settings again or disconnect Telegram to reset it')
         self.started = False
         self.seen = {}
 
@@ -185,14 +192,22 @@ class Telegram:
             try:
                 updates = self.api.call(c['token'], 'getUpdates', offset=self.database().offset(),
                                        timeout=20, allowed_updates=['message', 'callback_query'])
+                problem = ''
                 for update in updates:
                     with self.lock:
                         if c.get('token') != self.config.get('token'):
                             break
-                        self.handle(update)
+                        try:
+                            problem = self.handle(update) or problem
+                        except TelegramError as error:
+                            problem = str(error)
+                        except Exception:
+                            problem = 'Telegram: не удалось обработать обновление'
+                        # Always advance: a failing update would otherwise be re-fetched forever.
+                        # Dropping it is safe because claim-before-input prevents double answers.
                         self.database().offset(update['update_id'] + 1)
                 with self.lock:
-                    self.error = ''
+                    self.error = problem
             except TelegramError as error:
                 with self.lock:
                     self.error = str(error)
@@ -224,7 +239,10 @@ class Telegram:
             now = time.monotonic()
             self.seen.update({q.fingerprint: now for q in questions})
             self.seen = {key: at for key, at in self.seen.items() if now - at < 6}
-            for old in db.expire(set(self.seen)):
+            # Open rows get a 6 s grace for redraw flicker. Closed rows retire after ~2 missed scans
+            # (scans run every 2 s), so one flickering scan never re-sends an answered prompt.
+            recent = {key for key, at in self.seen.items() if now - at < 3}
+            for old in db.expire(set(self.seen), recent):
                 if old['message_id']:
                     self.api.call(self.config['token'], 'editMessageReplyMarkup',
                                   chat_id=self.config['chat_id'], message_id=old['message_id'],
@@ -272,6 +290,7 @@ class Telegram:
                    and msg.get('chat', {}).get('id') == c.get('chat_id')
                    and msg.get('chat', {}).get('type') == 'private')
         result_text = 'Эта кнопка недоступна'
+        problem = ''
         match = re.fullmatch(r'q:([a-f0-9]{24}):([0-8])', callback.get('data', ''))
         if trusted and match:
             row = self.database().get(match[1])
@@ -295,7 +314,16 @@ class Telegram:
                         self.database().set_status(row['id'], 'answered')
                         result_text = 'Ответ передан агенту'
                     if self.database().get(row['id'])['status'] != 'sent':
-                        self.api.call(c['token'], 'editMessageReplyMarkup', chat_id=c['chat_id'],
-                                      message_id=msg['message_id'], reply_markup={'inline_keyboard': []})
-        self.api.call(c['token'], 'answerCallbackQuery', callback_query_id=callback['id'],
-                      text=self.translate(result_text)[:180], show_alert=result_text != 'Ответ передан агенту')
+                        problem = self.notify(c['token'], 'editMessageReplyMarkup', chat_id=c['chat_id'],
+                                              message_id=msg['message_id'], reply_markup={'inline_keyboard': []})
+        return self.notify(c['token'], 'answerCallbackQuery', callback_query_id=callback['id'],
+                           text=self.translate(result_text)[:180],
+                           show_alert=result_text != 'Ответ передан агенту') or problem
+
+    def notify(self, token, method, **data):
+        # Cosmetic UI calls: the answer state is already final, so a failure is reported, not raised.
+        try:
+            self.api.call(token, method, **data)
+        except TelegramError as error:
+            return str(error)
+        return ''
