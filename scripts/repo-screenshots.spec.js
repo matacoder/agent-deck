@@ -101,3 +101,16 @@ test('desktop computers and backups',async({app,page},info)=>{
  await page.evaluate(()=>document.activeElement?.blur());
  await page.screenshot({path:target('desktop-backups')});
 });
+
+test('phone inbox',async({app,page},info)=>{
+ test.skip(info.project.name!=='phone');
+ await demo(app,page,async()=>{
+  await page.route('**/api/inbox',json({questions:[
+   {id:'q1',session:'api-tests',agent:'claude',deck:'',origin:'',title:'Which database should the migration use?',progress:'',selected:0,options:[{label:'Staging',text:false},{label:'Production',text:false},{label:'Type something.',text:true}]},
+   {id:'r1',session:'ml-train',agent:'codex',deck:DECK,origin:'Mac Studio',title:'Allow pip install torch?',progress:'',selected:0,options:[{label:'Yes',text:false},{label:'No',text:false}]}]}));
+ });
+ await page.evaluate(()=>openInbox());await page.waitForTimeout(700);
+ await page.locator('#inbox_list .q-free').first().click();await page.waitForTimeout(300);
+ await page.evaluate(()=>document.activeElement?.blur());
+ await page.screenshot({path:target('mobile-inbox')});
+});

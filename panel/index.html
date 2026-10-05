@@ -400,6 +400,35 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 .push-device{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-top:1px solid var(--bd)}
 .push-device-info{display:grid;gap:2px;min-width:0}.push-device-info strong{font-size:13px;color:var(--fg2);overflow-wrap:anywhere}.push-device-info span{font-size:12px;color:var(--mut)}
 .push-device button{flex:none;min-height:36px;padding:6px 12px;border-radius:8px;background:var(--side2);font-size:12.5px}
+.fleet-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:4px 0 4px;font-size:12.5px;color:var(--mut)}
+.fleet-bar:empty{display:none}
+.fleet-bar .pri{flex:none;padding:8px 14px;border-radius:9px}
+.deck-version.outdated{color:var(--acc-text)}
+.deck-update{flex:none;color:var(--acc-text);font-weight:700}
+.inbox-btn{display:flex;align-items:center;gap:8px;margin:0 8px 6px;padding:8px 10px;border:1px solid #0a84ff55;border-radius:9px;background:var(--acc-soft);color:var(--fg2);text-align:left}
+.inbox-btn[hidden]{display:none}
+.inbox-btn span{flex:1}.inbox-btn b{min-width:20px;padding:1px 7px;border-radius:10px;background:var(--acc);color:#fff;font-size:11.5px;text-align:center}
+.inbox-btn svg{color:var(--acc-text)}
+#inbox_dlg{width:min(560px,calc(100vw - 32px))}
+#inbox_dlg .hub-heading{border-bottom:1px solid var(--bd)}
+#inbox_list{display:grid;gap:18px;align-content:start}
+.inbox-item{display:grid;gap:8px}
+.inbox-head{display:flex;align-items:center;gap:8px;min-width:0;text-align:left;color:var(--fg2);font-weight:600}
+.inbox-session{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.inbox-machine{margin-left:auto;flex:none;font-weight:400;font-size:12px;color:var(--mut)}
+.inbox-status{margin:0;color:var(--mut)}
+.inbox-question{padding:12px;border:1px solid var(--bd);border-radius:12px;background:var(--bg)}
+.inbox-empty{color:var(--mut);text-align:center;padding:24px 0}
+.q-opt.q-free .q-num{color:var(--acc-text)}
+.q-opt.active{border-color:var(--acc)}
+.q-text{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:end}
+.q-text textarea{min-height:44px;max-height:160px;resize:vertical;padding:10px 12px;border:1px solid var(--bd);border-radius:10px;background:var(--side);color:var(--fg2);font:inherit;font-size:15px;outline:none}
+.q-text textarea:focus{border-color:var(--acc)}
+.q-text .pri{min-height:44px;padding:0 16px;border-radius:10px}
+.quick-machine{font-size:11px;color:var(--dim);max-width:90px;overflow:hidden;text-overflow:ellipsis}
+.quick-inbox{border-color:#0a84ff66!important;color:var(--fg2)!important}
+.quick-inbox svg{width:18px;height:18px;color:var(--acc-text)}
+.quick-count{min-width:20px;padding:1px 6px;border-radius:10px;background:var(--acc);color:#fff;font-size:12px;text-align:center}
 .recovery-code{display:block;margin:4px 0 0;padding:12px 14px;border:1px solid var(--bd);border-radius:var(--r);background:var(--bg);color:var(--fg2);font:600 14px/1.6 var(--mono);letter-spacing:.04em;overflow-wrap:anywhere;user-select:all;-webkit-user-select:all}
 .hub-card p.backup-line{margin:4px 0 0}.hub-card p.danger{color:var(--bad-text)}
 #hub_version{display:flex;align-items:center;flex-wrap:wrap;gap:10px 12px;margin-top:12px}
@@ -548,6 +577,8 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
   .chk,.dlg label.chk{font-size:15px}
   .acts{padding:12px 16px calc(12px + var(--sab))}
   .acts button{flex:1;min-height:var(--tap);padding:12px;font-size:16px;border-radius:var(--r)}
+  #inbox_dlg{width:100vw}
+  #inbox_dlg .dlg{padding-top:var(--sat)}
   #confirm_dlg{width:calc(100vw - 32px);height:fit-content;margin:auto;border:1px solid var(--bd-soft);border-radius:16px}
   #confirm_dlg .dlg{height:auto;padding-top:0}
   #confirm_dlg .acts{padding:12px 16px 16px}
@@ -605,6 +636,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
   <symbol id="i-monitor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></symbol>
   <symbol id="i-chevron-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
   <symbol id="i-chevron-right" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></symbol>
+  <symbol id="i-inbox" viewBox="0 0 24 24"><path d="M4 13h4l2 3h4l2-3h4"/><path d="M5.5 5h13L21 13v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-5z"/></symbol>
   <symbol id="i-telegram" viewBox="0 0 24 24"><path d="m21 3-4 18-6-5-4 3v-6L3 10 21 3Z"/><path d="m7 13 10-6-6 9"/></symbol>
 </svg>
 <div id="app">
@@ -615,6 +647,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
       <input id="q" class="search" placeholder="Поиск…" aria-label="Поиск…" autocomplete="off" autocapitalize="off" spellcheck="false">
       <button class="iconbtn accent" title="Новая сессия (⌥T)" aria-label="Новая сессия" onclick="openNew()"><svg class="ui-icon"><use href="#i-plus"/></svg></button>
     </div>
+    <button type="button" id="inbox_btn" class="inbox-btn" onclick="openInbox()" hidden><svg class="ui-icon"><use href="#i-inbox"/></svg><span>Ждут ответа</span><b id="inbox_count"></b></button>
     <div id="tabs"></div>
     <div id="integ"></div>
     <div class="side-foot"><span id="foot"></span><span id="ver"></span><button id="b_drafts" onclick="showClosedDrafts()" style="display:none"><svg class="ui-icon"><use href="#i-file"/></svg><span>Черновики закрытых сессий</span></button><button class="settingsbtn" onclick="openSettings()"><svg class="ui-icon"><use href="#i-gear"/></svg><span>Настройки</span></button></div>
@@ -704,6 +737,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
   <div class="viewer-bar"><span id="viewer_caption"></span><a id="viewer_open" target="_blank" rel="noopener">Открыть оригинал</a></div>
 </div>
 <dialog id="confirm_dlg"><form class="dlg" method="dialog"><div class="dlg-body"><h3 id="confirm_title"></h3><p id="confirm_text"></p></div><div class="acts"><button value="cancel">Отмена</button><button value="ok" class="pri" id="confirm_ok">OK</button></div></form></dialog>
+<dialog id="inbox_dlg"><div class="dlg"><div class="hub-heading"><h3>Ждут ответа</h3><button type="button" onclick="$('inbox_dlg').close()" aria-label="Закрыть"><svg class="ui-icon"><use href="#i-x"/></svg></button></div><div class="dlg-body" id="inbox_list"></div></div></dialog>
 <dialog id="draft_dlg"><div class="dlg"><div class="dlg-body"><h3>Черновики закрытых сессий</h3><div id="closed_drafts"></div></div><div class="acts"><button type="button" onclick="$('draft_dlg').close()">Закрыть</button></div></div></dialog>
 
 <dialog id="dlg"><form class="dlg" method="dialog" onsubmit="event.preventDefault();createSession()">
@@ -797,7 +831,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
     </section>
     <section id="hub_network">
       <form class="hub-card" onsubmit="event.preventDefault();saveNetwork()"><h4>Сеть и адрес панели</h4><p><span>Адрес в браузере</span>: <span id="network_browser"></span></p><p><span>Панель слушает</span>: <span id="network_bind"></span></p><label for="network_name">Название этого Agent Deck</label><input type="text" id="network_name" required maxlength="100"><label for="network_public_url">Публичный адрес</label><input type="url" id="network_public_url" placeholder="https://agents.example.com"><p>Для доступа по этому адресу домен и HTTPS должны быть настроены на сервере.</p><div class="acts"><button class="pri" id="network_save">Сохранить</button></div></form>
-      <div class="hub-card"><h4>Другие Agent Deck</h4><p>Управляйте другими компьютерами через этот сервер.</p><div id="deck_connections"></div>
+      <div class="hub-card"><h4>Другие Agent Deck</h4><p>Управляйте другими компьютерами через этот сервер.</p><div id="fleet_bar" class="fleet-bar"></div><div id="deck_connections"></div>
         <div class="deck-toolbar"><div class="deck-port"><label for="deck_port">Порт</label><input type="number" id="deck_port" min="1" max="65535" value="8790"></div><div class="deck-actions"><button type="button" id="deck_discover" onclick="discoverDecks()">Обнаружить</button><button type="button" onclick="editDeck()">Подключить</button></div></div><p id="deck_discovery_status"></p><div id="deck_discovery_results"></div>
         <details id="deck_editor"><summary>Подключение Agent Deck</summary><form onsubmit="event.preventDefault();saveDeck()"><input type="hidden" id="deck_id"><label for="deck_name">Название</label><input type="text" id="deck_name" required maxlength="100"><label for="deck_url">Адрес Tailscale</label><input type="url" id="deck_url" required placeholder="http://100.68.39.62:8790"><label for="deck_username">Логин</label><input type="text" id="deck_username" required autocomplete="off"><label for="deck_password">Пароль</label><input type="password" id="deck_password" autocomplete="new-password"><p>Пароль хранится на основном сервере. Пустое поле сохраняет пароль существующего подключения.</p><button class="pri" id="deck_save">Подключить</button></form></details>
       </div>
@@ -945,30 +979,37 @@ function svgIcon(name){
   return svg;
 }
 
-// Free-text options (Other / Type something) need typing in the terminal, so they stay keyboard-only.
-function renderQuestionCard({box,question,expanded,busyIndex,onAnswer,onToggle,translate}){
+// Free-text options (Other / Type something) open a text field; the answer is typed into that row.
+function renderQuestionCard({box,question,expanded,busyIndex,textIndex,textDraft="",onAnswer,onToggle,onTextOption,onTextInput,onSubmitText,translate}){
   box.replaceChildren();
   box.hidden=!question;
   if(!question)return;
+  const busy=busyIndex!==null&&busyIndex!==undefined;
   const head=document.createElement("div");head.className="q-head";
   head.append(translate("Вопрос агента"));
   if(question.progress){const progress=document.createElement("span");progress.className="q-progress";progress.textContent=question.progress;head.append(progress)}
   const title=document.createElement("button");title.type="button";title.className="q-title"+(expanded?" open":"");
   title.textContent=question.title;title.setAttribute("aria-expanded",String(Boolean(expanded)));title.onclick=onToggle;
   const options=document.createElement("div");options.className="q-options";
-  let freeText=false;
   question.options.forEach((option,index)=>{
-    if(option.text){freeText=true;return}
     const button=document.createElement("button");button.type="button";
-    button.className="q-opt"+(index===question.selected?" selected":"")+(index===busyIndex?" sending":"");
-    const number=document.createElement("span");number.className="q-num";number.textContent=String(index+1);
+    button.className="q-opt"+(option.text?" q-free":"")+(index===question.selected?" selected":"")+(index===busyIndex?" sending":"")+(index===textIndex?" active":"");
+    const number=document.createElement("span");number.className="q-num";number.textContent=option.text?"✎":String(index+1);
     const label=document.createElement("span");label.textContent=option.label;
-    button.append(number,label);button.disabled=busyIndex!==null&&busyIndex!==undefined;
-    button.onclick=()=>onAnswer(index);
+    button.append(number,label);button.disabled=busy;
+    button.onclick=()=>option.text?onTextOption&&onTextOption(index):onAnswer(index);
     options.append(button);
+    if(option.text&&index===textIndex){
+      const form=document.createElement("form");form.className="q-text";
+      const field=document.createElement("textarea");field.rows=2;field.maxLength=4000;field.placeholder=translate("Ваш ответ…");field.disabled=busy;field.value=textDraft;
+      field.oninput=()=>onTextInput&&onTextInput(field.value);
+      const send=document.createElement("button");send.type="submit";send.className="pri";send.textContent=translate("Ответить");send.disabled=busy;
+      form.onsubmit=event=>{event.preventDefault();if(field.value.trim())onSubmitText(index,field.value)};
+      form.append(field,send);options.append(form);
+      setTimeout(()=>field.focus(),0);
+    }
   });
   box.append(head,title,options);
-  if(freeText){const note=document.createElement("p");note.className="q-note";note.textContent=translate("Свой ответ — клавишами ↑ ↓ ⏎ ниже");box.append(note)}
 }
 
 // One styled confirm for every destructive action; resolves false on Escape or backdrop close.
@@ -1072,16 +1113,21 @@ async function restoreBackup(meta,source,blob){
   const target=$("backup_target").value,targetName=$("backup_target").selectedOptions[0]?.textContent||"";
   const code=$("backup_restore_code").value.trim();
   if(!backupStatus?.configured&&!target&&!code){toast(tr("Введите код восстановления"));$("backup_restore_code").focus();return}
+  let warned=false;
   const ok=await confirmAction(tr("Восстановить «{0}» от {1}?",[meta.name,formatBackupTime(meta.created,DATE_LOCALE)]),
     {text:tr("Настройки, ключи и логины агентов на «{0}» будут заменены. Текущее состояние сохранится в бэкап, панель перезапустится.",[targetName]),confirm:tr("Восстановить"),danger:true});
   if(!ok)return;
   try{
     if(target)await api("/api/backup_restore_remote",{deck:target,origin:meta.origin,created:meta.created});
-    else await api("/api/backup_restore",blob?{blob,code}:{origin:meta.origin,created:meta.created,deck:source||undefined,code:code||undefined});
+    else{
+      const result=await api("/api/backup_restore",blob?{blob,code}:{origin:meta.origin,created:meta.created,deck:source||undefined,code:code||undefined});
+      warned=(result.restored?.warnings||[]).length>0;
+      for(const warning of result.restored?.warnings||[])toast(tr(warning));
+    }
   }catch(e){toast(e.message);return}
   if(target){toast(tr("Восстановлено на «{0}». Панель там перезапускается.",[targetName]),"success");return}
-  toast(tr("Восстановлено. Панель перезапускается…"),true);
-  setTimeout(()=>location.reload(),5000);
+  if(!warned)toast(tr("Восстановлено. Панель перезапускается…"),true);
+  setTimeout(()=>location.reload(),warned?12000:5000);  // Leave time to read a warning.
 }
 function restoreBackupFile(input){
   const file=input.files[0];input.value="";if(!file)return;
@@ -1245,7 +1291,7 @@ function joinImageLines(lines){
   return out;
 }
 
-function imageUrl(session,path){return activePath("/api/image?name="+encodeURIComponent(session)+"&path="+encodeURIComponent(path))}
+function imageUrl(session,path,thumb){return activePath("/api/image?name="+encodeURIComponent(session)+"&path="+encodeURIComponent(path)+(thumb?"&thumb=1":""))}
 function imageLink(session,path,runs,from,to){
   const link=el("a","img-link");link.href=imageUrl(session,path);
   appendStyledRange(link,runs,from,to);
@@ -1257,7 +1303,7 @@ function imageStrip(session,paths){
   for(const path of new Set(paths)){
     const thumb=el("button","img-thumb"),img=document.createElement("img");
     thumb.type="button";thumb.title=path;thumb.setAttribute("aria-label",tr("Открыть картинку {0}",[path.split("/").pop()]));
-    img.loading="lazy";img.decoding="async";img.alt="";img.src=imageUrl(session,path);
+    img.loading="lazy";img.decoding="async";img.alt="";img.src=imageUrl(session,path,true);
     // Missing files, or paths no longer on screen, simply leave the text without a preview.
     img.onerror=()=>thumb.remove();
     thumb.append(img);thumb.onclick=()=>openViewer(path);strip.append(thumb);
@@ -1297,6 +1343,132 @@ if(typeof document!=="undefined"&&document.getElementById("viewer")){
 }
 
 if(typeof module!=="undefined")module.exports={imageMatches,joinImageLines,IMAGE_PATH_RE};
+// Versions of every connected computer and "update all" from the gateway.
+const fleet={versions:new Map(),gateway:null,updating:false,loadedAt:0};
+const UPDATING=new Set(["checking","downloading","installing","restarting"]);
+
+// Which computers can be updated now; pure for tests.
+function fleetTargets(versions){
+  const ids=[];
+  for(const [id,v] of versions)if(v&&v.update&&v.can_update!==false&&!UPDATING.has(v.job?.phase))ids.push(id);
+  return ids;
+}
+function versionLabel(v,translate){
+  if(!v)return translate("недоступен");
+  if(UPDATING.has(v.job?.phase))return "v"+v.version+" · "+(v.job.message||translate("обновляется…"));
+  if(v.job?.phase==="error")return "v"+v.version+" · "+translate("обновление не удалось");
+  return v.update&&v.latest?"v"+v.version+" → v"+v.latest:"v"+v.version;
+}
+
+async function loadFleet(){
+  fleet.loadedAt=Date.now();
+  const decks=deckDirectory.decks;
+  const results=await Promise.all(decks.map(async d=>{try{return [d.id,await api(instancePath(d.id,"/api/version"),null,true)]}catch(e){return [d.id,null]}}));
+  fleet.versions=new Map(results);
+  try{fleet.gateway=await api("/api/version",null,true)}catch(e){fleet.gateway=null}
+  renderFleet();renderTabs();
+}
+function renderFleet(){
+  const bar=document.getElementById("fleet_bar");if(!bar)return;
+  for(const node of document.querySelectorAll("[data-deck-version]")){
+    const v=fleet.versions.get(node.dataset.deckVersion);
+    node.textContent=versionLabel(v,tr);node.classList.toggle("outdated",Boolean(v?.update));
+  }
+  const targets=fleetTargets(fleet.versions),gatewayOld=Boolean(fleet.gateway?.update&&fleet.gateway?.can_update);
+  const count=targets.length+(gatewayOld?1:0);
+  bar.replaceChildren();
+  if(!deckDirectory.decks.length)return;
+  bar.append(el("span","",fleet.updating?tr("Обновляю компьютеры…"):count?tr("Обновления доступны: {0}",[count]):tr("Все компьютеры обновлены")));
+  if(count&&!fleet.updating)bar.append(btn(tr("Обновить все"),"pri",updateAllComputers));
+}
+async function updateAllComputers(){
+  const targets=fleetTargets(fleet.versions),gatewayOld=Boolean(fleet.gateway?.update&&fleet.gateway?.can_update);
+  if(!targets.length&&!gatewayOld)return;
+  if(!await confirmAction(tr("Обновить все компьютеры?"),{text:tr("Панели перезапустятся по очереди, сессии и агенты продолжат работать. Этот компьютер обновится последним."),confirm:tr("Обновить все")}))return;
+  fleet.updating=true;renderFleet();
+  await Promise.all(targets.map(id=>api(instancePath(id,"/api/update"),{},true).catch(e=>toast(e.message))));
+  // Poll until every started job ends; the gateway goes last because its restart interrupts the proxy.
+  const deadline=Date.now()+10*60*1000;
+  while(Date.now()<deadline){
+    await new Promise(resolve=>setTimeout(resolve,3000));
+    await loadFleet();
+    if(targets.every(id=>!UPDATING.has(fleet.versions.get(id)?.job?.phase)))break;
+  }
+  fleet.updating=false;renderFleet();
+  if(gatewayOld){
+    if(!selectedDeck)startPanelUpdate();
+    else api("/api/update",{},true).then(()=>toast(tr("Этот компьютер обновляется"),true)).catch(e=>toast(e.message));
+  }else toast(tr("Компьютеры обновлены"),"success");
+}
+
+if(typeof module!=="undefined")module.exports={fleetTargets,versionLabel};
+// Everything waiting for you on every computer: agent questions (answerable here) and finished work.
+const inbox={questions:[],cards:new Map(),loading:false};
+
+// Questions plus finished sessions, without listing a session twice; pure for tests.
+function inboxItems(questions,finished){
+  const asked=new Set(questions.map(q=>(q.deck||"")+"/"+q.session));
+  return [...questions.map(q=>({kind:"question",key:(q.deck||"")+"/"+q.session,question:q})),
+    ...finished.filter(f=>!asked.has(f.deck+"/"+f.session)).map(f=>({kind:"finished",key:f.deck+"/"+f.session,...f}))];
+}
+function finishedSessions(){
+  const local=[...attention].map(name=>({deck:selectedDeck,session:name,machine:currentDeckName()}));
+  const remote=[...otherAttention].map(key=>{const [deck,session]=key.split("/");return {deck,session,machine:(otherDecks.find(d=>d.id===deck)||{}).name||""}});
+  return [...local,...remote];
+}
+async function loadInbox(){
+  if(document.hidden||inbox.loading)return;
+  inbox.loading=true;
+  try{inbox.questions=(await api("/api/inbox",null,true)).questions||[]}catch(e){/* Older gateways have no inbox; the list stays empty. */}
+  finally{inbox.loading=false}
+  renderInbox();
+}
+function inboxCount(){return inboxItems(inbox.questions,finishedSessions()).length}
+function renderInboxBadge(){
+  const count=inboxCount();
+  $("inbox_btn").hidden=!count;$("inbox_count").textContent=count;
+  return count;
+}
+function openInboxSession(deck,session){
+  $("inbox_dlg").close();
+  if((deck||"")!==selectedDeck)openDeckSession(deck||"",session);else select(session);
+}
+function renderInbox(){
+  renderInboxBadge();renderQuickTabs();
+  if(!$("inbox_dlg").open)return;
+  const list=$("inbox_list"),items=inboxItems(inbox.questions,finishedSessions());
+  if(list.querySelector(".q-text textarea:focus"))return;  // Do not wipe a half-typed answer.
+  list.replaceChildren(...(items.length?items.map(renderInboxItem):[el("p","inbox-empty",tr("Сейчас никто не ждёт ответа"))]));
+}
+function renderInboxItem(item){
+  const machine=item.kind==="question"?(item.question.origin||(item.question.deck?"":deckDirectory.name)):item.machine;
+  const deck=item.kind==="question"?item.question.deck||"":item.deck,session=item.kind==="question"?item.question.session:item.session;
+  const head=el("button","inbox-head",agentIcon({agent:item.kind==="question"?item.question.agent:"claude"}),el("span","inbox-session",session),
+    el("span","inbox-machine",machine||""));
+  head.type="button";head.onclick=()=>openInboxSession(deck,session);
+  const box=el("div","inbox-item",head);
+  if(item.kind==="finished"){box.append(el("p","inbox-status",tr("Агент закончил работу")));return box}
+  const card=el("div","inbox-question"),state=inbox.cards.get(item.key)||{expanded:false,busy:null,textIndex:null,draft:""};
+  inbox.cards.set(item.key,state);
+  const answer=async(index,text)=>{
+    state.busy=index;draw();
+    const q=item.question,body={name:q.session,id:q.id,index};if(text!==undefined)body.text=text;
+    try{await api(instancePath(deck,"/api/answer"),body,true);toast(tr("Ответ отправлен: {0}",[text===undefined?q.options[index].label:text.slice(0,80)]),"success");
+      inbox.questions=inbox.questions.filter(x=>x!==q);inbox.cards.delete(item.key);renderInbox();if(deck===selectedDeck)load()}
+    catch(e){state.busy=null;draw();toast(e.message)}
+  };
+  const draw=()=>renderQuestionCard({box:card,question:item.question,expanded:state.expanded,busyIndex:state.busy,textIndex:state.textIndex,textDraft:state.draft,translate:tr,
+    onToggle:()=>{state.expanded=!state.expanded;draw()},onAnswer:index=>answer(index),
+    onTextOption:index=>{state.textIndex=state.textIndex===index?null:index;draw()},onTextInput:value=>{state.draft=value},onSubmitText:answer});
+  draw();box.append(card);return box;
+}
+function openInbox(){
+  drawer(false);sheet(false);
+  if(!$("inbox_dlg").open)$("inbox_dlg").showModal();
+  renderInbox();loadInbox();
+}
+
+if(typeof module!=="undefined")module.exports={inboxItems};
 const I18N=__PANEL_I18N__;
 const DATE_LOCALE=(()=>{try{return Intl.getCanonicalLocales(I18N.language)[0]}catch(e){return "en"}})();
 const $=id=>document.getElementById(id);
@@ -1445,17 +1617,29 @@ const cur=()=>sessions.find(x=>x.name===active);
 const messageDrafts=new Map();
 const closedDrafts=new Map();
 let quickSignature=null,quickActive=null;
+const quickRemote=new Map();
 const quickButtons=new Map();
 function renderQuickTabs(){
-  const box=$("quick_tabs"),signature=JSON.stringify(sessions.map(s=>[s.name,s.title,agentOf(s)]));
+  const others=otherDecks.filter(d=>d.id!==selectedDeck),waiting=inboxCount();
+  const box=$("quick_tabs"),signature=JSON.stringify([sessions.map(s=>[s.name,s.title,agentOf(s)]),others.map(d=>[d.id,d.sessions.map(s=>[s.name,s.title,agentOf(s)])]),waiting>0]);
   if(signature!==quickSignature){
-    const left=box.scrollLeft;box.replaceChildren();quickButtons.clear();
+    const left=box.scrollLeft;box.replaceChildren();quickButtons.clear();quickRemote.clear();
+    // What waits for you comes first, under the thumb.
+    if(waiting){
+      const pill=el("button","quick-tab quick-inbox",svgIcon("inbox"),el("span","label",tr("Ждут ответа")),el("b","quick-count",String(waiting)));
+      pill.type="button";pill.onclick=openInbox;box.append(pill);
+    }
     for(const s of sessions){
       const button=el("button","quick-tab",el("span","dot"),agentIcon(s),el("span","label",sessionTitle(s)),el("span","bell"));
       button.type="button";button.setAttribute("aria-label",tr("Открыть сессию ")+sessionTitle(s));
       onLongPress(button,()=>{select(s.name);sheet(true)});
       button.addEventListener("click",e=>{if(button.dataset.longPress){delete button.dataset.longPress;e.preventDefault();return}select(s.name)});
       box.append(button);quickButtons.set(s.name,button);
+    }
+    for(const deck of others)for(const s of deck.sessions){
+      const button=el("button","quick-tab quick-remote",el("span","dot "+state(s)),agentIcon(s),el("span","label",sessionTitle(s)),el("span","quick-machine",deck.name),el("span","bell"));
+      button.type="button";button.title=deck.name+" · "+sessionTitle(s);
+      button.onclick=()=>openDeckSession(deck.id,s.name);box.append(button);quickRemote.set(deck.id+"/"+s.name,{button,deck,s});
     }
     if(sessions.length){
       const add=el("button","quick-tab quick-new",svgIcon("plus"));add.type="button";
@@ -1470,6 +1654,8 @@ function renderQuickTabs(){
     button.setAttribute("aria-pressed",String(s.name===active));button.title=sessionTitle(s)+" · "+stateText(s);
     button.children[0].className="dot "+state(s);button.children[3].style.display=attention.has(s.name)?"":"none";
   }
+  for(const [key,{button,s}] of quickRemote){button.children[0].className="dot "+state(s);button.children[4].style.display=otherAttention.has(key)?"":"none"}
+  const count=box.querySelector(".quick-count");if(count)count.textContent=waiting;
   if(active!==quickActive&&isMobile()){
     const safelySelected=active,button=quickButtons.get(active);
     if(button)requestAnimationFrame(()=>{
@@ -1527,7 +1713,7 @@ function renderTabs(){
   if(focused)box.querySelector(`[data-session="${CSS.escape(focused)}"]`)?.focus({preventScroll:true});
   const busy=sessions.filter(s=>state(s)==="busy").length;
   $("foot").textContent=tr("{0} сессий · {1} работают",[sessions.length,busy])+(attention.size?tr(" · {0} готово",[attention.size]):"");
-  const ready=attention.size+otherAttention.size;
+  const ready=renderInboxBadge();
   $("menuBadge").textContent=ready;$("menuBadge").classList.toggle("on",ready>0);
   document.title=(ready?`(${ready}) `:"")+"Agent Deck";
   // Home-screen icon badge (iOS 16.4+ with notifications allowed, desktop PWAs); ignored elsewhere.
@@ -1823,7 +2009,7 @@ async function loadSessions(){
     loadQuestion();
   }catch(e){toast(e.message)}
 }
-let question={name:null,data:null,expanded:false,busy:null},loadingQuestion=false;
+let question={name:null,data:null,expanded:false,busy:null,textIndex:null},loadingQuestion=false;
 async function loadQuestion(){
   const s=cur();
   if(!s||agentOf(s)==="shell"||!s.running){if(question.data)setQuestion(s?.name||null,null);return}
@@ -1837,21 +2023,26 @@ function setQuestion(name,data){
   const same=question.name===name&&JSON.stringify(question.data)===JSON.stringify(data);
   if(same)return;
   const keepExpanded=question.name===name&&question.data?.id===data?.id;
-  question={name,data,expanded:keepExpanded&&question.expanded,busy:null};renderQuestion();
+  question={name,data,expanded:keepExpanded&&question.expanded,busy:null,textIndex:keepExpanded?question.textIndex:null};renderQuestion();
 }
 function renderQuestion(){
   const data=question.name===active?question.data:null;
-  renderQuestionCard({box:$("question"),question:data,expanded:question.expanded,busyIndex:question.busy,translate:tr,
-    onToggle:()=>{question.expanded=!question.expanded;renderQuestion()},onAnswer:answerQuestion});
+  // Typing an answer must not be wiped by the 2.5 s refresh, so an open text field pauses re-rendering.
+  if($("question").querySelector(".q-text textarea:focus"))return;
+  renderQuestionCard({box:$("question"),question:data,expanded:question.expanded,busyIndex:question.busy,textIndex:question.textIndex,textDraft:question.textDraft||"",translate:tr,
+    onTextInput:value=>{question.textDraft=value},
+    onToggle:()=>{question.expanded=!question.expanded;renderQuestion()},onAnswer:answerQuestion,
+    onTextOption:index=>{question.textIndex=question.textIndex===index?null:index;renderQuestion()},
+    onSubmitText:(index,text)=>answerQuestion(index,text)});
 }
-async function answerQuestion(index){
+async function answerQuestion(index,text){
   const name=active,data=question.data;
   if(!data||question.busy!==null||panelUpdating)return;
-  question.busy=index;renderQuestion();
+  question.busy=index;$("question").querySelector(".q-text textarea")?.blur();renderQuestion();
   try{
-    await api("/api/answer",{name,id:data.id,index});
-    sendStates.set(name,{text:tr("Ответ отправлен: {0}",[data.options[index].label]),phase:"success"});
-    question={name,data:null,expanded:false,busy:null};
+    await api("/api/answer",text===undefined?{name,id:data.id,index}:{name,id:data.id,index,text});
+    sendStates.set(name,{text:tr("Ответ отправлен: {0}",[text===undefined?data.options[index].label:text.slice(0,80)]),phase:"success"});
+    question={name,data:null,expanded:false,busy:null,textIndex:null};
   }catch(e){toast(e.message);question.busy=null}
   renderQuestion();renderSendState();await load();loadQuestion();
 }
@@ -1907,18 +2098,29 @@ function renderAttachments(){
   $("b_send").disabled=sending||uploading||panelUpdating;
 }
 // XHR instead of fetch: large phone videos take minutes and need visible progress.
-function uploadRequest(body,progress){
+// The file goes as a raw body: a phone never holds a base64 copy of a large video in memory.
+function uploadRequest(path,contentType,payload,progress){
   return new Promise((resolve,reject)=>{
-    const xhr=new XMLHttpRequest();xhr.open("POST",activePath("/api/upload"));xhr.setRequestHeader("Content-Type","application/json");
+    const xhr=new XMLHttpRequest();xhr.open("POST",activePath(path));xhr.setRequestHeader("Content-Type",contentType);
     xhr.upload.onprogress=e=>{if(e.lengthComputable)progress(Math.round(e.loaded/e.total*100))};
     xhr.onerror=()=>reject(new Error(tr("Не удалось загрузить файл: нет соединения")));
     xhr.onload=()=>{
       if(xhr.status===401){try{stashDrafts()}catch(e){}location.href="/login";return reject(new Error("login required"))}
       let data={};try{data=JSON.parse(xhr.responseText)}catch(e){data={error:xhr.statusText}}
-      xhr.status>=200&&xhr.status<300?resolve(data):reject(new Error(data.error||xhr.statusText));
+      if(xhr.status>=200&&xhr.status<300)resolve(data);
+      else{const error=new Error(data.error||xhr.statusText);error.status=xhr.status;reject(error)}
     };
-    xhr.send(JSON.stringify(body));
+    xhr.send(payload);
   });
+}
+async function uploadFile(name,file,image,progress){
+  const query="?name="+encodeURIComponent(name)+"&filename="+encodeURIComponent(file.name||"file");
+  try{return await uploadRequest("/api/upload_raw"+query,"application/octet-stream",image,progress)}
+  catch(error){
+    if(error.status!==404)throw error;
+    // A connected Agent Deck older than 1.9 only knows the JSON upload.
+    return uploadRequest("/api/upload","application/json",JSON.stringify({name,data:await readImageData(image),filename:file.name||"file"}),progress);
+  }
 }
 function chooseImages(){
   if(!active||sending||uploading||panelUpdating)return;
@@ -1958,8 +2160,7 @@ async function uploadImages(files){
       if(file.size>limit)throw new Error(tr("Файл слишком большой: максимум 200 МБ"));
       let image=file;
       if(["image/heic","image/heif"].includes(file.type)){try{image=await prepareImage(file)}catch(e){image=file}}
-      const data=await readImageData(image);
-      const result=await uploadRequest({name,data,filename:file.name||"file"},percent=>{
+      const result=await uploadFile(name,file,image,percent=>{
         sendStates.set(name,{text:tr("Загружаю файлы…")+" "+percent+"%",phase:"pending"});if(active===name)renderSendState();
       });
       imageAttachments.set(name,[...attachmentsFor(name),{attachment:result.attachment,label:file.name||tr("Файл"),preview:result.kind==="image"||(result.kind===undefined&&isImage)?URL.createObjectURL(image):null}]);
@@ -2161,6 +2362,7 @@ function settingsSection(section){
   hubSection=section;for(const name of ["agents","models","connections","network","backups","app"])$("hub_"+name).hidden=name!==section;
   if(section==="backups"&&$("settings_dlg").open)loadBackups();
   if(section==="connections"&&$("settings_dlg").open)loadPush();
+  if(section==="network"&&$("settings_dlg").open)loadFleet();
   for(const b of document.querySelectorAll(".hub-nav button")){
     b.classList.toggle("on",b.dataset.section===section);b.setAttribute("aria-current",String(b.dataset.section===section));
     if(b.dataset.section===section&&isMobile())requestAnimationFrame(()=>b.scrollIntoView({inline:"nearest",block:"nearest"}));
@@ -2193,12 +2395,14 @@ async function loadDeckSettings(){
   // Most installs have a single machine; the switcher appears once another Agent Deck is connected.
   $("deck_switch").hidden=!data.decks.length&&!selectedDeck;
   deckDirectory={decks:data.decks,name:network.name};loadOtherDecks();
+  if(Date.now()-fleet.loadedAt>10*60*1000||$("settings_dlg").open)loadFleet();else renderFleet();
   $("network_name").value=network.name;$("network_public_url").value=network.public_url;
   $("network_bind").textContent="http://"+network.bind_host+":"+network.bind_port;
   $("network_browser").textContent=location.origin;
   const box=$("deck_connections");box.replaceChildren();
   for(const deck of data.decks){
-    const card=el("div","deck-connection",el("strong","",deck.name),el("p","",deck.url));
+    const version=el("span","deck-version");version.dataset.deckVersion=deck.id;
+    const card=el("div","deck-connection",el("strong","",deck.name),el("p","",deck.url," · ",version));
     card.append(el("div","deck-actions",btn(tr("Переключиться"),"pri",()=>switchDeck(deck.id)),btn(tr("Изменить"),"",()=>editDeck(deck)),btn(tr("Удалить"),"danger",()=>removeDeck(deck.id))));box.append(card);
   }
   renderDeckDiscovery(data.discovery);
@@ -2232,6 +2436,8 @@ function deckHeader(deck,current){
   const key=deck.id||"local",open=current||deckOpen[key]!==false;
   const head=el(current?"div":"button","deck-head"+(current?" current":""),svgIcon("monitor"),el("span","deck-name",deck.name),
     el("span","deck-count",deck.error?tr("недоступен"):String(deck.count)));
+  // A connected computer behind the latest release shows an arrow; Settings → Network updates it.
+  if(!current&&fleet.versions.get(deck.id)?.update){const mark=el("span","deck-update","↑");mark.title=tr("Доступно обновление");head.append(mark)}
   if(!current){
     head.type="button";head.setAttribute("aria-expanded",String(open));head.append(svgIcon(open?"chevron-down":"chevron-right"));
     head.onclick=()=>{deckOpen[key]=!open;try{localStore.setItem("cc.deck-open",JSON.stringify(deckOpen))}catch(e){}renderTabs()};
@@ -2286,7 +2492,7 @@ function resetInstanceState(known){
   for(const frame of frames.values())frame.remove();
   frames.clear();wasBusy.clear();attention.clear();previewCache.clear();sendStates.clear();
   sessions=known;quickSignature=null;quickActive=null;
-  question={name:null,data:null,expanded:false,busy:null};loadingQuestion=false;
+  question={name:null,data:null,expanded:false,busy:null,textIndex:null};loadingQuestion=false;
   loadingSessions=null;queuedSessions=null;sessionsQueued=false;load.done=false;
   lastAg={};usageData={};ghLogin=null;lastGh=0;repos=[];
   lmData={profiles:[],discovery:{}};lmRefreshPending=null;openLocalModels.clear();
@@ -2720,5 +2926,7 @@ document.addEventListener("visibilitychange",()=>{if(!document.hidden){checkGith
 load();setInterval(load,2500);
 
 loadDeckSettings().catch(e=>toast(e.message));
+loadInbox();setInterval(loadInbox,5000);
+document.addEventListener("visibilitychange",()=>{if(!document.hidden)loadInbox()});
 </script>
 </body></html>

@@ -21,6 +21,7 @@ from .questions import Question
 from .store import Store
 
 TOKEN = re.compile(r"\d{5,20}:[A-Za-z0-9_-]{20,100}")
+FREE_TEXT = re.compile(r'(?:Other\b|Type something|Другое\b|Свой ответ)', re.I)
 
 
 class TelegramError(RuntimeError):
@@ -258,9 +259,11 @@ class Telegram:
                 options = [f'{i + 1}. {label[:180]}' for i, label in enumerate(q.options)]
                 keyboard = [[{'text': f'{i + 1}. {label[:90]}', 'callback_data': f"q:{row['id']}:{i}"}]
                             for i, label in enumerate(q.options)
-                            if not re.match(r'(?:Other\b|Type something|Другое\b|Свой ответ)', label, re.I)]
+                            if not FREE_TEXT.match(label)]
+                hint = ('\n\n' + self.translate('Свой ответ: ответьте на это сообщение текстом')
+                        if any(FREE_TEXT.match(label) for label in q.options) else '')
                 result = self.api.call(self.config['token'], 'sendMessage', chat_id=self.config['chat_id'],
-                    text=' · '.join(filter(None, (q.origin, q.agent, q.session))) + f'\n\n{q.title}\n\n' + '\n'.join(options),
+                    text=' · '.join(filter(None, (q.origin, q.agent, q.session))) + f'\n\n{q.title}\n\n' + '\n'.join(options) + hint,
                     reply_markup={'inline_keyboard': keyboard})
                 db.set_status(row['id'], 'sent', result['message_id'])
 
@@ -286,6 +289,8 @@ class Telegram:
                 self.api.call(c['token'], 'sendMessage', chat_id=chat['id'],
                               text=self.translate('Agent Deck подключён. Вопросы агентов придут сюда с кнопками ответа.'))
             return
+        if message.get('reply_to_message') and text:
+            return self.handle_reply(message, chat, actor, text)
         callback = update.get('callback_query')
         if not callback:
             return
@@ -323,6 +328,43 @@ class Telegram:
         return self.notify(c['token'], 'answerCallbackQuery', callback_query_id=callback['id'],
                            text=self.translate(result_text)[:180],
                            show_alert=result_text != 'Ответ передан агенту') or problem
+
+    def handle_reply(self, message, chat, actor, text):
+        """A reply to a question message answers its "Other / Type something" option with that text."""
+        c = self.config
+        if not (self.eligible(c) and chat.get('type') == 'private' and actor.get('id') == c.get('user_id')
+                and chat.get('id') == c.get('chat_id')) or text.startswith('/'):
+            return
+        row = self.database().by_message(message['reply_to_message'].get('message_id'))
+        reply = 'Этот вопрос не найден или уже закрыт'
+        if row and row['status'] == 'sent':
+            payload = json.loads(row['payload'])
+            q = Question(**{**payload, 'options': tuple(payload['options'])})
+            index = next((i for i, label in enumerate(q.options) if FREE_TEXT.match(label)), None)
+            if index is None:
+                reply = 'У этого вопроса нет варианта для своего ответа; нажмите кнопку'
+            elif len(text) > 4000:
+                reply = 'Ответ длиннее 4000 символов'
+            elif self.database().claim(row['id']):
+                reply = self.answer_claimed(row, q, index, text)
+                if self.database().get(row['id'])['status'] != 'sent' and row['message_id']:
+                    self.notify(c['token'], 'editMessageReplyMarkup', chat_id=c['chat_id'], message_id=row['message_id'],
+                                reply_markup={'inline_keyboard': []})
+        return self.notify(c['token'], 'sendMessage', chat_id=c['chat_id'], text=self.translate(reply),
+                           reply_to_message_id=message.get('message_id'))
+
+    def answer_claimed(self, row, q, index, text=None):
+        # Same outcomes as a button: retryable errors reopen, others close; unknown failures never replay.
+        try:
+            self.answer(q, index, text) if text is not None else self.answer(q, index)
+        except ValueError as error:
+            self.database().set_status(row['id'], 'sent' if getattr(error, 'retryable', False) else 'expired')
+            return str(error)
+        except Exception:
+            self.database().set_status(row['id'], 'uncertain')
+            return 'Проверьте ответ в панели: повторная отправка отключена'
+        self.database().set_status(row['id'], 'answered')
+        return 'Ответ передан агенту'
 
     def notify(self, token, method, **data):
         # Cosmetic UI calls: the answer state is already final, so a failure is reported, not raised.

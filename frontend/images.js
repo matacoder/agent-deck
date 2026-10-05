@@ -28,7 +28,7 @@ function joinImageLines(lines){
   return out;
 }
 
-function imageUrl(session,path){return activePath("/api/image?name="+encodeURIComponent(session)+"&path="+encodeURIComponent(path))}
+function imageUrl(session,path,thumb){return activePath("/api/image?name="+encodeURIComponent(session)+"&path="+encodeURIComponent(path)+(thumb?"&thumb=1":""))}
 function imageLink(session,path,runs,from,to){
   const link=el("a","img-link");link.href=imageUrl(session,path);
   appendStyledRange(link,runs,from,to);
@@ -40,7 +40,7 @@ function imageStrip(session,paths){
   for(const path of new Set(paths)){
     const thumb=el("button","img-thumb"),img=document.createElement("img");
     thumb.type="button";thumb.title=path;thumb.setAttribute("aria-label",tr("Открыть картинку {0}",[path.split("/").pop()]));
-    img.loading="lazy";img.decoding="async";img.alt="";img.src=imageUrl(session,path);
+    img.loading="lazy";img.decoding="async";img.alt="";img.src=imageUrl(session,path,true);
     // Missing files, or paths no longer on screen, simply leave the text without a preview.
     img.onerror=()=>thumb.remove();
     thumb.append(img);thumb.onclick=()=>openViewer(path);strip.append(thumb);

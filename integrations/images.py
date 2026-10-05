@@ -3,12 +3,17 @@
 A file is served only if its path is visible in that session's recent output, it is a regular
 PNG/JPEG/WebP/GIF by content (never SVG: it can carry script), and it is not too large.
 """
+import hashlib
 import os
 from pathlib import Path
 import re
+import shutil
+import subprocess
+import tempfile
 
 EXTENSIONS = ('.png', '.jpg', '.jpeg', '.webp', '.gif')
 MAX_BYTES = 25 * 1024 * 1024
+THUMB_SIZE = 480
 
 
 def image_type(data):
@@ -41,7 +46,43 @@ def resolve(path, cwd, home):
     return Path(os.path.realpath(candidate))
 
 
-def read_image(path, cwd, home, screen):
+def thumbnail_command(source, target, which=shutil.which):
+    """macOS ships sips; Linux may have ImageMagick. Without either the original is served."""
+    if which('sips'):
+        return ['sips', '-Z', str(THUMB_SIZE), '-s', 'format', 'jpeg', str(source), '--out', str(target)]
+    for tool in ('magick', 'convert'):
+        if which(tool):
+            return [tool, str(source) + '[0]', '-thumbnail', f'{THUMB_SIZE}x{THUMB_SIZE}>', 'jpeg:' + str(target)]
+    return None
+
+
+def thumbnail(real, cache, run=subprocess.run, which=shutil.which):
+    info = real.stat()
+    key = hashlib.sha256(f'{real}\0{info.st_mtime_ns}\0{info.st_size}'.encode()).hexdigest()[:32]
+    cached = Path(cache) / (key + '.jpg')
+    if cached.is_file():
+        return cached.read_bytes()
+    Path(cache).mkdir(parents=True, exist_ok=True, mode=0o700)
+    fd, temporary = tempfile.mkstemp(dir=cache, suffix='.jpg')
+    os.close(fd)
+    try:
+        command = thumbnail_command(real, temporary, which)
+        if not command:
+            return None
+        result = run(command, input=b'', capture_output=True, timeout=20)
+        data = Path(temporary).read_bytes()
+        if result.returncode != 0 or image_type(data) != 'image/jpeg':
+            return None
+        os.replace(temporary, cached)
+        return data
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    finally:
+        if os.path.exists(temporary):
+            os.unlink(temporary)
+
+
+def read_image(path, cwd, home, screen, cache=None):
     if not path.lower().endswith(EXTENSIONS):
         raise ValueError('Показываются только PNG, JPEG, WebP и GIF')
     if not visible(path, screen):
@@ -51,6 +92,10 @@ def read_image(path, cwd, home, screen):
         raise FileNotFoundError(f'Картинка не найдена: {path}')
     if real.stat().st_size > MAX_BYTES:
         raise ValueError('Картинка больше 25 МБ')
+    if cache:
+        small = thumbnail(real, cache)
+        if small:
+            return 'image/jpeg', small
     with open(real, 'rb') as stream:
         data = stream.read(MAX_BYTES + 1)
     kind = image_type(data)

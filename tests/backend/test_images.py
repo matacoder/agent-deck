@@ -83,3 +83,39 @@ class ImageEndpointTests(PanelCase):
         self.assertEqual(handler.send_json.call_args.args[0], 404)
         handler.serve_session_image({'name': ['demo'], 'path': ['other.png']})
         self.assertEqual(handler.send_json.call_args.args[0], 400)
+
+
+class ThumbnailTests(unittest.TestCase):
+    def setUp(self):
+        tmp = tempfile.TemporaryDirectory(dir='/tmp')
+        self.addCleanup(tmp.cleanup)
+        self.root = Path(tmp.name)
+        self.source = self.root / 'shot.png'
+        self.source.write_bytes(PNG)
+
+    def test_tools_are_chosen_per_platform_and_never_through_a_shell(self):
+        sips = I.thumbnail_command(self.source, self.root / 't.jpg', which=lambda t: '/usr/bin/sips' if t == 'sips' else None)
+        self.assertEqual(sips[:6], ['sips', '-Z', '480', '-s', 'format', 'jpeg'])
+        magick = I.thumbnail_command(self.source, self.root / 't.jpg', which=lambda t: '/usr/bin/convert' if t == 'convert' else None)
+        self.assertEqual(magick[0], 'convert')
+        self.assertIsNone(I.thumbnail_command(self.source, self.root / 't.jpg', which=lambda t: None))
+
+    def test_thumbnail_is_cached_until_the_file_changes_and_falls_back_on_failure(self):
+        calls = []
+        def run(command, **kwargs):
+            calls.append(command)
+            Path(command[-1]).write_bytes(b'\xff\xd8\xff small')
+            return Mock(returncode=0)
+        which = lambda t: '/usr/bin/sips' if t == 'sips' else None
+        cache = self.root / 'cache'
+        self.assertEqual(I.thumbnail(self.source, cache, run=run, which=which), b'\xff\xd8\xff small')
+        self.assertEqual(I.thumbnail(self.source, cache, run=run, which=which), b'\xff\xd8\xff small')
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(calls[0][0], 'sips')
+        os.utime(self.source, ns=(1, 1))
+        I.thumbnail(self.source, cache, run=run, which=which)
+        self.assertEqual(len(calls), 2)
+        broken = lambda command, **kwargs: Mock(returncode=1)
+        os.utime(self.source, ns=(2, 2))
+        self.assertIsNone(I.thumbnail(self.source, cache, run=broken, which=which))
+        self.assertEqual([p.suffix for p in cache.iterdir()], ['.jpg', '.jpg'])

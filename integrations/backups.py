@@ -4,6 +4,7 @@ New backups use AES-256-GCM from `cryptography` (format ADBK2). Files written by
 keyed BLAKE2b) remain readable so existing copies can still be restored.
 """
 import base64
+import getpass
 import hashlib
 import hmac
 import io
@@ -12,6 +13,8 @@ import os
 from pathlib import Path
 import re
 import secrets
+import subprocess
+import sys
 import tarfile
 import tempfile
 import threading
@@ -41,6 +44,7 @@ FILES = {
     'agents/gh-hosts.yml': '.config/gh/hosts.yml',
 }
 MAX_FILE = 256 * 1024
+CLAUDE_FILE = 'agents/claude-credentials.json'
 
 
 def _derive(key, purpose):
@@ -138,18 +142,48 @@ def _unseal_legacy(key, blob, offset):
     return _keystream_xor(_derive(key, b'adbk-enc'), blob[offset:offset + 24], signed[offset + 24:])
 
 
-def pack(home):
+CLAUDE_KEYCHAIN = 'Claude Code-credentials'
+
+
+def keychain_read(run=subprocess.run):
+    """macOS Claude Code keeps its login in the Keychain rather than ~/.claude/.credentials.json."""
+    try:
+        result = run(['security', 'find-generic-password', '-s', CLAUDE_KEYCHAIN, '-w'], input=b'', capture_output=True, timeout=10)
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    data = result.stdout.strip() if result.returncode == 0 else b''
+    return data if data and len(data) <= MAX_FILE else None
+
+
+def keychain_write(data, run=subprocess.run, account=None):
+    # `security -i` reads the command from stdin and -X takes hex, so the secret is never in argv.
+    account = account or getpass.getuser()
+    if not re.fullmatch(r'[A-Za-z0-9._-]{1,64}', account):
+        return False
+    command = f'add-generic-password -U -a {account} -s "{CLAUDE_KEYCHAIN}" -X {data.hex()}\n'.encode()
+    try:
+        return run(['security', '-i'], input=command, capture_output=True, timeout=15).returncode == 0
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+
+
+def pack(home, keychain=None):
     buffer = io.BytesIO()
     with tarfile.open(fileobj=buffer, mode='w:gz') as archive:
+        def add(name, data, mtime):
+            info = tarfile.TarInfo(name)
+            info.size, info.mode, info.mtime = len(data), 0o600, int(mtime)
+            archive.addfile(info, io.BytesIO(data))
         for name, relative in FILES.items():
             path = Path(home) / relative
             # Never follow links: a symlink could pull an unrelated file into the backup.
             if path.is_symlink() or not path.is_file() or path.stat().st_size > MAX_FILE:
                 continue
-            data = path.read_bytes()
-            info = tarfile.TarInfo(name)
-            info.size, info.mode, info.mtime = len(data), 0o600, int(path.stat().st_mtime)
-            archive.addfile(info, io.BytesIO(data))
+            add(name, path.read_bytes(), path.stat().st_mtime)
+        if keychain and not (Path(home) / FILES[CLAUDE_FILE]).is_file():
+            data = keychain()
+            if data:
+                add(CLAUDE_FILE, data, time.time())
     return buffer.getvalue()
 
 
@@ -179,13 +213,15 @@ def write_private(path, data):
 
 
 class Backups:
-    def __init__(self, home, version, name):
+    def __init__(self, home, version, name, platform=sys.platform, keychain=(keychain_read, keychain_write)):
         self.home = Path(home)
         self.root = self.home / '.config/cc-panel'
         self.store_dir = self.root / 'backups'
         self.key_path = self.root / 'backup-key'
         self.version, self.name = version, name
         self.lock = threading.RLock()
+        self.mac = platform == 'darwin'
+        self.keychain_read, self.keychain_write = keychain
 
     def instance_id(self):
         path = self.root / 'instance-id'
@@ -229,7 +265,7 @@ class Backups:
                 raise ValueError('Сначала включите бэкапы')
             meta = {'origin': self.instance_id(), 'name': self.name(), 'created': int(time.time()),
                     'version': self.version(), 'format': 1}
-            blob = seal(key, meta, pack(self.home))
+            blob = seal(key, meta, pack(self.home, self.keychain_read if self.mac else None))
             if len(blob) > MAX_SEALED:
                 raise ValueError('Бэкап больше 700 КБ; уменьшите файлы настроек')
             self.store(blob)
@@ -283,9 +319,15 @@ class Backups:
                 write_private(self.key_path, key)
             if self.key():
                 self.create()  # The state being replaced stays recoverable.
+            warnings = []
             for name, content in files.items():
+                if name == CLAUDE_FILE and self.mac:
+                    # On a Mac the login belongs in the Keychain; no plaintext copy is left behind.
+                    if not self.keychain_write(content):
+                        warnings.append('Не удалось вернуть вход в Claude в связку ключей; войдите в Claude заново')
+                    continue
                 write_private(self.home / FILES[name], content)
-            return {**meta, 'files': sorted(files)}
+            return {**meta, 'files': sorted(files), 'warnings': warnings}
 
     def report(self, value=None):
         path = self.store_dir / 'report.json'

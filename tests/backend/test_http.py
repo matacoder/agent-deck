@@ -347,6 +347,32 @@ class HTTPTests(PanelCase):
         self.assertIn("через 7 дней", self.pasted[-1])
         self.assertEqual(self.panel.tmux.call_args_list[-1].args[-1], "Enter")
 
+    def test_raw_upload_streams_to_disk_privately_and_keeps_upload_rules(self):
+        from support import PNG
+        self.allow_session()
+        cookie = self.login()
+        raw = {"Cookie": cookie, "Content-Type": "application/octet-stream"}
+        status, _, body = self.request("POST", "/api/upload_raw?name=demo&filename=shot.png", PNG, raw)
+        self.assertEqual(status, 200, body)
+        data = json.loads(body)
+        self.assertRegex(data["attachment"], r"^[a-f0-9]{32}\.png$")
+        stored = self.home / ".config/cc-panel/uploads/demo" / data["attachment"]
+        self.assertEqual(stored.read_bytes(), PNG)
+        self.assertEqual(stored.stat().st_mode & 0o777, 0o600)
+        self.assertEqual([p.name for p in stored.parent.iterdir() if p.name.startswith(".incoming")], [])
+        status, _, body = self.request("POST", "/api/upload_raw?name=demo&filename=notes.zip", b"PK\x03\x04zip", raw)
+        self.assertRegex(json.loads(body)["attachment"], r"^[a-f0-9]{32}--notes\.zip$")
+        for headers in ({**raw, "Origin": "http://sibling.test"}, {**raw, "Content-Type": "text/plain"},
+                        {**raw, "Content-Type": "application/json"}):
+            with self.subTest(headers=headers):
+                self.assertEqual(self.request("POST", "/api/upload_raw?name=demo&filename=a.png", PNG, headers)[0], 403)
+        self.assertEqual(self.request("POST", "/api/upload_raw?name=demo&filename=a/b.png", PNG, raw)[0], 400)
+        self.assertEqual(self.request("POST", "/api/upload_raw?name=demo&filename=a.png", b"", raw)[0], 413)
+        with patch.object(self.panel, "MAX_FILE_BYTES", 4):
+            self.assertEqual(self.request("POST", "/api/upload_raw?name=demo&filename=a.png", PNG, raw)[0], 413)
+        self.panel.opt = Mock(return_value="shell")
+        self.assertEqual(self.request("POST", "/api/upload_raw?name=demo&filename=a.png", PNG, raw)[0], 400)
+
     def test_zip_upload_then_send_passes_file_path_and_retention_notice(self):
         import base64
         self.allow_session()

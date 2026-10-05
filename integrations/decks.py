@@ -178,7 +178,7 @@ class RemoteDecks:
             cookie += '; cc_lang=' + language
         return profile, cookie
 
-    def request(self, identity, method, path, body=None, language='en', timeout=30):
+    def request(self, identity, method, path, body=None, language='en', timeout=30, content_type='application/json'):
         path = remote_path(path)
         if method not in ('GET','POST'):
             raise ValueError('Unsupported remote method')
@@ -188,7 +188,7 @@ class RemoteDecks:
             stale = cookie.split('; cc_lang=', 1)[0]
             try:
                 result = http_request(profile['url'], method, path, body,
-                    {'Cookie': cookie, 'Origin': profile['url'], 'Content-Type': 'application/json', 'Accept-Encoding': 'identity'},
+                    {'Cookie': cookie, 'Origin': profile['url'], 'Content-Type': content_type, 'Accept-Encoding': 'identity'},
                     timeout=timeout)
             except (OSError, http.client.HTTPException):
                 # Never retry an ambiguous mutation after a transport failure.

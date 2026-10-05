@@ -161,6 +161,49 @@ while True:
         self.assertEqual(answer.read_text(), '1')
         self.assertIsNone(self.panel.session_question('../menu'))
 
+    def test_free_text_answer_is_typed_into_the_other_row(self):
+        emulator = self.home / 'other.py'
+        answer = self.home / 'other-answer.txt'
+        emulator.write_text("""import os,sys,tty,time
+from pathlib import Path
+tty.setraw(0)
+selected=0;typed=b''
+labels=['Allow once','Allow always','Type something else']
+def render():
+ print('\\x1b[2J\\x1b[H────────\\r\\nDo you want to run this command?\\r\\n',end='')
+ for i,label in enumerate(labels):
+  print(('❯' if selected==i else ' ')+' '+str(i+1)+'. '+label+'\\r')
+ print('Enter to confirm\\r',flush=True)
+render()
+while True:
+ data=os.read(0,4096)
+ moves=data.count(b'\\x1b[B')+data.count(b'\\x1bOB')-data.count(b'\\x1b[A')-data.count(b'\\x1bOA')
+ if moves and not data.startswith(b'\\x1b[200~'): selected=max(0,min(2,selected+moves));render();continue
+ if data.endswith(b'\\r'):
+  typed+=data[:-1]
+  Path(sys.argv[1]).write_bytes(str(selected).encode()+b':'+typed)
+  while True:time.sleep(1)
+ typed+=data
+""")
+        command = shlex.join(['python3', '-u', str(emulator), str(answer)])
+        self.panel.tmux('new-session', '-d', '-s', 'cc-other', '-x', '100', '-y', '35', command)
+        self.panel.tmux('set-option', '-t', '=cc-other:', '@cc_agent', 'claude')
+        deadline = time.monotonic() + 5
+        question = None
+        while not question and time.monotonic() < deadline:
+            question = self.panel.session_question('other')
+            time.sleep(.02)
+        payload = self.panel.question_payload(question)
+        with self.assertRaises(ValueError):
+            self.panel.action_answer({'name': 'other', 'id': payload['id'], 'index': 0, 'text': 'not a text row'})
+        self.panel.action_answer({'name': 'other', 'id': payload['id'], 'index': 2, 'text': 'use staging; -- keep data'})
+        deadline = time.monotonic() + 5
+        while not answer.exists() and time.monotonic() < deadline:
+            time.sleep(.02)
+        selected, typed = answer.read_bytes().split(b':', 1)
+        self.assertEqual(selected, b'2')
+        self.assertIn(b'use staging; -- keep data', typed)
+
     def test_telegram_button_selects_a_real_terminal_question_once(self):
         from integrations.telegram import Telegram
         from test_telegram import FakeAPI, TOKEN

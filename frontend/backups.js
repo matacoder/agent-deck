@@ -85,16 +85,21 @@ async function restoreBackup(meta,source,blob){
   const target=$("backup_target").value,targetName=$("backup_target").selectedOptions[0]?.textContent||"";
   const code=$("backup_restore_code").value.trim();
   if(!backupStatus?.configured&&!target&&!code){toast(tr("Введите код восстановления"));$("backup_restore_code").focus();return}
+  let warned=false;
   const ok=await confirmAction(tr("Восстановить «{0}» от {1}?",[meta.name,formatBackupTime(meta.created,DATE_LOCALE)]),
     {text:tr("Настройки, ключи и логины агентов на «{0}» будут заменены. Текущее состояние сохранится в бэкап, панель перезапустится.",[targetName]),confirm:tr("Восстановить"),danger:true});
   if(!ok)return;
   try{
     if(target)await api("/api/backup_restore_remote",{deck:target,origin:meta.origin,created:meta.created});
-    else await api("/api/backup_restore",blob?{blob,code}:{origin:meta.origin,created:meta.created,deck:source||undefined,code:code||undefined});
+    else{
+      const result=await api("/api/backup_restore",blob?{blob,code}:{origin:meta.origin,created:meta.created,deck:source||undefined,code:code||undefined});
+      warned=(result.restored?.warnings||[]).length>0;
+      for(const warning of result.restored?.warnings||[])toast(tr(warning));
+    }
   }catch(e){toast(e.message);return}
   if(target){toast(tr("Восстановлено на «{0}». Панель там перезапускается.",[targetName]),"success");return}
-  toast(tr("Восстановлено. Панель перезапускается…"),true);
-  setTimeout(()=>location.reload(),5000);
+  if(!warned)toast(tr("Восстановлено. Панель перезапускается…"),true);
+  setTimeout(()=>location.reload(),warned?12000:5000);  // Leave time to read a warning.
 }
 function restoreBackupFile(input){
   const file=input.files[0];input.value="";if(!file)return;

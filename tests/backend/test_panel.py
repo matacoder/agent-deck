@@ -429,7 +429,7 @@ class WebQuestionTests(PanelCase):
                 self.panel.action_answer({'name': 'demo', 'id': 'other', 'index': 1})
             answer.assert_not_called()
             self.panel.action_answer({'name': 'demo', 'id': question.fingerprint, 'index': 1})
-            answer.assert_called_once_with(question, 1)
+            answer.assert_called_once_with(question, 1, None)
 
 
 class RemoteQuestionTests(PanelCase):
@@ -483,5 +483,43 @@ class RemoteQuestionTests(PanelCase):
         question = Question('api', 'claude', '%1:1:sid', 'Proceed?', ('Yes', 'No'), 0)
         with patch.object(self.panel, 'answer_question') as local:
             self.panel.answer_any_question(question, 1)
-        local.assert_called_once_with(question, 1)
+        local.assert_called_once_with(question, 1, None)
         self.decks.request.assert_not_called()
+
+
+class InboxAndTextAnswerTests(PanelCase):
+    def question(self, **values):
+        from integrations.questions import Question
+        return Question(**{**dict(session='api', agent='codex', instance='%1:1:sid', title='Which DB?',
+                                  options=('Prod', 'Type something'), selected=0), **values})
+
+    def test_one_scan_serves_every_consumer_for_two_seconds(self):
+        scans = []
+        with patch.object(self.panel, 'all_questions', side_effect=lambda: scans.append(1) or [self.question()]):
+            with patch.object(self.panel.time, 'monotonic', return_value=1000.0):
+                self.panel.shared_questions(); self.panel.shared_questions()
+            with patch.object(self.panel.time, 'monotonic', return_value=1003.0):
+                self.panel.shared_questions()
+        self.assertEqual(len(scans), 2)
+
+    def test_inbox_lists_local_and_remote_questions_with_the_id_each_machine_checks(self):
+        local, remote = self.question(), self.question(instance='remote-fp', deck='a' * 24, origin='Mac')
+        with patch.object(self.panel, 'shared_questions', return_value=[local, remote]):
+            items = self.panel.inbox_payload()['questions']
+        self.assertEqual(items[0]['id'], local.fingerprint)
+        self.assertEqual((items[1]['id'], items[1]['deck'], items[1]['origin']), ('remote-fp', 'a' * 24, 'Mac'))
+        self.assertEqual([o['text'] for o in items[0]['options']], [False, True])
+
+    def test_text_answers_are_validated_and_forwarded_to_the_owning_machine(self):
+        q = self.question()
+        with patch.object(self.panel, 'session_question', return_value=q), patch.object(self.panel, 'answer_question') as answer:
+            for bad in ('', '   ', 'x' * 4001, 5):
+                with self.assertRaises(ValueError):
+                    self.panel.action_answer({'name': 'api', 'id': q.fingerprint, 'index': 1, 'text': bad})
+            self.panel.action_answer({'name': 'api', 'id': q.fingerprint, 'index': 1, 'text': 'Use staging'})
+            answer.assert_called_once_with(q, 1, 'Use staging')
+        remote = self.question(instance='remote-fp', deck='a' * 24)
+        with patch.object(self.panel, 'remote_decks') as decks:
+            decks.request.return_value = (200, {}, b'{"ok":true}')
+            self.panel.answer_any_question(remote, 1, 'Use staging')
+            self.assertEqual(json.loads(decks.request.call_args.args[3]), {'name': 'api', 'id': 'remote-fp', 'index': 1, 'text': 'Use staging'})

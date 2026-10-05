@@ -2,6 +2,17 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.9.0 — 2026-10-05
+
+- **Waiting for you:** one list (sidebar button, first quick tab on phones) with every agent question and finished session on all connected computers; questions are answered in place. New `GET /api/inbox`.
+- **Custom text answers:** *Other* / *Type something* options open a text field in the question card and the inbox; the panel moves to that option and types the answer exactly (bracketed paste). `POST /api/answer` accepts `text`; connected computers receive it through the gateway. Telegram: reply to a question message to send a custom answer (owner and chat checked, answered once, never replayed).
+- **Update all computers:** Settings → Network shows every computer's version and updates all connected computers through the gateway, then the gateway; the sidebar marks outdated computers with an arrow.
+- One shared question scan every 2 s now serves Telegram, notifications and the inbox (previously each scanned tmux on its own).
+- Quick tabs on phones include sessions of connected computers.
+- Large uploads stream as raw bodies (`POST /api/upload_raw`) with progress instead of base64 JSON; older connected computers fall back automatically.
+- Screenshot thumbnails are scaled to 480 px with `sips` (macOS) or ImageMagick when available and cached until the file changes.
+- Backups on macOS read the Claude login from the Keychain and restore it there (through `security -i`, never in process arguments); restore shows a warning when that fails.
+
 ## 1.8.2 — 2026-10-05
 
 - Fix: tapping a notification opens its session reliably on iPhone. The page checks for the tapped target several times during 3 seconds after it becomes visible (the worker may store it later than iOS shows the app); if the page still has not taken it after 1.5 seconds, the service worker navigates the window to the session's address, and the panel now follows `#session` changes in the address.

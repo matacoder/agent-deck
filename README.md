@@ -28,6 +28,7 @@ after a reboot.
 - LM Studio profiles: discover known Tailscale nodes or add a custom address, port and API key.
 - Local models in Claude Code, with session speed/TTFT measurements and a separate benchmark; no subscription quotas.
 - UI in 16 languages, switchable in Settings → Application; extensible file-based locales.
+- **Waiting for you:** one list of every agent question and finished session on all connected computers, answerable in place (including custom text answers).
 - Notifications on phone and desktop when an agent asks a question or finishes, from every connected computer.
 - Screenshots an agent mentions by path (`/tmp/shot.png`, `docs/home.png`) appear as thumbnails under the line and open in a full-screen viewer, also for sessions on connected computers.
 - Telegram bot integration: receive agent questions with answer buttons in your private chat.
@@ -223,6 +224,19 @@ from the icon. It runs full screen, keeps drafts and supports one-tap answers to
 
 **Android.** Open the panel in Chrome, tap **⋮ → Add to Home screen** (or **Install app**).
 
+Quick tabs at the bottom show this computer's sessions, then sessions of connected computers, and
+start with **Waiting for you** when something needs an answer. Files are uploaded as a raw stream with
+progress, so a large video does not have to fit into the phone's browser memory twice.
+
+## Waiting for you
+
+<img src="docs/screenshots/mobile-inbox.png" width="300" alt="Waiting for you: agent questions from two computers with answer buttons">
+
+The **Waiting for you** button in the sidebar (and the first quick tab on a phone) lists every agent
+question and every session that finished work, on all connected computers. Answer a question with one
+tap right there; options such as *Other* or *Type something* open a text field and send your own answer.
+Tap a session name to open it, on the right computer.
+
 ## Screenshots from agents
 
 <img src="docs/screenshots/mobile-images.png" width="300" alt="Agent output with clickable screenshot thumbnails">
@@ -232,6 +246,8 @@ session folder, even if the terminal wrapped it across lines — the **Screen** 
 link and shows a thumbnail under that line. Tap it for a full-screen viewer: swipe or use ←/→ between
 screenshots of the same screen, **Open original** for full size. A file is served only while its path is
 visible in that session's recent output, only as a real raster image (never SVG), up to 25 MB.
+Thumbnails are scaled down to 480 px with `sips` on macOS or ImageMagick on Linux when available
+(cached until the file changes); otherwise the original image is used.
 
 ## Notifications
 
@@ -268,7 +284,8 @@ recognized active terminal menus. Custom text and multiple selections use the pa
 1. Open **Settings → Connections → Telegram → Configure** on desktop or phone.
 2. Paste your existing bot token from [@BotFather](https://t.me/BotFather) and save.
 3. Follow **Link my Telegram** and press **Start** in the bot's private chat.
-4. Answer a question using its buttons. The bot confirms when the answer reaches the agent.
+4. Answer a question using its buttons. The bot confirms when the answer reaches the agent. For a
+   custom answer (*Other* / *Type something*), reply to the question message with your text.
 
 The pairing link contains a one-time code and expires after ten minutes. The panel
 gets the administrator's user/chat IDs from that authorized `/start` message;
@@ -297,8 +314,8 @@ after a restart. See [integration setup and architecture](docs/integrations.md).
 **Settings → Backups** protects Agent Deck settings, integration keys (Telegram, Kimi,
 LM Studio, connected Agent Decks) and agent logins (`~/.codex/auth.json`,
 `~/.claude/.credentials.json` on Linux, `~/.config/gh/hosts.yml`). The panel login and
-password are set by the installer and are not part of a backup; on macOS Claude keeps
-its login in the Keychain, so log in to Claude again after a restore.
+password are set by the installer and are not part of a backup. On macOS the Claude login is read
+from and restored to the Keychain, so no plaintext copy is written.
 
 1. Click **Turn on backups** and store the recovery code (`AD1-…`) in a password manager.
    It is shown once; without it a backup cannot be decrypted on a new computer.
@@ -390,6 +407,10 @@ Credentials remain in a private file on the gateway. Existing remote Agent Deck
 1.0.7 instances can be connected; only the gateway needs the new UI. Connection
 settings always belong to the gateway; session and project settings belong to the
 currently selected instance. Switching preserves separate drafts on each machine.
+
+**Update all computers.** The same card shows each computer's version; an arrow marks computers behind
+the latest release (also in the sidebar). **Update all** updates every connected computer through the
+gateway, then the gateway itself; panels restart one by one and sessions keep running.
 
 **Network and panel address** shows the listening address and browser address and
 lets you name the gateway and record its public URL. Recording a URL does not

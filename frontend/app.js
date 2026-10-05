@@ -146,17 +146,29 @@ const cur=()=>sessions.find(x=>x.name===active);
 const messageDrafts=new Map();
 const closedDrafts=new Map();
 let quickSignature=null,quickActive=null;
+const quickRemote=new Map();
 const quickButtons=new Map();
 function renderQuickTabs(){
-  const box=$("quick_tabs"),signature=JSON.stringify(sessions.map(s=>[s.name,s.title,agentOf(s)]));
+  const others=otherDecks.filter(d=>d.id!==selectedDeck),waiting=inboxCount();
+  const box=$("quick_tabs"),signature=JSON.stringify([sessions.map(s=>[s.name,s.title,agentOf(s)]),others.map(d=>[d.id,d.sessions.map(s=>[s.name,s.title,agentOf(s)])]),waiting>0]);
   if(signature!==quickSignature){
-    const left=box.scrollLeft;box.replaceChildren();quickButtons.clear();
+    const left=box.scrollLeft;box.replaceChildren();quickButtons.clear();quickRemote.clear();
+    // What waits for you comes first, under the thumb.
+    if(waiting){
+      const pill=el("button","quick-tab quick-inbox",svgIcon("inbox"),el("span","label",tr("Ждут ответа")),el("b","quick-count",String(waiting)));
+      pill.type="button";pill.onclick=openInbox;box.append(pill);
+    }
     for(const s of sessions){
       const button=el("button","quick-tab",el("span","dot"),agentIcon(s),el("span","label",sessionTitle(s)),el("span","bell"));
       button.type="button";button.setAttribute("aria-label",tr("Открыть сессию ")+sessionTitle(s));
       onLongPress(button,()=>{select(s.name);sheet(true)});
       button.addEventListener("click",e=>{if(button.dataset.longPress){delete button.dataset.longPress;e.preventDefault();return}select(s.name)});
       box.append(button);quickButtons.set(s.name,button);
+    }
+    for(const deck of others)for(const s of deck.sessions){
+      const button=el("button","quick-tab quick-remote",el("span","dot "+state(s)),agentIcon(s),el("span","label",sessionTitle(s)),el("span","quick-machine",deck.name),el("span","bell"));
+      button.type="button";button.title=deck.name+" · "+sessionTitle(s);
+      button.onclick=()=>openDeckSession(deck.id,s.name);box.append(button);quickRemote.set(deck.id+"/"+s.name,{button,deck,s});
     }
     if(sessions.length){
       const add=el("button","quick-tab quick-new",svgIcon("plus"));add.type="button";
@@ -171,6 +183,8 @@ function renderQuickTabs(){
     button.setAttribute("aria-pressed",String(s.name===active));button.title=sessionTitle(s)+" · "+stateText(s);
     button.children[0].className="dot "+state(s);button.children[3].style.display=attention.has(s.name)?"":"none";
   }
+  for(const [key,{button,s}] of quickRemote){button.children[0].className="dot "+state(s);button.children[4].style.display=otherAttention.has(key)?"":"none"}
+  const count=box.querySelector(".quick-count");if(count)count.textContent=waiting;
   if(active!==quickActive&&isMobile()){
     const safelySelected=active,button=quickButtons.get(active);
     if(button)requestAnimationFrame(()=>{
@@ -228,7 +242,7 @@ function renderTabs(){
   if(focused)box.querySelector(`[data-session="${CSS.escape(focused)}"]`)?.focus({preventScroll:true});
   const busy=sessions.filter(s=>state(s)==="busy").length;
   $("foot").textContent=tr("{0} сессий · {1} работают",[sessions.length,busy])+(attention.size?tr(" · {0} готово",[attention.size]):"");
-  const ready=attention.size+otherAttention.size;
+  const ready=renderInboxBadge();
   $("menuBadge").textContent=ready;$("menuBadge").classList.toggle("on",ready>0);
   document.title=(ready?`(${ready}) `:"")+"Agent Deck";
   // Home-screen icon badge (iOS 16.4+ with notifications allowed, desktop PWAs); ignored elsewhere.
@@ -524,7 +538,7 @@ async function loadSessions(){
     loadQuestion();
   }catch(e){toast(e.message)}
 }
-let question={name:null,data:null,expanded:false,busy:null},loadingQuestion=false;
+let question={name:null,data:null,expanded:false,busy:null,textIndex:null},loadingQuestion=false;
 async function loadQuestion(){
   const s=cur();
   if(!s||agentOf(s)==="shell"||!s.running){if(question.data)setQuestion(s?.name||null,null);return}
@@ -538,21 +552,26 @@ function setQuestion(name,data){
   const same=question.name===name&&JSON.stringify(question.data)===JSON.stringify(data);
   if(same)return;
   const keepExpanded=question.name===name&&question.data?.id===data?.id;
-  question={name,data,expanded:keepExpanded&&question.expanded,busy:null};renderQuestion();
+  question={name,data,expanded:keepExpanded&&question.expanded,busy:null,textIndex:keepExpanded?question.textIndex:null};renderQuestion();
 }
 function renderQuestion(){
   const data=question.name===active?question.data:null;
-  renderQuestionCard({box:$("question"),question:data,expanded:question.expanded,busyIndex:question.busy,translate:tr,
-    onToggle:()=>{question.expanded=!question.expanded;renderQuestion()},onAnswer:answerQuestion});
+  // Typing an answer must not be wiped by the 2.5 s refresh, so an open text field pauses re-rendering.
+  if($("question").querySelector(".q-text textarea:focus"))return;
+  renderQuestionCard({box:$("question"),question:data,expanded:question.expanded,busyIndex:question.busy,textIndex:question.textIndex,textDraft:question.textDraft||"",translate:tr,
+    onTextInput:value=>{question.textDraft=value},
+    onToggle:()=>{question.expanded=!question.expanded;renderQuestion()},onAnswer:answerQuestion,
+    onTextOption:index=>{question.textIndex=question.textIndex===index?null:index;renderQuestion()},
+    onSubmitText:(index,text)=>answerQuestion(index,text)});
 }
-async function answerQuestion(index){
+async function answerQuestion(index,text){
   const name=active,data=question.data;
   if(!data||question.busy!==null||panelUpdating)return;
-  question.busy=index;renderQuestion();
+  question.busy=index;$("question").querySelector(".q-text textarea")?.blur();renderQuestion();
   try{
-    await api("/api/answer",{name,id:data.id,index});
-    sendStates.set(name,{text:tr("Ответ отправлен: {0}",[data.options[index].label]),phase:"success"});
-    question={name,data:null,expanded:false,busy:null};
+    await api("/api/answer",text===undefined?{name,id:data.id,index}:{name,id:data.id,index,text});
+    sendStates.set(name,{text:tr("Ответ отправлен: {0}",[text===undefined?data.options[index].label:text.slice(0,80)]),phase:"success"});
+    question={name,data:null,expanded:false,busy:null,textIndex:null};
   }catch(e){toast(e.message);question.busy=null}
   renderQuestion();renderSendState();await load();loadQuestion();
 }
@@ -608,18 +627,29 @@ function renderAttachments(){
   $("b_send").disabled=sending||uploading||panelUpdating;
 }
 // XHR instead of fetch: large phone videos take minutes and need visible progress.
-function uploadRequest(body,progress){
+// The file goes as a raw body: a phone never holds a base64 copy of a large video in memory.
+function uploadRequest(path,contentType,payload,progress){
   return new Promise((resolve,reject)=>{
-    const xhr=new XMLHttpRequest();xhr.open("POST",activePath("/api/upload"));xhr.setRequestHeader("Content-Type","application/json");
+    const xhr=new XMLHttpRequest();xhr.open("POST",activePath(path));xhr.setRequestHeader("Content-Type",contentType);
     xhr.upload.onprogress=e=>{if(e.lengthComputable)progress(Math.round(e.loaded/e.total*100))};
     xhr.onerror=()=>reject(new Error(tr("Не удалось загрузить файл: нет соединения")));
     xhr.onload=()=>{
       if(xhr.status===401){try{stashDrafts()}catch(e){}location.href="/login";return reject(new Error("login required"))}
       let data={};try{data=JSON.parse(xhr.responseText)}catch(e){data={error:xhr.statusText}}
-      xhr.status>=200&&xhr.status<300?resolve(data):reject(new Error(data.error||xhr.statusText));
+      if(xhr.status>=200&&xhr.status<300)resolve(data);
+      else{const error=new Error(data.error||xhr.statusText);error.status=xhr.status;reject(error)}
     };
-    xhr.send(JSON.stringify(body));
+    xhr.send(payload);
   });
+}
+async function uploadFile(name,file,image,progress){
+  const query="?name="+encodeURIComponent(name)+"&filename="+encodeURIComponent(file.name||"file");
+  try{return await uploadRequest("/api/upload_raw"+query,"application/octet-stream",image,progress)}
+  catch(error){
+    if(error.status!==404)throw error;
+    // A connected Agent Deck older than 1.9 only knows the JSON upload.
+    return uploadRequest("/api/upload","application/json",JSON.stringify({name,data:await readImageData(image),filename:file.name||"file"}),progress);
+  }
 }
 function chooseImages(){
   if(!active||sending||uploading||panelUpdating)return;
@@ -659,8 +689,7 @@ async function uploadImages(files){
       if(file.size>limit)throw new Error(tr("Файл слишком большой: максимум 200 МБ"));
       let image=file;
       if(["image/heic","image/heif"].includes(file.type)){try{image=await prepareImage(file)}catch(e){image=file}}
-      const data=await readImageData(image);
-      const result=await uploadRequest({name,data,filename:file.name||"file"},percent=>{
+      const result=await uploadFile(name,file,image,percent=>{
         sendStates.set(name,{text:tr("Загружаю файлы…")+" "+percent+"%",phase:"pending"});if(active===name)renderSendState();
       });
       imageAttachments.set(name,[...attachmentsFor(name),{attachment:result.attachment,label:file.name||tr("Файл"),preview:result.kind==="image"||(result.kind===undefined&&isImage)?URL.createObjectURL(image):null}]);
@@ -862,6 +891,7 @@ function settingsSection(section){
   hubSection=section;for(const name of ["agents","models","connections","network","backups","app"])$("hub_"+name).hidden=name!==section;
   if(section==="backups"&&$("settings_dlg").open)loadBackups();
   if(section==="connections"&&$("settings_dlg").open)loadPush();
+  if(section==="network"&&$("settings_dlg").open)loadFleet();
   for(const b of document.querySelectorAll(".hub-nav button")){
     b.classList.toggle("on",b.dataset.section===section);b.setAttribute("aria-current",String(b.dataset.section===section));
     if(b.dataset.section===section&&isMobile())requestAnimationFrame(()=>b.scrollIntoView({inline:"nearest",block:"nearest"}));
@@ -894,12 +924,14 @@ async function loadDeckSettings(){
   // Most installs have a single machine; the switcher appears once another Agent Deck is connected.
   $("deck_switch").hidden=!data.decks.length&&!selectedDeck;
   deckDirectory={decks:data.decks,name:network.name};loadOtherDecks();
+  if(Date.now()-fleet.loadedAt>10*60*1000||$("settings_dlg").open)loadFleet();else renderFleet();
   $("network_name").value=network.name;$("network_public_url").value=network.public_url;
   $("network_bind").textContent="http://"+network.bind_host+":"+network.bind_port;
   $("network_browser").textContent=location.origin;
   const box=$("deck_connections");box.replaceChildren();
   for(const deck of data.decks){
-    const card=el("div","deck-connection",el("strong","",deck.name),el("p","",deck.url));
+    const version=el("span","deck-version");version.dataset.deckVersion=deck.id;
+    const card=el("div","deck-connection",el("strong","",deck.name),el("p","",deck.url," · ",version));
     card.append(el("div","deck-actions",btn(tr("Переключиться"),"pri",()=>switchDeck(deck.id)),btn(tr("Изменить"),"",()=>editDeck(deck)),btn(tr("Удалить"),"danger",()=>removeDeck(deck.id))));box.append(card);
   }
   renderDeckDiscovery(data.discovery);
@@ -933,6 +965,8 @@ function deckHeader(deck,current){
   const key=deck.id||"local",open=current||deckOpen[key]!==false;
   const head=el(current?"div":"button","deck-head"+(current?" current":""),svgIcon("monitor"),el("span","deck-name",deck.name),
     el("span","deck-count",deck.error?tr("недоступен"):String(deck.count)));
+  // A connected computer behind the latest release shows an arrow; Settings → Network updates it.
+  if(!current&&fleet.versions.get(deck.id)?.update){const mark=el("span","deck-update","↑");mark.title=tr("Доступно обновление");head.append(mark)}
   if(!current){
     head.type="button";head.setAttribute("aria-expanded",String(open));head.append(svgIcon(open?"chevron-down":"chevron-right"));
     head.onclick=()=>{deckOpen[key]=!open;try{localStore.setItem("cc.deck-open",JSON.stringify(deckOpen))}catch(e){}renderTabs()};
@@ -987,7 +1021,7 @@ function resetInstanceState(known){
   for(const frame of frames.values())frame.remove();
   frames.clear();wasBusy.clear();attention.clear();previewCache.clear();sendStates.clear();
   sessions=known;quickSignature=null;quickActive=null;
-  question={name:null,data:null,expanded:false,busy:null};loadingQuestion=false;
+  question={name:null,data:null,expanded:false,busy:null,textIndex:null};loadingQuestion=false;
   loadingSessions=null;queuedSessions=null;sessionsQueued=false;load.done=false;
   lastAg={};usageData={};ghLogin=null;lastGh=0;repos=[];
   lmData={profiles:[],discovery:{}};lmRefreshPending=null;openLocalModels.clear();
@@ -1421,3 +1455,5 @@ document.addEventListener("visibilitychange",()=>{if(!document.hidden){checkGith
 load();setInterval(load,2500);
 
 loadDeckSettings().catch(e=>toast(e.message));
+loadInbox();setInterval(loadInbox,5000);
+document.addEventListener("visibilitychange",()=>{if(!document.hidden)loadInbox()});

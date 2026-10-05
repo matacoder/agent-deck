@@ -138,7 +138,7 @@ class RemoteDeckTests(PanelCase):
         service.request.return_value=(200,{'Content-Type':'application/json'},b'{"sessions":[]}')
         handler=self.handler()
         handler.get_request()
-        service.request.assert_called_once_with(ID,'GET','/api/sessions',None,'ru')
+        service.request.assert_called_once_with(ID,'GET','/api/sessions',None,'ru',content_type='application/json')
         self.assertNotIn('GATEWAY_SECRET',str(service.request.call_args))
         handler.send_body.assert_called_once_with(200,b'{"sessions":[]}','application/json')
 

@@ -630,17 +630,43 @@ def attachment_dir(name):
     return os.path.join(UPLOAD_DIR, name)
 
 
-def action_upload(d):
-    name = d.get("name", "")
+def upload_folder(name, filename):
     folder = attachment_dir(name)
     if not session_exists(name):
         raise ValueError("нет такой сессии")
     if (opt(name, "@cc_agent") or "claude") == "shell":
         raise ValueError("файлы можно приложить к Claude или Codex")
-    filename = d.get("filename")
     if filename is not None and (not isinstance(filename, str) or not filename or len(filename) > 255
                                  or any(c in filename for c in ("/", "\\", "\0", "\n", "\r"))):
         raise ValueError("неверное имя файла")
+    os.makedirs(folder, mode=0o700, exist_ok=True)
+    if os.path.islink(UPLOAD_DIR) or os.path.islink(folder):
+        raise ValueError("папка загрузок не должна быть символической ссылкой")
+    return folder
+
+
+def attachment_name(head, filename):
+    """Images are recognised by content; anything else keeps its sanitised name."""
+    if head.startswith(b"\x89PNG\r\n\x1a\n"):
+        ext = "png"
+    elif head.startswith(b"\xff\xd8\xff"):
+        ext = "jpg"
+    elif head.startswith((b"GIF87a", b"GIF89a")):
+        ext = "gif"
+    elif head.startswith(b"RIFF") and head[8:12] == b"WEBP":
+        ext = "webp"
+    else:
+        ext = None
+        if not filename:
+            raise ValueError("укажите имя файла")
+    safe_name = re.sub(r"[^A-Za-z0-9_.-]", "_", filename or "file")[-100:]
+    return uuid.uuid4().hex + ("." + ext if ext else "--" + safe_name), ext
+
+
+def action_upload(d):
+    name = d.get("name", "")
+    filename = d.get("filename")
+    folder = upload_folder(name, filename)
     limit = MAX_FILE_BYTES if filename else MAX_IMAGE_BYTES
     encoded = d.get("data", "")
     if not isinstance(encoded, str) or len(encoded) > ((limit + 2) // 3) * 4:
@@ -651,29 +677,39 @@ def action_upload(d):
         raise ValueError("неверные данные файла") from None
     if (not image and not filename) or len(image) > limit:
         raise ValueError("файл слишком большой или пустой")
-    if image.startswith(b"\x89PNG\r\n\x1a\n"):
-        ext = "png"
-    elif image.startswith(b"\xff\xd8\xff"):
-        ext = "jpg"
-    elif image.startswith((b"GIF87a", b"GIF89a")):
-        ext = "gif"
-    elif image.startswith(b"RIFF") and image[8:12] == b"WEBP":
-        ext = "webp"
-    else:
-        ext = None
-        if not filename:
-            raise ValueError("укажите имя файла")
+    attachment, ext = attachment_name(image[:16], filename)
     if ext and len(image) > MAX_IMAGE_BYTES:
         raise ValueError("изображение слишком большое (максимум 200 МБ)")
-    os.makedirs(folder, mode=0o700, exist_ok=True)
-    if os.path.islink(UPLOAD_DIR) or os.path.islink(folder):
-        raise ValueError("папка загрузок не должна быть символической ссылкой")
-    safe_name = re.sub(r"[^A-Za-z0-9_.-]", "_", filename or "file")[-100:]
-    attachment = uuid.uuid4().hex + ("." + ext if ext else "--" + safe_name)
     fd = os.open(os.path.join(folder, attachment), os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     with os.fdopen(fd, "wb") as f:
         f.write(image)
     return {"attachment": attachment, "kind": "image" if ext else "file", "size": len(image)}
+
+
+def store_streamed_upload(name, filename, length, stream):
+    """Raw-body upload: written to disk in chunks, so phones never base64 a large video in memory."""
+    if not 0 < length <= MAX_FILE_BYTES:
+        raise ValueError("файл слишком большой или пустой")
+    folder = upload_folder(name, filename)
+    partial = os.path.join(folder, ".incoming-" + uuid.uuid4().hex)
+    fd = os.open(partial, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    try:
+        with os.fdopen(fd, "wb") as out:
+            remaining = length
+            while remaining:
+                chunk = stream.read(min(1024 * 1024, remaining))
+                if not chunk:
+                    raise ValueError("загрузка прервана")
+                out.write(chunk)
+                remaining -= len(chunk)
+        with open(partial, "rb") as source:
+            head = source.read(16)
+        attachment, ext = attachment_name(head, filename)
+        os.rename(partial, os.path.join(folder, attachment))
+        return {"attachment": attachment, "kind": "image" if ext else "file", "size": length}
+    finally:
+        if os.path.exists(partial):
+            os.unlink(partial)
 
 
 def attachment_paths(name, attachments):
@@ -1327,10 +1363,34 @@ def all_questions():
     return scan_questions() + remote_questions()
 
 
-def answer_any_question(question, index):
+_questions_cache = {'at': -10.0, 'items': []}
+_questions_lock = threading.Lock()
+
+
+def shared_questions():
+    """One scan every 2 s serves Telegram, notifications and the inbox instead of one each."""
+    with _questions_lock:
+        if time.monotonic() - _questions_cache['at'] >= 2:
+            _questions_cache.update(items=all_questions(), at=time.monotonic())
+        return list(_questions_cache['items'])
+
+
+def inbox_payload():
+    items = []
+    for q in shared_questions():
+        # A connected computer checks its own fingerprint, which travels as `instance`.
+        items.append({**question_payload(q), 'id': q.instance if q.deck else q.fingerprint,
+                      'session': q.session, 'agent': q.agent, 'deck': q.deck, 'origin': q.origin})
+    return {'questions': items}
+
+
+def answer_any_question(question, index, text=None):
     if not question.deck:
-        return answer_question(question, index)
-    body = json.dumps({'name': question.session, 'id': question.instance, 'index': index}).encode()
+        return answer_question(question, index, text)
+    request = {'name': question.session, 'id': question.instance, 'index': index}
+    if text is not None:
+        request['text'] = text
+    body = json.dumps(request).encode()
     try:
         status, _, payload = remote_decks.request(question.deck, 'POST', '/api/answer', body, timeout=15)
     except Exception:
@@ -1347,18 +1407,28 @@ def answer_any_question(question, index):
     raise RuntimeError('Remote Agent Deck did not confirm the answer')
 
 
+def answer_text(d):
+    text = d.get('text')
+    if text is None:
+        return None
+    if not isinstance(text, str) or not text.strip() or len(text) > 4000:
+        raise ValueError('Введите ответ (до 4000 символов)')
+    return text
+
+
 def action_answer(d):
     index = d.get('index')
     if not isinstance(index, int) or isinstance(index, bool):
         raise ValueError('неверный запрос')
+    text = answer_text(d)
     question = session_question(d.get('name'))
     # The fingerprint binds the tap to the exact question the user saw.
     if not question or question.fingerprint != d.get('id'):
         raise ValueError('Этот вопрос уже закрыт или изменился. Обновите панель.')
-    answer_question(question, index)
+    answer_question(question, index, text)
 
 
-def answer_question(question, index):
+def answer_question(question, index, text=None):
     with input_locks_lock:
         lock = input_locks.setdefault(question.session, threading.Lock())
     with lock:
@@ -1389,8 +1459,13 @@ def answer_question(question, index):
             question = current
         if not current or current.fingerprint != question.fingerprint:
             raise ValueError('Этот вопрос уже закрыт или изменился. Обновите панель.')
-        if not 0 <= index < len(current.options) or FREE_TEXT_OPTION.match(current.options[index]):
+        if not 0 <= index < len(current.options):
+            raise ValueError('Неверный вариант ответа')
+        free = bool(FREE_TEXT_OPTION.match(current.options[index]))
+        if free and text is None:
             raise ValueError('Этот вариант требует ввода текста в панели')
+        if text is not None and not free:
+            raise ValueError('У этого варианта нет поля для своего ответа')
         delta = index - current.selected
         if delta:
             tmux('send-keys', '-t', f'={PREFIX}{question.session}:', *(['Down' if delta > 0 else 'Up'] * abs(delta)))
@@ -1403,6 +1478,9 @@ def answer_question(question, index):
                     break
             else:
                 raise ValueError('Не удалось выбрать вариант. Ответьте через панель.')
+        if text is not None:
+            # The highlighted "Other / Type something" row takes typed text; paste keeps exact bytes.
+            paste_to_tmux(question.session, text)
         tmux('send-keys', '-t', f'={PREFIX}{question.session}:', 'Enter')
 
 
@@ -1417,7 +1495,7 @@ def telegram_service():
     with telegram_lock:
         if telegram_integration is None:
             telegram_integration = Telegram(os.path.expanduser('~/.config/cc-panel/integrations'),
-                                            all_questions, answer_any_question)
+                                            shared_questions, answer_any_question)
         return telegram_integration
 
 
@@ -1533,7 +1611,7 @@ def push_service():
     from integrations.push import Push
     with _push_lock:
         if _push is None:
-            _push = Push(os.path.expanduser('~/.config/cc-panel/integrations'), push_sessions, all_questions)
+            _push = Push(os.path.expanduser('~/.config/cc-panel/integrations'), push_sessions, shared_questions)
         return _push
 
 
@@ -1711,6 +1789,35 @@ class Handler(BaseHTTPRequestHandler):
         secure = "; Secure" if self.is_https() else ""
         self.redirect("/", f"{COOKIE}={make_token()}; Path=/; Max-Age={COOKIE_DAYS * 86400}; HttpOnly; SameSite=Lax{secure}")
 
+    def upload_raw(self):
+        global actions_in_progress
+        # application/octet-stream is not a CORS-safelisted type: other sites cannot send it without preflight.
+        if (not self.same_origin() or self.headers.get("Content-Type", "").split(";", 1)[0].strip().lower() != "application/octet-stream"):
+            self.close_connection = True
+            return self.send_json(403, {"error": "разрешены только загрузки из интерфейса панели"})
+        query = parse_qs(urlsplit(self.path).query)
+        try:
+            length = int(self.headers.get("Content-Length") or 0)
+        except ValueError:
+            length = -1
+        if not 0 < length <= MAX_FILE_BYTES:
+            self.close_connection = True
+            return self.send_json(413, {"error": "файл или сообщение слишком большое"})
+        with action_lock:
+            if updater.status(UPDATE_STATE).get("phase") in updater.RUNNING:
+                self.close_connection = True
+                return self.send_json(503, {"error": "панель обновляется; повторите после завершения"})
+            actions_in_progress += 1
+        try:
+            result = store_streamed_upload(query.get("name", [""])[0], query.get("filename", [None])[0], length, self.rfile)
+            return self.send_json(200, {"ok": True, **result})
+        except (ValueError, OSError) as error:
+            self.close_connection = True
+            return self.send_json(400, {"error": str(error) if isinstance(error, ValueError) else "не удалось сохранить файл"})
+        finally:
+            with action_lock:
+                actions_in_progress -= 1
+
     def serve_session_image(self, query):
         from integrations.images import read_image
         name, path = query.get("name", [""])[0], query.get("path", [""])[0]
@@ -1720,7 +1827,8 @@ class Handler(BaseHTTPRequestHandler):
         screen = tmux("capture-pane", "-p", "-J", "-t", target, "-S", "-2000", check=False)
         cwd = tmux("display-message", "-p", "-t", target, "#{pane_current_path}", check=False).strip()
         try:
-            kind, data = read_image(path, cwd or os.path.expanduser("~"), os.path.expanduser("~"), screen)
+            cache = os.path.expanduser("~/.cache/agent-deck/thumbnails") if query.get("thumb") == ["1"] else None
+            kind, data = read_image(path, cwd or os.path.expanduser("~"), os.path.expanduser("~"), screen, cache)
         except FileNotFoundError as error:
             return self.send_json(404, {"error": str(error)})
         except (ValueError, OSError) as error:
@@ -1855,6 +1963,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send_json(200, backup_blob_payload(parsed.query))
             except ValueError as error:
                 return self.send_json(404, {"error": str(error)})
+        if parsed.path == "/api/inbox":
+            return self.send_json(200, inbox_payload())
         if parsed.path == "/api/questions":
             return self.send_json(200, questions_payload())
         if parsed.path == "/api/question":
@@ -1908,6 +2018,8 @@ class Handler(BaseHTTPRequestHandler):
             return
         if self.path.startswith('/deck/'):
             return self.proxy_deck()
+        if urlsplit(self.path).path == "/api/upload_raw":
+            return self.upload_raw()
         m = re.match(r"^/api/(\w+)$", self.path)
         if not m or m.group(1) not in ACTIONS:
             return self.send_json(404, {"error": "not found"})
@@ -1969,12 +2081,15 @@ class Handler(BaseHTTPRequestHandler):
                 if self.headers.get('Content-Type','').split(';',1)[0] != 'application/json':
                     return self.send_json(403, {'error':'JSON requests are required'})
                 length = int(self.headers.get('Content-Length','0'))
-                limit = ((MAX_FILE_BYTES+2)//3)*4+10000 if urlsplit(path).path == '/api/upload' else 1000000
+                route = urlsplit(path).path
+                limit = ((MAX_FILE_BYTES+2)//3)*4+10000 if route == '/api/upload' else MAX_FILE_BYTES if route == '/api/upload_raw' else 1000000
                 if not 0 <= length <= limit:
                     self.close_connection = True
                     return self.send_json(413, {'error':'Request is too large'})
                 body = self.read_body(length)
-            status, headers, payload = remote_decks.request(identity,self.command,path,body,self.language())
+            raw = urlsplit(path).path == '/api/upload_raw'
+            status, headers, payload = remote_decks.request(identity,self.command,path,body,self.language(),
+                content_type='application/octet-stream' if raw else 'application/json')
             ctype = next((v for k,v in headers.items() if k.lower()=='content-type'), 'application/octet-stream')
             # Remote HTML/JS under /api/* would run with the gateway origin; only JSON, and raster
             # images from the screenshot endpoint, are passed through.

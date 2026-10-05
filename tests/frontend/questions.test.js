@@ -13,16 +13,30 @@ const render=(extra={})=>{
 test('question options become one-tap buttons with their original index',()=>{
  const {box,onAnswer}=render();
  const buttons=box.querySelectorAll('.q-opt');
- expect([...buttons].map(b=>b.textContent)).toEqual(['1Yes','2Always <b>']);
+ expect([...buttons].map(b=>b.textContent)).toEqual(['1Yes','2Always <b>','✎Type something']);
  buttons[1].click();expect(onAnswer).toHaveBeenCalledWith(1);
  expect(buttons[1].classList.contains('selected')).toBe(true);
  expect(box.querySelector('.q-progress').textContent).toBe('Question 1/2');
 });
 
-test('free-text options stay keyboard-only and agent text is never parsed as HTML',()=>{
+test('a free-text option opens a field and sends the typed answer for that option',()=>{
+ const onTextOption=jest.fn(),onSubmitText=jest.fn(),onAnswer=jest.fn();
+ const {box}=render({onTextOption,onAnswer});
+ box.querySelectorAll('.q-opt')[2].click();
+ expect(onTextOption).toHaveBeenCalledWith(2);expect(onAnswer).not.toHaveBeenCalled();
+ const open=render({textIndex:2,textDraft:'draft',onSubmitText});
+ const field=open.box.querySelector('.q-text textarea');
+ expect(field.value).toBe('draft');
+ field.value='Use the staging database';
+ open.box.querySelector('.q-text').dispatchEvent(new Event('submit',{cancelable:true}));
+ expect(onSubmitText).toHaveBeenCalledWith(2,'Use the staging database');
+ field.value='   ';onSubmitText.mockClear();
+ open.box.querySelector('.q-text').dispatchEvent(new Event('submit',{cancelable:true}));
+ expect(onSubmitText).not.toHaveBeenCalled();
+});
+
+test('agent text is never parsed as HTML',()=>{
  const {box}=render();
- expect(box.textContent).not.toContain('Type something');
- expect(box.querySelector('.q-note')).not.toBeNull();
  expect(box.querySelector('img')).toBeNull();expect(box.querySelector('b')).toBeNull();
  expect(box.querySelector('.q-title').textContent).toBe('Run <img src=x> now?');
 });

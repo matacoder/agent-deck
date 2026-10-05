@@ -7,6 +7,7 @@ import tarfile
 import tempfile
 import unittest
 from unittest.mock import patch
+import unittest.mock
 
 from support import ROOT, PanelCase, require_crypto
 sys.path.insert(0, str(ROOT))
@@ -248,3 +249,52 @@ class PanelBackupTests(PanelCase):
             decks.status.return_value = {'decks': [{'id': 'a' * 24}]}
             self.panel.run_backups()
             replicate.assert_called_once()
+
+
+class MacKeychainTests(unittest.TestCase):
+    def setUp(self):
+        require_crypto(self)
+
+    def mac(self, name, stored=b'{"claudeAiOauth":{"accessToken":"keychain-secret"}}', writes=None, ok=True):
+        base = machine(self, name)
+        writes = writes if writes is not None else []
+        def write(data):
+            writes.append(data)
+            return ok
+        return B.Backups(base.home, lambda: '1.9.0', lambda: name, platform='darwin', keychain=(lambda: stored, write)), writes
+
+    def test_mac_backup_takes_the_claude_login_from_the_keychain(self):
+        alpha, _ = self.mac('alpha')
+        alpha.setup()
+        files = B.unpack(B.unseal(alpha.key(), alpha.create())[1])
+        self.assertEqual(files['agents/claude-credentials.json'], b'{"claudeAiOauth":{"accessToken":"keychain-secret"}}')
+
+    def test_mac_restore_returns_the_login_to_the_keychain_without_a_plaintext_file(self):
+        alpha, _ = self.mac('alpha')
+        code = alpha.setup()['code']
+        blob = alpha.create()
+        fresh, writes = self.mac('fresh', stored=None)
+        result = fresh.restore(blob, code)
+        self.assertEqual(writes, [b'{"claudeAiOauth":{"accessToken":"keychain-secret"}}'])
+        self.assertFalse((fresh.home / '.claude/.credentials.json').exists())
+        self.assertEqual(result['warnings'], [])
+        broken, _ = self.mac('broken', stored=None, ok=False)
+        self.assertIn('Claude', broken.restore(blob, code)['warnings'][0])
+
+    def test_linux_restore_of_a_mac_backup_writes_the_credentials_file(self):
+        alpha, _ = self.mac('alpha')
+        code = alpha.setup()['code']
+        linux = machine(self, 'linux')
+        linux.restore(alpha.create(), code)
+        self.assertEqual((linux.home / '.claude/.credentials.json').stat().st_mode & 0o777, 0o600)
+
+    def test_keychain_commands_keep_the_secret_out_of_argv(self):
+        seen = []
+        run = lambda args, **kw: seen.append((args, kw.get('input'))) or unittest.mock.Mock(returncode=0, stdout=b'secret\n')
+        self.assertEqual(B.keychain_read(run=run), b'secret')
+        self.assertTrue(B.keychain_write(b'{"t":"secret"}', run=run, account='dev'))
+        args, stdin = seen[-1]
+        self.assertEqual(args, ['security', '-i'])
+        self.assertNotIn(b'secret', b' '.join(a.encode() for a in args))
+        self.assertIn(b'-X ' + b'{"t":"secret"}'.hex().encode(), stdin)
+        self.assertFalse(B.keychain_write(b'x', run=run, account='bad name; rm'))

@@ -4,30 +4,37 @@ function svgIcon(name){
   return svg;
 }
 
-// Free-text options (Other / Type something) need typing in the terminal, so they stay keyboard-only.
-function renderQuestionCard({box,question,expanded,busyIndex,onAnswer,onToggle,translate}){
+// Free-text options (Other / Type something) open a text field; the answer is typed into that row.
+function renderQuestionCard({box,question,expanded,busyIndex,textIndex,textDraft="",onAnswer,onToggle,onTextOption,onTextInput,onSubmitText,translate}){
   box.replaceChildren();
   box.hidden=!question;
   if(!question)return;
+  const busy=busyIndex!==null&&busyIndex!==undefined;
   const head=document.createElement("div");head.className="q-head";
   head.append(translate("Вопрос агента"));
   if(question.progress){const progress=document.createElement("span");progress.className="q-progress";progress.textContent=question.progress;head.append(progress)}
   const title=document.createElement("button");title.type="button";title.className="q-title"+(expanded?" open":"");
   title.textContent=question.title;title.setAttribute("aria-expanded",String(Boolean(expanded)));title.onclick=onToggle;
   const options=document.createElement("div");options.className="q-options";
-  let freeText=false;
   question.options.forEach((option,index)=>{
-    if(option.text){freeText=true;return}
     const button=document.createElement("button");button.type="button";
-    button.className="q-opt"+(index===question.selected?" selected":"")+(index===busyIndex?" sending":"");
-    const number=document.createElement("span");number.className="q-num";number.textContent=String(index+1);
+    button.className="q-opt"+(option.text?" q-free":"")+(index===question.selected?" selected":"")+(index===busyIndex?" sending":"")+(index===textIndex?" active":"");
+    const number=document.createElement("span");number.className="q-num";number.textContent=option.text?"✎":String(index+1);
     const label=document.createElement("span");label.textContent=option.label;
-    button.append(number,label);button.disabled=busyIndex!==null&&busyIndex!==undefined;
-    button.onclick=()=>onAnswer(index);
+    button.append(number,label);button.disabled=busy;
+    button.onclick=()=>option.text?onTextOption&&onTextOption(index):onAnswer(index);
     options.append(button);
+    if(option.text&&index===textIndex){
+      const form=document.createElement("form");form.className="q-text";
+      const field=document.createElement("textarea");field.rows=2;field.maxLength=4000;field.placeholder=translate("Ваш ответ…");field.disabled=busy;field.value=textDraft;
+      field.oninput=()=>onTextInput&&onTextInput(field.value);
+      const send=document.createElement("button");send.type="submit";send.className="pri";send.textContent=translate("Ответить");send.disabled=busy;
+      form.onsubmit=event=>{event.preventDefault();if(field.value.trim())onSubmitText(index,field.value)};
+      form.append(field,send);options.append(form);
+      setTimeout(()=>field.focus(),0);
+    }
   });
   box.append(head,title,options);
-  if(freeText){const note=document.createElement("p");note.className="q-note";note.textContent=translate("Свой ответ — клавишами ↑ ↓ ⏎ ниже");box.append(note)}
 }
 
 // One styled confirm for every destructive action; resolves false on Escape or backdrop close.

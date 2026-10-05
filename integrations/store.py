@@ -57,6 +57,11 @@ class Store:
             row = db.execute("SELECT * FROM questions WHERE id=?", (identity,)).fetchone()
             return dict(row) if row else None
 
+    def by_message(self, message_id):
+        with self.connect() as db:
+            row = db.execute("SELECT * FROM questions WHERE message_id=? ORDER BY created DESC LIMIT 1", (message_id,)).fetchone()
+            return dict(row) if row else None
+
     def claim(self, identity):
         with self.connect() as db:
             return db.execute("UPDATE questions SET status='answering' WHERE id=? AND status='sent'",

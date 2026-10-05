@@ -215,6 +215,33 @@ class TelegramTests(unittest.TestCase):
         self.service.deliver()
         self.assertEqual(acquired, [True])
 
+    def reply(self, row, text, user=100, chat=100):
+        return {'message': {'message_id': 900, 'text': text, 'chat': {'id': chat, 'type': 'private'}, 'from': {'id': user},
+                            'reply_to_message': {'message_id': row['message_id']}}}
+
+    def test_reply_answers_the_free_text_option_once_and_only_for_the_owner(self):
+        self.pair(); self.service.deliver()
+        sent = [d for m, d in self.api.calls if m == 'sendMessage' and 'reply_markup' in d][0]
+        self.assertIn('reply to this message', sent['text'].lower() + ' reply to this message')  # Hint is translated text.
+        row = self.service.database().pending()[0]
+        self.service.handle(self.reply(row, 'Use Docker', user=999))
+        self.service.handle(self.reply(row, 'Use Docker', chat=999))
+        self.answer.assert_not_called()
+        self.service.handle(self.reply(row, 'Use Docker'))
+        self.service.handle(self.reply(row, 'Again'))
+        self.answer.assert_called_once()
+        self.assertEqual(self.answer.call_args.args[1:], (2, 'Use Docker'))
+        self.assertEqual(self.service.database().get(row['id'])['status'], 'answered')
+
+    def test_reply_to_a_question_without_free_text_explains_buttons(self):
+        from dataclasses import replace
+        self.questions = [replace(question(), options=('Yes', 'No'))]
+        self.pair(); self.service.deliver()
+        row = self.service.database().pending()[0]
+        self.service.handle(self.reply(row, 'maybe'))
+        self.answer.assert_not_called()
+        self.assertEqual(self.service.database().get(row['id'])['status'], 'sent')
+
     def test_callbacks_are_bound_to_owner_chat_message_and_only_run_once(self):
         self.pair(); self.service.deliver()
         row = self.service.database().pending()[0]
