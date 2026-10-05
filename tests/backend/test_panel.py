@@ -430,3 +430,58 @@ class WebQuestionTests(PanelCase):
             answer.assert_not_called()
             self.panel.action_answer({'name': 'demo', 'id': question.fingerprint, 'index': 1})
             answer.assert_called_once_with(question, 1)
+
+
+class RemoteQuestionTests(PanelCase):
+    REMOTE = 'a' * 24
+    ITEM = {'id': 'remote-fp', 'session': 'api', 'agent': 'claude', 'title': 'Proceed?', 'selected': 0, 'progress': '',
+            'options': [{'label': 'Yes', 'text': False}, {'label': 'No', 'text': False}]}
+
+    def setUp(self):
+        super().setUp()
+        self.panel.remote_question_backoff.clear()
+        self.decks = Mock()
+        self.decks.status.return_value = {'decks': [{'id': self.REMOTE, 'name': 'Mac Studio'}]}
+        self.enterContext(patch.object(self.panel, 'remote_decks', self.decks))
+
+    def test_connected_machine_questions_carry_their_origin_and_remote_id(self):
+        self.decks.request.return_value = (200, {}, json.dumps({'questions': [self.ITEM]}).encode())
+        [question] = self.panel.remote_questions()
+        self.assertEqual((question.deck, question.origin, question.instance, question.session), (self.REMOTE, 'Mac Studio', 'remote-fp', 'api'))
+        self.assertEqual(question.options, ('Yes', 'No'))
+        self.decks.request.assert_called_once_with(self.REMOTE, 'GET', '/api/questions', timeout=5)
+
+    def test_unreachable_or_older_machine_is_skipped_for_a_while(self):
+        self.decks.request.return_value = (404, {}, b'{"error":"not found"}')
+        self.assertEqual(self.panel.remote_questions(), [])
+        self.assertEqual(self.panel.remote_questions(), [])
+        self.assertEqual(self.decks.request.call_count, 1)
+
+    def test_answers_route_to_the_owning_machine_with_its_fingerprint(self):
+        from integrations.questions import Question
+        question = Question('api', 'claude', 'remote-fp', 'Proceed?', ('Yes', 'No'), 0, deck=self.REMOTE, origin='Mac Studio')
+        self.decks.request.return_value = (200, {}, b'{"ok":true}')
+        with patch.object(self.panel, 'answer_question') as local:
+            self.panel.answer_any_question(question, 1)
+            local.assert_not_called()
+        method, path, body = self.decks.request.call_args.args[1:4]
+        self.assertEqual((method, path, json.loads(body)), ('POST', '/api/answer', {'name': 'api', 'id': 'remote-fp', 'index': 1}))
+
+    def test_remote_rejection_is_definite_but_transport_failure_is_uncertain(self):
+        from integrations.questions import Question
+        question = Question('api', 'claude', 'remote-fp', 'Proceed?', ('Yes', 'No'), 0, deck=self.REMOTE)
+        self.decks.request.return_value = (400, {}, b'{"error":"This question is already closed"}')
+        with self.assertRaisesRegex(ValueError, 'already closed'):
+            self.panel.answer_any_question(question, 0)
+        for failure in (ValueError('Remote Agent Deck did not respond'), OSError('reset')):
+            self.decks.request.side_effect = failure
+            with self.assertRaises(RuntimeError):
+                self.panel.answer_any_question(question, 0)
+
+    def test_local_questions_are_answered_locally(self):
+        from integrations.questions import Question
+        question = Question('api', 'claude', '%1:1:sid', 'Proceed?', ('Yes', 'No'), 0)
+        with patch.object(self.panel, 'answer_question') as local:
+            self.panel.answer_any_question(question, 1)
+        local.assert_called_once_with(question, 1)
+        self.decks.request.assert_not_called()

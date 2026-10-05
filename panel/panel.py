@@ -1290,6 +1290,62 @@ def question_payload(question):
             'options': [{'label': label, 'text': bool(FREE_TEXT_OPTION.match(label))} for label in question.options]}
 
 
+def questions_payload():
+    return {'questions': [{**question_payload(q), 'session': q.session, 'agent': q.agent} for q in scan_questions()]}
+
+
+remote_question_backoff = {}
+remote_question_lock = threading.Lock()
+
+
+def remote_questions():
+    """Questions of connected Agent Decks, so one Telegram bot on the gateway serves every machine."""
+    from integrations.questions import Question
+    result = []
+    for deck in remote_decks.status().get('decks', []):
+        identity = deck.get('id')
+        with remote_question_lock:
+            if remote_question_backoff.get(identity, 0) > time.monotonic():
+                continue
+        try:
+            status, _, body = remote_decks.request(identity, 'GET', '/api/questions', timeout=5)
+            if status != 200:
+                raise ValueError('questions unavailable')  # Older releases have no /api/questions.
+            for item in json.loads(body).get('questions', []):
+                # The remote fingerprint travels as `instance`: it is what the remote checks on answer.
+                result.append(Question(item['session'], item['agent'], item['id'], item['title'],
+                                       tuple(o['label'] for o in item['options']), item['selected'],
+                                       item.get('progress', ''), deck=identity, origin=deck.get('name', '')))
+        except (ValueError, KeyError, TypeError, AttributeError, OSError):
+            with remote_question_lock:
+                remote_question_backoff[identity] = time.monotonic() + 30
+    return result
+
+
+def all_questions():
+    return scan_questions() + remote_questions()
+
+
+def answer_any_question(question, index):
+    if not question.deck:
+        return answer_question(question, index)
+    body = json.dumps({'name': question.session, 'id': question.instance, 'index': index}).encode()
+    try:
+        status, _, payload = remote_decks.request(question.deck, 'POST', '/api/answer', body, timeout=15)
+    except Exception:
+        # Transport failure after sending is ambiguous: report it, never resend.
+        raise RuntimeError('Remote Agent Deck did not confirm the answer') from None
+    if status == 200:
+        return
+    try:
+        message = json.loads(payload).get('error')
+    except (ValueError, AttributeError):
+        message = None
+    if 400 <= status < 500 and message:
+        raise ValueError(message)
+    raise RuntimeError('Remote Agent Deck did not confirm the answer')
+
+
 def action_answer(d):
     index = d.get('index')
     if not isinstance(index, int) or isinstance(index, bool):
@@ -1360,7 +1416,7 @@ def telegram_service():
     with telegram_lock:
         if telegram_integration is None:
             telegram_integration = Telegram(os.path.expanduser('~/.config/cc-panel/integrations'),
-                                            scan_questions, answer_question)
+                                            all_questions, answer_any_question)
         return telegram_integration
 
 
@@ -1601,6 +1657,8 @@ class Handler(BaseHTTPRequestHandler):
         if parsed.path == "/api/sessions":
             preview_name = parse_qs(parsed.query).get("preview", [None])[0]
             return self.send_json(200, {"sessions": list_sessions(preview_name)})
+        if parsed.path == "/api/questions":
+            return self.send_json(200, questions_payload())
         if parsed.path == "/api/question":
             question = session_question(parse_qs(parsed.query).get("name", [None])[0])
             return self.send_json(200, {"question": question_payload(question) if question else None})

@@ -211,7 +211,7 @@
     "Kimi: лимиты временно недоступны": "Kimi: penggunaan sementara tidak tersedia",
     "Kimi: проверьте ключ": "Kimi: periksa kunci Anda",
     "Telegram не вернул имя бота": "Telegram tidak mengembalikan nama pengguna bot",
-    "Telegram: бот уже используется другим получателем обновлений": "Telegram: klien lain sudah menerima pembaruan untuk bot ini",
+    "Telegram: этот бот уже получает обновления на другом Agent Deck. Отключите Telegram там и подключите тот Agent Deck в «Сеть → Другие Agent Deck»: его вопросы придут в этот бот": "Telegram: bot ini sudah menerima pembaruan di Agent Deck lain. Matikan Telegram di sana dan hubungkan Agent Deck itu di “Jaringan → Agent Deck lain”: pertanyaannya akan masuk ke bot ini",
     "Telegram: запрос не выполнен": "Telegram: permintaan gagal",
     "Telegram: не удалось обработать обновление": "Telegram: tidak dapat memproses pembaruan",
     "Telegram: неверный токен": "Telegram: token tidak valid",
@@ -417,6 +417,8 @@
     "остановлен": "berhenti",
     "работает": "bekerja",
     "Вопрос агента": "Pertanyaan agen",
-    "Свой ответ — клавишами ↑ ↓ ⏎ ниже": "Jawaban sendiri — pakai ↑ ↓ ⏎ di bawah"
+    "Свой ответ — клавишами ↑ ↓ ⏎ ниже": "Jawaban sendiri — pakai ↑ ↓ ⏎ di bawah",
+    "Вопросы подключённых Agent Deck тоже приходят в этот бот. На них Telegram настраивать не нужно.": "Pertanyaan dari Agent Deck yang terhubung juga masuk ke bot ini. Telegram tidak perlu disiapkan di sana.",
+    "недоступен": "tidak tersedia"
   }
 }

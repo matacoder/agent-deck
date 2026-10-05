@@ -45,7 +45,7 @@ class API:
                 error.close()
             code = error.code
             message = {401: 'Telegram: неверный токен', 403: 'Telegram: откройте чат с ботом и нажмите Start',
-                       409: 'Telegram: бот уже используется другим получателем обновлений',
+                       409: 'Telegram: этот бот уже получает обновления на другом Agent Deck. Отключите Telegram там и подключите тот Agent Deck в «Сеть → Другие Agent Deck»: его вопросы придут в этот бот',
                        429: 'Telegram: слишком много запросов'}.get(code, 'Telegram: запрос не выполнен')
             raise TelegramError(message, payload.get('parameters', {}).get('retry_after', 5)) from None
         except (OSError, ValueError):
@@ -234,7 +234,11 @@ class Telegram:
         with self.lock:
             if not self.eligible(self.config):
                 return
-            questions = self.scan()
+        # Connected Agent Deck scans take network time; never hold the lock that answers button taps.
+        questions = self.scan()
+        with self.lock:
+            if not self.eligible(self.config):
+                return
             db = self.database()
             now = time.monotonic()
             self.seen.update({q.fingerprint: now for q in questions})
@@ -256,7 +260,7 @@ class Telegram:
                             for i, label in enumerate(q.options)
                             if not re.match(r'(?:Other\b|Type something|Другое\b|Свой ответ)', label, re.I)]
                 result = self.api.call(self.config['token'], 'sendMessage', chat_id=self.config['chat_id'],
-                    text=f'{q.agent} · {q.session}\n\n{q.title}\n\n' + '\n'.join(options),
+                    text=' · '.join(filter(None, (q.origin, q.agent, q.session))) + f'\n\n{q.title}\n\n' + '\n'.join(options),
                     reply_markup={'inline_keyboard': keyboard})
                 db.set_status(row['id'], 'sent', result['message_id'])
 

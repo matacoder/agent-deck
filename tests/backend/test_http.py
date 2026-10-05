@@ -93,7 +93,11 @@ class HTTPTests(PanelCase):
 
     def test_question_endpoints_require_login_origin_and_return_json(self):
         self.assertEqual(self.request("GET", "/api/question?name=demo")[0], 401)
+        self.assertEqual(self.request("GET", "/api/questions")[0], 401)
         cookie = self.login()
+        with patch.object(self.panel, "scan_questions", Mock(return_value=[])):
+            status, _, body = self.request("GET", "/api/questions", headers={"Cookie": cookie})
+            self.assertEqual((status, json.loads(body)), (200, {"questions": []}))
         with patch.object(self.panel, "session_question", Mock(return_value=None)) as lookup:
             status, headers, body = self.request("GET", "/api/question?name=demo", headers={"Cookie": cookie})
             self.assertEqual(status, 200)

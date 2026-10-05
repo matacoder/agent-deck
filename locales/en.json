@@ -211,7 +211,7 @@
     "Kimi: лимиты временно недоступны": "Kimi: usage is temporarily unavailable",
     "Kimi: проверьте ключ": "Kimi: check your key",
     "Telegram не вернул имя бота": "Telegram did not return a bot username",
-    "Telegram: бот уже используется другим получателем обновлений": "Telegram: another client is already receiving updates for this bot",
+    "Telegram: этот бот уже получает обновления на другом Agent Deck. Отключите Telegram там и подключите тот Agent Deck в «Сеть → Другие Agent Deck»: его вопросы придут в этот бот": "Telegram: this bot already receives updates on another Agent Deck. Turn Telegram off there and connect that Agent Deck in “Network → Other Agent Deck instances”: its questions will arrive in this bot",
     "Telegram: запрос не выполнен": "Telegram: request failed",
     "Telegram: не удалось обработать обновление": "Telegram: could not process update",
     "Telegram: неверный токен": "Telegram: invalid token",
@@ -417,6 +417,8 @@
     "остановлен": "stopped",
     "работает": "working",
     "Вопрос агента": "Agent question",
-    "Свой ответ — клавишами ↑ ↓ ⏎ ниже": "Custom answer — use ↑ ↓ ⏎ below"
+    "Свой ответ — клавишами ↑ ↓ ⏎ ниже": "Custom answer — use ↑ ↓ ⏎ below",
+    "Вопросы подключённых Agent Deck тоже приходят в этот бот. На них Telegram настраивать не нужно.": "Questions from connected Agent Deck instances also arrive in this bot. Telegram does not need to be set up on them.",
+    "недоступен": "unavailable"
   }
 }

@@ -32,5 +32,8 @@ function quotaTone(remaining,plan){
 }
 
 function sessionTitle(session){return session?.title||session?.name||""}
+function matchesSessionQuery(session,query){
+  return !query||[session.name,sessionTitle(session),session.group,session.path].join(" ").toLowerCase().includes(query);
+}
 
-if(typeof module!=="undefined")module.exports={sessionTitle,shortModel,quotaDuration,plannedRemaining,primaryQuota,quotaTone};
+if(typeof module!=="undefined")module.exports={sessionTitle,matchesSessionQuery,shortModel,quotaDuration,plannedRemaining,primaryQuota,quotaTone};

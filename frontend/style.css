@@ -65,11 +65,19 @@ aside{width:248px;flex:none;background:var(--side);border-right:1px solid var(--
 @keyframes pulse{50%{opacity:.35}}
 .bell{width:8px;height:8px;border-radius:50%;background:var(--acc);flex:none;box-shadow:0 0 0 3px var(--acc-soft)}
 .empty-list{padding:20px 10px;color:var(--mut);line-height:1.5}
+/* Other connected machines: compact sections under the current instance. */
+.deck-head{display:flex;align-items:center;gap:7px;width:100%;margin-top:10px;padding:8px;border-radius:var(--r-sm);font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--mut);text-align:left}
+.deck-head.current{margin-top:2px;color:var(--fg)}
+button.deck-head:hover{background:var(--side2);color:var(--fg)}
+.deck-head svg{width:var(--icon-sm);height:var(--icon-sm)}
+.deck-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.deck-count{margin-left:auto;font-weight:500;letter-spacing:0;text-transform:none;color:var(--dim)}
+.tab.remote .n{color:var(--fg)}
 
 /* Compact quota and local-generation monitor. */
 #integ{margin:4px 8px 8px;min-width:0}
 .quota-heading{display:block;font-size:11px;color:var(--mut)}
-.quota-heading summary{display:grid;grid-template-columns:22px 44px 38px 1fr;gap:8px;align-items:center;padding:6px;list-style:none;cursor:pointer;border-radius:var(--r-sm)}
+.quota-heading summary{display:grid;grid-template-columns:22px 64px 48px 1fr;gap:8px;align-items:center;padding:6px;list-style:none;cursor:pointer;border-radius:var(--r-sm)}
 .quota-heading summary::-webkit-details-marker{display:none}
 .quota-heading summary:hover{background:var(--side2)}
 .quota-heading summary>span:first-child{grid-column:2}
@@ -77,7 +85,7 @@ aside{width:248px;flex:none;background:var(--side);border-right:1px solid var(--
 .quota-github{display:flex;align-items:center;justify-content:flex-end;gap:4px}
 .quota-github svg{width:var(--icon-sm);height:var(--icon-sm)}
 .quota-help{margin:2px 6px 8px;padding:8px 10px;border-radius:var(--r-sm);background:var(--side2);line-height:1.5}
-.quota-strip{display:grid;grid-template-columns:22px 44px 38px 1fr;gap:8px;align-items:center;min-height:30px;padding:0 6px;font-size:12px;font-variant-numeric:tabular-nums}
+.quota-strip{display:grid;grid-template-columns:22px 64px 48px 1fr;gap:8px;align-items:center;min-height:30px;padding:0 6px;font-size:12px;font-variant-numeric:tabular-nums}
 .quota-values{display:contents}
 .quota-percent{font-weight:600}
 .quota-percent.good{color:var(--ok)}.quota-percent.over{color:var(--warn)}.quota-percent.crit{color:var(--bad-text)}
@@ -417,6 +425,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
   .iconbtn{min-width:var(--tap);height:var(--tap);border-radius:var(--r)}
   #tabs{flex:none;overflow:visible;padding:0 8px 12px}
   .grp{font-size:12px;padding:16px 10px 6px}
+  .deck-head{font-size:12px;min-height:var(--tap);padding:8px 10px}
   .tab{padding:11px 10px;gap:12px;border-radius:var(--r);min-height:56px}
   .tab .n{font-size:16px}.tab .s{font-size:13px}
   .tab .k{display:none}

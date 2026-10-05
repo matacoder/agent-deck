@@ -172,6 +172,12 @@ Pause delivery with the switch or remove the token from the integration card.
 Use a dedicated bot without another polling consumer or webhook. No public server
 address, webhook endpoint or extra dependency is needed.
 
+**Several computers, one bot.** Telegram delivers button taps to a single receiver,
+so configure the bot only on the Agent Deck you open in the browser and connect the
+others in **Settings → Network → Other Agent Deck instances**. Their questions arrive
+in the same bot, labelled with the computer name, and answers are relayed back through
+the authenticated gateway. Leave Telegram off on the connected computers.
+
 Settings stay in JSON files. Telegram credentials and pairing are in
 `~/.config/cc-panel/integrations/telegram.json`; the durable question outbox is in
 `questions.sqlite3` alongside it. Both files are private (`600`), and SQLite needs
@@ -242,7 +248,9 @@ Use **Settings → Network → Other Agent Deck instances** on the server whose
 web address you normally open. Click **Discover** to search online Tailscale peers
 on port 8790 (or a custom port), or enter a remote `http://100.x.y.z:8790` URL.
 Provide that instance's panel login and password, then connect. Select the instance
-in the sidebar (the switcher appears once an instance is connected) to manage its sessions, files, models and live terminal through the
+in the sidebar (the switcher appears once an instance is connected), or tap any of its
+sessions: the sidebar lists the sessions of every connected computer under its name, so
+switching environments is one tap. Manage its sessions, files, models and live terminal through the
 gateway. Your browser does not need direct access to the remote Tailscale address.
 The gateway and remote computer must both be connected to the tailnet.
 

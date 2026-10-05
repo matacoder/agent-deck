@@ -20,6 +20,14 @@ conflicts with the panel. The integration never removes another webhook.
 The bot uses outbound HTTPS long polling. No public webhook, additional listening
 port, database server, or Python dependency is needed. It works on Linux and Mac.
 
+Telegram hands updates (button taps) to exactly one receiver, so a bot cannot be
+polled by two panels. For several computers, configure the bot on the gateway only
+and connect the others under **Settings → Network**. The gateway reads their
+questions from `/deck/<id>/api/questions` (5 s timeout; an unreachable or pre-1.4
+instance is skipped for 30 s), prefixes the message with the computer name and
+answers through the remote `/api/answer`, which re-checks the question fingerprint.
+A remote answer that is not confirmed is stored as uncertain and never resent.
+
 ## Questions and answers
 
 Codex and Claude adapters read pending structured questions from the exact

@@ -36,3 +36,11 @@ test('session label uses a rename while preserving the internal identifier',()=>
  expect(sessionTitle(session)).toBe('Моя работа');expect(session.name).toBe('stable-id');
  expect(sessionTitle({name:'legacy'})).toBe('legacy');expect(sessionTitle(null)).toBe('');
 });
+
+test('sidebar search matches local and connected-machine sessions by name, title, project and path',()=>{
+ const {matchesSessionQuery}=require('../../frontend/logic');
+ const s={name:'ml-train',title:'Training run',group:'ml',path:'/Users/demo/dev/ml'};
+ for(const q of ['','ml-train','training','/users/demo'])expect(matchesSessionQuery(s,q)).toBe(true);
+ expect(matchesSessionQuery(s,'website')).toBe(false);
+ expect(matchesSessionQuery({name:'x',path:'/x'},'x')).toBe(true);
+});

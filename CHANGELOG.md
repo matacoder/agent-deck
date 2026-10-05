@@ -2,6 +2,13 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.4.0 — 2026-10-05
+
+- One Telegram bot for several computers: the gateway delivers questions from connected Agent Deck instances (new `GET /api/questions`), labels them with the computer name and relays answers through the authenticated gateway. Unconfirmed remote answers are marked uncertain and never resent. The "already used by another receiver" error now explains this setup.
+- Question scans no longer hold the Telegram lock, so a slow computer does not delay button taps.
+- The sidebar lists sessions of every connected Agent Deck in collapsible sections (unavailable computers are marked); tapping one switches to that computer and opens the session.
+- Wider quota columns so "Remaining" and "Plan" no longer overlap on phones.
+
 ## 1.3.0 — 2026-10-05
 
 - Answer agent questions with one tap: the question and its options appear above the message field (`GET /api/question`, `POST /api/answer`); free-text options stay on the key row.

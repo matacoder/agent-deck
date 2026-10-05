@@ -48,6 +48,10 @@ Source: design/UX review of 2026-10-05. Primary device: iPhone 15 Pro Max (430×
 - Streaming uploads (JSON base64 protocol stays; upload progress is shown instead).
 - Web Push notifications.
 
-## Follow-up (after UI polish)
+## Follow-up (after UI polish) — done in 1.4.0
 - Telegram: one bot for several Agent Deck instances. Today each panel long-polls `getUpdates`, so a second instance fails with "bot is already used by another update receiver". Investigate why a panel must own the update stream instead of, e.g., one owner routing answers (deep links / callback data with instance id) to the others.
 - Sessions from all connected Agent Deck instances in one sidebar on the gateway, grouped by instance. Feasible on the existing `/deck/<id>/api/sessions` gateway route: poll remote lists without previews at a slower pace than the active instance; selecting a remote session switches instance and opens that session. Step 1 reuses the current reload-based switch (pre-set the target's `cc.active`); step 2 removes the reload by making the instance per-request instead of page-global.
+
+### Decisions (1.4.0)
+- Only the gateway owns the bot (Telegram allows one update receiver). It scans connected instances via `/deck/<id>/api/questions` (5 s timeout, 30 s backoff for unreachable or older instances) and answers via their `/api/answer` using the remote fingerprint; transport failures are `uncertain`, never replayed.
+- Sidebar: other instances refresh every 10 s without previews; switching keeps the reload-based instance switch and pre-selects the session.

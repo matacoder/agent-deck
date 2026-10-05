@@ -76,11 +76,19 @@ aside{width:248px;flex:none;background:var(--side);border-right:1px solid var(--
 @keyframes pulse{50%{opacity:.35}}
 .bell{width:8px;height:8px;border-radius:50%;background:var(--acc);flex:none;box-shadow:0 0 0 3px var(--acc-soft)}
 .empty-list{padding:20px 10px;color:var(--mut);line-height:1.5}
+/* Other connected machines: compact sections under the current instance. */
+.deck-head{display:flex;align-items:center;gap:7px;width:100%;margin-top:10px;padding:8px;border-radius:var(--r-sm);font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--mut);text-align:left}
+.deck-head.current{margin-top:2px;color:var(--fg)}
+button.deck-head:hover{background:var(--side2);color:var(--fg)}
+.deck-head svg{width:var(--icon-sm);height:var(--icon-sm)}
+.deck-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.deck-count{margin-left:auto;font-weight:500;letter-spacing:0;text-transform:none;color:var(--dim)}
+.tab.remote .n{color:var(--fg)}
 
 /* Compact quota and local-generation monitor. */
 #integ{margin:4px 8px 8px;min-width:0}
 .quota-heading{display:block;font-size:11px;color:var(--mut)}
-.quota-heading summary{display:grid;grid-template-columns:22px 44px 38px 1fr;gap:8px;align-items:center;padding:6px;list-style:none;cursor:pointer;border-radius:var(--r-sm)}
+.quota-heading summary{display:grid;grid-template-columns:22px 64px 48px 1fr;gap:8px;align-items:center;padding:6px;list-style:none;cursor:pointer;border-radius:var(--r-sm)}
 .quota-heading summary::-webkit-details-marker{display:none}
 .quota-heading summary:hover{background:var(--side2)}
 .quota-heading summary>span:first-child{grid-column:2}
@@ -88,7 +96,7 @@ aside{width:248px;flex:none;background:var(--side);border-right:1px solid var(--
 .quota-github{display:flex;align-items:center;justify-content:flex-end;gap:4px}
 .quota-github svg{width:var(--icon-sm);height:var(--icon-sm)}
 .quota-help{margin:2px 6px 8px;padding:8px 10px;border-radius:var(--r-sm);background:var(--side2);line-height:1.5}
-.quota-strip{display:grid;grid-template-columns:22px 44px 38px 1fr;gap:8px;align-items:center;min-height:30px;padding:0 6px;font-size:12px;font-variant-numeric:tabular-nums}
+.quota-strip{display:grid;grid-template-columns:22px 64px 48px 1fr;gap:8px;align-items:center;min-height:30px;padding:0 6px;font-size:12px;font-variant-numeric:tabular-nums}
 .quota-values{display:contents}
 .quota-percent{font-weight:600}
 .quota-percent.good{color:var(--ok)}.quota-percent.over{color:var(--warn)}.quota-percent.crit{color:var(--bad-text)}
@@ -428,6 +436,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
   .iconbtn{min-width:var(--tap);height:var(--tap);border-radius:var(--r)}
   #tabs{flex:none;overflow:visible;padding:0 8px 12px}
   .grp{font-size:12px;padding:16px 10px 6px}
+  .deck-head{font-size:12px;min-height:var(--tap);padding:8px 10px}
   .tab{padding:11px 10px;gap:12px;border-radius:var(--r);min-height:56px}
   .tab .n{font-size:16px}.tab .s{font-size:13px}
   .tab .k{display:none}
@@ -573,6 +582,9 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
   <symbol id="i-ram" viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="11" rx="2"/><path d="M6 9v5m4-5v5m4-5v5m4-5v5M6 17v3m4-3v3m4-3v3m4-3v3"/></symbol>
   <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></symbol>
   <symbol id="i-logout" viewBox="0 0 24 24"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 17l5-5-5-5M15 12H3"/></symbol>
+  <symbol id="i-monitor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></symbol>
+  <symbol id="i-chevron-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-chevron-right" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></symbol>
   <symbol id="i-telegram" viewBox="0 0 24 24"><path d="m21 3-4 18-6-5-4 3v-6L3 10 21 3Z"/><path d="m7 13 10-6-6 9"/></symbol>
 </svg>
 <div id="app">
@@ -735,6 +747,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
     <section id="hub_connections"><div id="connection_cards"></div><div id="integrations_dlg" class="hub-card editor" hidden><form class="integration-dialog" onsubmit="event.preventDefault();saveTelegram()">
       <div class="integration-heading"><span class="telegram-mark" aria-hidden="true"><svg class="ui-icon"><use href="#i-telegram"/></svg></span><div><h4>Telegram</h4><p>Вопросы и ответы в чате с ботом</p></div></div>
       <p id="telegram_state" class="integration-status" role="status"></p>
+      <p class="integration-note">Вопросы подключённых Agent Deck тоже приходят в этот бот. На них Telegram настраивать не нужно.</p>
       <details id="telegram_credentials" open><summary>Токен бота</summary>
       <label for="telegram_token">Токен бота из @BotFather</label>
       <input id="telegram_token" type="password" autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Вставить или заменить токен">
@@ -801,8 +814,11 @@ function quotaTone(remaining,plan){
 }
 
 function sessionTitle(session){return session?.title||session?.name||""}
+function matchesSessionQuery(session,query){
+  return !query||[session.name,sessionTitle(session),session.group,session.path].join(" ").toLowerCase().includes(query);
+}
 
-if(typeof module!=="undefined")module.exports={sessionTitle,shortModel,quotaDuration,plannedRemaining,primaryQuota,quotaTone};
+if(typeof module!=="undefined")module.exports={sessionTitle,matchesSessionQuery,shortModel,quotaDuration,plannedRemaining,primaryQuota,quotaTone};
 async function saveDirectorySetting({request,input,button,notify,translate}){
   button.disabled=true;
   try{
@@ -1134,8 +1150,10 @@ function renderTabs(){
   const q=$("q").value.trim().toLowerCase(),box=$("tabs");
   // The list is rebuilt on every poll; keep keyboard focus on the same session row.
   const focused=box.contains(document.activeElement)?document.activeElement.dataset.session:null;
-  const list=sessions.filter(s=>!q||(s.name+" "+sessionTitle(s)+" "+s.group+" "+s.path).toLowerCase().includes(q));
+  const list=sessions.filter(s=>matchesSessionQuery(s,q));
   box.replaceChildren();let grp=null,i=0;
+  const others=otherDecks.filter(d=>d.id!==selectedDeck);
+  if(others.length)box.append(deckHeader({id:selectedDeck,name:currentDeckName(),count:list.length},true));
   for(const s of list){
     if(s.group!==grp){grp=s.group;box.append(el("div","grp",grp))}
     i++;const st=state(s);
@@ -1154,6 +1172,7 @@ function renderTabs(){
     box.append(t);
   }
   if(!sessions.length)box.append(el("div","empty-list",tr("сессий пока нет")));
+  for(const deck of others)renderDeckSection(box,deck,q);
   if(focused)box.querySelector(`[data-session="${CSS.escape(focused)}"]`)?.focus({preventScroll:true});
   const busy=sessions.filter(s=>state(s)==="busy").length;
   $("foot").textContent=tr("{0} сессий · {1} работают",[sessions.length,busy])+(attention.size?tr(" · {0} готово",[attention.size]):"");
@@ -1815,6 +1834,7 @@ async function loadDeckSettings(){
   populateDeckSelector($("deck_select"),data.decks,selectedDeck,network.name);
   // Most installs have a single machine; the switcher appears once another Agent Deck is connected.
   $("deck_switch").hidden=!data.decks.length&&!selectedDeck;
+  deckDirectory={decks:data.decks,name:network.name};loadOtherDecks();
   $("network_name").value=network.name;$("network_public_url").value=network.public_url;
   $("network_bind").textContent="http://"+network.bind_host+":"+network.bind_port;
   $("network_browser").textContent=location.origin;
@@ -1826,6 +1846,53 @@ async function loadDeckSettings(){
   renderDeckDiscovery(data.discovery);
   if(selectedDeck&&!data.decks.some(d=>d.id===selectedDeck))switchDeck("");
 }
+// Sessions of every connected machine, so switching environments is one tap from the sidebar.
+let deckDirectory={decks:[],name:""},otherDecks=[],loadingOthers=false,deckOpen={};
+try{deckOpen=JSON.parse(localStore.getItem("cc.deck-open")||"{}")||{}}catch(e){}
+const currentDeckName=()=>selectedDeck?deckDirectory.decks.find(d=>d.id===selectedDeck)?.name||"Agent Deck":deckDirectory.name||tr("Этот Agent Deck");
+async function loadOtherDecks(){
+  if(document.hidden||loadingOthers||!deckDirectory.decks.length){if(!deckDirectory.decks.length&&otherDecks.length){otherDecks=[];renderTabs()}return}
+  loadingOthers=true;
+  const targets=[{id:"",name:deckDirectory.name||tr("Этот Agent Deck")},...deckDirectory.decks.map(d=>({id:d.id,name:d.name}))].filter(d=>d.id!==selectedDeck);
+  try{
+    otherDecks=await Promise.all(targets.map(async d=>{
+      // Lists come without previews: only names and states travel through the gateway.
+      try{return {...d,sessions:(await api(instancePath(d.id,"/api/sessions"),null,true)).sessions}}
+      catch(e){return {...d,sessions:[],error:true}}
+    }));
+  }finally{loadingOthers=false}
+  renderTabs();
+}
+function deckHeader(deck,current){
+  const key=deck.id||"local",open=current||deckOpen[key]!==false;
+  const head=el(current?"div":"button","deck-head"+(current?" current":""),svgIcon("monitor"),el("span","deck-name",deck.name),
+    el("span","deck-count",deck.error?tr("недоступен"):String(deck.count)));
+  if(!current){
+    head.type="button";head.setAttribute("aria-expanded",String(open));head.append(svgIcon(open?"chevron-down":"chevron-right"));
+    head.onclick=()=>{deckOpen[key]=!open;try{localStore.setItem("cc.deck-open",JSON.stringify(deckOpen))}catch(e){}renderTabs()};
+  }
+  return head;
+}
+function renderDeckSection(box,deck,q){
+  const list=deck.sessions.filter(s=>matchesSessionQuery(s,q));
+  if(q&&!list.length)return;
+  box.append(deckHeader({...deck,count:list.length},false));
+  if(deckOpen[deck.id||"local"]===false)return;
+  for(const s of list){
+    const st=state(s),word=st==="busy"?["busy",tr("работает")]:st==="off"?["off",tr("остановлен")]:null;
+    const t=el("div","tab remote",el("span","dot "+st),agentIcon(s),el("div","t",el("div","n",sessionTitle(s)),
+      el("div","s",...(word?[el("span","state "+word[0],word[1])," · "]:[]),shortPath(s.path))));
+    t.title=deck.name+" · "+s.name;t.tabIndex=0;t.setAttribute("role","button");
+    t.onclick=()=>openDeckSession(deck.id,s.name);
+    t.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();openDeckSession(deck.id,s.name)}};
+    box.append(t);
+  }
+}
+function openDeckSession(identity,name){
+  try{instanceStorage(localStore,identity).setItem("cc.active",name)}catch(e){}
+  switchDeck(identity);
+}
+setInterval(loadOtherDecks,10000);
 function switchDeck(identity){
   if(identity===selectedDeck)return;
   if(sending||uploading||choosingImages){$("deck_select").value=selectedDeck;toast(tr("Дождитесь окончания отправки или загрузки"));return}
@@ -2129,7 +2196,7 @@ $("n_git").addEventListener("input",renderAdvanced);
 /* ⌥1..9 — табы, ⌥↑/⌥↓ — пред./след., ⌥T — новая (работает и внутри терминала) */
 function hotkeys(e){
   if(!e.altKey||e.ctrlKey||e.metaKey)return;
-  const vis=[...$("tabs").querySelectorAll(".tab")].map(t=>t.dataset.session);
+  const vis=[...$("tabs").querySelectorAll(".tab:not(.remote)")].map(t=>t.dataset.session);
   let target=null;
   if(/^Digit[1-9]$/.test(e.code)){
     // Non-US Mac layouts type [ ] { } | etc. with Option+digit; keep those characters.
@@ -2214,7 +2281,7 @@ loadUsage();setInterval(loadUsage,60000);loadLM().then(renderInteg);setInterval(
 loadServer();setInterval(loadServer,3600000);
 loadVersion();
 loadIntegrations();
-document.addEventListener("visibilitychange",()=>{if(!document.hidden){checkGithubFoot(true);loadUsage();load();checkInterfaceVersion();loadVersion();if(!$("integrations_dlg").hidden&&!telegramDirty)loadIntegrations()}});
+document.addEventListener("visibilitychange",()=>{if(!document.hidden){checkGithubFoot(true);loadUsage();load();checkInterfaceVersion();loadVersion();loadOtherDecks();if(!$("integrations_dlg").hidden&&!telegramDirty)loadIntegrations()}});
 load();setInterval(load,2500);
 
 loadDeckSettings().catch(e=>toast(e.message));

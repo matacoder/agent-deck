@@ -16,11 +16,16 @@ class Question:
     selected: int
     progress: str = ""
     request_id: str = ""
+    # Set for questions relayed from a connected Agent Deck: its identity and display name.
+    deck: str = ""
+    origin: str = ""
 
     @property
     def fingerprint(self):
         # Cursor movement does not create a new question; a new pane/conversation does.
         data = [self.session, self.agent, self.instance, self.title, self.options, self.progress, self.request_id]
+        if self.deck:
+            data.append(self.deck)  # Local fingerprints stay identical to earlier releases.
         return hashlib.sha256(json.dumps(data, ensure_ascii=False).encode()).hexdigest()
 
 

@@ -183,6 +183,38 @@ class TelegramTests(unittest.TestCase):
         restarted.deliver()
         self.assertEqual(len([m for m, d in self.api.calls if m == 'sendMessage' and 'reply_markup' in d]), 1)
 
+    def test_relayed_question_names_its_machine_and_round_trips_its_origin(self):
+        from dataclasses import replace
+        remote = replace(question(), instance='remote-fingerprint', deck='a' * 24, origin='Mac Studio')
+        self.questions = [remote]
+        self.pair(); self.service.deliver()
+        text = [d for m, d in self.api.calls if m == 'sendMessage' and 'reply_markup' in d][0]['text']
+        self.assertTrue(text.startswith('Mac Studio · codex · demo\n'))
+        row = self.service.database().pending()[0]
+        self.service.handle(self.callback(row))
+        answered = self.answer.call_args.args[0]
+        self.assertEqual((answered.deck, answered.instance, answered.origin), ('a' * 24, 'remote-fingerprint', 'Mac Studio'))
+
+    def test_local_fingerprints_are_unchanged_and_machines_never_collide(self):
+        import hashlib
+        from dataclasses import replace
+        q = question()
+        legacy = [q.session, q.agent, q.instance, q.title, q.options, q.progress, q.request_id]
+        self.assertEqual(q.fingerprint, hashlib.sha256(json.dumps(legacy, ensure_ascii=False).encode()).hexdigest())
+        self.assertNotEqual(replace(q, deck='a' * 24).fingerprint, replace(q, deck='b' * 24).fingerprint)
+
+    def test_slow_question_scan_does_not_block_button_handling(self):
+        import threading
+        self.pair()
+        acquired = []
+        def scan():
+            worker = threading.Thread(target=lambda: acquired.append(self.service.lock.acquire(timeout=1) and self.service.lock.release() is None))
+            worker.start(); worker.join()
+            return []
+        self.service.scan = scan
+        self.service.deliver()
+        self.assertEqual(acquired, [True])
+
     def test_callbacks_are_bound_to_owner_chat_message_and_only_run_once(self):
         self.pair(); self.service.deliver()
         row = self.service.database().pending()[0]

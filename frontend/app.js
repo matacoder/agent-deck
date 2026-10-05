@@ -205,8 +205,10 @@ function renderTabs(){
   const q=$("q").value.trim().toLowerCase(),box=$("tabs");
   // The list is rebuilt on every poll; keep keyboard focus on the same session row.
   const focused=box.contains(document.activeElement)?document.activeElement.dataset.session:null;
-  const list=sessions.filter(s=>!q||(s.name+" "+sessionTitle(s)+" "+s.group+" "+s.path).toLowerCase().includes(q));
+  const list=sessions.filter(s=>matchesSessionQuery(s,q));
   box.replaceChildren();let grp=null,i=0;
+  const others=otherDecks.filter(d=>d.id!==selectedDeck);
+  if(others.length)box.append(deckHeader({id:selectedDeck,name:currentDeckName(),count:list.length},true));
   for(const s of list){
     if(s.group!==grp){grp=s.group;box.append(el("div","grp",grp))}
     i++;const st=state(s);
@@ -225,6 +227,7 @@ function renderTabs(){
     box.append(t);
   }
   if(!sessions.length)box.append(el("div","empty-list",tr("сессий пока нет")));
+  for(const deck of others)renderDeckSection(box,deck,q);
   if(focused)box.querySelector(`[data-session="${CSS.escape(focused)}"]`)?.focus({preventScroll:true});
   const busy=sessions.filter(s=>state(s)==="busy").length;
   $("foot").textContent=tr("{0} сессий · {1} работают",[sessions.length,busy])+(attention.size?tr(" · {0} готово",[attention.size]):"");
@@ -886,6 +889,7 @@ async function loadDeckSettings(){
   populateDeckSelector($("deck_select"),data.decks,selectedDeck,network.name);
   // Most installs have a single machine; the switcher appears once another Agent Deck is connected.
   $("deck_switch").hidden=!data.decks.length&&!selectedDeck;
+  deckDirectory={decks:data.decks,name:network.name};loadOtherDecks();
   $("network_name").value=network.name;$("network_public_url").value=network.public_url;
   $("network_bind").textContent="http://"+network.bind_host+":"+network.bind_port;
   $("network_browser").textContent=location.origin;
@@ -897,6 +901,53 @@ async function loadDeckSettings(){
   renderDeckDiscovery(data.discovery);
   if(selectedDeck&&!data.decks.some(d=>d.id===selectedDeck))switchDeck("");
 }
+// Sessions of every connected machine, so switching environments is one tap from the sidebar.
+let deckDirectory={decks:[],name:""},otherDecks=[],loadingOthers=false,deckOpen={};
+try{deckOpen=JSON.parse(localStore.getItem("cc.deck-open")||"{}")||{}}catch(e){}
+const currentDeckName=()=>selectedDeck?deckDirectory.decks.find(d=>d.id===selectedDeck)?.name||"Agent Deck":deckDirectory.name||tr("Этот Agent Deck");
+async function loadOtherDecks(){
+  if(document.hidden||loadingOthers||!deckDirectory.decks.length){if(!deckDirectory.decks.length&&otherDecks.length){otherDecks=[];renderTabs()}return}
+  loadingOthers=true;
+  const targets=[{id:"",name:deckDirectory.name||tr("Этот Agent Deck")},...deckDirectory.decks.map(d=>({id:d.id,name:d.name}))].filter(d=>d.id!==selectedDeck);
+  try{
+    otherDecks=await Promise.all(targets.map(async d=>{
+      // Lists come without previews: only names and states travel through the gateway.
+      try{return {...d,sessions:(await api(instancePath(d.id,"/api/sessions"),null,true)).sessions}}
+      catch(e){return {...d,sessions:[],error:true}}
+    }));
+  }finally{loadingOthers=false}
+  renderTabs();
+}
+function deckHeader(deck,current){
+  const key=deck.id||"local",open=current||deckOpen[key]!==false;
+  const head=el(current?"div":"button","deck-head"+(current?" current":""),svgIcon("monitor"),el("span","deck-name",deck.name),
+    el("span","deck-count",deck.error?tr("недоступен"):String(deck.count)));
+  if(!current){
+    head.type="button";head.setAttribute("aria-expanded",String(open));head.append(svgIcon(open?"chevron-down":"chevron-right"));
+    head.onclick=()=>{deckOpen[key]=!open;try{localStore.setItem("cc.deck-open",JSON.stringify(deckOpen))}catch(e){}renderTabs()};
+  }
+  return head;
+}
+function renderDeckSection(box,deck,q){
+  const list=deck.sessions.filter(s=>matchesSessionQuery(s,q));
+  if(q&&!list.length)return;
+  box.append(deckHeader({...deck,count:list.length},false));
+  if(deckOpen[deck.id||"local"]===false)return;
+  for(const s of list){
+    const st=state(s),word=st==="busy"?["busy",tr("работает")]:st==="off"?["off",tr("остановлен")]:null;
+    const t=el("div","tab remote",el("span","dot "+st),agentIcon(s),el("div","t",el("div","n",sessionTitle(s)),
+      el("div","s",...(word?[el("span","state "+word[0],word[1])," · "]:[]),shortPath(s.path))));
+    t.title=deck.name+" · "+s.name;t.tabIndex=0;t.setAttribute("role","button");
+    t.onclick=()=>openDeckSession(deck.id,s.name);
+    t.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();openDeckSession(deck.id,s.name)}};
+    box.append(t);
+  }
+}
+function openDeckSession(identity,name){
+  try{instanceStorage(localStore,identity).setItem("cc.active",name)}catch(e){}
+  switchDeck(identity);
+}
+setInterval(loadOtherDecks,10000);
 function switchDeck(identity){
   if(identity===selectedDeck)return;
   if(sending||uploading||choosingImages){$("deck_select").value=selectedDeck;toast(tr("Дождитесь окончания отправки или загрузки"));return}
@@ -1200,7 +1251,7 @@ $("n_git").addEventListener("input",renderAdvanced);
 /* ⌥1..9 — табы, ⌥↑/⌥↓ — пред./след., ⌥T — новая (работает и внутри терминала) */
 function hotkeys(e){
   if(!e.altKey||e.ctrlKey||e.metaKey)return;
-  const vis=[...$("tabs").querySelectorAll(".tab")].map(t=>t.dataset.session);
+  const vis=[...$("tabs").querySelectorAll(".tab:not(.remote)")].map(t=>t.dataset.session);
   let target=null;
   if(/^Digit[1-9]$/.test(e.code)){
     // Non-US Mac layouts type [ ] { } | etc. with Option+digit; keep those characters.
@@ -1285,7 +1336,7 @@ loadUsage();setInterval(loadUsage,60000);loadLM().then(renderInteg);setInterval(
 loadServer();setInterval(loadServer,3600000);
 loadVersion();
 loadIntegrations();
-document.addEventListener("visibilitychange",()=>{if(!document.hidden){checkGithubFoot(true);loadUsage();load();checkInterfaceVersion();loadVersion();if(!$("integrations_dlg").hidden&&!telegramDirty)loadIntegrations()}});
+document.addEventListener("visibilitychange",()=>{if(!document.hidden){checkGithubFoot(true);loadUsage();load();checkInterfaceVersion();loadVersion();loadOtherDecks();if(!$("integrations_dlg").hidden&&!telegramDirty)loadIntegrations()}});
 load();setInterval(load,2500);
 
 loadDeckSettings().catch(e=>toast(e.message));
