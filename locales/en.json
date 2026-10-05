@@ -491,6 +491,17 @@
     "Этот бот также включён на: {0}. Вопросы будут приходить дважды; отключите Telegram там.": "This bot is also on at: {0}. Questions will arrive twice; turn Telegram off there.",
     "Этот браузер использует неизвестный сервис уведомлений": "This browser uses an unknown notification service",
     "Этот браузер не поддерживает уведомления.": "This browser does not support notifications.",
-    "это устройство": "this device"
+    "это устройство": "this device",
+    "Картинка больше 25 МБ": "Image is larger than 25 MB",
+    "Картинка не найдена: {0}": "Image not found: {0}",
+    "Неверный путь к картинке": "Invalid image path",
+    "Открыть картинку {0}": "Open image {0}",
+    "Открыть оригинал": "Open original",
+    "Показываются только PNG, JPEG, WebP и GIF": "Only PNG, JPEG, WebP and GIF are shown",
+    "Предыдущая картинка": "Previous image",
+    "Просмотр картинки": "Image viewer",
+    "Следующая картинка": "Next image",
+    "Файл не похож на картинку: {0}": "File does not look like an image: {0}",
+    "Этой картинки нет на экране сессии": "This image is not on the session screen"
   }
 }

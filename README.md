@@ -29,6 +29,7 @@ after a reboot.
 - Local models in Claude Code, with session speed/TTFT measurements and a separate benchmark; no subscription quotas.
 - UI in 16 languages, switchable in Settings → Application; extensible file-based locales.
 - Notifications on phone and desktop when an agent asks a question or finishes, from every connected computer.
+- Screenshots an agent mentions by path (`/tmp/shot.png`, `docs/home.png`) appear as thumbnails under the line and open in a full-screen viewer, also for sessions on connected computers.
 - Telegram bot integration: receive agent questions with answer buttons in your private chat.
 - One-command installation on Linux and macOS, autostart and panel updates; in-panel agent setup and login.
 
@@ -172,6 +173,14 @@ curl -fsSL https://raw.githubusercontent.com/matacoder/agent-deck/main/get.sh | 
 from the icon. It runs full screen, keeps drafts and supports one-tap answers to agent questions.
 
 **Android.** Open the panel in Chrome, tap **⋮ → Add to Home screen** (or **Install app**).
+
+## Screenshots from agents
+
+When an agent prints the path of a PNG, JPEG, WebP or GIF file — absolute, `~/…` or relative to the
+session folder, even if the terminal wrapped it across lines — the **Screen** view turns the path into a
+link and shows a thumbnail under that line. Tap it for a full-screen viewer: swipe or use ←/→ between
+screenshots of the same screen, **Open original** for full size. A file is served only while its path is
+visible in that session's recent output, only as a real raster image (never SVG), up to 25 MB.
 
 ## Notifications
 

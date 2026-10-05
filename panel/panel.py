@@ -193,6 +193,7 @@ actions_in_progress = 0
 _release_lock = threading.RLock()
 _auto_updates_lock = threading.RLock()
 _auto_updates = None
+IMAGE_TYPES = {"image/png", "image/jpeg", "image/webp", "image/gif"}
 STATIC = {"/icon-180.png": "image/png", "/icon-192.png": "image/png", "/icon-512.png": "image/png",
           "/manifest.webmanifest": "application/manifest+json"}
 
@@ -1710,6 +1711,33 @@ class Handler(BaseHTTPRequestHandler):
         secure = "; Secure" if self.is_https() else ""
         self.redirect("/", f"{COOKIE}={make_token()}; Path=/; Max-Age={COOKIE_DAYS * 86400}; HttpOnly; SameSite=Lax{secure}")
 
+    def serve_session_image(self, query):
+        from integrations.images import read_image
+        name, path = query.get("name", [""])[0], query.get("path", [""])[0]
+        if not NAME_RE.fullmatch(name) or not session_exists(name):
+            return self.send_json(404, {"error": "сессия не найдена"})
+        target = f"={PREFIX}{name}:"
+        screen = tmux("capture-pane", "-p", "-J", "-t", target, "-S", "-2000", check=False)
+        cwd = tmux("display-message", "-p", "-t", target, "#{pane_current_path}", check=False).strip()
+        try:
+            kind, data = read_image(path, cwd or os.path.expanduser("~"), os.path.expanduser("~"), screen)
+        except FileNotFoundError as error:
+            return self.send_json(404, {"error": str(error)})
+        except (ValueError, OSError) as error:
+            return self.send_json(400, {"error": str(error)})
+        return self.send_image(data, kind)
+
+    def send_image(self, data, kind):
+        self.send_response(200)
+        self.send_header("Content-Type", kind)
+        self.send_header("Content-Length", str(len(data)))
+        self.send_header("Cache-Control", "private, max-age=300")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        # Opened directly, the response is inert: no scripts, no same-origin access.
+        self.send_header("Content-Security-Policy", "default-src 'none'; sandbox")
+        self.end_headers()
+        self.wfile.write(data)
+
     def serve_service_worker(self):
         # Kept inside a Python module: a new file under panel/ would be rejected by older updaters.
         from integrations.webpush import SERVICE_WORKER
@@ -1816,6 +1844,8 @@ class Handler(BaseHTTPRequestHandler):
         if parsed.path == "/api/sessions":
             preview_name = parse_qs(parsed.query).get("preview", [None])[0]
             return self.send_json(200, {"sessions": list_sessions(preview_name)})
+        if parsed.path == "/api/image":
+            return self.serve_session_image(parse_qs(parsed.query))
         if parsed.path == "/api/push":
             return self.send_json(200, push_service().status())
         if parsed.path == "/api/backups":
@@ -1946,8 +1976,12 @@ class Handler(BaseHTTPRequestHandler):
                 body = self.read_body(length)
             status, headers, payload = remote_decks.request(identity,self.command,path,body,self.language())
             ctype = next((v for k,v in headers.items() if k.lower()=='content-type'), 'application/octet-stream')
-            # Remote HTML/JS under /api/* would run with the gateway origin.
-            if path.startswith('/api/') and ctype.split(';',1)[0].strip().lower() != 'application/json':
+            # Remote HTML/JS under /api/* would run with the gateway origin; only JSON, and raster
+            # images from the screenshot endpoint, are passed through.
+            base = ctype.split(';',1)[0].strip().lower()
+            if urlsplit(path).path == '/api/image' and status == 200 and base in IMAGE_TYPES:
+                return self.send_image(payload, base)
+            if path.startswith('/api/') and base != 'application/json':
                 raise ValueError('Remote Agent Deck returned a non-JSON API response')
             # ttyd's absolute base path must stay on the gateway, including its WebSocket URL.
             if path.startswith('/t') and 'text/html' in ctype:

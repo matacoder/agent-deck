@@ -127,6 +127,13 @@ __PANEL_STYLE__</style></head><body>
   </div>
 </div><button class="sheet-cancel" onclick="sheet(false)">Отмена</button></div>
 <div id="toast" role="status" aria-live="polite"></div>
+<div id="viewer" class="viewer" hidden role="dialog" aria-modal="true" aria-label="Просмотр картинки" onclick="if(event.target===this)closeViewer()">
+  <img id="viewer_img" alt="">
+  <button type="button" id="viewer_close" class="viewer-close" onclick="closeViewer()" aria-label="Закрыть"><svg class="ui-icon"><use href="#i-x"/></svg></button>
+  <button type="button" id="viewer_prev" class="viewer-step prev" onclick="stepViewer(-1)" aria-label="Предыдущая картинка"><svg class="ui-icon"><use href="#i-chevron-right"/></svg></button>
+  <button type="button" id="viewer_next" class="viewer-step next" onclick="stepViewer(1)" aria-label="Следующая картинка"><svg class="ui-icon"><use href="#i-chevron-right"/></svg></button>
+  <div class="viewer-bar"><span id="viewer_caption"></span><a id="viewer_open" target="_blank" rel="noopener">Открыть оригинал</a></div>
+</div>
 <dialog id="confirm_dlg"><form class="dlg" method="dialog"><div class="dlg-body"><h3 id="confirm_title"></h3><p id="confirm_text"></p></div><div class="acts"><button value="cancel">Отмена</button><button value="ok" class="pri" id="confirm_ok">OK</button></div></form></dialog>
 <dialog id="draft_dlg"><div class="dlg"><div class="dlg-body"><h3>Черновики закрытых сессий</h3><div id="closed_drafts"></div></div><div class="acts"><button type="button" onclick="$('draft_dlg').close()">Закрыть</button></div></div></dialog>
 

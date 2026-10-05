@@ -491,6 +491,17 @@
     "Этот бот также включён на: {0}. Вопросы будут приходить дважды; отключите Telegram там.": "Bot ini juga aktif di: {0}. Pertanyaan akan masuk dua kali; matikan Telegram di sana.",
     "Этот браузер использует неизвестный сервис уведомлений": "Peramban ini memakai layanan notifikasi yang tidak dikenal",
     "Этот браузер не поддерживает уведомления.": "Peramban ini tidak mendukung notifikasi.",
-    "это устройство": "perangkat ini"
+    "это устройство": "perangkat ini",
+    "Картинка больше 25 МБ": "Gambar lebih dari 25 MB",
+    "Картинка не найдена: {0}": "Gambar tidak ditemukan: {0}",
+    "Неверный путь к картинке": "Jalur gambar tidak valid",
+    "Открыть картинку {0}": "Buka gambar {0}",
+    "Открыть оригинал": "Buka asli",
+    "Показываются только PNG, JPEG, WebP и GIF": "Hanya PNG, JPEG, WebP, dan GIF yang ditampilkan",
+    "Предыдущая картинка": "Gambar sebelumnya",
+    "Просмотр картинки": "Penampil gambar",
+    "Следующая картинка": "Gambar berikutnya",
+    "Файл не похож на картинку: {0}": "Berkas tidak tampak seperti gambar: {0}",
+    "Этой картинки нет на экране сессии": "Gambar ini tidak ada di layar sesi"
   }
 }

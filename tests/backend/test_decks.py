@@ -229,3 +229,18 @@ class RemoteDeckTests(PanelCase):
         handler.send_json.assert_not_called()
         self.assertEqual(handler.connection.sendall.call_count,1)
         backend.close.assert_called_once()
+
+    def test_gateway_passes_raster_images_only_from_the_image_endpoint(self):
+        service=self.enterContext(patch.object(self.panel,'remote_decks'))
+        png=b'\x89PNG\r\n\x1a\n'+b'x'*10
+        service.request.return_value=(200,{'Content-Type':'image/png'},png)
+        handler=self.handler();handler.path='/deck/'+ID+'/api/image?name=demo&path=%2Ftmp%2Fa.png';handler.send_image=Mock()
+        handler.get_request()
+        handler.send_image.assert_called_once_with(png,'image/png')
+        for path,ctype in (('/api/image?name=demo&path=x.svg','image/svg+xml'),('/api/images?x=1','image/png'),('/api/sessions','image/png'),('/api/image?name=d&path=a.png','text/html')):
+            with self.subTest(path=path,ctype=ctype):
+                service.request.return_value=(200,{'Content-Type':ctype},b'<svg onload=alert(1)>')
+                handler=self.handler();handler.path='/deck/'+ID+path;handler.send_image=Mock()
+                handler.get_request()
+                handler.send_image.assert_not_called();handler.send_body.assert_not_called()
+                self.assertEqual(handler.send_json.call_args.args[0],502)

@@ -422,7 +422,7 @@ function updateScreen(s,force){
   const changed=p.dataset.raw!==raw;
   if(changed){
     p.dataset.raw=raw;p.replaceChildren();
-    const lines=joinUrlLines(ansiLines(raw));
+    const lines=joinImageLines(joinUrlLines(ansiLines(raw)));screenImages=[];
     // A session known only from another computer's list has no preview yet: show nothing, not "empty".
     if(!lines.length&&(s.preview!==undefined||s.preview_ansi!==undefined))p.append(el("div","preview-empty",tr("В tmux пока нет текста. Можно переключиться в «Терм» и проверить сессию.")));
     for(const runs of lines){
@@ -432,12 +432,20 @@ function updateScreen(s,force){
       if(line.length>=8&&boxN&&BOX_LINE.test(line)){if(!(p.lastChild&&p.lastChild.className==="hr"))p.append(el("div","hr"));continue}
       if(line.length>=20&&boxN/line.length>=0.8){p.append(el("div","hrl",line.replace(BOX_CHARS,"").trim()));continue}
       const d=el("div","ln");let i=0;
-      for(const m of line.matchAll(URL_RE)){
-        const u=cleanUrl(m[0]);appendStyledRange(d,runs,i,m.index);
-        const a=document.createElement("a");a.href=resolvePanelLink(u);a.target="_blank";a.rel="noopener";
-        appendStyledRange(a,runs,m.index,m.index+u.length);d.append(a);i=m.index+u.length;
+      const urls=[...line.matchAll(URL_RE)].map(m=>({index:m.index,url:cleanUrl(m[0])}));
+      const images=imageMatches(line,urls.map(u=>[u.index,u.index+u.url.length]));
+      for(const m of [...urls,...images].sort((x,y)=>x.index-y.index)){
+        appendStyledRange(d,runs,i,m.index);
+        if(m.url){
+          const a=document.createElement("a");a.href=resolvePanelLink(m.url);a.target="_blank";a.rel="noopener";
+          appendStyledRange(a,runs,m.index,m.index+m.url.length);d.append(a);i=m.index+m.url.length;
+        }else{d.append(imageLink(s.name,m.path,runs,m.index,m.index+m.path.length));i=m.index+m.path.length}
       }
       appendStyledRange(d,runs,i,line.length);p.append(d);
+      if(images.length){
+        for(const m of images)if(!screenImages.includes(m.path))screenImages.push(m.path);
+        p.append(imageStrip(s.name,images.map(m=>m.path)));
+      }
     }
   }
   if(stick)p.scrollTop=p.scrollHeight;

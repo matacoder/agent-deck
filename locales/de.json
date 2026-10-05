@@ -491,6 +491,17 @@
     "Этот бот также включён на: {0}. Вопросы будут приходить дважды; отключите Telegram там.": "Dieser Bot ist auch eingeschaltet auf: {0}. Fragen kommen doppelt; Telegram dort ausschalten.",
     "Этот браузер использует неизвестный сервис уведомлений": "Dieser Browser nutzt einen unbekannten Benachrichtigungsdienst",
     "Этот браузер не поддерживает уведомления.": "Dieser Browser unterstützt keine Benachrichtigungen.",
-    "это устройство": "dieses Gerät"
+    "это устройство": "dieses Gerät",
+    "Картинка больше 25 МБ": "Bild ist größer als 25 MB",
+    "Картинка не найдена: {0}": "Bild nicht gefunden: {0}",
+    "Неверный путь к картинке": "Ungültiger Bildpfad",
+    "Открыть картинку {0}": "Bild {0} öffnen",
+    "Открыть оригинал": "Original öffnen",
+    "Показываются только PNG, JPEG, WebP и GIF": "Nur PNG, JPEG, WebP und GIF werden angezeigt",
+    "Предыдущая картинка": "Vorheriges Bild",
+    "Просмотр картинки": "Bildansicht",
+    "Следующая картинка": "Nächstes Bild",
+    "Файл не похож на картинку: {0}": "Datei sieht nicht wie ein Bild aus: {0}",
+    "Этой картинки нет на экране сессии": "Dieses Bild ist nicht auf dem Sitzungsbildschirm"
   }
 }

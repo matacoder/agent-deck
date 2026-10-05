@@ -158,6 +158,21 @@ iframe[inert]{pointer-events:none}
 #pre .hrl{display:flex;align-items:center;gap:8px;margin:.4em 0;color:var(--mut);font-size:11px}
 #pre .hrl::before{content:"";flex:1;height:1px;background:var(--bd)}
 #pre a{color:var(--link);text-decoration:underline;word-break:break-all}
+#pre a.img-link{color:var(--link);text-decoration:underline dotted;text-underline-offset:3px;word-break:break-all;cursor:zoom-in}
+.img-strip{display:flex;gap:8px;overflow-x:auto;padding:6px 0 10px;white-space:normal;scrollbar-width:thin}
+.img-thumb{flex:none;display:block;height:120px;max-width:240px;padding:0;border:1px solid var(--bd);border-radius:8px;overflow:hidden;background:var(--side2);cursor:zoom-in}
+.img-thumb img{display:block;height:100%;width:auto;max-width:240px;object-fit:cover}
+.img-thumb:hover{border-color:#55555b}
+.viewer{position:fixed;inset:0;z-index:70;display:grid;place-items:center;background:rgba(10,10,12,.94);padding:calc(var(--sat) + 56px) 12px calc(var(--sab) + 64px)}
+.viewer[hidden]{display:none}
+.viewer img{max-width:100%;max-height:100%;object-fit:contain;border-radius:6px;box-shadow:0 10px 40px #000a;touch-action:pinch-zoom;background:#fff1}
+.viewer-close{position:absolute;top:calc(var(--sat) + 10px);right:12px;display:grid;place-items:center;width:var(--tap);height:var(--tap);border-radius:50%;background:#ffffff1a;color:#fff}
+.viewer-close svg,.viewer-step svg{width:20px;height:20px}
+.viewer-step{position:absolute;top:50%;display:grid;place-items:center;width:var(--tap);height:var(--tap);margin-top:-22px;border-radius:50%;background:#ffffff1a;color:#fff}
+.viewer-step.prev{left:12px;transform:scaleX(-1)}.viewer-step.next{right:12px}
+.viewer-bar{position:absolute;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px calc(var(--sab) + 12px);color:#c8c8cc;font-size:12.5px}
+.viewer-bar span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--mono)}
+.viewer-bar a{flex:none;color:#fff;text-decoration:none;padding:8px 12px;border-radius:8px;background:#ffffff1a}
 #pre .preview-empty{color:var(--mut);white-space:normal;padding:16px 0}
 #jump{position:absolute;right:14px;bottom:12px;display:none;align-items:center;gap:6px;height:36px;padding:0 14px 0 10px;border-radius:18px;background:var(--sel);border:1px solid var(--bd);color:var(--fg2);font-size:12.5px;box-shadow:0 6px 20px #0008}
 #jump.on{display:inline-flex}
@@ -681,6 +696,13 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
   </div>
 </div><button class="sheet-cancel" onclick="sheet(false)">Отмена</button></div>
 <div id="toast" role="status" aria-live="polite"></div>
+<div id="viewer" class="viewer" hidden role="dialog" aria-modal="true" aria-label="Просмотр картинки" onclick="if(event.target===this)closeViewer()">
+  <img id="viewer_img" alt="">
+  <button type="button" id="viewer_close" class="viewer-close" onclick="closeViewer()" aria-label="Закрыть"><svg class="ui-icon"><use href="#i-x"/></svg></button>
+  <button type="button" id="viewer_prev" class="viewer-step prev" onclick="stepViewer(-1)" aria-label="Предыдущая картинка"><svg class="ui-icon"><use href="#i-chevron-right"/></svg></button>
+  <button type="button" id="viewer_next" class="viewer-step next" onclick="stepViewer(1)" aria-label="Следующая картинка"><svg class="ui-icon"><use href="#i-chevron-right"/></svg></button>
+  <div class="viewer-bar"><span id="viewer_caption"></span><a id="viewer_open" target="_blank" rel="noopener">Открыть оригинал</a></div>
+</div>
 <dialog id="confirm_dlg"><form class="dlg" method="dialog"><div class="dlg-body"><h3 id="confirm_title"></h3><p id="confirm_text"></p></div><div class="acts"><button value="cancel">Отмена</button><button value="ok" class="pri" id="confirm_ok">OK</button></div></form></dialog>
 <dialog id="draft_dlg"><div class="dlg"><div class="dlg-body"><h3>Черновики закрытых сессий</h3><div id="closed_drafts"></div></div><div class="acts"><button type="button" onclick="$('draft_dlg').close()">Закрыть</button></div></div></dialog>
 
@@ -1158,6 +1180,88 @@ if("serviceWorker" in navigator&&window.isSecureContext){
 }
 
 if(typeof module!=="undefined")module.exports={pushBlocker,deviceLabel,base64UrlBytes};
+// Screenshots and previews that agents mention by path: clickable, with thumbnails and a viewer.
+const IMAGE_PATH_RE=/(?<![\w/.~@+-])(?:~?\/)?(?:[\w.@+-]+\/)*[\w.@+-]+\.(?:png|jpe?g|webp|gif)(?![\w-]|\.\w)/gi;
+const IMAGE_HEAD_RE=/^[\w./@+-]+\.(?:png|jpe?g|webp|gif)(?![\w-]|\.\w)/i;
+let screenImages=[],viewerIndex=0;
+
+function imageMatches(text,taken=[]){
+  // taken: [start,end) ranges already used by URLs, so https://x/a.png stays a web link.
+  const result=[];
+  for(const m of text.matchAll(IMAGE_PATH_RE)){
+    const start=m.index,end=start+m[0].length;
+    if(!taken.some(([a,b])=>start<b&&end>a))result.push({index:start,path:m[0]});
+  }
+  return result;
+}
+// Agents hard-wrap long paths ("…/padel-w1-cashier-" + "preview/shot.png"); glue such lines back.
+function joinImageLines(lines){
+  const text=runs=>runs.map(r=>r.text).join(""),out=[];
+  for(let i=0;i<lines.length;i++){
+    const runs=lines[i].slice();
+    while(i+1<lines.length){
+      const tail=text(runs).trimEnd().match(/[\w.~@+-]*\/[\w./@+-]*$/);
+      if(!tail||/\.(?:png|jpe?g|webp|gif)$/i.test(tail[0])||!IMAGE_HEAD_RE.test(text(lines[i+1])))break;
+      for(let j=runs.length-1;j>=0&&/\s$/.test(runs[j].text);j--)runs[j]={...runs[j],text:runs[j].text.trimEnd()};
+      runs.push(...lines[++i]);
+    }
+    out.push(runs);
+  }
+  return out;
+}
+
+function imageUrl(session,path){return activePath("/api/image?name="+encodeURIComponent(session)+"&path="+encodeURIComponent(path))}
+function imageLink(session,path,runs,from,to){
+  const link=el("a","img-link");link.href=imageUrl(session,path);
+  appendStyledRange(link,runs,from,to);
+  link.onclick=event=>{event.preventDefault();openViewer(path)};
+  return link;
+}
+function imageStrip(session,paths){
+  const strip=el("div","img-strip");
+  for(const path of new Set(paths)){
+    const thumb=el("button","img-thumb"),img=document.createElement("img");
+    thumb.type="button";thumb.title=path;thumb.setAttribute("aria-label",tr("Открыть картинку {0}",[path.split("/").pop()]));
+    img.loading="lazy";img.decoding="async";img.alt="";img.src=imageUrl(session,path);
+    // Missing files, or paths no longer on screen, simply leave the text without a preview.
+    img.onerror=()=>thumb.remove();
+    thumb.append(img);thumb.onclick=()=>openViewer(path);strip.append(thumb);
+  }
+  return strip;
+}
+
+function openViewer(path){
+  viewerIndex=Math.max(0,screenImages.indexOf(path));
+  if(!screenImages.includes(path))screenImages=[path];
+  renderViewer();$("viewer").hidden=false;$("viewer_close").focus();
+}
+function renderViewer(){
+  const path=screenImages[viewerIndex],url=imageUrl(active,path);
+  $("viewer_img").src=url;$("viewer_open").href=url;
+  $("viewer_caption").textContent=(screenImages.length>1?(viewerIndex+1)+" / "+screenImages.length+"  ·  ":"")+path.split("/").pop();
+  $("viewer_caption").title=path;
+  $("viewer_prev").hidden=$("viewer_next").hidden=screenImages.length<2;
+}
+function stepViewer(delta){viewerIndex=(viewerIndex+delta+screenImages.length)%screenImages.length;renderViewer()}
+function closeViewer(){$("viewer").hidden=true;$("viewer_img").removeAttribute("src")}
+if(typeof document!=="undefined"&&document.getElementById("viewer")){
+  addEventListener("keydown",e=>{
+    if($("viewer").hidden)return;
+    if(e.key==="Escape")closeViewer();else if(e.key==="ArrowRight")stepViewer(1);else if(e.key==="ArrowLeft")stepViewer(-1);else return;
+    e.preventDefault();e.stopPropagation();
+  },true);
+  // Horizontal swipe flips between screenshots on a phone.
+  // Runs before app.js defines $, so the element is looked up directly.
+  const viewer=document.getElementById("viewer");let touchX=null;
+  viewer.addEventListener("touchstart",e=>{touchX=e.touches.length===1?e.touches[0].clientX:null},{passive:true});
+  viewer.addEventListener("touchend",e=>{
+    if(touchX===null||screenImages.length<2)return;
+    const dx=e.changedTouches[0].clientX-touchX;touchX=null;
+    if(Math.abs(dx)>60)stepViewer(dx<0?1:-1);
+  },{passive:true});
+}
+
+if(typeof module!=="undefined")module.exports={imageMatches,joinImageLines,IMAGE_PATH_RE};
 const I18N=__PANEL_I18N__;
 const DATE_LOCALE=(()=>{try{return Intl.getCanonicalLocales(I18N.language)[0]}catch(e){return "en"}})();
 const $=id=>document.getElementById(id);
@@ -1582,7 +1686,7 @@ function updateScreen(s,force){
   const changed=p.dataset.raw!==raw;
   if(changed){
     p.dataset.raw=raw;p.replaceChildren();
-    const lines=joinUrlLines(ansiLines(raw));
+    const lines=joinImageLines(joinUrlLines(ansiLines(raw)));screenImages=[];
     // A session known only from another computer's list has no preview yet: show nothing, not "empty".
     if(!lines.length&&(s.preview!==undefined||s.preview_ansi!==undefined))p.append(el("div","preview-empty",tr("В tmux пока нет текста. Можно переключиться в «Терм» и проверить сессию.")));
     for(const runs of lines){
@@ -1592,12 +1696,20 @@ function updateScreen(s,force){
       if(line.length>=8&&boxN&&BOX_LINE.test(line)){if(!(p.lastChild&&p.lastChild.className==="hr"))p.append(el("div","hr"));continue}
       if(line.length>=20&&boxN/line.length>=0.8){p.append(el("div","hrl",line.replace(BOX_CHARS,"").trim()));continue}
       const d=el("div","ln");let i=0;
-      for(const m of line.matchAll(URL_RE)){
-        const u=cleanUrl(m[0]);appendStyledRange(d,runs,i,m.index);
-        const a=document.createElement("a");a.href=resolvePanelLink(u);a.target="_blank";a.rel="noopener";
-        appendStyledRange(a,runs,m.index,m.index+u.length);d.append(a);i=m.index+u.length;
+      const urls=[...line.matchAll(URL_RE)].map(m=>({index:m.index,url:cleanUrl(m[0])}));
+      const images=imageMatches(line,urls.map(u=>[u.index,u.index+u.url.length]));
+      for(const m of [...urls,...images].sort((x,y)=>x.index-y.index)){
+        appendStyledRange(d,runs,i,m.index);
+        if(m.url){
+          const a=document.createElement("a");a.href=resolvePanelLink(m.url);a.target="_blank";a.rel="noopener";
+          appendStyledRange(a,runs,m.index,m.index+m.url.length);d.append(a);i=m.index+m.url.length;
+        }else{d.append(imageLink(s.name,m.path,runs,m.index,m.index+m.path.length));i=m.index+m.path.length}
       }
       appendStyledRange(d,runs,i,line.length);p.append(d);
+      if(images.length){
+        for(const m of images)if(!screenImages.includes(m.path))screenImages.push(m.path);
+        p.append(imageStrip(s.name,images.map(m=>m.path)));
+      }
     }
   }
   if(stick)p.scrollTop=p.scrollHeight;

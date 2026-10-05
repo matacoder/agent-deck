@@ -491,6 +491,17 @@
     "Этот бот также включён на: {0}. Вопросы будут приходить дважды; отключите Telegram там.": "Bu bot şurada da açık: {0}. Sorular iki kez gelecek; orada Telegram'ı kapatın.",
     "Этот браузер использует неизвестный сервис уведомлений": "Bu tarayıcı bilinmeyen bir bildirim servisi kullanıyor",
     "Этот браузер не поддерживает уведомления.": "Bu tarayıcı bildirimleri desteklemiyor.",
-    "это устройство": "bu cihaz"
+    "это устройство": "bu cihaz",
+    "Картинка больше 25 МБ": "Görsel 25 MB'tan büyük",
+    "Картинка не найдена: {0}": "Görsel bulunamadı: {0}",
+    "Неверный путь к картинке": "Geçersiz görsel yolu",
+    "Открыть картинку {0}": "{0} görselini aç",
+    "Открыть оригинал": "Orijinali aç",
+    "Показываются только PNG, JPEG, WebP и GIF": "Yalnızca PNG, JPEG, WebP ve GIF gösterilir",
+    "Предыдущая картинка": "Önceki görsel",
+    "Просмотр картинки": "Görsel görüntüleyici",
+    "Следующая картинка": "Sonraki görsel",
+    "Файл не похож на картинку: {0}": "Dosya görsele benzemiyor: {0}",
+    "Этой картинки нет на экране сессии": "Bu görsel oturum ekranında yok"
   }
 }

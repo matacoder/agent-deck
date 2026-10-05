@@ -2,6 +2,11 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.7.0 — 2026-10-05
+
+- Screenshots in agent output: image paths (absolute, `~/`, relative to the session, including paths the agent wrapped across lines) become links with thumbnails in the Screen view and open in a full-screen viewer with swipe/arrow navigation and "Open original". Works for sessions on connected Agent Decks.
+- New `GET /api/image?name=&path=`: serves only paths visible in the session's recent output, only PNG/JPEG/WebP/GIF verified by content, up to 25 MB, with `nosniff` and a sandbox CSP. The gateway relays images only from this endpoint.
+
 ## 1.6.0 — 2026-10-05
 
 - **New runtime dependency:** `cryptography`, pinned per platform and Python version (URL + SHA-256 in `integrations/dependency_lock.py`). The installer or the running panel downloads the wheels into `~/.local/share/agent-deck/python/` without pip, virtualenv or root; offline panels keep working and retry every 10 minutes. Intel Macs use cryptography 48.0.1, the last release with Intel macOS wheels.

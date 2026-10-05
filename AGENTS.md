@@ -64,6 +64,7 @@ tmux sessions: name `cc-<name>`, options `@cc_agent` (claude\|codex\|shell),
 - **Origin check** on every mutable JSON request and on the WebSocket upgrade. Sibling origins (same port, different host) **must be rejected**.
 - **Login rate limit**: per-IP + global. Reserve a slot *before* reading the body, with a lock, so five delayed requests cannot create five slots.
 - **`X-Forwarded-For` proxy header** — trusted only from private networks or the same host; otherwise client IP = socket peer.
+- **Session images** (`/api/image`): only paths visible in that session's recent output, only regular PNG/JPEG/WebP/GIF by content (no SVG), ≤25 MB, sent with `nosniff` and `CSP: sandbox`. The gateway passes non-JSON `/api/*` responses only for `/api/image` with those four types.
 - **Uploads**: ≤4 files, ≤200 MB each, 7-day TTL, per-minute cleanup. Symlinks inside the upload directory **must be rejected**.
 - **Local `/t/*`** — Unix-socket ttyd only, raw bytes. Connected `/deck/<id>/t/*` routes may proxy only to an authenticated Agent Deck on a numeric Tailscale IPv4 address. Never forward gateway cookies/credentials to the remote browser; check gateway origins before mutations and WebSocket upgrades.
 - **Telegram**: pairing is one-shot, 10-minute expiry, bound to `user_id` + `chat_id`. Replies only from the paired account. Callbacks are bound to owner + chat + message_id + session + conversation + question contents. On ambiguous delivery failure — **do not replay** (avoiding a duplicate is preferred to risking a double-send).
