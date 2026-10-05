@@ -13,7 +13,7 @@ const render=(extra={})=>{
 test('question options become one-tap buttons with their original index',()=>{
  const {box,onAnswer}=render();
  const buttons=box.querySelectorAll('.q-opt');
- expect([...buttons].map(b=>b.textContent)).toEqual(['1Yes','2Always <b>','✎Type something']);
+ expect([...buttons].map(b=>b.textContent)).toEqual(['1Yes','2Always <b>','Type something']);
  buttons[1].click();expect(onAnswer).toHaveBeenCalledWith(1);
  expect(buttons[1].classList.contains('selected')).toBe(true);
  expect(box.querySelector('.q-progress').textContent).toBe('Question 1/2');

@@ -529,6 +529,20 @@
     "Панель вернула неожиданный ответ": "Le panneau a renvoyé une réponse inattendue",
     "Связь восстановлена": "Connexion rétablie",
     "Подключаюсь…": "Connexion…",
-    "Нет связи с панелью · повторяю": "Pas de connexion au panneau · nouvel essai"
+    "Нет связи с панелью · повторяю": "Pas de connexion au panneau · nouvel essai",
+    "Добавить компьютер": "Ajouter un serveur",
+    "Поиск компьютеров на известных узлах": "Recherche de serveurs sur les nœuds connus",
+    "Адрес компьютера": "Adresse du serveur",
+    "Найти компьютеры": "Trouver des serveurs",
+    "Бэкапы выключены на этом компьютере.": "Les sauvegardes sont désactivées sur cette machine.",
+    "На этом компьютере включены бэкапы с другим кодом восстановления": "Les sauvegardes de cette machine utilisent un autre code de récupération",
+    "Скачать бэкап этого компьютера": "Télécharger la sauvegarde de cette machine",
+    "Сохраните код в менеджере паролей. Без него бэкап на новом компьютере не расшифровать. Больше он показан не будет.": "Enregistrez le code dans un gestionnaire de mots de passe. Sans lui, une sauvegarde ne peut pas être déchiffrée sur une nouvelle machine. Il ne sera plus affiché.",
+    "Этот компьютер": "Cette machine",
+    "Этот компьютер сам хранит свои бэкапы": "Cette machine conserve ses propres sauvegardes",
+    "копий на других компьютерах: {0}": "copies sur d’autres machines : {0}",
+    "Слишком много компьютеров в хранилище бэкапов": "Trop de machines dans le stockage des sauvegardes",
+    "Компьютер прислал бэкап под чужим именем": "A computer sent a backup under another computer's name",
+    "Эта функция недоступна: обновите Agent Deck на этом компьютере": "This feature is unavailable: update Agent Deck on this computer"
   }
 }

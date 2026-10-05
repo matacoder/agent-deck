@@ -2,6 +2,19 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.10.0 — 2026-10-05
+
+No breaking changes: configuration, API and installers are unchanged.
+
+- Backups: a stored copy must decrypt with the group's key and carry a plausible time, so a copy from outside the group or a corrupted one never takes a place in the store. A connected computer may fill only its own folder (the first connection that sent a computer's backups owns it; a removed and re-added connection keeps working). Old copies are pruned by time as a number, and one failing copy no longer stops the replication cycle. The backup list reads only file headers.
+- Screenshot thumbnails: the file content is checked before ImageMagick or `sips` sees it, and ImageMagick gets an explicit format, so a file named `.png` that is really SVG/PostScript is never converted. Thumbnails unused for 7 days are deleted.
+- Telegram: answering a question on a connected computer no longer blocks the integration settings and status while the answer is delivered (the database claim still prevents a second answer).
+- Encryption components: after an update that pins a new `cryptography` and before it downloads (or while offline), the previously installed copy keeps backups and notifications working.
+- Updates: every `integrations/*.py` module of a release must import before the running panel is stopped; a broken release is rejected and the current version keeps running.
+- Notifications: connected computers' session lists are fetched in parallel; a malformed or unreachable computer no longer stops notifications for the others, and its sessions do not look finished after a blip.
+- Partial uploads left by a restart are removed after an hour; a missing session transcript is searched for at most every 30 s instead of on every scan.
+- Interface: one word for every connected machine — "computer"; a route an older Agent Deck lacks shows "This feature is unavailable: update Agent Deck on this computer" instead of "Not Found"; on phones, messages over full-screen dialogs appear at the bottom; "Check for updates" (or the update itself) is the primary button in Settings → App; count badges have higher contrast; reduced motion stops all animations; inputs show a focus ring; the custom-answer option uses the pencil icon; the connect-computer button no longer looks like "New session"; the login prompt after an expired session is no longer replaced by another message; logout while offline reports it; all restore warnings are shown together.
+
 ## 1.9.2 — 2026-10-05
 
 - Fix: a message with attached images could stay in the agent's input without being sent. Enter is now sent once the agent has finished attaching the files (the screen stops changing, up to 4 s; 1 s for plain text) instead of after a fixed 0.2 s.

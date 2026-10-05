@@ -198,15 +198,17 @@ class Telegram:
                     with self.lock:
                         if c.get('token') != self.config.get('token'):
                             break
-                        try:
-                            problem = self.handle(update) or problem
-                        except TelegramError as error:
-                            problem = str(error)
-                        except Exception:
-                            problem = 'Telegram: не удалось обработать обновление'
-                        # Always advance: a failing update would otherwise be re-fetched forever.
-                        # Dropping it is safe because claim-before-input prevents double answers.
-                        self.database().offset(update['update_id'] + 1)
+                    # Not under the lock: an answer to a connected computer takes seconds, and status
+                    # and settings requests must not wait for it.
+                    try:
+                        problem = self.handle(update) or problem
+                    except TelegramError as error:
+                        problem = str(error)
+                    except Exception:
+                        problem = 'Telegram: не удалось обработать обновление'
+                    # Always advance: a failing update would otherwise be re-fetched forever.
+                    # Dropping it is safe because claim-before-input prevents double answers.
+                    self.database().offset(update['update_id'] + 1)
                 with self.lock:
                     self.error = problem
             except TelegramError as error:
@@ -268,30 +270,38 @@ class Telegram:
                 db.set_status(row['id'], 'sent', result['message_id'])
 
     def handle(self, update):
-        # Caller holds the integration lock: token/owner cannot change during an answer.
-        c = self.config
         message = update.get('message', {})
         chat = message.get('chat', {})
         actor = message.get('from', {})
         text = message.get('text', '')
         if (chat.get('type') == 'private' and isinstance(actor.get('id'), int) and actor['id'] > 0
                 and not actor.get('is_bot') and chat.get('id') == actor.get('id') and text.startswith('/start deck_')):
-            candidate = text.split(' ', 1)[1].removeprefix('deck_')
-            valid = time.time() < c.get('pair_deadline', 0) and hmac.compare_digest(
-                hashlib.sha256(candidate.encode()).hexdigest(), c.get('pair_hash', ''))
-            if valid:
-                self.database().reset()
-                c.update(chat_id=chat['id'], user_id=actor['id'], enabled=True,
-                         account=actor.get('username') or actor.get('first_name', 'Telegram'),
-                         pair_hash='', pair_deadline=0)
-                self.pair_code = None
-                atomic_json(self.path, c)
-                self.api.call(c['token'], 'sendMessage', chat_id=chat['id'],
-                              text=self.translate('Agent Deck подключён. Вопросы агентов придут сюда с кнопками ответа.'))
-            return
+            with self.lock:  # Pairing changes the owner: nothing else may read the config meanwhile.
+                return self.handle_pairing(chat, actor, text)
+        # Answers use a snapshot: the owner checked here is the one the answer is bound to; the
+        # database claim, not the lock, is what prevents a second answer.
+        with self.lock:
+            c = self.config.copy()
         if message.get('reply_to_message') and text:
-            return self.handle_reply(message, chat, actor, text)
-        callback = update.get('callback_query')
+            return self.handle_reply(c, message, chat, actor, text)
+        return self.handle_callback(c, update.get('callback_query'))
+
+    def handle_pairing(self, chat, actor, text):
+        c = self.config
+        candidate = text.split(' ', 1)[1].removeprefix('deck_')
+        valid = time.time() < c.get('pair_deadline', 0) and hmac.compare_digest(
+            hashlib.sha256(candidate.encode()).hexdigest(), c.get('pair_hash', ''))
+        if valid:
+            self.database().reset()
+            c.update(chat_id=chat['id'], user_id=actor['id'], enabled=True,
+                     account=actor.get('username') or actor.get('first_name', 'Telegram'),
+                     pair_hash='', pair_deadline=0)
+            self.pair_code = None
+            atomic_json(self.path, c)
+            self.api.call(c['token'], 'sendMessage', chat_id=chat['id'],
+                          text=self.translate('Agent Deck подключён. Вопросы агентов придут сюда с кнопками ответа.'))
+
+    def handle_callback(self, c, callback):
         if not callback:
             return
         msg = callback.get('message', {})
@@ -329,9 +339,8 @@ class Telegram:
                            text=self.translate(result_text)[:180],
                            show_alert=result_text != 'Ответ передан агенту') or problem
 
-    def handle_reply(self, message, chat, actor, text):
+    def handle_reply(self, c, message, chat, actor, text):
         """A reply to a question message answers its "Other / Type something" option with that text."""
-        c = self.config
         if not (self.eligible(c) and chat.get('type') == 'private' and actor.get('id') == c.get('user_id')
                 and chat.get('id') == c.get('chat_id')) or text.startswith('/'):
             return

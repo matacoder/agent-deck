@@ -160,6 +160,31 @@ class BackupTests(unittest.TestCase):
             alpha.store(b'garbage')
 
 
+class StoreValidationTests(unittest.TestCase):
+    def setUp(self):
+        require_crypto(self)
+
+    def test_only_copies_sealed_with_the_group_key_and_a_plausible_time_are_kept(self):
+        alpha, stranger = machine(self), machine(self, 'stranger')
+        alpha.setup(); stranger.setup()
+        forged = B.seal(stranger.key(), {'origin': '1' * 24, 'created': 1000, 'name': 'x'}, b'')
+        with self.assertRaisesRegex(ValueError, 'другим кодом'):
+            alpha.store(forged)
+        for created in (0, 10 ** 30):
+            with self.subTest(created=created), self.assertRaises(ValueError):
+                alpha.store(B.seal(alpha.key(), {'origin': '1' * 24, 'created': created, 'name': 'x'}, b''))
+        self.assertFalse((alpha.store_dir / ('1' * 24)).exists())
+
+    def test_retention_compares_times_as_numbers(self):
+        alpha = machine(self); alpha.setup()
+        origin = '1' * 24
+        for created in [999_999_999 - i for i in range(B.KEEP)] + [1_000_000_000]:
+            alpha.store(B.seal(alpha.key(), {'origin': origin, 'created': created, 'name': 'x'}, b''))
+        names = {p.stem for p in (alpha.store_dir / origin).iterdir()}
+        self.assertIn('1000000000', names)  # As strings, "1000000000" sorts first and was deleted.
+        self.assertEqual(len(names), B.KEEP)
+
+
 class FakeDecks:
     """Connected machines answering the backup API like a remote panel would."""
     def __init__(self, test, **machines):
@@ -220,6 +245,34 @@ class ReplicationTests(unittest.TestCase):
         self.assertEqual(gateway.status()['report']['machines'][0]['ok'], False)
 
 
+class ImpersonationTests(unittest.TestCase):
+    def setUp(self):
+        require_crypto(self)
+
+    def test_a_connected_machine_cannot_fill_another_machines_folder(self):
+        gateway, mac, server = machine(self, 'gw'), machine(self, 'mac'), machine(self, 'server')
+        gateway.setup()
+        decks = FakeDecks(self, mac=mac, server=server)
+        B.replicate(gateway, decks)
+        real = server.instance_id()
+        # The mac starts answering with backups that claim to be the server.
+        mac.instance_id = lambda: real
+        report = B.replicate(gateway, decks)
+        errors = {m['name']: m.get('error', '') for m in report['machines']}
+        self.assertIn('чужим именем', errors['mac'])
+        self.assertTrue(next(m for m in report['machines'] if m['name'] == 'server')['ok'])
+
+    def test_a_reconnected_machine_keeps_its_folder(self):
+        gateway, mac = machine(self, 'gw'), machine(self, 'mac')
+        gateway.setup()
+        B.replicate(gateway, FakeDecks(self, mac=mac))
+        # Removed and added again: a new deck id for the same machine.
+        decks = FakeDecks(self, again=mac)
+        decks.ids = {'again': 'f' * 24}
+        report = B.replicate(gateway, decks)
+        self.assertTrue(report['machines'][0]['ok'], report)
+
+
 class PanelBackupTests(PanelCase):
     def setUp(self):
         super().setUp()
@@ -231,7 +284,7 @@ class PanelBackupTests(PanelCase):
         blob = alpha.create()
         with patch.object(self.panel, 'backup_service', return_value=alpha), \
              patch.object(self.panel, 'restart_soon') as restart:
-            with self.assertRaisesRegex(ValueError, 'сама хранит'):
+            with self.assertRaisesRegex(ValueError, 'сам хранит'):
                 self.panel.action_backup_store({'blob': base64.b64encode(blob).decode()})
             meta = B.read_meta(blob)[0]
             result = self.panel.action_backup_restore({'origin': meta['origin'], 'created': meta['created']})

@@ -23,7 +23,7 @@ from .dependency_lock import WHEELS
 
 MAX_WHEEL = 32 * 1024 * 1024
 ROOT = Path.home() / '.local/share/agent-deck/python'
-_state = {'ready': False, 'installing': False, 'error': ''}
+_state = {'ready': False, 'installing': False, 'error': '', 'previous': False}
 _lock = threading.Lock()
 
 
@@ -76,7 +76,13 @@ def _extract(data, folder):
             path.chmod(0o755 if mode & 0o111 else 0o644)
 
 
-def install(key=None, root=None, opener=None):
+def prune(folder):
+    for old in folder.parent.glob(folder.name.rsplit('-', 1)[0] + '-*'):
+        if old != folder and not old.name.startswith('.'):
+            shutil.rmtree(old, ignore_errors=True)  # Superseded lock or interpreter build.
+
+
+def install(key=None, root=None, opener=None, keep_previous=False):
     key = key or platform_key()
     if key not in WHEELS:
         raise ValueError(f'No prebuilt cryptography for {key or sys.platform}; Linux (glibc) and macOS are supported')
@@ -98,16 +104,30 @@ def install(key=None, root=None, opener=None):
     finally:
         if staging.exists():
             shutil.rmtree(staging, ignore_errors=True)
-    for old in base.glob(key.split('-')[0] + '-*'):
-        if old != folder and not old.name.startswith('.'):
-            shutil.rmtree(old, ignore_errors=True)  # Superseded lock or interpreter build.
+    if not keep_previous:
+        prune(folder)
     return folder
+
+
+def previous_install(key, root=None):
+    """The newest complete directory of an earlier lock for this interpreter, kept until the new one installs."""
+    base = (root or ROOT)
+    found = [p for p in base.glob(key + '-*') if (p / '.complete').is_file()] if base.is_dir() else []
+    return max(found, key=lambda p: (p / '.complete').stat().st_mtime, default=None)
 
 
 def activate(root=None):
     """Prefer the pinned wheels; a cryptography that is already importable (system package) also works."""
     key = platform_key()
     folder = target(key, root) if key in WHEELS else None
+    if folder and not (folder / '.complete').is_file() and key:
+        # After an update that changed the lock and before the download finishes (or while offline),
+        # the previous wheels keep backups and notifications working.
+        previous = previous_install(key, root)
+        if previous:
+            folder, _state['previous'] = previous, True
+    elif folder and (folder / '.complete').is_file() and 'cryptography' not in sys.modules:
+        prune(folder)  # Nothing is loaded yet, so copies of earlier locks can go.
     if folder and (folder / '.complete').is_file() and str(folder) not in sys.path:
         sys.path.insert(0, str(folder))
         importlib.invalidate_caches()
@@ -123,18 +143,20 @@ def activate(root=None):
 
 def ensure(background=True, retry=600):
     """Make cryptography importable; downloads once, retries while offline."""
-    if _state['ready'] or activate():
+    if (_state['ready'] or activate()) and not _state['previous']:
         return True
 
     def work():
         while True:
             with _lock:
-                if _state['ready']:
+                if _state['ready'] and not _state['previous']:
                     return
                 _state['installing'] = True
                 try:
-                    install()
-                    if activate():
+                    # The running panel may still import modules lazily from the previous copy.
+                    install(keep_previous=_state['previous'])
+                    _state['previous'] = False  # Loaded next start; the running copy keeps working.
+                    if _state['ready'] or activate():
                         return
                 except Exception as error:  # Network, disk or unsupported platform: report and retry.
                     _state['error'] = f'Could not install encryption components: {error}'

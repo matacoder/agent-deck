@@ -125,7 +125,25 @@ def unpack(data, stage, version):
         if not name.endswith('.py'):
             continue
         compile((stage / name).read_text(), name, "exec")
+    check_imports(stage, found)
     return found
+
+
+IMPORT_CHECK = "import importlib, sys\nsys.path.insert(0, sys.argv[1])\nfor name in sys.argv[2:]: importlib.import_module(name)"
+
+
+def check_imports(stage, names, run=subprocess.run):
+    """Integrations are imported lazily by the panel, so the health check after the restart would not
+    load them; a release whose module fails to import is rejected while the old panel still runs."""
+    modules = sorted("integrations." + Path(name).stem for name in names
+                     if name.startswith("integrations/") and name.endswith(".py") and not name.endswith("__init__.py"))
+    if not modules:
+        return
+    result = run([sys.executable, "-I", "-B", "-c", IMPORT_CHECK, str(stage), *modules],
+                 input=b"", capture_output=True, timeout=60, cwd=str(stage))
+    if result.returncode:
+        detail = (result.stderr or b"").decode(errors="replace").strip().splitlines()[-1:] or ["no output"]
+        raise ValueError("Модуль релиза не загружается: " + detail[0][:300])
 
 
 def service(action):

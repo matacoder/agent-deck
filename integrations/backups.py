@@ -27,6 +27,7 @@ LEGACY_MAGIC = b'ADBK1\n'
 MAX_SEALED = 700 * 1024  # Base64 of this still fits the panel's 1 MB JSON request limit.
 KEEP = 14
 MAX_ORIGINS = 32
+HEADER_READ = 6 + 4 + 4096 + 28  # Magic, header length, header, nonce and tag: what read_meta needs.
 ORIGIN = re.compile(r'[0-9a-f]{24}')
 # Archive name -> path under $HOME. Restore writes only here; archive names never become paths.
 FILES = {
@@ -273,14 +274,22 @@ class Backups:
 
     def store(self, blob):
         meta, _ = read_meta(blob)
+        # Every machine of a backup group shares the key, so a copy that does not decrypt with it
+        # was not made by a member and must not take a place in the store.
+        key = self.key()
+        if not key:
+            raise ValueError('Сначала включите бэкапы')
+        unseal(key, blob)
+        if not 0 < meta['created'] <= time.time() + 86400:
+            raise ValueError('Файл бэкапа повреждён')
         with self.lock:
             folder = self.store_dir / meta['origin']
             # Copies are bounded per machine (KEEP) and in machines, so a client cannot fill the disk.
             if not folder.is_dir() and self.store_dir.is_dir() and sum(1 for p in self.store_dir.iterdir() if p.is_dir()) >= MAX_ORIGINS:
-                raise ValueError('Слишком много машин в хранилище бэкапов')
+                raise ValueError('Слишком много компьютеров в хранилище бэкапов')
             folder.mkdir(parents=True, exist_ok=True, mode=0o700)
             write_private(folder / f"{meta['created']}.adbk", blob)
-            for old in sorted(folder.glob('*.adbk'), key=lambda p: p.name)[:-KEEP]:
+            for old in sorted(folder.glob('*.adbk'), key=_created)[:-KEEP]:
                 old.unlink()
         return meta
 
@@ -290,7 +299,8 @@ class Backups:
             return result
         for path in sorted(self.store_dir.glob('*/*.adbk')):
             try:
-                meta, _ = read_meta(path.read_bytes())
+                with path.open('rb') as file:  # The header is enough; whole copies are up to 700 KB each.
+                    meta, _ = read_meta(file.read(HEADER_READ))
             except (ValueError, OSError):
                 continue
             result.append({**meta, 'size': path.stat().st_size})
@@ -329,6 +339,25 @@ class Backups:
                 write_private(self.home / FILES[name], content)
             return {**meta, 'files': sorted(files), 'warnings': warnings}
 
+    def claim_origin(self, origin, deck, connected):
+        """A connected machine may fill only its own folder; the first deck that sent an origin owns it.
+        Ownership moves only when that deck is no longer connected (removed and added again)."""
+        if origin == self.instance_id():
+            raise ValueError('Компьютер прислал бэкап под чужим именем')
+        path = self.store_dir / 'origins.json'
+        with self.lock:
+            try:
+                owners = json.loads(path.read_text())
+                owners = owners if isinstance(owners, dict) else {}
+            except (OSError, ValueError):
+                owners = {}
+            if owners.get(origin) not in (None, deck) and owners[origin] in connected:
+                raise ValueError('Компьютер прислал бэкап под чужим именем')
+            if owners.get(origin) != deck:
+                owners[origin] = deck
+                self.store_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
+                write_private(path, json.dumps(owners).encode())
+
     def report(self, value=None):
         path = self.store_dir / 'report.json'
         if value is not None:
@@ -347,12 +376,18 @@ class Backups:
                 'report': self.report()}
 
 
+def _created(path):
+    return int(path.stem) if path.stem.isdigit() else 0
+
+
 def remote_json(decks, deck, method, path, body=None):
     payload = None if body is None else json.dumps(body).encode()
     status, _, raw = decks.request(deck, method, path, payload, timeout=20)
     try:
         data = json.loads(raw)
     except ValueError:
+        data = {}
+    if not isinstance(data, dict):
         data = {}
     if status != 200:
         if status == 404:
@@ -368,7 +403,7 @@ def join_remote(backups, decks, deck):
     if not state.get('configured'):
         remote_json(decks, deck, 'POST', '/api/backup_setup', {'code': encode_code(key)})
     elif state.get('key_id') != key_id(key):
-        raise ValueError('На этой машине включены бэкапы с другим кодом восстановления')
+        raise ValueError('На этом компьютере включены бэкапы с другим кодом восстановления')
     return state
 
 
@@ -377,6 +412,7 @@ def replicate(backups, decks):
     report = {'started': int(time.time()), 'machines': []}
     blobs = [backups.create()]
     reachable = []
+    connected = {deck.get('id') for deck in decks.status().get('decks', [])}
     for deck in decks.status().get('decks', []):
         entry = {'id': deck['id'], 'name': deck.get('name', ''), 'ok': False}
         report['machines'].append(entry)
@@ -384,6 +420,9 @@ def replicate(backups, decks):
             join_remote(backups, decks, deck['id'])
             blob = base64.b64decode(remote_json(decks, deck['id'], 'POST', '/api/backup_now', {})['blob'])
             meta, _ = read_meta(blob)
+            backups.claim_origin(meta['origin'], deck['id'], connected)
+            if any(e.get('origin') == meta['origin'] for e in reachable):
+                raise ValueError('Компьютер прислал бэкап под чужим именем')
             blobs.append(blob)
             reachable.append(entry)
             entry.update(ok=True, origin=meta['origin'], created=meta['created'])
@@ -393,7 +432,12 @@ def replicate(backups, decks):
     for blob in blobs:
         meta, _ = read_meta(blob)
         if meta['origin'] != own:
-            backups.store(blob)
+            try:
+                backups.store(blob)
+            except (ValueError, OSError) as error:
+                entry = next(e for e in reachable if e['origin'] == meta['origin'])
+                entry.update(ok=False, error=str(error)[:200])
+                continue
         for entry in reachable:
             if entry['origin'] == meta['origin']:
                 continue

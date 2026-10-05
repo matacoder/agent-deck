@@ -65,6 +65,16 @@ class AttachmentTests(PanelCase):
                 self.panel.cleanup_uploads()
                 self.assertFalse(Path(path).exists())
 
+    def test_partial_uploads_left_by_a_restart_are_removed_after_an_hour(self):
+        import os, time
+        folder = Path(self.panel.UPLOAD_DIR) / "demo"; folder.mkdir(parents=True, exist_ok=True)
+        stale, live = folder / (".incoming-" + "a" * 32), folder / (".incoming-" + "b" * 32)
+        stale.write_bytes(b"x"); live.write_bytes(b"x")
+        os.utime(stale, (time.time() - 3700,) * 2)
+        self.panel.cleanup_uploads()
+        self.assertFalse(stale.exists())
+        self.assertTrue(live.exists())  # Possibly still streaming.
+
     def test_file_names_and_size_limits_are_validated(self):
         self.assertEqual(self.panel.MAX_FILE_BYTES, 200 * 1024 * 1024)
         for filename in ("../escape.zip", "path\\evil", "bad\nname", "", [], "x" * 256):
@@ -323,6 +333,23 @@ class CacheTests(PanelCase):
         self.panel.http_json.assert_not_called()
 
 
+class TranscriptLookupTests(PanelCase):
+    def test_a_missing_transcript_is_not_searched_again_on_every_scan(self):
+        self.panel.transcript_paths.clear(); self.panel.transcript_misses.clear()
+        self.enterContext(patch.object(self.panel.os.path, 'expanduser', side_effect=lambda p: str(self.home / p[2:])))
+        sid = '12345678-1234-1234-1234-123456789abc'
+        clock = [1000.0]
+        self.enterContext(patch.object(self.panel.time, 'monotonic', side_effect=lambda: clock[0]))
+        with patch('pathlib.Path.rglob', return_value=iter(())) as search:
+            self.assertIsNone(self.panel.transcript_path('claude', sid))
+            self.assertIsNone(self.panel.transcript_path('claude', sid))
+            self.assertEqual(search.call_count, 1)
+        project = self.home / '.claude/projects/demo'; project.mkdir(parents=True)
+        (project / (sid + '.jsonl')).write_text('{}')
+        clock[0] += 31
+        self.assertEqual(self.panel.transcript_path('claude', sid).name, sid + '.jsonl')
+
+
 class ReviewFixTests(PanelCase):
     def fake_tmux(self, sessions):
         def run(*args, **kwargs):
@@ -498,6 +525,21 @@ class RemoteQuestionTests(PanelCase):
             self.assertEqual(self.panel.shared_questions(), old)
             release.set(); worker.join(5)
         self.assertEqual(self.panel.shared_questions(), [])
+
+    def test_notification_sessions_survive_a_malformed_or_unreachable_computer(self):
+        other = 'b' * 24
+        self.decks.status.return_value = {'decks': [{'id': self.REMOTE, 'name': 'Mac Studio'}, {'id': other, 'name': 'Server'}]}
+        self.enterContext(patch.object(self.panel, 'list_sessions', return_value=[]))
+        self.panel._remote_sessions.update(at=-100, items=[])
+        self.addCleanup(self.panel._remote_sessions.update, at=-100, items=[])
+        answers = {self.REMOTE: (200, {}, b'{"sessions":[{"name":"api","activity":1},{"title":"no name"},"junk"]}'),
+                   other: (200, {}, b'["not a dict"]')}
+        self.decks.request.side_effect = lambda deck, *args, **kwargs: answers[deck]
+        self.assertEqual([(s['deck'], s['name']) for s in self.panel.push_sessions()], [(self.REMOTE, 'api')])
+        self.decks.request.side_effect = OSError('timed out')
+        self.panel._remote_sessions['at'] = -100
+        # Unreachable for one poll: its sessions stay, so they do not look finished and restarted.
+        self.assertEqual([(s['deck'], s['name']) for s in self.panel.push_sessions()], [(self.REMOTE, 'api')])
 
     def test_answers_route_to_the_owning_machine_with_its_fingerprint(self):
         from integrations.questions import Question

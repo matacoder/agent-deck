@@ -15,6 +15,21 @@ updater = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(updater)
 
 
+class ImportCheckTests(unittest.TestCase):
+    def test_a_release_module_that_fails_to_import_is_rejected_before_the_service_stops(self):
+        with tempfile.TemporaryDirectory() as directory:
+            stage = Path(directory)
+            (stage / "integrations").mkdir()
+            (stage / "integrations/__init__.py").write_text("")
+            (stage / "integrations/good.py").write_text("from . import helper\n")
+            (stage / "integrations/helper.py").write_text("VALUE = 1\n")
+            names = {"integrations/__init__.py", "integrations/good.py", "integrations/helper.py"}
+            updater.check_imports(stage, names)
+            (stage / "integrations/bad.py").write_text("from .helper import MISSING\n")
+            with self.assertRaisesRegex(ValueError, "MISSING"):
+                updater.check_imports(stage, names | {"integrations/bad.py"})
+
+
 class UpdaterTests(unittest.TestCase):
     def setUp(self):
         temporary = tempfile.TemporaryDirectory()

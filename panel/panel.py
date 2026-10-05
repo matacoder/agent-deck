@@ -733,6 +733,9 @@ def action_discard_upload(d):
         os.unlink(path)
 
 
+INCOMING_RE = re.compile(r'\.incoming-[0-9a-f]{32}')
+
+
 def cleanup_uploads(max_age=7 * 86400):
     """Keep sent images long enough for deferred agent reads, but not forever."""
     if not os.path.isdir(UPLOAD_DIR):
@@ -744,8 +747,10 @@ def cleanup_uploads(max_age=7 * 86400):
                 continue
             with os.scandir(folder.path) as entries:
                 for entry in entries:
-                    if (ATTACHMENT_RE.fullmatch(entry.name) and entry.is_file(follow_symlinks=False)
-                            and entry.stat(follow_symlinks=False).st_mtime < cutoff):
+                    # A restart mid-upload leaves its partial file; none takes longer than an hour.
+                    partial = INCOMING_RE.fullmatch(entry.name)
+                    if ((ATTACHMENT_RE.fullmatch(entry.name) or partial) and entry.is_file(follow_symlinks=False)
+                            and entry.stat(follow_symlinks=False).st_mtime < (time.time() - 3600 if partial else cutoff)):
                         os.unlink(entry.path)
             try:
                 os.rmdir(folder.path)
@@ -1276,15 +1281,27 @@ transcript_models = {}
 transcript_models_lock = threading.Lock()
 
 
+transcript_misses = {}
+
+
 def transcript_path(agent, sid):
     key = (agent, sid)
     path = transcript_paths.get(key)
-    if not path:
+    if path and not path.exists():
+        path = transcript_paths.pop(key, None) and None
+    # A miss (new session, deleted file) would otherwise walk every project directory on each 2 s scan.
+    if not path and time.monotonic() - transcript_misses.get(key, -60) >= 30:
         from pathlib import Path
         root = Path(os.path.expanduser('~/.codex/sessions' if agent == 'codex' else '~/.claude/projects'))
         path = next(root.rglob('*' + sid + '*.jsonl'), None)
+        for cache in (transcript_paths, transcript_misses):
+            if len(cache) > 1000:
+                cache.clear()  # Ended sessions; the live ones are found again on the next scan.
         if path:
             transcript_paths[key] = path
+            transcript_misses.pop(key, None)
+        else:
+            transcript_misses[key] = time.monotonic()
     return path
 
 
@@ -1613,7 +1630,7 @@ def action_backup_store(d):
     from integrations.backups import read_meta
     blob = base64.b64decode(str(d.get('blob', '')), validate=True)
     if read_meta(blob)[0]['origin'] == backup_service().instance_id():
-        raise ValueError('Эта машина сама хранит свои бэкапы')
+        raise ValueError('Этот компьютер сам хранит свои бэкапы')
     return {'meta': backup_service().store(blob)}
 
 
@@ -1643,18 +1660,33 @@ _push_lock = threading.Lock()
 _remote_sessions = {'at': 0, 'items': []}
 
 
+def fetch_remote_sessions(deck):
+    status, _, body = remote_decks.request(deck['id'], 'GET', '/api/sessions', timeout=5)
+    if status != 200:
+        raise ValueError('sessions unavailable')
+    sessions = json.loads(body).get('sessions', [])
+    # One malformed entry must not stop notifications for every computer.
+    return [{**s, 'deck': deck['id'], 'deck_name': deck.get('name', '')} for s in sessions
+            if isinstance(s, dict) and isinstance(s.get('name'), str)]
+
+
 def push_sessions():
     """Local sessions plus connected Agent Decks' lists (refreshed every 10 s) for notification events."""
     items = [{**s, 'deck': ''} for s in list_sessions()]
     if time.monotonic() - _remote_sessions['at'] > 10:
+        decks = [deck for deck in remote_decks.status().get('decks', []) if deck.get('id')]
+        previous = {}
+        for item in _remote_sessions['items']:
+            previous.setdefault(item['deck'], []).append(item)
         remote = []
-        for deck in remote_decks.status().get('decks', []):
-            try:
-                status, _, body = remote_decks.request(deck['id'], 'GET', '/api/sessions', timeout=5)
-                if status == 200:
-                    remote += [{**s, 'deck': deck['id'], 'deck_name': deck.get('name', '')} for s in json.loads(body).get('sessions', [])]
-            except (ValueError, OSError):
-                continue
+        if decks:
+            with ThreadPoolExecutor(max_workers=min(8, len(decks))) as pool:
+                futures = [(deck, pool.submit(fetch_remote_sessions, deck)) for deck in decks]
+            for deck, future in futures:
+                try:
+                    remote += future.result()
+                except (ValueError, KeyError, TypeError, AttributeError, OSError, RuntimeError):
+                    remote += previous.get(deck['id'], [])  # A blip is not "every session finished".
         _remote_sessions.update(at=time.monotonic(), items=remote)
     return items + _remote_sessions['items']
 

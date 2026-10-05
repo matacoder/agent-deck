@@ -4,6 +4,7 @@ from pathlib import Path
 import sys
 import tempfile
 import unittest
+import unittest.mock
 from unittest.mock import patch
 import zipfile
 
@@ -99,3 +100,31 @@ class DependencyTests(unittest.TestCase):
         self.assertNotEqual(old, new)
         self.assertFalse(old.exists())
         self.assertEqual((new / 'fake_pkg/__init__.py').read_text(), 'VALUE = 2\n')
+
+
+class PreviousInstallTests(unittest.TestCase):
+    def setUp(self):
+        tmp = tempfile.TemporaryDirectory(dir='/tmp')
+        self.addCleanup(tmp.cleanup)
+        self.root = Path(tmp.name)
+
+    def test_an_offline_update_keeps_using_the_previous_wheels(self):
+        key = D.platform_key()
+        if key not in D.WHEELS:
+            self.skipTest('no pinned wheels for this platform')
+        old = self.root / (key + '-000000000000')
+        old.mkdir(parents=True); (old / '.complete').write_text('[]')
+        self.enterContext(unittest.mock.patch.dict(D._state, {'ready': False, 'previous': False, 'error': ''}))
+        self.enterContext(unittest.mock.patch.object(D.importlib, 'import_module'))
+        path = list(sys.path); self.addCleanup(lambda: sys.path.__setitem__(slice(None), path))
+        self.assertTrue(D.activate(self.root))
+        self.assertEqual(sys.path[0], str(old))
+        self.assertTrue(D._state['previous'])  # ensure() still downloads the pinned version.
+
+    def test_previous_copies_stay_until_the_running_panel_restarts(self):
+        current = self.root / 'cp312-linux-x86_64-aaaaaaaaaaaa'
+        old = self.root / 'cp312-linux-x86_64-bbbbbbbbbbbb'
+        for folder in (current, old):
+            folder.mkdir(parents=True); (folder / '.complete').write_text('[]')
+        D.prune(current)
+        self.assertEqual(sorted(p.name for p in self.root.iterdir()), [current.name])

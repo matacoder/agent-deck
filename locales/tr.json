@@ -529,6 +529,20 @@
     "Панель вернула неожиданный ответ": "Panel beklenmeyen bir yanıt döndürdü",
     "Связь восстановлена": "Bağlantı geri geldi",
     "Подключаюсь…": "Bağlanıyor…",
-    "Нет связи с панелью · повторяю": "Panele bağlantı yok · yeniden deneniyor"
+    "Нет связи с панелью · повторяю": "Panele bağlantı yok · yeniden deneniyor",
+    "Добавить компьютер": "Sunucu ekle",
+    "Поиск компьютеров на известных узлах": "Bilinen düğümlerde sunucu aranıyor",
+    "Адрес компьютера": "Sunucu adresi",
+    "Найти компьютеры": "Sunucuları bul",
+    "Бэкапы выключены на этом компьютере.": "Bu makinede yedekler kapalı.",
+    "На этом компьютере включены бэкапы с другим кодом восстановления": "Bu makinedeki yedekler başka bir kurtarma kodu kullanıyor",
+    "Скачать бэкап этого компьютера": "Bu makinenin yedeğini indir",
+    "Сохраните код в менеджере паролей. Без него бэкап на новом компьютере не расшифровать. Больше он показан не будет.": "Kodu bir parola yöneticisine kaydedin. Kod olmadan yedek yeni makinede çözülemez. Tekrar gösterilmeyecek.",
+    "Этот компьютер": "Bu makine",
+    "Этот компьютер сам хранит свои бэкапы": "Bu makine kendi yedeklerini saklar",
+    "копий на других компьютерах: {0}": "diğer makinelerdeki kopyalar: {0}",
+    "Слишком много компьютеров в хранилище бэкапов": "Yedek deposunda çok fazla makine var",
+    "Компьютер прислал бэкап под чужим именем": "A computer sent a backup under another computer's name",
+    "Эта функция недоступна: обновите Agent Deck на этом компьютере": "This feature is unavailable: update Agent Deck on this computer"
   }
 }

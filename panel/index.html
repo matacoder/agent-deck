@@ -137,7 +137,7 @@ main{flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;backgrou
 .seg button.on{background:var(--sel);color:var(--fg2)}
 .bar .act{height:30px;padding:0 10px;border-radius:var(--r-sm);color:var(--mut);font-size:12.5px;white-space:nowrap;display:inline-flex;align-items:center;gap:6px}
 .bar .act:hover{background:var(--side2);color:var(--fg)}
-#menuBadge{position:absolute;top:6px;right:6px;min-width:16px;height:16px;border-radius:8px;background:var(--acc);color:#fff;font-size:10.5px;font-weight:700;display:none;place-items:center;padding:0 4px}
+#menuBadge{position:absolute;top:6px;right:6px;min-width:16px;height:16px;border-radius:8px;background:var(--acc-strong);color:#fff;font-size:10.5px;font-weight:700;display:none;place-items:center;padding:0 4px}
 #menuBadge.on{display:grid}
 #stage{flex:1;position:relative;min-height:0}
 #stage iframe{position:absolute;inset:0;width:100%;height:100%;border:0;display:none;background:var(--bg)}
@@ -244,6 +244,7 @@ body.is-codex .question-key{display:inline-flex!important;align-items:center;jus
 /* ---------- toast ---------- */
 #toast{position:fixed;left:50%;top:calc(var(--app-top) + var(--sat) + 56px);transform:translateX(-50%);display:none;align-items:center;gap:12px;max-width:min(520px,calc(100vw - 32px));padding:10px 14px;border-radius:12px;border:1px solid #6b2a26;background:#3a1d1d;color:#ffcfca;box-shadow:0 10px 30px #0009;z-index:60;cursor:pointer}
 #toast.on{display:flex}
+.search:focus-visible,#msg:focus-visible,.dlg input:focus-visible,.dlg select:focus-visible,.q-text textarea:focus-visible{box-shadow:0 0 0 2px var(--acc-soft)}
 #toast.success{background:#15351f;color:#d3f8dc;border-color:#2b6b40}
 #toast.info{background:#1d2a3a;color:#cfe3ff;border-color:#2c4a6e}
 #toast button{flex:none;padding:6px 12px;border-radius:var(--r-sm);background:var(--acc-strong);color:#fff;font-weight:600}
@@ -407,7 +408,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 .deck-update{flex:none;color:var(--acc-text);font-weight:700}
 .inbox-btn{display:flex;align-items:center;gap:8px;margin:0 8px 6px;padding:8px 10px;border:1px solid #0a84ff55;border-radius:9px;background:var(--acc-soft);color:var(--fg2);text-align:left}
 .inbox-btn[hidden]{display:none}
-.inbox-btn span{flex:1}.inbox-btn b{min-width:20px;padding:1px 7px;border-radius:10px;background:var(--acc);color:#fff;font-size:11.5px;text-align:center}
+.inbox-btn span{flex:1}.inbox-btn b{min-width:20px;padding:1px 7px;border-radius:10px;background:var(--acc-strong);color:#fff;font-size:11.5px;text-align:center}
 .inbox-btn svg{color:var(--acc-text)}
 #inbox_dlg{width:min(560px,calc(100vw - 32px))}
 #inbox_dlg .hub-heading{border-bottom:1px solid var(--bd)}
@@ -420,6 +421,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 .inbox-question{padding:12px;border:1px solid var(--bd);border-radius:12px;background:var(--bg)}
 .inbox-empty{color:var(--mut);text-align:center;padding:24px 0}
 .q-opt.q-free .q-num{color:var(--acc-text)}
+.q-num .ui-icon{width:14px;height:14px}
 .q-opt.active{border-color:var(--acc)}
 .q-text{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:end}
 .q-text textarea{min-height:44px;max-height:160px;resize:vertical;padding:10px 12px;border:1px solid var(--bd);border-radius:10px;background:var(--side);color:var(--fg2);font:inherit;font-size:15px;outline:none}
@@ -428,7 +430,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 .quick-machine{font-size:11px;color:var(--dim);max-width:90px;overflow:hidden;text-overflow:ellipsis}
 .quick-inbox{border-color:#0a84ff66!important;color:var(--fg2)!important}
 .quick-inbox svg{width:18px;height:18px;color:var(--acc-text)}
-.quick-count{min-width:20px;padding:1px 6px;border-radius:10px;background:var(--acc);color:#fff;font-size:12px;text-align:center}
+.quick-count{min-width:20px;padding:1px 6px;border-radius:10px;background:var(--acc-strong);color:#fff;font-size:12px;text-align:center}
 .conn{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:5;display:inline-flex;align-items:center;gap:8px;padding:6px 14px;border-radius:16px;border:1px solid var(--bd);background:var(--side2);color:var(--fg);font-size:12.5px;box-shadow:0 6px 20px #0007;white-space:nowrap}
 .conn[hidden]{display:none}
 .conn::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--warn);animation:pulse 1s ease-in-out infinite}
@@ -465,7 +467,8 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 #deck_editor form label{margin-top:8px}
 #deck_editor form .pri{justify-self:start;margin-top:8px;padding:10px 16px;border-radius:9px}
 
-@media(prefers-reduced-motion:reduce){.dot.busy,.local-active{animation:none}}
+/* Pulses, slides and scale effects all stop; state colors still change. */
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 
 /* ---------- mobile (phones, including landscape) ----------
    Keep in sync with MOBILE_QUERY in app.js. */
@@ -559,6 +562,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
   body.keyboard-open .q-title:not(.open){-webkit-line-clamp:2}
 
   #toast{top:calc(var(--app-top) + var(--sat) + 66px);width:calc(100vw - 24px);max-width:none;font-size:14px;justify-content:space-between}
+  dialog #toast{top:auto;bottom:calc(var(--sab) + 16px)} /* Full-screen dialogs keep their header and tabs visible. */
 
   /* action sheet */
   #sheet .scrim{background:rgba(0,0,0,.5)}
@@ -647,7 +651,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 </svg>
 <div id="app">
   <aside>
-    <div class="deck-switch" id="deck_switch" hidden><label for="deck_select">Agent Deck</label><select id="deck_select" onchange="switchDeck(this.value)"><option value="">Этот Agent Deck</option></select><button type="button" onclick="openSettings('network')" aria-label="Подключить Agent Deck" title="Подключить Agent Deck"><svg class="ui-icon"><use href="#i-plus"/></svg></button></div>
+    <div class="deck-switch" id="deck_switch" hidden><label for="deck_select">Agent Deck</label><select id="deck_select" onchange="switchDeck(this.value)"><option value="">Этот Agent Deck</option></select><button type="button" onclick="openSettings('network')" aria-label="Подключить Agent Deck" title="Подключить Agent Deck"><svg class="ui-icon"><use href="#i-monitor"/></svg></button></div>
     <div id="srv"></div>
     <div class="side-top">
       <input id="q" class="search" placeholder="Поиск…" aria-label="Поиск…" autocomplete="off" autocapitalize="off" spellcheck="false">
@@ -696,7 +700,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
           <input type="file" id="image_files" multiple hidden>
           <div class="inrow">
             <button class="attachbtn agent-only" id="b_attach" onclick="chooseImages()" aria-label="Приложить файл" title="Приложить файл до 200 МБ · хранится 7 дней"><svg class="ui-icon"><use href="#i-paperclip"/></svg></button>
-            <textarea id="msg" rows="1" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" placeholder="Сообщение агенту…" enterkeyhint="enter"></textarea>
+            <textarea id="msg" rows="1" aria-label="Сообщение агенту…" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" placeholder="Сообщение агенту…" enterkeyhint="enter"></textarea>
             <button class="sendbtn" id="b_send" onclick="send()" aria-label="Отправить"><svg class="ui-icon" style="stroke-width:2.6"><use href="#i-arrow-up"/></svg></button>
           </div>
           <div class="composer-status">
@@ -802,15 +806,15 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
       <div class="acts"><button type="button" class="integration-remove" onclick="clearKimi()">Удалить ключ</button><button type="button" onclick="closeKimi()">Отмена</button><button class="pri" id="kimi_save">Сохранить</button></div>
     </form></div>
       <div id="model_cards"></div>
-      <details id="lm_editor" class="hub-card"><summary>Добавить сервер</summary><form onsubmit="event.preventDefault();saveLM()">
+      <details id="lm_editor" class="hub-card"><summary>Добавить компьютер</summary><form onsubmit="event.preventDefault();saveLM()">
         <input type="hidden" id="lm_id"><label for="lm_name">Название</label><input type="text" id="lm_name" required maxlength="100">
-        <label for="lm_url">Адрес сервера</label><input id="lm_url" type="url" required placeholder="http://100.64.0.1:1234">
+        <label for="lm_url">Адрес компьютера</label><input id="lm_url" type="url" required placeholder="http://100.64.0.1:1234">
         <label for="lm_key">API-ключ</label><input id="lm_key" type="password" autocomplete="new-password" placeholder="Вставьте ключ; пустое поле сохраняет текущий">
         <label class="chk"><input type="checkbox" id="lm_clear_key"><span>Удалить ключ</span></label>
         <div class="acts"><button type="button" onclick="resetLM()">Отмена</button><button class="pri">Сохранить</button></div>
       </form></details>
-      <div class="hub-card"><h4>Tailscale</h4><p>Поиск серверов на известных узлах</p><label for="lm_ports">Порты</label><input id="lm_ports" type="text" value="1234" inputmode="numeric">
-      <div class="acts"><button type="button" onclick="discoverLM()">Найти серверы</button><button type="button" id="lm_cancel" onclick="discoverLM(true)" hidden>Остановить</button></div>
+      <div class="hub-card"><h4>Tailscale</h4><p>Поиск компьютеров на известных узлах</p><label for="lm_ports">Порты</label><input id="lm_ports" type="text" value="1234" inputmode="numeric">
+      <div class="acts"><button type="button" onclick="discoverLM()">Найти компьютеры</button><button type="button" id="lm_cancel" onclick="discoverLM(true)" hidden>Остановить</button></div>
       <p id="lm_progress" role="status"></p><div id="lm_results"></div></div>
     </section>
     <section id="hub_connections"><div class="hub-card" id="push_card"><h4>Уведомления</h4><p>Вопросы агентов и завершение работы на всех подключённых Agent Deck приходят на телефон или компьютер, даже когда панель закрыта.</p><p id="push_state" role="status"></p><div id="push_actions"></div>
@@ -845,7 +849,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
     </section>
     <section id="hub_backups">
       <div class="hub-card"><h4>Бэкапы настроек и ключей</h4><p>Настройки Agent Deck, ключи интеграций и логины агентов. Копии шифруются кодом восстановления и хранятся на всех подключённых Agent Deck. Логин и пароль панели задаются при установке и в бэкап не входят.</p><div id="backup_state"></div></div>
-      <div class="hub-card editor" id="backup_code_card" hidden><h4>Код восстановления</h4><p>Сохраните код в менеджере паролей. Без него бэкап на новой машине не расшифровать. Больше он показан не будет.</p><code id="backup_code" class="recovery-code"></code><div class="acts"><button type="button" onclick="copyBackupCode()">Скопировать</button><button type="button" class="pri" onclick="finishBackupCode()">Я сохранил код</button></div></div>
+      <div class="hub-card editor" id="backup_code_card" hidden><h4>Код восстановления</h4><p>Сохраните код в менеджере паролей. Без него бэкап на новом компьютере не расшифровать. Больше он показан не будет.</p><code id="backup_code" class="recovery-code"></code><div class="acts"><button type="button" onclick="copyBackupCode()">Скопировать</button><button type="button" class="pri" onclick="finishBackupCode()">Я сохранил код</button></div></div>
       <form class="hub-card editor" id="backup_join_card" hidden onsubmit="event.preventDefault();joinBackups()"><label for="backup_join_code">Код восстановления</label><input type="text" id="backup_join_code" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="AD1-…" required><div class="acts"><button type="button" onclick="$('backup_join_card').hidden=true">Отмена</button><button class="pri">Подключить</button></div></form>
       <div class="hub-card"><h4>Восстановление</h4><p>Заменяет настройки, ключи и логины агентов. Текущее состояние сначала сохраняется в бэкап, затем панель перезапускается; сессии tmux продолжают работать.</p>
         <div class="two"><div><label for="backup_source">Где взять копию</label><select id="backup_source" onchange="renderBackupList()"></select></div><div><label for="backup_target">Куда восстановить</label><select id="backup_target"></select></div></div>
@@ -1001,7 +1005,8 @@ function renderQuestionCard({box,question,expanded,busyIndex,textIndex,textDraft
   question.options.forEach((option,index)=>{
     const button=document.createElement("button");button.type="button";
     button.className="q-opt"+(option.text?" q-free":"")+(index===question.selected?" selected":"")+(index===busyIndex?" sending":"")+(index===textIndex?" active":"");
-    const number=document.createElement("span");number.className="q-num";number.textContent=option.text?"✎":String(index+1);
+    const number=document.createElement("span");number.className="q-num";
+    if(option.text)number.append(svgIcon("pencil"));else number.textContent=String(index+1);
     const label=document.createElement("span");label.textContent=option.label;
     button.append(number,label);button.disabled=busy;
     button.onclick=()=>option.text?onTextOption&&onTextOption(index):onAnswer(index);
@@ -1040,7 +1045,7 @@ function formatBackupTime(seconds,locale){
 // One line per machine for the last cycle: what is protected and what needs attention.
 function backupReportLines(report,translate,locale){
   if(!report)return [];
-  return report.machines.map(m=>({ok:m.ok,text:m.name+" · "+(m.ok?translate("копий на других машинах: {0}",[m.copies||0]):m.error||translate("ошибка"))}))
+  return report.machines.map(m=>({ok:m.ok,text:m.name+" · "+(m.ok?translate("копий на других компьютерах: {0}",[m.copies||0]):m.error||translate("ошибка"))}))
     .concat(report.finished?[{ok:true,text:translate("Последний цикл: {0}",[formatBackupTime(report.finished,locale)])}]:[]);
 }
 function backupLabel(meta,locale){
@@ -1060,14 +1065,14 @@ function renderBackups(){
   const s=backupStatus;if(!s)return;
   const box=$("backup_state");
   if(!s.configured){
-    box.replaceChildren(el("p","",tr("Бэкапы выключены на этой машине.")),
+    box.replaceChildren(el("p","",tr("Бэкапы выключены на этом компьютере.")),
       el("div","acts",btn(tr("У меня есть код"),"",()=>{$("backup_join_card").hidden=false;$("backup_join_code").focus()}),btn(tr("Включить бэкапы"),"pri",enableBackups)));
   }else{
     const lines=backupReportLines(s.report,tr,DATE_LOCALE).map(l=>el("p","backup-line"+(l.ok?"":" danger"),l.text));
     box.replaceChildren(el("p","",tr("Ключ {0} · последний бэкап: {1}",[s.key_id,s.last?formatBackupTime(s.last,DATE_LOCALE):tr("ещё не было")])),...lines,
-      el("div","acts",btn(tr("Скачать бэкап этой машины"),"",downloadBackup),btn(tr("Сделать бэкап сейчас"),"pri",runBackup)));
+      el("div","acts",btn(tr("Скачать бэкап этого компьютера"),"",downloadBackup),btn(tr("Сделать бэкап сейчас"),"pri",runBackup)));
   }
-  const names=new Map([["",tr("Эта машина")],...deckDirectory.decks.map(d=>[d.id,d.name])]);
+  const names=new Map([["",tr("Этот компьютер")],...deckDirectory.decks.map(d=>[d.id,d.name])]);
   const source=$("backup_source").value;
   $("backup_source").replaceChildren(...[...backupSources.keys()].map(id=>{const o=el("option","",names.get(id)||id);o.value=id;return o}));
   if(backupSources.has(source))$("backup_source").value=source;
@@ -1076,7 +1081,7 @@ function renderBackups(){
 function renderBackupList(){
   const source=$("backup_source").value,list=backupSources.get(source)||[];
   // A copy fetched from another machine can only be restored here; the gateway can push its own copies anywhere.
-  const targets=[["",tr("Эта машина")],...(!selectedDeck&&!source?deckDirectory.decks.map(d=>[d.id,d.name]):[])];
+  const targets=[["",tr("Этот компьютер")],...(!selectedDeck&&!source?deckDirectory.decks.map(d=>[d.id,d.name]):[])];
   $("backup_target").replaceChildren(...targets.map(([id,name])=>{const o=el("option","",name);o.value=id;return o}));
   $("backup_restore_code_row").hidden=Boolean(backupStatus?.configured);
   $("backup_list").replaceChildren(...(list.length?list.map(meta=>el("div","deck-connection deck-result",
@@ -1128,7 +1133,8 @@ async function restoreBackup(meta,source,blob){
     else{
       const result=await api("/api/backup_restore",blob?{blob,code}:{origin:meta.origin,created:meta.created,deck:source||undefined,code:code||undefined});
       warned=(result.restored?.warnings||[]).length>0;
-      for(const warning of result.restored?.warnings||[])toast(tr(warning));
+      // One toast: each call replaces the previous one, so separate toasts would hide all but the last.
+      const warnings=(result.restored?.warnings||[]).map(w=>tr(w));if(warnings.length)toast(warnings.join(" "));
     }
   }catch(e){toast(e.message);return}
   if(target){toast(tr("Восстановлено на «{0}». Панель там перезапускается.",[targetName]),"success");return}
@@ -1536,7 +1542,8 @@ async function api(path,body,gateway=false){
   catch(e){if(!gateway&&epoch!==deckEpoch)throw new Error(STALE);throw new OfflineError(tr("Нет связи с панелью"))}
   if(r.status===401){
     try{stashDrafts();location.href="/login"}catch(e){toast(tr("Войдите в новой вкладке: здесь сохранён несохранённый текст."),true,{label:tr("Войти"),run:()=>window.open("/login","_blank","noopener")})}
-    throw new Error("login required");
+    // Already handled above; a caller's toast(e.message) must not replace the login prompt.
+    throw new Error(STALE);
   }
   const d=r.headers.get("Date");if(d)clockSkew=Date.now()/1000-Date.parse(d)/1000;
   let j=null;try{j=await r.json()}catch(e){}
@@ -1545,6 +1552,8 @@ async function api(path,body,gateway=false){
   if([502,503,504].includes(r.status))throw new OfflineError(j?.error||tr("Нет связи с панелью"));
   // A proxy or captive page can answer 200 with HTML; never hand that to code expecting JSON.
   if(!j||typeof j!=="object")throw new OfflineError(tr("Панель вернула неожиданный ответ"));
+  // A route this computer's Agent Deck does not have yet: say what to do instead of "Not Found".
+  if(r.status===404&&(!j.error||/^(not found|Agent Deck route not found)$/i.test(j.error)))throw new Error(tr("Эта функция недоступна: обновите Agent Deck на этом компьютере"));
   if(!r.ok)throw new Error(j.error||r.statusText);return j;
 }
 // Shown only when connecting takes noticeable time, so a quick resume does not flicker.
@@ -1737,7 +1746,7 @@ function renderTabs(){
     t.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();select(s.name)}};
     box.append(t);
   }
-  if(!sessions.length)box.append(el("div","empty-list",tr("сессий пока нет")));
+  if(!sessions.length)box.append(el("div","empty-list",tr("Сессий пока нет")));
   for(const deck of others)renderDeckSection(box,deck,q);
   if(focused)box.querySelector(`[data-session="${CSS.escape(focused)}"]`)?.focus({preventScroll:true});
   const busy=sessions.filter(s=>state(s)==="busy").length;
@@ -2263,7 +2272,11 @@ async function send(){
 }
 $("session_keys").addEventListener("pointerdown",e=>{if(e.target.closest("button"))e.preventDefault()});
 function key(k){if(active&&!sending&&!uploading&&!panelUpdating)post("/api/send",{name:active,key:k})}
-async function logout(){try{stashDrafts()}catch(e){}await fetch("/logout",{method:"POST"});location.href="/login"}
+async function logout(){
+  try{stashDrafts()}catch(e){}
+  try{await fetch("/logout",{method:"POST"})}catch(e){toast(tr("Нет связи с панелью"));return}
+  location.href="/login";
+}
 function toggleKeys(){const expanded=$("keys").classList.toggle("expanded");$("b_keymore").setAttribute("aria-expanded",String(expanded));fitKeys()}
 function fitKeys(){
   const box=$("keys"),more=$("b_keymore"),keys=[...box.children].filter(k=>k!==more);
@@ -2717,15 +2730,16 @@ function renderVersion(v){
   else if(job.phase==="error"){label=tr("Обновление не удалось · повторить");action=startPanelUpdate;box.title=job.message||label}
   else if(v.update){label=v.incomplete?tr("Доустановить компоненты"):tr("Обновить до v")+v.latest;action=startPanelUpdate}
   if(label){
-    const b=btn(label,"",action);b.id="b_update";b.disabled=panelUpdating;
+    const b=btn(label,"pri",action);b.id="b_update";b.disabled=panelUpdating;
     if(!v.can_update&&!panelUpdating&&job.phase!=="done"){
       b.disabled=true;box.title=tr("Разработка: обновляйте чекаут через git. Кнопка доступна после установки панели.");
     }
     $("hub_version").replaceChildren(versionInfo(v),b);box.append(btn(tr("Обновить"),"",()=>openSettings("app")));$("s_update_label").textContent=label;mobile.style.display="flex";mobile.disabled=b.disabled;
   }
   if(!label)$("hub_version").replaceChildren(versionInfo(v));
-  if(action!==refreshInterface){const refresh=btn(tr("Обновить интерфейс"),"pri",refreshInterface);refresh.id="b_refresh_interface";refresh.disabled=panelUpdating;$("hub_version").append(refresh)}
-  const check=btn(tr("Проверить обновления"),"",checkPanelUpdates);check.id="b_check_updates";check.disabled=panelUpdating;$("hub_version").append(check);
+  if(action!==refreshInterface){const refresh=btn(tr("Обновить интерфейс"),"",refreshInterface);refresh.id="b_refresh_interface";refresh.disabled=panelUpdating;$("hub_version").append(refresh)}
+  // The action people open this card for is primary; with an update pending, that is the update itself.
+  const check=btn(tr("Проверить обновления"),label?"":"pri",checkPanelUpdates);check.id="b_check_updates";check.disabled=panelUpdating;$("hub_version").append(check);
   $("auto_update_enabled").checked=v.auto_update?.enabled!==false;
   $("auto_update_enabled").disabled=!v.can_update||!v.auto_update||panelUpdating;
   $("auto_update_status").textContent=v.release_error?tr("Не удалось проверить обновления. Повторите проверку."):v.auto_update?.phase==="waiting"?tr("Обновление ждёт завершения локальной генерации"):"";

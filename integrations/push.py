@@ -163,7 +163,10 @@ class Push:
         self.seen = {k: t for k, t in self.seen.items() if now - t < 30}
         if not self.warm:
             out = []
-        for s in self.sessions():
+        sessions = self.sessions()
+        present = {(s.get('deck', ''), s['name']) for s in sessions}
+        self.activity = {key: state for key, state in self.activity.items() if key in present}  # Closed sessions.
+        for s in sessions:
             key, activity = (s.get('deck', ''), s['name']), s.get('activity')
             state = self.activity.get(key)
             if state is None:

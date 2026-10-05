@@ -126,7 +126,7 @@ main{flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;backgrou
 .seg button.on{background:var(--sel);color:var(--fg2)}
 .bar .act{height:30px;padding:0 10px;border-radius:var(--r-sm);color:var(--mut);font-size:12.5px;white-space:nowrap;display:inline-flex;align-items:center;gap:6px}
 .bar .act:hover{background:var(--side2);color:var(--fg)}
-#menuBadge{position:absolute;top:6px;right:6px;min-width:16px;height:16px;border-radius:8px;background:var(--acc);color:#fff;font-size:10.5px;font-weight:700;display:none;place-items:center;padding:0 4px}
+#menuBadge{position:absolute;top:6px;right:6px;min-width:16px;height:16px;border-radius:8px;background:var(--acc-strong);color:#fff;font-size:10.5px;font-weight:700;display:none;place-items:center;padding:0 4px}
 #menuBadge.on{display:grid}
 #stage{flex:1;position:relative;min-height:0}
 #stage iframe{position:absolute;inset:0;width:100%;height:100%;border:0;display:none;background:var(--bg)}
@@ -233,6 +233,7 @@ body.is-codex .question-key{display:inline-flex!important;align-items:center;jus
 /* ---------- toast ---------- */
 #toast{position:fixed;left:50%;top:calc(var(--app-top) + var(--sat) + 56px);transform:translateX(-50%);display:none;align-items:center;gap:12px;max-width:min(520px,calc(100vw - 32px));padding:10px 14px;border-radius:12px;border:1px solid #6b2a26;background:#3a1d1d;color:#ffcfca;box-shadow:0 10px 30px #0009;z-index:60;cursor:pointer}
 #toast.on{display:flex}
+.search:focus-visible,#msg:focus-visible,.dlg input:focus-visible,.dlg select:focus-visible,.q-text textarea:focus-visible{box-shadow:0 0 0 2px var(--acc-soft)}
 #toast.success{background:#15351f;color:#d3f8dc;border-color:#2b6b40}
 #toast.info{background:#1d2a3a;color:#cfe3ff;border-color:#2c4a6e}
 #toast button{flex:none;padding:6px 12px;border-radius:var(--r-sm);background:var(--acc-strong);color:#fff;font-weight:600}
@@ -396,7 +397,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 .deck-update{flex:none;color:var(--acc-text);font-weight:700}
 .inbox-btn{display:flex;align-items:center;gap:8px;margin:0 8px 6px;padding:8px 10px;border:1px solid #0a84ff55;border-radius:9px;background:var(--acc-soft);color:var(--fg2);text-align:left}
 .inbox-btn[hidden]{display:none}
-.inbox-btn span{flex:1}.inbox-btn b{min-width:20px;padding:1px 7px;border-radius:10px;background:var(--acc);color:#fff;font-size:11.5px;text-align:center}
+.inbox-btn span{flex:1}.inbox-btn b{min-width:20px;padding:1px 7px;border-radius:10px;background:var(--acc-strong);color:#fff;font-size:11.5px;text-align:center}
 .inbox-btn svg{color:var(--acc-text)}
 #inbox_dlg{width:min(560px,calc(100vw - 32px))}
 #inbox_dlg .hub-heading{border-bottom:1px solid var(--bd)}
@@ -409,6 +410,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 .inbox-question{padding:12px;border:1px solid var(--bd);border-radius:12px;background:var(--bg)}
 .inbox-empty{color:var(--mut);text-align:center;padding:24px 0}
 .q-opt.q-free .q-num{color:var(--acc-text)}
+.q-num .ui-icon{width:14px;height:14px}
 .q-opt.active{border-color:var(--acc)}
 .q-text{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:end}
 .q-text textarea{min-height:44px;max-height:160px;resize:vertical;padding:10px 12px;border:1px solid var(--bd);border-radius:10px;background:var(--side);color:var(--fg2);font:inherit;font-size:15px;outline:none}
@@ -417,7 +419,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 .quick-machine{font-size:11px;color:var(--dim);max-width:90px;overflow:hidden;text-overflow:ellipsis}
 .quick-inbox{border-color:#0a84ff66!important;color:var(--fg2)!important}
 .quick-inbox svg{width:18px;height:18px;color:var(--acc-text)}
-.quick-count{min-width:20px;padding:1px 6px;border-radius:10px;background:var(--acc);color:#fff;font-size:12px;text-align:center}
+.quick-count{min-width:20px;padding:1px 6px;border-radius:10px;background:var(--acc-strong);color:#fff;font-size:12px;text-align:center}
 .conn{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:5;display:inline-flex;align-items:center;gap:8px;padding:6px 14px;border-radius:16px;border:1px solid var(--bd);background:var(--side2);color:var(--fg);font-size:12.5px;box-shadow:0 6px 20px #0007;white-space:nowrap}
 .conn[hidden]{display:none}
 .conn::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--warn);animation:pulse 1s ease-in-out infinite}
@@ -454,7 +456,8 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 #deck_editor form label{margin-top:8px}
 #deck_editor form .pri{justify-self:start;margin-top:8px;padding:10px 16px;border-radius:9px}
 
-@media(prefers-reduced-motion:reduce){.dot.busy,.local-active{animation:none}}
+/* Pulses, slides and scale effects all stop; state colors still change. */
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 
 /* ---------- mobile (phones, including landscape) ----------
    Keep in sync with MOBILE_QUERY in app.js. */
@@ -548,6 +551,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
   body.keyboard-open .q-title:not(.open){-webkit-line-clamp:2}
 
   #toast{top:calc(var(--app-top) + var(--sat) + 66px);width:calc(100vw - 24px);max-width:none;font-size:14px;justify-content:space-between}
+  dialog #toast{top:auto;bottom:calc(var(--sab) + 16px)} /* Full-screen dialogs keep their header and tabs visible. */
 
   /* action sheet */
   #sheet .scrim{background:rgba(0,0,0,.5)}

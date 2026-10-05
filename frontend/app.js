@@ -59,7 +59,8 @@ async function api(path,body,gateway=false){
   catch(e){if(!gateway&&epoch!==deckEpoch)throw new Error(STALE);throw new OfflineError(tr("Нет связи с панелью"))}
   if(r.status===401){
     try{stashDrafts();location.href="/login"}catch(e){toast(tr("Войдите в новой вкладке: здесь сохранён несохранённый текст."),true,{label:tr("Войти"),run:()=>window.open("/login","_blank","noopener")})}
-    throw new Error("login required");
+    // Already handled above; a caller's toast(e.message) must not replace the login prompt.
+    throw new Error(STALE);
   }
   const d=r.headers.get("Date");if(d)clockSkew=Date.now()/1000-Date.parse(d)/1000;
   let j=null;try{j=await r.json()}catch(e){}
@@ -68,6 +69,8 @@ async function api(path,body,gateway=false){
   if([502,503,504].includes(r.status))throw new OfflineError(j?.error||tr("Нет связи с панелью"));
   // A proxy or captive page can answer 200 with HTML; never hand that to code expecting JSON.
   if(!j||typeof j!=="object")throw new OfflineError(tr("Панель вернула неожиданный ответ"));
+  // A route this computer's Agent Deck does not have yet: say what to do instead of "Not Found".
+  if(r.status===404&&(!j.error||/^(not found|Agent Deck route not found)$/i.test(j.error)))throw new Error(tr("Эта функция недоступна: обновите Agent Deck на этом компьютере"));
   if(!r.ok)throw new Error(j.error||r.statusText);return j;
 }
 // Shown only when connecting takes noticeable time, so a quick resume does not flicker.
@@ -260,7 +263,7 @@ function renderTabs(){
     t.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();select(s.name)}};
     box.append(t);
   }
-  if(!sessions.length)box.append(el("div","empty-list",tr("сессий пока нет")));
+  if(!sessions.length)box.append(el("div","empty-list",tr("Сессий пока нет")));
   for(const deck of others)renderDeckSection(box,deck,q);
   if(focused)box.querySelector(`[data-session="${CSS.escape(focused)}"]`)?.focus({preventScroll:true});
   const busy=sessions.filter(s=>state(s)==="busy").length;
@@ -786,7 +789,11 @@ async function send(){
 }
 $("session_keys").addEventListener("pointerdown",e=>{if(e.target.closest("button"))e.preventDefault()});
 function key(k){if(active&&!sending&&!uploading&&!panelUpdating)post("/api/send",{name:active,key:k})}
-async function logout(){try{stashDrafts()}catch(e){}await fetch("/logout",{method:"POST"});location.href="/login"}
+async function logout(){
+  try{stashDrafts()}catch(e){}
+  try{await fetch("/logout",{method:"POST"})}catch(e){toast(tr("Нет связи с панелью"));return}
+  location.href="/login";
+}
 function toggleKeys(){const expanded=$("keys").classList.toggle("expanded");$("b_keymore").setAttribute("aria-expanded",String(expanded));fitKeys()}
 function fitKeys(){
   const box=$("keys"),more=$("b_keymore"),keys=[...box.children].filter(k=>k!==more);
@@ -1240,15 +1247,16 @@ function renderVersion(v){
   else if(job.phase==="error"){label=tr("Обновление не удалось · повторить");action=startPanelUpdate;box.title=job.message||label}
   else if(v.update){label=v.incomplete?tr("Доустановить компоненты"):tr("Обновить до v")+v.latest;action=startPanelUpdate}
   if(label){
-    const b=btn(label,"",action);b.id="b_update";b.disabled=panelUpdating;
+    const b=btn(label,"pri",action);b.id="b_update";b.disabled=panelUpdating;
     if(!v.can_update&&!panelUpdating&&job.phase!=="done"){
       b.disabled=true;box.title=tr("Разработка: обновляйте чекаут через git. Кнопка доступна после установки панели.");
     }
     $("hub_version").replaceChildren(versionInfo(v),b);box.append(btn(tr("Обновить"),"",()=>openSettings("app")));$("s_update_label").textContent=label;mobile.style.display="flex";mobile.disabled=b.disabled;
   }
   if(!label)$("hub_version").replaceChildren(versionInfo(v));
-  if(action!==refreshInterface){const refresh=btn(tr("Обновить интерфейс"),"pri",refreshInterface);refresh.id="b_refresh_interface";refresh.disabled=panelUpdating;$("hub_version").append(refresh)}
-  const check=btn(tr("Проверить обновления"),"",checkPanelUpdates);check.id="b_check_updates";check.disabled=panelUpdating;$("hub_version").append(check);
+  if(action!==refreshInterface){const refresh=btn(tr("Обновить интерфейс"),"",refreshInterface);refresh.id="b_refresh_interface";refresh.disabled=panelUpdating;$("hub_version").append(refresh)}
+  // The action people open this card for is primary; with an update pending, that is the update itself.
+  const check=btn(tr("Проверить обновления"),label?"":"pri",checkPanelUpdates);check.id="b_check_updates";check.disabled=panelUpdating;$("hub_version").append(check);
   $("auto_update_enabled").checked=v.auto_update?.enabled!==false;
   $("auto_update_enabled").disabled=!v.can_update||!v.auto_update||panelUpdating;
   $("auto_update_status").textContent=v.release_error?tr("Не удалось проверить обновления. Повторите проверку."):v.auto_update?.phase==="waiting"?tr("Обновление ждёт завершения локальной генерации"):"";

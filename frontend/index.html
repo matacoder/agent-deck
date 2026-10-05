@@ -41,7 +41,7 @@ __PANEL_STYLE__</style></head><body>
 </svg>
 <div id="app">
   <aside>
-    <div class="deck-switch" id="deck_switch" hidden><label for="deck_select">Agent Deck</label><select id="deck_select" onchange="switchDeck(this.value)"><option value="">Этот Agent Deck</option></select><button type="button" onclick="openSettings('network')" aria-label="Подключить Agent Deck" title="Подключить Agent Deck"><svg class="ui-icon"><use href="#i-plus"/></svg></button></div>
+    <div class="deck-switch" id="deck_switch" hidden><label for="deck_select">Agent Deck</label><select id="deck_select" onchange="switchDeck(this.value)"><option value="">Этот Agent Deck</option></select><button type="button" onclick="openSettings('network')" aria-label="Подключить Agent Deck" title="Подключить Agent Deck"><svg class="ui-icon"><use href="#i-monitor"/></svg></button></div>
     <div id="srv"></div>
     <div class="side-top">
       <input id="q" class="search" placeholder="Поиск…" aria-label="Поиск…" autocomplete="off" autocapitalize="off" spellcheck="false">
@@ -90,7 +90,7 @@ __PANEL_STYLE__</style></head><body>
           <input type="file" id="image_files" multiple hidden>
           <div class="inrow">
             <button class="attachbtn agent-only" id="b_attach" onclick="chooseImages()" aria-label="Приложить файл" title="Приложить файл до 200 МБ · хранится 7 дней"><svg class="ui-icon"><use href="#i-paperclip"/></svg></button>
-            <textarea id="msg" rows="1" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" placeholder="Сообщение агенту…" enterkeyhint="enter"></textarea>
+            <textarea id="msg" rows="1" aria-label="Сообщение агенту…" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" placeholder="Сообщение агенту…" enterkeyhint="enter"></textarea>
             <button class="sendbtn" id="b_send" onclick="send()" aria-label="Отправить"><svg class="ui-icon" style="stroke-width:2.6"><use href="#i-arrow-up"/></svg></button>
           </div>
           <div class="composer-status">
@@ -196,15 +196,15 @@ __PANEL_STYLE__</style></head><body>
       <div class="acts"><button type="button" class="integration-remove" onclick="clearKimi()">Удалить ключ</button><button type="button" onclick="closeKimi()">Отмена</button><button class="pri" id="kimi_save">Сохранить</button></div>
     </form></div>
       <div id="model_cards"></div>
-      <details id="lm_editor" class="hub-card"><summary>Добавить сервер</summary><form onsubmit="event.preventDefault();saveLM()">
+      <details id="lm_editor" class="hub-card"><summary>Добавить компьютер</summary><form onsubmit="event.preventDefault();saveLM()">
         <input type="hidden" id="lm_id"><label for="lm_name">Название</label><input type="text" id="lm_name" required maxlength="100">
-        <label for="lm_url">Адрес сервера</label><input id="lm_url" type="url" required placeholder="http://100.64.0.1:1234">
+        <label for="lm_url">Адрес компьютера</label><input id="lm_url" type="url" required placeholder="http://100.64.0.1:1234">
         <label for="lm_key">API-ключ</label><input id="lm_key" type="password" autocomplete="new-password" placeholder="Вставьте ключ; пустое поле сохраняет текущий">
         <label class="chk"><input type="checkbox" id="lm_clear_key"><span>Удалить ключ</span></label>
         <div class="acts"><button type="button" onclick="resetLM()">Отмена</button><button class="pri">Сохранить</button></div>
       </form></details>
-      <div class="hub-card"><h4>Tailscale</h4><p>Поиск серверов на известных узлах</p><label for="lm_ports">Порты</label><input id="lm_ports" type="text" value="1234" inputmode="numeric">
-      <div class="acts"><button type="button" onclick="discoverLM()">Найти серверы</button><button type="button" id="lm_cancel" onclick="discoverLM(true)" hidden>Остановить</button></div>
+      <div class="hub-card"><h4>Tailscale</h4><p>Поиск компьютеров на известных узлах</p><label for="lm_ports">Порты</label><input id="lm_ports" type="text" value="1234" inputmode="numeric">
+      <div class="acts"><button type="button" onclick="discoverLM()">Найти компьютеры</button><button type="button" id="lm_cancel" onclick="discoverLM(true)" hidden>Остановить</button></div>
       <p id="lm_progress" role="status"></p><div id="lm_results"></div></div>
     </section>
     <section id="hub_connections"><div class="hub-card" id="push_card"><h4>Уведомления</h4><p>Вопросы агентов и завершение работы на всех подключённых Agent Deck приходят на телефон или компьютер, даже когда панель закрыта.</p><p id="push_state" role="status"></p><div id="push_actions"></div>
@@ -239,7 +239,7 @@ __PANEL_STYLE__</style></head><body>
     </section>
     <section id="hub_backups">
       <div class="hub-card"><h4>Бэкапы настроек и ключей</h4><p>Настройки Agent Deck, ключи интеграций и логины агентов. Копии шифруются кодом восстановления и хранятся на всех подключённых Agent Deck. Логин и пароль панели задаются при установке и в бэкап не входят.</p><div id="backup_state"></div></div>
-      <div class="hub-card editor" id="backup_code_card" hidden><h4>Код восстановления</h4><p>Сохраните код в менеджере паролей. Без него бэкап на новой машине не расшифровать. Больше он показан не будет.</p><code id="backup_code" class="recovery-code"></code><div class="acts"><button type="button" onclick="copyBackupCode()">Скопировать</button><button type="button" class="pri" onclick="finishBackupCode()">Я сохранил код</button></div></div>
+      <div class="hub-card editor" id="backup_code_card" hidden><h4>Код восстановления</h4><p>Сохраните код в менеджере паролей. Без него бэкап на новом компьютере не расшифровать. Больше он показан не будет.</p><code id="backup_code" class="recovery-code"></code><div class="acts"><button type="button" onclick="copyBackupCode()">Скопировать</button><button type="button" class="pri" onclick="finishBackupCode()">Я сохранил код</button></div></div>
       <form class="hub-card editor" id="backup_join_card" hidden onsubmit="event.preventDefault();joinBackups()"><label for="backup_join_code">Код восстановления</label><input type="text" id="backup_join_code" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="AD1-…" required><div class="acts"><button type="button" onclick="$('backup_join_card').hidden=true">Отмена</button><button class="pri">Подключить</button></div></form>
       <div class="hub-card"><h4>Восстановление</h4><p>Заменяет настройки, ключи и логины агентов. Текущее состояние сначала сохраняется в бэкап, затем панель перезапускается; сессии tmux продолжают работать.</p>
         <div class="two"><div><label for="backup_source">Где взять копию</label><select id="backup_source" onchange="renderBackupList()"></select></div><div><label for="backup_target">Куда восстановить</label><select id="backup_target"></select></div></div>

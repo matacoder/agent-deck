@@ -4,7 +4,7 @@ const translate=(text,params=[])=>text.replace(/\{(\d+)\}/g,(_,n)=>String(params
 test('cycle report names each machine, its copies or its error, then the finish time',()=>{
  const report={finished:1700000000,machines:[{name:'Mac Studio',ok:true,copies:2},{name:'uk',ok:false,error:'Remote Agent Deck did not respond'},{name:'old',ok:false}]};
  const lines=backupReportLines(report,translate,'en');
- expect(lines.map(l=>[l.ok,l.text])).toEqual([[true,'Mac Studio · копий на других машинах: 2'],[false,'uk · Remote Agent Deck did not respond'],[false,'old · ошибка'],[true,'Последний цикл: '+formatBackupTime(1700000000,'en')]]);
+ expect(lines.map(l=>[l.ok,l.text])).toEqual([[true,'Mac Studio · копий на других компьютерах: 2'],[false,'uk · Remote Agent Deck did not respond'],[false,'old · ошибка'],[true,'Последний цикл: '+formatBackupTime(1700000000,'en')]]);
  expect(backupReportLines(null,translate,'en')).toEqual([]);
 });
 

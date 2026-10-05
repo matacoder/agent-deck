@@ -19,7 +19,8 @@ function renderQuestionCard({box,question,expanded,busyIndex,textIndex,textDraft
   question.options.forEach((option,index)=>{
     const button=document.createElement("button");button.type="button";
     button.className="q-opt"+(option.text?" q-free":"")+(index===question.selected?" selected":"")+(index===busyIndex?" sending":"")+(index===textIndex?" active":"");
-    const number=document.createElement("span");number.className="q-num";number.textContent=option.text?"✎":String(index+1);
+    const number=document.createElement("span");number.className="q-num";
+    if(option.text)number.append(svgIcon("pencil"));else number.textContent=String(index+1);
     const label=document.createElement("span");label.textContent=option.label;
     button.append(number,label);button.disabled=busy;
     button.onclick=()=>option.text?onTextOption&&onTextOption(index):onAnswer(index);

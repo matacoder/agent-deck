@@ -195,6 +195,31 @@ class TelegramTests(unittest.TestCase):
         answered = self.answer.call_args.args[0]
         self.assertEqual((answered.deck, answered.instance, answered.origin), ('a' * 24, 'remote-fingerprint', 'Mac Studio'))
 
+    def test_settings_do_not_wait_for_a_slow_answer(self):
+        import threading
+        self.pair(); self.service.deliver()
+        row = self.service.database().pending()[0]
+        started, release = threading.Event(), threading.Event()
+        self.answer.side_effect = lambda *args: (started.set(), release.wait(5))
+        update = {'update_id': 7, **self.callback(row)}
+        call = self.api.call
+        def updates(token, method, **data):
+            if method != 'getUpdates':
+                return call(token, method, **data)
+            if self.service.stop.is_set() or self.service.database().offset() > 7:
+                self.service.stop.set(); return []
+            return [update]
+        self.api.call = updates
+        worker = threading.Thread(target=self.service.poll_loop); worker.start()
+        self.assertTrue(started.wait(5))
+        status = []
+        reader = threading.Thread(target=lambda: status.append(self.service.status()))
+        reader.start(); reader.join(1)
+        self.assertEqual(len(status), 1)  # Settings answer while a remote answer is still in flight.
+        release.set(); worker.join(5)
+        self.assertFalse(worker.is_alive())
+        self.assertEqual(self.service.database().get(row['id'])['status'], 'answered')
+
     def test_local_fingerprints_are_unchanged_and_machines_never_collide(self):
         import hashlib
         from dataclasses import replace

@@ -94,11 +94,12 @@ class ThumbnailTests(unittest.TestCase):
         self.source.write_bytes(PNG)
 
     def test_tools_are_chosen_per_platform_and_never_through_a_shell(self):
-        sips = I.thumbnail_command(self.source, self.root / 't.jpg', which=lambda t: '/usr/bin/sips' if t == 'sips' else None)
+        sips = I.thumbnail_command(self.source, self.root / 't.jpg', 'image/png', which=lambda t: '/usr/bin/sips' if t == 'sips' else None)
         self.assertEqual(sips[:6], ['sips', '-Z', '480', '-s', 'format', 'jpeg'])
-        magick = I.thumbnail_command(self.source, self.root / 't.jpg', which=lambda t: '/usr/bin/convert' if t == 'convert' else None)
+        magick = I.thumbnail_command(self.source, self.root / 't.jpg', 'image/png', which=lambda t: '/usr/bin/convert' if t == 'convert' else None)
         self.assertEqual(magick[0], 'convert')
-        self.assertIsNone(I.thumbnail_command(self.source, self.root / 't.jpg', which=lambda t: None))
+        self.assertEqual(magick[1], f'png:{self.source}[0]')  # The coder is fixed by checked content.
+        self.assertIsNone(I.thumbnail_command(self.source, self.root / 't.jpg', 'image/png', which=lambda t: None))
 
     def test_thumbnail_is_cached_until_the_file_changes_and_falls_back_on_failure(self):
         calls = []
@@ -108,14 +109,36 @@ class ThumbnailTests(unittest.TestCase):
             return Mock(returncode=0)
         which = lambda t: '/usr/bin/sips' if t == 'sips' else None
         cache = self.root / 'cache'
-        self.assertEqual(I.thumbnail(self.source, cache, run=run, which=which), b'\xff\xd8\xff small')
-        self.assertEqual(I.thumbnail(self.source, cache, run=run, which=which), b'\xff\xd8\xff small')
+        self.assertEqual(I.thumbnail(self.source, cache, 'image/png', run=run, which=which), b'\xff\xd8\xff small')
+        self.assertEqual(I.thumbnail(self.source, cache, 'image/png', run=run, which=which), b'\xff\xd8\xff small')
         self.assertEqual(len(calls), 1)
         self.assertEqual(calls[0][0], 'sips')
         os.utime(self.source, ns=(1, 1))
-        I.thumbnail(self.source, cache, run=run, which=which)
+        I.thumbnail(self.source, cache, 'image/png', run=run, which=which)
         self.assertEqual(len(calls), 2)
         broken = lambda command, **kwargs: Mock(returncode=1)
         os.utime(self.source, ns=(2, 2))
-        self.assertIsNone(I.thumbnail(self.source, cache, run=broken, which=which))
+        self.assertIsNone(I.thumbnail(self.source, cache, 'image/png', run=broken, which=which))
         self.assertEqual([p.suffix for p in cache.iterdir()], ['.jpg', '.jpg'])
+
+
+class ThumbnailSafetyTests(unittest.TestCase):
+    def setUp(self):
+        tmp = tempfile.TemporaryDirectory(dir='/tmp')
+        self.addCleanup(tmp.cleanup)
+        self.root = Path(tmp.name)
+
+    def test_a_disguised_file_never_reaches_a_converter(self):
+        fake = self.root / 'shot.png'
+        fake.write_bytes(b'<svg xmlns="http://www.w3.org/2000/svg"><script>x</script></svg>')
+        with patch.object(I, 'thumbnail') as thumbnail, self.assertRaisesRegex(ValueError, 'не похож'):
+            I.read_image(str(fake), str(self.root), str(self.root), str(fake), cache=self.root / 'cache')
+        thumbnail.assert_not_called()
+
+    def test_old_thumbnails_are_pruned(self):
+        cache = self.root / 'cache'; cache.mkdir()
+        old, fresh = cache / 'old.jpg', cache / 'fresh.jpg'
+        old.write_bytes(b'x'); fresh.write_bytes(b'x')
+        os.utime(old, (1, 1))
+        I.prune_cache(cache)
+        self.assertEqual([p.name for p in cache.iterdir()], ['fresh.jpg'])

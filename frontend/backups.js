@@ -6,7 +6,7 @@ function formatBackupTime(seconds,locale){
 // One line per machine for the last cycle: what is protected and what needs attention.
 function backupReportLines(report,translate,locale){
   if(!report)return [];
-  return report.machines.map(m=>({ok:m.ok,text:m.name+" · "+(m.ok?translate("копий на других машинах: {0}",[m.copies||0]):m.error||translate("ошибка"))}))
+  return report.machines.map(m=>({ok:m.ok,text:m.name+" · "+(m.ok?translate("копий на других компьютерах: {0}",[m.copies||0]):m.error||translate("ошибка"))}))
     .concat(report.finished?[{ok:true,text:translate("Последний цикл: {0}",[formatBackupTime(report.finished,locale)])}]:[]);
 }
 function backupLabel(meta,locale){
@@ -26,14 +26,14 @@ function renderBackups(){
   const s=backupStatus;if(!s)return;
   const box=$("backup_state");
   if(!s.configured){
-    box.replaceChildren(el("p","",tr("Бэкапы выключены на этой машине.")),
+    box.replaceChildren(el("p","",tr("Бэкапы выключены на этом компьютере.")),
       el("div","acts",btn(tr("У меня есть код"),"",()=>{$("backup_join_card").hidden=false;$("backup_join_code").focus()}),btn(tr("Включить бэкапы"),"pri",enableBackups)));
   }else{
     const lines=backupReportLines(s.report,tr,DATE_LOCALE).map(l=>el("p","backup-line"+(l.ok?"":" danger"),l.text));
     box.replaceChildren(el("p","",tr("Ключ {0} · последний бэкап: {1}",[s.key_id,s.last?formatBackupTime(s.last,DATE_LOCALE):tr("ещё не было")])),...lines,
-      el("div","acts",btn(tr("Скачать бэкап этой машины"),"",downloadBackup),btn(tr("Сделать бэкап сейчас"),"pri",runBackup)));
+      el("div","acts",btn(tr("Скачать бэкап этого компьютера"),"",downloadBackup),btn(tr("Сделать бэкап сейчас"),"pri",runBackup)));
   }
-  const names=new Map([["",tr("Эта машина")],...deckDirectory.decks.map(d=>[d.id,d.name])]);
+  const names=new Map([["",tr("Этот компьютер")],...deckDirectory.decks.map(d=>[d.id,d.name])]);
   const source=$("backup_source").value;
   $("backup_source").replaceChildren(...[...backupSources.keys()].map(id=>{const o=el("option","",names.get(id)||id);o.value=id;return o}));
   if(backupSources.has(source))$("backup_source").value=source;
@@ -42,7 +42,7 @@ function renderBackups(){
 function renderBackupList(){
   const source=$("backup_source").value,list=backupSources.get(source)||[];
   // A copy fetched from another machine can only be restored here; the gateway can push its own copies anywhere.
-  const targets=[["",tr("Эта машина")],...(!selectedDeck&&!source?deckDirectory.decks.map(d=>[d.id,d.name]):[])];
+  const targets=[["",tr("Этот компьютер")],...(!selectedDeck&&!source?deckDirectory.decks.map(d=>[d.id,d.name]):[])];
   $("backup_target").replaceChildren(...targets.map(([id,name])=>{const o=el("option","",name);o.value=id;return o}));
   $("backup_restore_code_row").hidden=Boolean(backupStatus?.configured);
   $("backup_list").replaceChildren(...(list.length?list.map(meta=>el("div","deck-connection deck-result",
@@ -94,7 +94,8 @@ async function restoreBackup(meta,source,blob){
     else{
       const result=await api("/api/backup_restore",blob?{blob,code}:{origin:meta.origin,created:meta.created,deck:source||undefined,code:code||undefined});
       warned=(result.restored?.warnings||[]).length>0;
-      for(const warning of result.restored?.warnings||[])toast(tr(warning));
+      // One toast: each call replaces the previous one, so separate toasts would hide all but the last.
+      const warnings=(result.restored?.warnings||[]).map(w=>tr(w));if(warnings.length)toast(warnings.join(" "));
     }
   }catch(e){toast(e.message);return}
   if(target){toast(tr("Восстановлено на «{0}». Панель там перезапускается.",[targetName]),"success");return}
