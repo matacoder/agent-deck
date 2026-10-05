@@ -185,6 +185,30 @@ no database server. Tokens are never returned to the browser or committed to git
 Answers are protected against stale buttons, repeated clicks and uncertain replays
 after a restart. See [integration setup and architecture](docs/integrations.md).
 
+## Backups
+
+**Settings → Backups** protects Agent Deck settings, integration keys (Telegram, Kimi,
+LM Studio, connected Agent Decks) and agent logins (`~/.codex/auth.json`,
+`~/.claude/.credentials.json` on Linux, `~/.config/gh/hosts.yml`). The panel login and
+password are set by the installer and are not part of a backup; on macOS Claude keeps
+its login in the Keychain, so log in to Claude again after a restore.
+
+1. Click **Turn on backups** and store the recovery code (`AD1-…`) in a password manager.
+   It is shown once; without it a backup cannot be decrypted on a new computer.
+2. The Agent Deck you open in the browser gives the same key to every connected
+   computer, backs up each of them daily (and on **Back up now**) and keeps every copy on
+   every other computer. Each computer keeps its last 14 copies per machine.
+3. To replace a dead computer, install Agent Deck on the new one, connect it under
+   **Settings → Network**, then pick its backup and **Restore to** the new computer. To
+   rebuild the main computer, connect any surviving one, choose it as the copy source,
+   enter the recovery code and restore. **Download this machine's backup** gives an
+   offline `.adbk` file for **Restore from file**.
+
+Backups are encrypted with keyed BLAKE2b (counter-mode stream and a separate
+authentication tag) from the Python standard library, so other computers only hold
+ciphertext. Restoring first backs up the state it replaces, writes files only to their
+known locations with `600` permissions and restarts the panel; tmux sessions keep running.
+
 ## Security
 
 The panel gives a shell to whoever logs in. On Ubuntu it runs as the dedicated unprivileged

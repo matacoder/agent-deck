@@ -382,6 +382,8 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 #lm_editor summary{font-size:13px;color:var(--fg);cursor:pointer;padding:0}
 #lm_editor form{padding-top:4px}
 .hub-card .good{color:var(--ok)}
+.recovery-code{display:block;margin:4px 0 0;padding:12px 14px;border:1px solid var(--bd);border-radius:var(--r);background:var(--bg);color:var(--fg2);font:600 14px/1.6 var(--mono);letter-spacing:.04em;overflow-wrap:anywhere;user-select:all;-webkit-user-select:all}
+.hub-card p.backup-line{margin:4px 0 0}.hub-card p.danger{color:var(--bad-text)}
 #hub_version{display:flex;align-items:center;flex-wrap:wrap;gap:10px 12px;margin-top:12px}
 .version-info{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-right:auto}
 .version-number{font-weight:600;font-size:14px;color:var(--fg2)}
@@ -718,6 +720,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
     <button type="button" data-section="models" onclick="settingsSection('models')">Модели</button>
     <button type="button" data-section="connections" onclick="settingsSection('connections')">Подключения</button>
     <button type="button" data-section="network" onclick="settingsSection('network')">Сеть</button>
+    <button type="button" data-section="backups" onclick="settingsSection('backups')">Бэкапы</button>
     <button type="button" data-section="app" onclick="settingsSection('app')">Приложение</button>
   </nav>
   <div class="dlg-body hub-content">
@@ -769,6 +772,16 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
         <div class="deck-toolbar"><div class="deck-port"><label for="deck_port">Порт</label><input type="number" id="deck_port" min="1" max="65535" value="8790"></div><div class="deck-actions"><button type="button" id="deck_discover" onclick="discoverDecks()">Обнаружить</button><button type="button" onclick="editDeck()">Подключить</button></div></div><p id="deck_discovery_status"></p><div id="deck_discovery_results"></div>
         <details id="deck_editor"><summary>Подключение Agent Deck</summary><form onsubmit="event.preventDefault();saveDeck()"><input type="hidden" id="deck_id"><label for="deck_name">Название</label><input type="text" id="deck_name" required maxlength="100"><label for="deck_url">Адрес Tailscale</label><input type="url" id="deck_url" required placeholder="http://100.68.39.62:8790"><label for="deck_username">Логин</label><input type="text" id="deck_username" required autocomplete="off"><label for="deck_password">Пароль</label><input type="password" id="deck_password" autocomplete="new-password"><p>Пароль хранится на основном сервере. Пустое поле сохраняет пароль существующего подключения.</p><button class="pri" id="deck_save">Подключить</button></form></details>
       </div>
+    </section>
+    <section id="hub_backups">
+      <div class="hub-card"><h4>Бэкапы настроек и ключей</h4><p>Настройки Agent Deck, ключи интеграций и логины агентов. Копии шифруются кодом восстановления и хранятся на всех подключённых Agent Deck. Логин и пароль панели задаются при установке и в бэкап не входят.</p><div id="backup_state"></div></div>
+      <div class="hub-card editor" id="backup_code_card" hidden><h4>Код восстановления</h4><p>Сохраните код в менеджере паролей. Без него бэкап на новой машине не расшифровать. Больше он показан не будет.</p><code id="backup_code" class="recovery-code"></code><div class="acts"><button type="button" onclick="copyBackupCode()">Скопировать</button><button type="button" class="pri" onclick="finishBackupCode()">Я сохранил код</button></div></div>
+      <form class="hub-card editor" id="backup_join_card" hidden onsubmit="event.preventDefault();joinBackups()"><label for="backup_join_code">Код восстановления</label><input type="text" id="backup_join_code" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="AD1-…" required><div class="acts"><button type="button" onclick="$('backup_join_card').hidden=true">Отмена</button><button class="pri">Подключить</button></div></form>
+      <div class="hub-card"><h4>Восстановление</h4><p>Заменяет настройки, ключи и логины агентов. Текущее состояние сначала сохраняется в бэкап, затем панель перезапускается; сессии tmux продолжают работать.</p>
+        <div class="two"><div><label for="backup_source">Где взять копию</label><select id="backup_source" onchange="renderBackupList()"></select></div><div><label for="backup_target">Куда восстановить</label><select id="backup_target"></select></div></div>
+        <div id="backup_restore_code_row" hidden><label for="backup_restore_code">Код восстановления</label><input type="text" id="backup_restore_code" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="AD1-…"></div>
+        <div id="backup_list"></div>
+        <div class="acts"><button type="button" onclick="$('backup_file').click()">Восстановить из файла</button></div><input type="file" id="backup_file" accept=".adbk" hidden onchange="restoreBackupFile(this)"></div>
     </section>
     <section id="hub_app">
       <div class="hub-card"><label for="ui_language">Язык интерфейса</label><select id="ui_language" onchange="saveLanguage()"></select><p>Язык сохраняется в этом браузере. Сообщения и вывод агентов не переводятся.</p>
@@ -943,6 +956,116 @@ function askConfirm(dialog,{title,text="",confirm,danger=false}){
 }
 
 if(typeof module!=="undefined")module.exports={svgIcon,renderQuestionCard,askConfirm};
+let backupStatus=null,backupSources=new Map();
+
+function formatBackupTime(seconds,locale){
+  return new Date(seconds*1000).toLocaleString(locale,{dateStyle:"medium",timeStyle:"short"});
+}
+// One line per machine for the last cycle: what is protected and what needs attention.
+function backupReportLines(report,translate,locale){
+  if(!report)return [];
+  return report.machines.map(m=>({ok:m.ok,text:m.name+" · "+(m.ok?translate("копий на других машинах: {0}",[m.copies||0]):m.error||translate("ошибка"))}))
+    .concat(report.finished?[{ok:true,text:translate("Последний цикл: {0}",[formatBackupTime(report.finished,locale)])}]:[]);
+}
+function backupLabel(meta,locale){
+  return meta.name+" · "+formatBackupTime(meta.created,locale)+" · "+Math.max(1,Math.round((meta.size||0)/1024))+" KB";
+}
+
+async function loadBackups(){
+  try{backupStatus=await api("/api/backups")}catch(e){toast(e.message);return}
+  backupSources=new Map([["",backupStatus.stored]]);
+  // Copies kept by connected machines are reachable only from the gateway that holds their logins.
+  if(!selectedDeck)await Promise.all(deckDirectory.decks.map(async d=>{
+    try{backupSources.set(d.id,(await api(instancePath(d.id,"/api/backups"),null,true)).stored||[])}catch(e){}
+  }));
+  renderBackups();
+}
+function renderBackups(){
+  const s=backupStatus;if(!s)return;
+  const box=$("backup_state");
+  if(!s.configured){
+    box.replaceChildren(el("p","",tr("Бэкапы выключены на этой машине.")),
+      el("div","acts",btn(tr("У меня есть код"),"",()=>{$("backup_join_card").hidden=false;$("backup_join_code").focus()}),btn(tr("Включить бэкапы"),"pri",enableBackups)));
+  }else{
+    const lines=backupReportLines(s.report,tr,DATE_LOCALE).map(l=>el("p","backup-line"+(l.ok?"":" danger"),l.text));
+    box.replaceChildren(el("p","",tr("Ключ {0} · последний бэкап: {1}",[s.key_id,s.last?formatBackupTime(s.last,DATE_LOCALE):tr("ещё не было")])),...lines,
+      el("div","acts",btn(tr("Скачать бэкап этой машины"),"",downloadBackup),btn(tr("Сделать бэкап сейчас"),"pri",runBackup)));
+  }
+  const names=new Map([["",tr("Эта машина")],...deckDirectory.decks.map(d=>[d.id,d.name])]);
+  const source=$("backup_source").value;
+  $("backup_source").replaceChildren(...[...backupSources.keys()].map(id=>{const o=el("option","",names.get(id)||id);o.value=id;return o}));
+  if(backupSources.has(source))$("backup_source").value=source;
+  renderBackupList();
+}
+function renderBackupList(){
+  const source=$("backup_source").value,list=backupSources.get(source)||[];
+  // A copy fetched from another machine can only be restored here; the gateway can push its own copies anywhere.
+  const targets=[["",tr("Эта машина")],...(!selectedDeck&&!source?deckDirectory.decks.map(d=>[d.id,d.name]):[])];
+  $("backup_target").replaceChildren(...targets.map(([id,name])=>{const o=el("option","",name);o.value=id;return o}));
+  $("backup_restore_code_row").hidden=Boolean(backupStatus?.configured);
+  $("backup_list").replaceChildren(...(list.length?list.map(meta=>el("div","deck-connection deck-result",
+    el("div","deck-info",el("strong","",backupLabel(meta,DATE_LOCALE))),
+    el("div","deck-actions",btn(tr("Восстановить"),"",()=>restoreBackup(meta,source)))))
+    :[el("p","",tr("Копий пока нет"))]));
+}
+async function enableBackups(){
+  try{const result=await api("/api/backup_setup",{});$("backup_code").textContent=result.code;$("backup_code_card").hidden=false;$("backup_code_card").scrollIntoView({block:"nearest"})}
+  catch(e){toast(e.message);return}
+  await loadBackups();
+}
+function copyBackupCode(){copyToClipboard($("backup_code").textContent,window)}
+async function finishBackupCode(){
+  // The code is shown once; it is not kept in the page after confirmation.
+  $("backup_code").textContent="";$("backup_code_card").hidden=true;
+  await runBackup();
+}
+async function joinBackups(){
+  try{await api("/api/backup_setup",{code:$("backup_join_code").value});$("backup_join_code").value="";$("backup_join_card").hidden=true;await runBackup()}
+  catch(e){toast(e.message)}
+}
+async function runBackup(){
+  toast(tr("Делаю бэкап…"),true);
+  try{await api("/api/backup_run",{});toast(tr("Бэкап готов"),"success")}catch(e){toast(e.message)}
+  await loadBackups();
+}
+async function downloadBackup(){
+  const last=backupStatus?.stored.find(m=>m.origin===backupStatus.instance);
+  if(!last){toast(tr("Сначала сделайте бэкап"));return}
+  try{
+    const data=await api("/api/backup_blob?origin="+last.origin+"&created="+last.created);
+    const bytes=Uint8Array.from(atob(data.blob),c=>c.charCodeAt(0)),link=document.createElement("a");
+    link.href=URL.createObjectURL(new Blob([bytes],{type:"application/octet-stream"}));
+    link.download="agent-deck-"+last.name.replace(/[^A-Za-z0-9_-]+/g,"-")+"-"+last.created+".adbk";
+    link.click();setTimeout(()=>URL.revokeObjectURL(link.href),1000);
+  }catch(e){toast(e.message)}
+}
+async function restoreBackup(meta,source,blob){
+  const target=$("backup_target").value,targetName=$("backup_target").selectedOptions[0]?.textContent||"";
+  const code=$("backup_restore_code").value.trim();
+  if(!backupStatus?.configured&&!target&&!code){toast(tr("Введите код восстановления"));$("backup_restore_code").focus();return}
+  const ok=await confirmAction(tr("Восстановить «{0}» от {1}?",[meta.name,formatBackupTime(meta.created,DATE_LOCALE)]),
+    {text:tr("Настройки, ключи и логины агентов на «{0}» будут заменены. Текущее состояние сохранится в бэкап, панель перезапустится.",[targetName]),confirm:tr("Восстановить"),danger:true});
+  if(!ok)return;
+  try{
+    if(target)await api("/api/backup_restore_remote",{deck:target,origin:meta.origin,created:meta.created});
+    else await api("/api/backup_restore",blob?{blob,code}:{origin:meta.origin,created:meta.created,deck:source||undefined,code:code||undefined});
+  }catch(e){toast(e.message);return}
+  if(target){toast(tr("Восстановлено на «{0}». Панель там перезапускается.",[targetName]),"success");return}
+  toast(tr("Восстановлено. Панель перезапускается…"),true);
+  setTimeout(()=>location.reload(),5000);
+}
+function restoreBackupFile(input){
+  const file=input.files[0];input.value="";if(!file)return;
+  const reader=new FileReader();
+  reader.onload=()=>{
+    const blob=String(reader.result).split(",")[1];
+    $("backup_target").value="";
+    restoreBackup({name:file.name,created:Math.floor(file.lastModified/1000)},"",blob);
+  };
+  reader.readAsDataURL(file);
+}
+
+if(typeof module!=="undefined")module.exports={formatBackupTime,backupReportLines,backupLabel};
 const I18N=__PANEL_I18N__;
 const DATE_LOCALE=(()=>{try{return Intl.getCanonicalLocales(I18N.language)[0]}catch(e){return "en"}})();
 const $=id=>document.getElementById(id);
@@ -1788,7 +1911,8 @@ function localUsage(profile){
 }
 let hubSection="agents",lmData={profiles:[],discovery:{}},lmTimer=null,returnToNew=false,lmRefreshPending=null,lmModelsChecked=0;
 function settingsSection(section){
-  hubSection=section;for(const name of ["agents","models","connections","network","app"])$("hub_"+name).hidden=name!==section;
+  hubSection=section;for(const name of ["agents","models","connections","network","backups","app"])$("hub_"+name).hidden=name!==section;
+  if(section==="backups"&&$("settings_dlg").open)loadBackups();
   for(const b of document.querySelectorAll(".hub-nav button")){
     b.classList.toggle("on",b.dataset.section===section);b.setAttribute("aria-current",String(b.dataset.section===section));
     if(b.dataset.section===section&&isMobile())requestAnimationFrame(()=>b.scrollIntoView({inline:"nearest",block:"nearest"}));
@@ -1801,6 +1925,7 @@ document.querySelector(".hub-nav").addEventListener("scroll",updateHubNavFade,{p
 async function openSettings(section="agents"){
   drawer(false);sheet(false);settingsSection(section);
   if(!$("settings_dlg").open)$("settings_dlg").showModal();updateHubNavFade();
+  if(section==="backups")loadBackups();
   renderHub();
   await Promise.allSettled([loadDeckSettings(),(async()=>{const data=await api("/api/project_directory");$("project_directory").value=data.directory})(),refreshLMModels(),loadIntegrations(),checkGithubFoot(),(async()=>{const data=await api("/api/locales");$("ui_language").replaceChildren(...data.languages.map(x=>{const o=el("option","",x.name);o.value=x.code;return o}));$("ui_language").value=I18N.language})()]);
   clearInterval(lmTimer);lmTimer=setInterval(()=>{if(!document.hidden&&$("settings_dlg").open){if(lmData.discovery?.phase==="running")loadLM(false);if(hubSection==="models"&&Date.now()-lmModelsChecked>30000)refreshLMModels()}},2000);

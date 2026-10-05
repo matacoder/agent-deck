@@ -169,6 +169,7 @@ __PANEL_STYLE__</style></head><body>
     <button type="button" data-section="models" onclick="settingsSection('models')">Модели</button>
     <button type="button" data-section="connections" onclick="settingsSection('connections')">Подключения</button>
     <button type="button" data-section="network" onclick="settingsSection('network')">Сеть</button>
+    <button type="button" data-section="backups" onclick="settingsSection('backups')">Бэкапы</button>
     <button type="button" data-section="app" onclick="settingsSection('app')">Приложение</button>
   </nav>
   <div class="dlg-body hub-content">
@@ -220,6 +221,16 @@ __PANEL_STYLE__</style></head><body>
         <div class="deck-toolbar"><div class="deck-port"><label for="deck_port">Порт</label><input type="number" id="deck_port" min="1" max="65535" value="8790"></div><div class="deck-actions"><button type="button" id="deck_discover" onclick="discoverDecks()">Обнаружить</button><button type="button" onclick="editDeck()">Подключить</button></div></div><p id="deck_discovery_status"></p><div id="deck_discovery_results"></div>
         <details id="deck_editor"><summary>Подключение Agent Deck</summary><form onsubmit="event.preventDefault();saveDeck()"><input type="hidden" id="deck_id"><label for="deck_name">Название</label><input type="text" id="deck_name" required maxlength="100"><label for="deck_url">Адрес Tailscale</label><input type="url" id="deck_url" required placeholder="http://100.68.39.62:8790"><label for="deck_username">Логин</label><input type="text" id="deck_username" required autocomplete="off"><label for="deck_password">Пароль</label><input type="password" id="deck_password" autocomplete="new-password"><p>Пароль хранится на основном сервере. Пустое поле сохраняет пароль существующего подключения.</p><button class="pri" id="deck_save">Подключить</button></form></details>
       </div>
+    </section>
+    <section id="hub_backups">
+      <div class="hub-card"><h4>Бэкапы настроек и ключей</h4><p>Настройки Agent Deck, ключи интеграций и логины агентов. Копии шифруются кодом восстановления и хранятся на всех подключённых Agent Deck. Логин и пароль панели задаются при установке и в бэкап не входят.</p><div id="backup_state"></div></div>
+      <div class="hub-card editor" id="backup_code_card" hidden><h4>Код восстановления</h4><p>Сохраните код в менеджере паролей. Без него бэкап на новой машине не расшифровать. Больше он показан не будет.</p><code id="backup_code" class="recovery-code"></code><div class="acts"><button type="button" onclick="copyBackupCode()">Скопировать</button><button type="button" class="pri" onclick="finishBackupCode()">Я сохранил код</button></div></div>
+      <form class="hub-card editor" id="backup_join_card" hidden onsubmit="event.preventDefault();joinBackups()"><label for="backup_join_code">Код восстановления</label><input type="text" id="backup_join_code" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="AD1-…" required><div class="acts"><button type="button" onclick="$('backup_join_card').hidden=true">Отмена</button><button class="pri">Подключить</button></div></form>
+      <div class="hub-card"><h4>Восстановление</h4><p>Заменяет настройки, ключи и логины агентов. Текущее состояние сначала сохраняется в бэкап, затем панель перезапускается; сессии tmux продолжают работать.</p>
+        <div class="two"><div><label for="backup_source">Где взять копию</label><select id="backup_source" onchange="renderBackupList()"></select></div><div><label for="backup_target">Куда восстановить</label><select id="backup_target"></select></div></div>
+        <div id="backup_restore_code_row" hidden><label for="backup_restore_code">Код восстановления</label><input type="text" id="backup_restore_code" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="AD1-…"></div>
+        <div id="backup_list"></div>
+        <div class="acts"><button type="button" onclick="$('backup_file').click()">Восстановить из файла</button></div><input type="file" id="backup_file" accept=".adbk" hidden onchange="restoreBackupFile(this)"></div>
     </section>
     <section id="hub_app">
       <div class="hub-card"><label for="ui_language">Язык интерфейса</label><select id="ui_language" onchange="saveLanguage()"></select><p>Язык сохраняется в этом браузере. Сообщения и вывод агентов не переводятся.</p>

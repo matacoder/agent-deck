@@ -250,3 +250,10 @@ class UpdateActionTests(PanelCase):
         self.panel.UPDATE_REPO = "matacoder/agent-deck"
         with self.assertRaises(ValueError):
             self.panel.action_update({})
+
+
+class PackageListTests(unittest.TestCase):
+    def test_updates_ship_every_integration_module(self):
+        # Installers copy integrations/*.py; the updater must not silently drop a new module.
+        shipped = {"integrations/" + path.name for path in (ROOT / "integrations").glob("*.py")}
+        self.assertEqual(updater.PACKAGES, shipped)

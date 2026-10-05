@@ -2,6 +2,13 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.5.0 — 2026-10-05
+
+- Backups of Agent Deck settings, integration keys and agent logins (Codex, Claude on Linux, GitHub CLI) under Settings → Backups: a one-time recovery code, daily and on-demand backups, the last 14 copies per computer.
+- The gateway shares the key with connected Agent Decks, collects their backups and stores every copy on every other computer; computers with another key or an older release are reported, never overwritten.
+- Restore from this computer, a connected Agent Deck or a downloaded `.adbk` file, onto this computer or (from the gateway) a connected one; the replaced state is backed up first and the panel restarts.
+- New files in `~/.config/cc-panel/`: `backup-key`, `instance-id` and `backups/` (all private). New API: `GET /api/backups`, `GET /api/backup_blob`, `POST /api/backup_setup|backup_now|backup_run|backup_store|backup_restore|backup_restore_remote`.
+
 ## 1.4.1 — 2026-10-05
 
 - Switching to another Agent Deck happens in place without a page reload: the sidebar and title show the target's known sessions immediately, drafts and attachments stay with their computer, and responses still in flight for the previous computer are discarded.

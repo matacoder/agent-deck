@@ -843,7 +843,8 @@ function localUsage(profile){
 }
 let hubSection="agents",lmData={profiles:[],discovery:{}},lmTimer=null,returnToNew=false,lmRefreshPending=null,lmModelsChecked=0;
 function settingsSection(section){
-  hubSection=section;for(const name of ["agents","models","connections","network","app"])$("hub_"+name).hidden=name!==section;
+  hubSection=section;for(const name of ["agents","models","connections","network","backups","app"])$("hub_"+name).hidden=name!==section;
+  if(section==="backups"&&$("settings_dlg").open)loadBackups();
   for(const b of document.querySelectorAll(".hub-nav button")){
     b.classList.toggle("on",b.dataset.section===section);b.setAttribute("aria-current",String(b.dataset.section===section));
     if(b.dataset.section===section&&isMobile())requestAnimationFrame(()=>b.scrollIntoView({inline:"nearest",block:"nearest"}));
@@ -856,6 +857,7 @@ document.querySelector(".hub-nav").addEventListener("scroll",updateHubNavFade,{p
 async function openSettings(section="agents"){
   drawer(false);sheet(false);settingsSection(section);
   if(!$("settings_dlg").open)$("settings_dlg").showModal();updateHubNavFade();
+  if(section==="backups")loadBackups();
   renderHub();
   await Promise.allSettled([loadDeckSettings(),(async()=>{const data=await api("/api/project_directory");$("project_directory").value=data.directory})(),refreshLMModels(),loadIntegrations(),checkGithubFoot(),(async()=>{const data=await api("/api/locales");$("ui_language").replaceChildren(...data.languages.map(x=>{const o=el("option","",x.name);o.value=x.code;return o}));$("ui_language").value=I18N.language})()]);
   clearInterval(lmTimer);lmTimer=setInterval(()=>{if(!document.hidden&&$("settings_dlg").open){if(lmData.discovery?.phase==="running")loadLM(false);if(hubSection==="models"&&Date.now()-lmModelsChecked>30000)refreshLMModels()}},2000);

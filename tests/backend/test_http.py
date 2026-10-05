@@ -1,3 +1,4 @@
+import base64
 import hashlib
 import http.client
 import json
@@ -94,6 +95,9 @@ class HTTPTests(PanelCase):
     def test_question_endpoints_require_login_origin_and_return_json(self):
         self.assertEqual(self.request("GET", "/api/question?name=demo")[0], 401)
         self.assertEqual(self.request("GET", "/api/questions")[0], 401)
+        for path in ("/api/backups", "/api/backup_blob?origin=x&created=1"):
+            self.assertEqual(self.request("GET", path)[0], 401)
+        self.assertEqual(self.request("POST", "/api/backup_restore", "{}")[0], 401)
         cookie = self.login()
         with patch.object(self.panel, "scan_questions", Mock(return_value=[])):
             status, _, body = self.request("GET", "/api/questions", headers={"Cookie": cookie})
@@ -108,6 +112,35 @@ class HTTPTests(PanelCase):
             self.assertEqual(self.request("POST", "/api/answer", '{"name":"demo","id":"x","index":0}',
                                           {"Cookie": cookie, "Origin": "http://sibling.test"})[0], 403)
             self.panel.ACTIONS["answer"].assert_not_called()
+
+    def test_backup_lifecycle_over_http_restores_from_a_downloaded_file(self):
+        cookie = self.login()
+        post = lambda path, body: self.request("POST", path, json.dumps(body), {"Cookie": cookie})
+        kimi = self.home / ".config/cc-panel/kimi.json"
+        kimi.write_text('{"key":"original"}')
+        status, _, body = post("/api/backup_setup", {})
+        code = json.loads(body)["code"]
+        self.assertEqual(status, 200)
+        self.assertEqual(post("/api/backup_setup", {})[0], 400)
+        self.assertEqual(post("/api/backup_run", {})[0], 200)
+        _, _, body = self.request("GET", "/api/backups", headers={"Cookie": cookie})
+        state = json.loads(body)
+        self.assertNotIn(code, body.decode())
+        [meta] = state["stored"]
+        _, headers, body = self.request("GET", f"/api/backup_blob?origin={meta['origin']}&created={meta['created']}",
+                                        headers={"Cookie": cookie})
+        self.assertTrue(headers["Content-Type"].startswith("application/json"))
+        blob = json.loads(body)["blob"]
+        self.assertNotIn(b"original", base64.b64decode(blob))
+        kimi.write_text('{"key":"changed"}')
+        self.panel.backup_service().key_path.unlink()
+        with patch.object(self.panel, "restart_soon") as restart:
+            self.assertEqual(post("/api/backup_restore", {"blob": blob})[0], 400)
+            status, _, body = post("/api/backup_restore", {"blob": blob, "code": code})
+            self.assertEqual(status, 200, body)
+            restart.assert_called_once()
+        self.assertEqual(kimi.read_text(), '{"key":"original"}')
+        self.assertEqual(self.request("GET", "/api/backup_blob?origin=../x&created=1", headers={"Cookie": cookie})[0], 404)
 
     def test_update_rejects_cross_origin_and_non_json_requests(self):
         cookie = self.login()

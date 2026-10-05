@@ -33,6 +33,7 @@ Key files (don't read everything — only what you're touching):
 | `integrations/telegram.py` | Long-polling, pairing, callback validation. **Never deletes foreign webhooks.** |
 | `integrations/questions.py` | Question normalization (question + options only, no history) |
 | `integrations/store.py` | SQLite outbox: claim-before-input, uncertain state, 7-day TTL |
+| `integrations/backups.py` | Encrypted settings/keys backups, peer replication through the gateway, whitelisted restore |
 | `integrations/lmstudio.py`, `relay.py` | LM Studio profiles + loopback relay (timing/usage only, no conversation text) |
 | `locales/*.json` | 16 catalogs. New language = one JSON + a row in `docs/localization.md` |
 | `install.sh`, `get.sh`, `update.sh`, `deploy.sh` | Installers. **Root entrypoints** — see §5 |

@@ -28,7 +28,7 @@ import sys
 import threading
 import time
 import uuid
-from urllib.parse import parse_qs
+from urllib.parse import parse_qs, urlencode
 from urllib.parse import urlsplit
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from socketserver import TCPServer
@@ -1420,13 +1420,105 @@ def telegram_service():
         return telegram_integration
 
 
+_backups = None
+_backups_lock = threading.Lock()
+backup_run_lock = threading.Lock()
+
+
+def backup_service():
+    global _backups
+    from integrations.backups import Backups
+    with _backups_lock:
+        if _backups is None:
+            _backups = Backups(os.path.expanduser('~'), lambda: VERSION,
+                               lambda: network_settings.get()['name'] or socket.gethostname())
+        return _backups
+
+
+def run_backups():
+    """One backup cycle; the gateway (an instance with connected decks) also replicates every machine."""
+    from integrations.backups import replicate
+    if not backup_run_lock.acquire(blocking=False):
+        raise ValueError('Бэкап уже выполняется')
+    try:
+        if remote_decks.status().get('decks'):
+            return replicate(backup_service(), remote_decks)
+        backup_service().create()
+        return backup_service().report({'started': int(time.time()), 'finished': int(time.time()), 'machines': []})
+    finally:
+        backup_run_lock.release()
+
+
+def backup_loop():
+    while True:
+        time.sleep(900)
+        try:
+            service = backup_service()
+            latest = service.latest() if service.key() else None
+            if service.key() and (not latest or time.time() - latest['created'] > 86400):
+                run_backups()
+        except Exception as error:  # A failed cycle is retried on the next tick and shown in Settings.
+            print(f'Backup cycle failed: {error}', flush=True)
+
+
+def restart_soon():
+    # systemd Restart=always / launchd KeepAlive start the panel again with the restored settings;
+    # KillMode=process keeps tmux and the agents running.
+    threading.Timer(1.5, os._exit, args=(0,)).start()
+
+
+def backup_blob_payload(query):
+    params = parse_qs(query)
+    blob = backup_service().read(params.get('origin', [''])[0], int(params.get('created', ['0'])[0] or 0))
+    return {'blob': base64.b64encode(blob).decode()}
+
+
+def action_backup_now(d):
+    return {'blob': base64.b64encode(backup_service().create()).decode()}
+
+
+def action_backup_store(d):
+    from integrations.backups import read_meta
+    blob = base64.b64decode(str(d.get('blob', '')), validate=True)
+    if read_meta(blob)[0]['origin'] == backup_service().instance_id():
+        raise ValueError('Эта машина сама хранит свои бэкапы')
+    return {'meta': backup_service().store(blob)}
+
+
+def action_backup_restore(d):
+    from integrations.backups import remote_json
+    if d.get('blob'):
+        blob = base64.b64decode(str(d['blob']), validate=True)
+    elif d.get('deck'):
+        query = urlencode({'origin': d.get('origin', ''), 'created': d.get('created', 0)})
+        blob = base64.b64decode(remote_json(remote_decks, d['deck'], 'GET', '/api/backup_blob?' + query)['blob'])
+    else:
+        blob = backup_service().read(d.get('origin'), d.get('created'))
+    result = backup_service().restore(blob, d.get('code') or None)
+    restart_soon()
+    return {'restored': result}
+
+
+def action_backup_restore_remote(d):
+    from integrations.backups import join_remote, remote_json
+    blob = backup_service().read(d.get('origin'), d.get('created'))
+    join_remote(backup_service(), remote_decks, d.get('deck'))
+    return remote_json(remote_decks, d.get('deck'), 'POST', '/api/backup_restore', {'blob': base64.b64encode(blob).decode()})
+
+
 def integration_status():
     return {'telegram': telegram_service().status()} if Telegram else {'telegram': {'available': False}}
 
 
 ACTIONS.update(telegram_config=lambda d: {'telegram': telegram_service().save(d)},
                telegram_pair=lambda d: {'telegram': telegram_service().pair()},
-               answer=action_answer)
+               answer=action_answer,
+               backup_setup=lambda d: backup_service().setup(d.get('code') or None),
+               backup_now=action_backup_now,
+               backup_run=lambda d: {'report': run_backups()},
+               backup_store=action_backup_store,
+               backup_restore=action_backup_restore,
+               backup_restore_remote=action_backup_restore_remote)
 
 
 class PanelHTTPServer(ThreadingHTTPServer):
@@ -1657,6 +1749,13 @@ class Handler(BaseHTTPRequestHandler):
         if parsed.path == "/api/sessions":
             preview_name = parse_qs(parsed.query).get("preview", [None])[0]
             return self.send_json(200, {"sessions": list_sessions(preview_name)})
+        if parsed.path == "/api/backups":
+            return self.send_json(200, backup_service().status())
+        if parsed.path == "/api/backup_blob":
+            try:
+                return self.send_json(200, backup_blob_payload(parsed.query))
+            except ValueError as error:
+                return self.send_json(404, {"error": str(error)})
         if parsed.path == "/api/questions":
             return self.send_json(200, questions_payload())
         if parsed.path == "/api/question":
@@ -1997,6 +2096,7 @@ def main():
             print('Local model relay could not be started', flush=True)
     auto_update_service().run()
     threading.Thread(target=sync_loop, daemon=True).start()
+    threading.Thread(target=backup_loop, name='agent-deck-backups', daemon=True).start()
     if Telegram:
         try:
             telegram_service().start()
