@@ -2,6 +2,11 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.4.1 — 2026-10-05
+
+- Switching to another Agent Deck happens in place without a page reload: the sidebar and title show the target's known sessions immediately, drafts and attachments stay with their computer, and responses still in flight for the previous computer are discarded.
+- A computer without its own saved view keeps the current Screen/Term choice after a switch.
+
 ## 1.4.0 — 2026-10-05
 
 - One Telegram bot for several computers: the gateway delivers questions from connected Agent Deck instances (new `GET /api/questions`), labels them with the computer name and relays answers through the authenticated gateway. Unconfirmed remote answers are marked uncertain and never resent. The "already used by another receiver" error now explains this setup.

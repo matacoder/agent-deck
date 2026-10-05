@@ -55,3 +55,4 @@ Source: design/UX review of 2026-10-05. Primary device: iPhone 15 Pro Max (430×
 ### Decisions (1.4.0)
 - Only the gateway owns the bot (Telegram allows one update receiver). It scans connected instances via `/deck/<id>/api/questions` (5 s timeout, 30 s backoff for unreachable or older instances) and answers via their `/api/answer` using the remote fingerprint; transport failures are `uncertain`, never replayed.
 - Sidebar: other instances refresh every 10 s without previews; switching keeps the reload-based instance switch and pre-selects the session.
+- In-place switch (1.4.1): per-computer state is reset by `resetInstanceState()` and restored by `restoreInstance()` (same code as page load); an epoch counter drops responses for the previous computer.

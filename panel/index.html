@@ -958,8 +958,11 @@ const localStore=browserStorage("localStorage"),sessionStore=browserStorage("ses
 let selectedDeck="";
 try{selectedDeck=localStore.getItem("cc.deck")||""}catch(e){}
 if(!/^[0-9a-f]{24}$/.test(selectedDeck))selectedDeck="";
-const deckLocalStorage=instanceStorage(localStore,selectedDeck);
-const deckSessionStorage=instanceStorage(sessionStore,selectedDeck);
+let deckLocalStorage=instanceStorage(localStore,selectedDeck);
+let deckSessionStorage=instanceStorage(sessionStore,selectedDeck);
+// Bumped on every computer switch; responses started for the previous computer are dropped.
+let deckEpoch=0;
+const STALE="stale Agent Deck response";
 function activePath(path){return instancePath(selectedDeck,path)}
 async function gatewayApi(path,body){return api(path,body,true)}
 
@@ -970,12 +973,6 @@ const MOBILE_QUERY="(max-width:760px),(pointer:coarse) and (max-height:500px)";
 const isMobile=()=>matchMedia(MOBILE_QUERY).matches;
 let sessions=[],active=null,mode=null,clockSkew=0;
 const frames=new Map(),wasBusy=new Map(),attention=new Set();
-try{active=deckLocalStorage.getItem("cc.active");mode=deckLocalStorage.getItem("cc.mode."+(isMobile()?"m":"d"))}catch(e){}
-if(location.hash.length>1)try{active=decodeURIComponent(location.hash.slice(1))}catch(e){}
-try{
-  const draft=JSON.parse(deckSessionStorage.getItem("cc.reload-draft")||"null");
-  if(draft&&draft.name===active){$("msg").value=draft.text;deckSessionStorage.removeItem("cc.reload-draft")}
-}catch(e){}
 
 /* keep layout glued to the visible area when the iOS keyboard opens */
 function fitViewport(){
@@ -994,6 +991,7 @@ addEventListener("pageshow",fitViewport);
 addEventListener("orientationchange",()=>requestAnimationFrame(fitViewport));
 
 async function api(path,body,gateway=false){
+  const epoch=deckEpoch;
   const r=await fetch(gateway?path:activePath(path),body?{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}:{cache:"no-store"});
   if(r.status===401){
     try{stashDrafts();location.href="/login"}catch(e){toast(tr("Войдите в новой вкладке: здесь сохранён несохранённый текст."),true,{label:tr("Войти"),run:()=>window.open("/login","_blank","noopener")})}
@@ -1001,9 +999,11 @@ async function api(path,body,gateway=false){
   }
   const d=r.headers.get("Date");if(d)clockSkew=Date.now()/1000-Date.parse(d)/1000;
   const j=await r.json().catch(()=>({error:r.statusText}));
+  if(epoch!==deckEpoch)throw new Error(STALE);
   if(!r.ok)throw new Error(j.error||r.statusText);return j;
 }
 function toast(m,info,action){
+  if(m===STALE)return;
   const t=$("toast"),dialogs=Array.from(document.querySelectorAll("dialog[open]"));
   (dialogs[dialogs.length-1]||document.body).append(t);t.className=info==="success"?"success":info?"info":"";t.replaceChildren(el("span","",m));
   if(action){const b=document.createElement("button");b.textContent=action.label;b.onclick=e=>{e.stopPropagation();action.run();hideToast()};t.append(b)}
@@ -1085,14 +1085,6 @@ async function confirmAction(title,{text="",confirm=tr("Продолжить"),d
 const cur=()=>sessions.find(x=>x.name===active);
 const messageDrafts=new Map();
 const closedDrafts=new Map();
-try{for(const[name,text]of JSON.parse(deckSessionStorage.getItem("cc.closed-drafts")||"[]"))if(typeof name==="string"&&typeof text==="string")closedDrafts.set(name,text)}catch(e){}
-try{
-  for(const [name,text] of JSON.parse(deckSessionStorage.getItem("cc.session-drafts")||"[]"))
-    if(typeof name==="string"&&typeof text==="string")messageDrafts.set(name,text);
-  deckSessionStorage.removeItem("cc.session-drafts");
-  if(active&&!$("msg").value)$("msg").value=messageDrafts.get(active)||"";
-}catch(e){}
-if(active&&$("msg").value)messageDrafts.set(active,$("msg").value);
 let quickSignature=null,quickActive=null;
 const quickButtons=new Map();
 function renderQuickTabs(){
@@ -1224,7 +1216,6 @@ function reconnectTerminal(){
 function setMode(m){mode=m;try{deckLocalStorage.setItem("cc.mode."+(isMobile()?"m":"d"),m)}catch(e){}show()}
 
 let wrapPreview=true;
-try{wrapPreview=deckLocalStorage.getItem("cc.wrap")!=="0"}catch(e){}
 function applyWrap(){
   $("pre").classList.toggle("no-wrap",!wrapPreview);
   $("b_wrap").setAttribute("aria-pressed",String(wrapPreview));
@@ -1234,7 +1225,6 @@ function toggleWrap(){
   try{deckLocalStorage.setItem("cc.wrap",wrapPreview?"1":"0")}catch(e){}
   applyWrap();
 }
-applyWrap();
 
 const URL_RE=/https?:\/\/[^\s"'<>│]+/g;
 /* Claude hard-wraps long URLs: glue a URL at line end with following space-free lines */
@@ -1370,7 +1360,8 @@ function updateScreen(s,force){
   if(changed){
     p.dataset.raw=raw;p.replaceChildren();
     const lines=joinUrlLines(ansiLines(raw));
-    if(!lines.length)p.append(el("div","preview-empty",tr("В tmux пока нет текста. Можно переключиться в «Терм» и проверить сессию.")));
+    // A session known only from another computer's list has no preview yet: show nothing, not "empty".
+    if(!lines.length&&(s.preview!==undefined||s.preview_ansi!==undefined))p.append(el("div","preview-empty",tr("В tmux пока нет текста. Можно переключиться в «Терм» и проверить сессию.")));
     for(const runs of lines){
       const line=runs.map(r=>r.text).join("").trimEnd();
       // TUI rules (Claude's input box etc.) would wrap into a stack of lines on a phone: draw them as one rule
@@ -1527,13 +1518,6 @@ function popout(){if(active)window.open(activePath("/t/?arg="+encodeURIComponent
 let uploading=false,choosingImages=false;
 const imageAttachments=new Map();
 const attachmentsFor=name=>imageAttachments.get(name)||[];
-try{
-  const draft=JSON.parse(deckSessionStorage.getItem("cc.reload-images")||"null");
-  if(Array.isArray(draft)){
-    for(const [name,images] of draft)if(typeof name==="string"&&Array.isArray(images))imageAttachments.set(name,images.slice(0,4));
-  }else if(draft&&draft.name===active&&Array.isArray(draft.images))imageAttachments.set(active,draft.images.slice(0,4));
-  deckSessionStorage.removeItem("cc.reload-images");
-}catch(e){}
 function renderAttachments(){
   const list=$("attachments");list.replaceChildren();
   for(const entry of attachmentsFor(active)){
@@ -1895,9 +1879,36 @@ function openDeckSession(identity,name){
 setInterval(loadOtherDecks,10000);
 function switchDeck(identity){
   if(identity===selectedDeck)return;
-  if(sending||uploading||choosingImages){$("deck_select").value=selectedDeck;toast(tr("Дождитесь окончания отправки или загрузки"));return}
+  if(sending||uploading||choosingImages||question.busy!==null){$("deck_select").value=selectedDeck;toast(tr("Дождитесь окончания отправки или загрузки"));return}
   try{stashDrafts();localStore.setItem("cc.deck",identity)}catch(e){$("deck_select").value=selectedDeck;toast(tr("Не удалось сохранить черновик. Очистите поле перед обновлением."));return}
-  location.hash="";location.reload();
+  for(const dialog of document.querySelectorAll("dialog[open]"))dialog.close();
+  drawer(false);sheet(false);hideToast();
+  // The computer we leave stays in the sidebar right away; the one we enter shows its known list.
+  const target=otherDecks.find(d=>d.id===identity&&!d.error);
+  otherDecks=[...otherDecks.filter(d=>d.id!==identity),{id:selectedDeck,name:currentDeckName(),sessions:sessions.map(({preview,preview_ansi,...rest})=>rest)}];
+  deckEpoch++;selectedDeck=identity;
+  deckLocalStorage=instanceStorage(localStore,identity);deckSessionStorage=instanceStorage(sessionStore,identity);
+  history.replaceState(null,"","#");
+  const previousMode=curMode();
+  resetInstanceState(target?target.sessions:[]);
+  restoreInstance();
+  if(mode===null)mode=previousMode;  // A computer without its own choice keeps the current view.
+  renderTabs();show();
+  load();checkGithubFoot(true);loadUsage();loadLM().then(renderInteg);loadServer();loadVersion();loadMetrics();loadIntegrations();
+  loadDeckSettings().catch(e=>toast(e.message));
+}
+// Everything below belongs to one computer; a switch must not carry any of it to the next.
+function resetInstanceState(known){
+  for(const frame of frames.values())frame.remove();
+  frames.clear();wasBusy.clear();attention.clear();previewCache.clear();sendStates.clear();
+  sessions=known;quickSignature=null;quickActive=null;
+  question={name:null,data:null,expanded:false,busy:null};loadingQuestion=false;
+  loadingSessions=null;queuedSessions=null;sessionsQueued=false;load.done=false;
+  lastAg={};usageData={};ghLogin=null;lastGh=0;repos=[];
+  lmData={profiles:[],discovery:{}};lmRefreshPending=null;openLocalModels.clear();
+  telegramConfig={};panelVersion=null;UI_PANEL_VERSION=null;panelUpdating=false;hubSignature="";
+  $("pre").dataset.raw="";$("pre").replaceChildren();$("srv").replaceChildren();$("ver").replaceChildren();
+  $("metric_cpu").textContent=$("metric_ram").textContent="—";
 }
 function editDeck(deck={}){
   $("deck_id").value=deck.id||"";$("deck_name").value=deck.name||"";$("deck_url").value=deck.url||"";$("deck_username").value=deck.username||"";$("deck_password").value="";
@@ -1963,7 +1974,7 @@ async function refreshLMModels(){
   lmRefreshPending=(async()=>{try{lmData=await refreshModelCatalog(api);if($("settings_dlg").open)renderHub();renderDiscovery();renderSources()}catch(e){toast(e.message)}finally{lmRefreshPending=null}})();
   return lmRefreshPending;
 }
-async function loadLM(refresh=true){try{lmData=await api("/api/lmstudio");if($("settings_dlg").open&&refresh)renderHub();renderDiscovery()}catch(e){$("lm_progress").textContent=e.message}}
+async function loadLM(refresh=true){try{lmData=await api("/api/lmstudio");if($("settings_dlg").open&&refresh)renderHub();renderDiscovery()}catch(e){if(e.message!==STALE)$("lm_progress").textContent=e.message}}
 function editLM(p){$("lm_editor").open=true;$("lm_id").value=p.id||"";$("lm_name").value=p.name||"";$("lm_url").value=p.url||"";$("lm_key").value="";$("lm_clear_key").checked=false;$("lm_editor").scrollIntoView({block:"nearest"})}
 function resetLM(){editLM({});$("lm_editor").open=false}
 async function saveLM(){try{const saved=await api("/api/lm_save",{id:$("lm_id").value||undefined,name:$("lm_name").value.trim(),url:$("lm_url").value.trim(),key:$("lm_key").value,clear_key:$("lm_clear_key").checked});$("lm_key").value="";await api("/api/lm_probe",{id:saved.profile.id});resetLM();await loadLM();renderSources()}catch(e){toast(e.message)}}
@@ -2037,7 +2048,7 @@ function renderTelegram(config){
   renderInteg();
 }
 async function loadIntegrations(){
-  try{const data=await api("/api/integrations");renderTelegram(data.telegram)}catch(e){if(!$("integrations_dlg").hidden)$("telegram_state").textContent=e.message}
+  try{const data=await api("/api/integrations");renderTelegram(data.telegram)}catch(e){if(!$("integrations_dlg").hidden&&e.message!==STALE)$("telegram_state").textContent=e.message}
 }
 function openIntegrations(){
   telegramDirty=false;$("telegram_token").value="";$("telegram_credentials").open=!telegramConfig.configured;$("integrations_dlg").hidden=false;openSettings("connections");loadIntegrations();
@@ -2146,7 +2157,7 @@ async function loadGithub(){
 }
 async function loadRepos(refresh){
   const list=$("gh_list");if(!list)return;list.textContent=tr("Загружаю…");
-  try{repos=(await api("/api/github/repos"+(refresh?"?refresh=1":""))).repos;renderRepos()}catch(e){list.textContent=e.message}
+  try{repos=(await api("/api/github/repos"+(refresh?"?refresh=1":""))).repos;renderRepos()}catch(e){if(e.message!==STALE)list.textContent=e.message}
 }
 function renderRepos(){
   const list=$("gh_list"),q=($("gh_q").value||"").toLowerCase();list.replaceChildren();
@@ -2262,9 +2273,10 @@ async function loadMetrics(){
     node.setAttribute("aria-label",node.title);
   }
   try{
-    const response=await fetch(activePath("/api/server-metrics"),{cache:"no-store",signal:controller.signal});
+    const epoch=deckEpoch,response=await fetch(activePath("/api/server-metrics"),{cache:"no-store",signal:controller.signal});
     if(!response.ok)throw new Error("metrics unavailable");
     const data=await response.json();
+    if(epoch!==deckEpoch)return;
     const cpu=Number.isFinite(data.cpu_percent)?Math.round(data.cpu_percent)+"%":"—";
     const hasMemory=Number.isFinite(data.memory_used)&&Number.isFinite(data.memory_total)&&data.memory_total>0;
     const ram=hasMemory?Math.round(data.memory_used/data.memory_total*100)+"%":"—";
@@ -2273,6 +2285,38 @@ async function loadMetrics(){
   }catch(e){render("—","—")}
   finally{clearTimeout(timeout);loadingMetrics=false}
 }
+/* Per-computer browser state: the same code runs on page load and on a computer switch. */
+function restoreInstance(){
+  active=null;mode=null;$("msg").value="";
+  try{active=deckLocalStorage.getItem("cc.active");mode=deckLocalStorage.getItem("cc.mode."+(isMobile()?"m":"d"))}catch(e){}
+  if(location.hash.length>1)try{active=decodeURIComponent(location.hash.slice(1))}catch(e){}
+  try{
+    const draft=JSON.parse(deckSessionStorage.getItem("cc.reload-draft")||"null");
+    if(draft&&draft.name===active){$("msg").value=draft.text;deckSessionStorage.removeItem("cc.reload-draft")}
+  }catch(e){}
+  closedDrafts.clear();messageDrafts.clear();
+  try{for(const[name,text]of JSON.parse(deckSessionStorage.getItem("cc.closed-drafts")||"[]"))if(typeof name==="string"&&typeof text==="string")closedDrafts.set(name,text)}catch(e){}
+  try{
+    for(const [name,text] of JSON.parse(deckSessionStorage.getItem("cc.session-drafts")||"[]"))
+      if(typeof name==="string"&&typeof text==="string")messageDrafts.set(name,text);
+    deckSessionStorage.removeItem("cc.session-drafts");
+    if(active&&!$("msg").value)$("msg").value=messageDrafts.get(active)||"";
+  }catch(e){}
+  if(active&&$("msg").value)messageDrafts.set(active,$("msg").value);
+  for(const images of imageAttachments.values())for(const image of images)if(image.preview)URL.revokeObjectURL(image.preview);
+  imageAttachments.clear();
+  try{
+    const draft=JSON.parse(deckSessionStorage.getItem("cc.reload-images")||"null");
+    if(Array.isArray(draft)){
+      for(const [name,images] of draft)if(typeof name==="string"&&Array.isArray(images))imageAttachments.set(name,images.slice(0,4));
+    }else if(draft&&draft.name===active&&Array.isArray(draft.images))imageAttachments.set(active,draft.images.slice(0,4));
+    deckSessionStorage.removeItem("cc.reload-images");
+  }catch(e){}
+  wrapPreview=true;try{wrapPreview=deckLocalStorage.getItem("cc.wrap")!=="0"}catch(e){}
+  applyWrap();saveClosedDrafts();
+  $("msg").style.height="";$("msg").dispatchEvent(new Event("input"));
+}
+restoreInstance();
 loadMetrics();setInterval(loadMetrics,5000);
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)loadMetrics()});
 

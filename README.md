@@ -250,7 +250,7 @@ on port 8790 (or a custom port), or enter a remote `http://100.x.y.z:8790` URL.
 Provide that instance's panel login and password, then connect. Select the instance
 in the sidebar (the switcher appears once an instance is connected), or tap any of its
 sessions: the sidebar lists the sessions of every connected computer under its name, so
-switching environments is one tap. Manage its sessions, files, models and live terminal through the
+switching environments is one tap and happens in place, without reloading the page. Manage its sessions, files, models and live terminal through the
 gateway. Your browser does not need direct access to the remote Tailscale address.
 The gateway and remote computer must both be connected to the tailnet.
 
