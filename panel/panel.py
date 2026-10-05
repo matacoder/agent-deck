@@ -12,7 +12,6 @@ import hashlib
 import hmac
 import ipaddress
 import json
-import math
 import os
 import re
 import shutil
@@ -22,8 +21,6 @@ import signal
 import socket
 import urllib.request
 import urllib.error
-from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime
 import subprocess
 import sys
 import threading
@@ -95,6 +92,9 @@ except (OSError, ValueError) as _error:
                       'file, not a symlink) and restart cc-panel.')
     print(_decks_message, flush=True)
     remote_decks = UnavailableDecks(_decks_message)
+from integrations.gateway import Gateway
+from integrations import usage as usage_limits
+gateway = Gateway(lambda: remote_decks)  # Looked up on each call: the service can be replaced.
 
 
 _lmstudio = None
@@ -1106,8 +1106,7 @@ def server_info():
     return info
 
 
-def _epoch(iso):
-    return int(datetime.fromisoformat(iso.replace("Z", "+00:00")).timestamp()) if iso else None
+_epoch = usage_limits.epoch
 
 
 def claude_credentials():
@@ -1123,98 +1122,15 @@ def claude_credentials():
 
 
 def claude_usage():
-    o = claude_credentials().get("claudeAiOauth") or {}
-    if not o.get("accessToken"):
-        return {"error": "Войдите в Claude Code для просмотра лимитов"}
-    if (o.get("expiresAt") or 0) / 1000 < time.time():
-        # never refresh here: Claude rotates refresh tokens, a second refresher would log it out
-        return {"plan": o.get("subscriptionType"), "error": "токен истёк — запустите Claude, он обновит его"}
-    d = http_json("https://api.anthropic.com/api/oauth/usage",
-                  {"Authorization": "Bearer " + o["accessToken"], "anthropic-beta": "oauth-2025-04-20"})
-    windows = []
-    week = 7 * 86400
-    for key, label, secs in (("seven_day", "неделя", week),
-                             ("seven_day_opus", "неделя Opus", week), ("seven_day_sonnet", "неделя Sonnet", week)):
-        w = d.get(key)
-        if w and w.get("utilization") is not None:
-            windows.append({"label": label, "percent": w["utilization"], "resets_at": _epoch(w.get("resets_at")),
-                            "secs": secs})
-    return {"plan": o.get("subscriptionType"), "windows": windows}
+    return usage_limits.claude(claude_credentials(), http_json)
 
 
 def codex_usage():
-    with open(os.path.expanduser("~/.codex/auth.json")) as stream:
-        t = json.load(stream).get("tokens") or {}
-    if not t.get("access_token"):
-        return {"error": "Codex вошёл по API-ключу: лимитов подписки нет"}
-    d = http_json("https://chatgpt.com/backend-api/wham/usage",
-                  {"Authorization": "Bearer " + t["access_token"], "ChatGPT-Account-Id": t.get("account_id", "")})
-    windows = []
-    for w in ((d.get("rate_limit") or {}).get("primary_window"), (d.get("rate_limit") or {}).get("secondary_window")):
-        if not w:
-            continue
-        secs = w.get("limit_window_seconds") or 0
-        label = {18000: "5 ч", 604800: "неделя"}.get(secs, f"{round(secs / 3600)} ч")
-        windows.append({"label": label, "percent": w.get("used_percent"), "resets_at": w.get("reset_at"), "secs": secs})
-    windows.sort(key=lambda w: w["secs"])
-    return {"plan": d.get("plan_type"), "windows": windows}
+    return usage_limits.codex(http_json, os.path.expanduser("~/.codex/auth.json"))
 
 
 def kimi_usage():
-    key = kimi_config.read().get("key")
-    if not key:
-        return {"error": "Сохраните ключ Kimi в настройках панели"}
-    try:
-        data = http_json("https://api.kimi.com/coding/v1/usages", {"Authorization": "Bearer " + key, "Accept": "application/json"})
-    except urllib.error.HTTPError as error:
-        error.close()
-        return {"error": "Kimi: проверьте ключ" if error.code in (401, 403) else "Kimi: лимиты временно недоступны"}
-    except (OSError, ValueError):
-        return {"error": "Kimi: лимиты временно недоступны"}
-    windows = []
-    authoritative = set()
-    # The counters in limits are authoritative. The legacy usages.limit_5h can
-    # incorrectly report zero even while the service rejects calls at 100/100.
-    for limit in data.get("limits") or []:
-        if not isinstance(limit, dict):
-            continue
-        window, detail = limit.get("window") or {}, limit.get("detail") or {}
-        try:
-            multiplier = {"TIME_UNIT_SECOND": 1, "TIME_UNIT_MINUTE": 60,
-                          "TIME_UNIT_HOUR": 3600, "TIME_UNIT_DAY": 86400}[window["timeUnit"]]
-            secs = float(window["duration"]) * multiplier
-            if not math.isfinite(secs) or secs <= 0:
-                continue
-            authoritative.add(secs)
-            total, used = float(detail["limit"]), float(detail["used"])
-            if not all(map(math.isfinite, (total, used))) or total <= 0 or used < 0:
-                continue
-            reset = _epoch(detail.get("resetTime"))
-            label = {18000: "5 часов", 604800: "неделя"}.get(secs, f"{secs / 3600:g} ч")
-            windows.append({"label": label, "percent": used / total * 100,
-                            "resets_at": reset, "secs": secs, "period": "hours"})
-        except (ValueError, TypeError, KeyError, OverflowError):
-            continue
-    for name, label, secs, period in (
-            ("limit_month_total", "Общий · месяц", 0, "month"),
-            ("limit_month_code", "Kimi Code · месяц", 0, "month"),
-            ("limit_5h", "5 часов", 18000, "hours"),
-            ("limit_7d", "неделя", 604800, "week")):
-        if secs and secs in authoritative:
-            continue
-        value = (data.get("usages") or {}).get(name)
-        if not isinstance(value, dict):
-            continue
-        try:
-            ratio = float(value["used_ratio"])
-            if not math.isfinite(ratio) or ratio < 0:
-                continue
-            reset = _epoch(value.get("reset_time"))
-        except (ValueError, TypeError, KeyError, OverflowError):
-            continue
-        # Calendar months vary in length. Do not invent a 30-day pace/forecast.
-        windows.append({"label": label, "percent": ratio * 100, "resets_at": reset, "secs": secs, "period": period})
-    return {"windows": windows} if windows else {"error": "Kimi не вернул данные о квотах"}
+    return usage_limits.kimi(kimi_config.read().get("key"), http_json)
 
 
 def usage():
@@ -1367,53 +1283,9 @@ def questions_payload():
     return {'questions': [{**question_payload(q), 'session': q.session, 'agent': q.agent} for q in scan_questions()]}
 
 
-remote_question_backoff = {}
-remote_question_snapshot = {}
-remote_question_lock = threading.Lock()
-# A blip to a connected computer must not look like its questions were answered: Telegram
-# would retire and later re-send them, and notifications would fire twice.
-REMOTE_QUESTIONS_STALE_FOR = 300
-
-
-def fetch_remote_questions(deck):
-    from integrations.questions import Question
-    identity = deck.get('id')
-    status, _, body = remote_decks.request(identity, 'GET', '/api/questions', timeout=5)
-    if status != 200:
-        raise ValueError('questions unavailable')  # Older releases have no /api/questions.
-    # The remote fingerprint travels as `instance`: it is what the remote checks on answer.
-    return [Question(item['session'], item['agent'], item['id'], item['title'],
-                     tuple(o['label'] for o in item['options']), item['selected'],
-                     item.get('progress', ''), deck=identity, origin=deck.get('name', ''))
-            for item in json.loads(body).get('questions', [])]
-
-
 def remote_questions():
     """Questions of connected Agent Decks, so one Telegram bot on the gateway serves every machine."""
-    decks = [deck for deck in remote_decks.status().get('decks', []) if deck.get('id')]
-    now = time.monotonic()
-    with remote_question_lock:
-        due = [deck for deck in decks if remote_question_backoff.get(deck['id'], 0) <= now]
-    if due:
-        # In parallel, so one offline computer costs one timeout instead of one per computer.
-        with ThreadPoolExecutor(max_workers=min(8, len(due))) as pool:
-            futures = {deck['id']: pool.submit(fetch_remote_questions, deck) for deck in due}
-        for identity, future in futures.items():
-            try:
-                items = future.result()
-            except (ValueError, KeyError, TypeError, AttributeError, OSError, RuntimeError):
-                with remote_question_lock:
-                    remote_question_backoff[identity] = time.monotonic() + 30
-                continue
-            with remote_question_lock:
-                remote_question_snapshot[identity] = (time.monotonic(), items)
-    result = []
-    with remote_question_lock:
-        for deck in decks:
-            at, items = remote_question_snapshot.get(deck['id'], (0, []))
-            if time.monotonic() - at < REMOTE_QUESTIONS_STALE_FOR:
-                result.extend(items)
-    return result
+    return gateway.questions()
 
 
 def all_questions():
@@ -1455,26 +1327,7 @@ def inbox_payload():
 
 
 def answer_any_question(question, index, text=None):
-    if not question.deck:
-        return answer_question(question, index, text)
-    request = {'name': question.session, 'id': question.instance, 'index': index}
-    if text is not None:
-        request['text'] = text
-    body = json.dumps(request).encode()
-    try:
-        status, _, payload = remote_decks.request(question.deck, 'POST', '/api/answer', body, timeout=15)
-    except Exception:
-        # Transport failure after sending is ambiguous: report it, never resend.
-        raise RuntimeError('Remote Agent Deck did not confirm the answer') from None
-    if status == 200:
-        return
-    try:
-        message = json.loads(payload).get('error')
-    except (ValueError, AttributeError):
-        message = None
-    if 400 <= status < 500 and message:
-        raise ValueError(message)
-    raise RuntimeError('Remote Agent Deck did not confirm the answer')
+    return gateway.answer(question, index, text) if question.deck else answer_question(question, index, text)
 
 
 def answer_text(d):
@@ -1657,38 +1510,11 @@ def action_backup_restore_remote(d):
 
 _push = None
 _push_lock = threading.Lock()
-_remote_sessions = {'at': 0, 'items': []}
-
-
-def fetch_remote_sessions(deck):
-    status, _, body = remote_decks.request(deck['id'], 'GET', '/api/sessions', timeout=5)
-    if status != 200:
-        raise ValueError('sessions unavailable')
-    sessions = json.loads(body).get('sessions', [])
-    # One malformed entry must not stop notifications for every computer.
-    return [{**s, 'deck': deck['id'], 'deck_name': deck.get('name', '')} for s in sessions
-            if isinstance(s, dict) and isinstance(s.get('name'), str)]
 
 
 def push_sessions():
     """Local sessions plus connected Agent Decks' lists (refreshed every 10 s) for notification events."""
-    items = [{**s, 'deck': ''} for s in list_sessions()]
-    if time.monotonic() - _remote_sessions['at'] > 10:
-        decks = [deck for deck in remote_decks.status().get('decks', []) if deck.get('id')]
-        previous = {}
-        for item in _remote_sessions['items']:
-            previous.setdefault(item['deck'], []).append(item)
-        remote = []
-        if decks:
-            with ThreadPoolExecutor(max_workers=min(8, len(decks))) as pool:
-                futures = [(deck, pool.submit(fetch_remote_sessions, deck)) for deck in decks]
-            for deck, future in futures:
-                try:
-                    remote += future.result()
-                except (ValueError, KeyError, TypeError, AttributeError, OSError, RuntimeError):
-                    remote += previous.get(deck['id'], [])  # A blip is not "every session finished".
-        _remote_sessions.update(at=time.monotonic(), items=remote)
-    return items + _remote_sessions['items']
+    return [{**s, 'deck': ''} for s in list_sessions()] + gateway.sessions()
 
 
 def push_service():
@@ -1703,16 +1529,8 @@ def push_service():
 def telegram_duplicates(bot):
     """Connected Agent Decks polling the same bot: their questions would arrive twice."""
     def scan():
-        names = []
-        for deck in remote_decks.status().get('decks', []):
-            try:
-                status, _, body = remote_decks.request(deck['id'], 'GET', '/api/integrations', timeout=3)
-                remote = json.loads(body).get('telegram', {}) if status == 200 else {}
-            except (ValueError, OSError, AttributeError):
-                continue
-            if remote.get('configured') and remote.get('enabled') and remote.get('bot') == bot:
-                names.append(deck.get('name', ''))
-        return names
+        return [name for name, state in gateway.telegram_states()
+                if state.get('configured') and state.get('enabled') and state.get('bot') == bot]
     result = cached('telegram-duplicates-' + bot, 60, scan) if bot else []
     return result if isinstance(result, list) else []  # cached() reports failures as a dict.
 

@@ -171,6 +171,26 @@ class PushServiceTests(unittest.TestCase):
         self.push.deliver({'title': 'api'})
         self.assertEqual(self.push.status()['devices'], [])
 
+    def test_a_message_waits_while_encryption_is_not_ready_and_failures_do_not_drop_others(self):
+        self.subscribe()
+        ready = [False]
+        vapid = self.push.vapid
+        def gated():
+            if not ready[0]:
+                raise ValueError('Компоненты шифрования ещё не установлены')
+            return vapid()
+        self.push.vapid = gated
+        self.push.send_all([{'title': 'api'}, {'title': 'web'}], now=0)
+        self.assertEqual(self.sent, [])
+        ready[0] = True
+        self.push.send_all([], now=60)
+        self.assertEqual([payload['title'] for _, payload, _ in self.sent], ['api', 'web'])
+        ready[0] = False
+        self.push.send_all([{'title': 'late'}], now=100)
+        ready[0] = True
+        self.push.send_all([], now=100 + 601)  # Too old to be useful: dropped.
+        self.assertEqual(len(self.sent), 2)
+
     def test_events_can_be_turned_off(self):
         self.push.set_events({'questions': False, 'finished': 'nope'})
         self.assertEqual(self.push.status()['events'], {'questions': False, 'finished': True})

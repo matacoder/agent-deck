@@ -2,6 +2,18 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.11.0 — 2026-10-05
+
+No breaking changes: configuration, API and installers are unchanged.
+
+- Notifications that cannot be sent yet (encryption components still loading) wait up to 10 minutes instead of being dropped; one failing notification no longer drops the others in the same check.
+- Typed custom answers are kept per question across reloads, language switches, logout and computer switches, in the question card and in Waiting for you; a question that updates while you type no longer clears the text.
+- Accessibility: the ⋯ menu moves keyboard focus into its items and back to its button; the image viewer keeps focus inside until closed and returns it; the sidebar list is replaced only when it changes, so focus, tooltips and the screen-reader position survive refreshes; the message field has a label.
+- Sidebar: agents without quota data no longer show a row of dashes (the reason stays in the explanation); healthy quotas are no longer green, only ones that need attention are coloured; with computers connected the host name is not repeated under the selector.
+- Translations: all 16 languages use their word for "computer" for connected machines.
+- Code structure: connected-computer polling moved to `integrations/gateway.py` (one `get_json` for remote answers, removed computers are forgotten at once), limit parsing to `integrations/usage.py`, the Screen view renderer to `frontend/screen.js`; inline CSS colours became tokens with identical values.
+- README screenshots refreshed.
+
 ## 1.10.0 — 2026-10-05
 
 No breaking changes: configuration, API and installers are unchanged.

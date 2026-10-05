@@ -20,6 +20,7 @@ SUBJECT = 'https://github.com/matacoder/agent-deck'
 AGENT_LABELS = {'claude': 'Claude', 'codex': 'Codex', 'claude-kimi': 'Claude · Kimi', 'kimi': 'Kimi Code', 'pi': 'Pi'}
 MAX_DEVICES = 20
 IDLE_LOCAL, IDLE_REMOTE, MIN_BUSY = 8, 25, 20
+BACKLOG_SECONDS, BACKLOG_SIZE = 600, 20
 
 
 class Push:
@@ -31,6 +32,7 @@ class Push:
         self.lock = threading.RLock()
         self.activity = {}   # (deck, name) -> [activity, changed_at, busy_since or None]
         self.seen = {}       # question fingerprint -> last time it was present
+        self.backlog = []    # (observed_at, message) not sent yet
         self.started = False
         self.warm = False  # The first pass after a restart only learns what is already pending.
         try:
@@ -201,7 +203,21 @@ class Push:
             try:
                 if not self.config['subscriptions']:
                     continue
-                for message in self.events():
-                    self.deliver(message)
+                self.send_all(self.events())
             except Exception as error:  # A failed tick must not stop notifications; it retries in 3 s.
                 print(f'Notification check failed: {error}', flush=True)
+
+    def send_all(self, messages, now=None):
+        """Events are observed once, so a message that cannot be sent yet (encryption components still
+        loading) waits up to 10 minutes instead of being lost; one failing message never drops the rest."""
+        now = self.clock() if now is None else now
+        waiting = [(at, m) for at, m in self.backlog if now - at < BACKLOG_SECONDS] + [(now, m) for m in messages]
+        self.backlog = []
+        for at, message in waiting:
+            try:
+                self.deliver(message)
+            except ValueError:
+                self.backlog.append((at, message))
+            except Exception as error:
+                print(f'Notification delivery failed: {error}', flush=True)
+        self.backlog = self.backlog[-BACKLOG_SIZE:]

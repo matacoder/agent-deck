@@ -147,6 +147,10 @@ const test = base.extend({
         }
         case '/t/': return route.fulfill({ contentType: 'text/html', body: '<p>Isolated terminal frame</p>' });
         case '/manifest.webmanifest': return route.fulfill({ contentType: 'application/manifest+json', body: fs.readFileSync(path.join(panelDir, 'manifest.webmanifest')) });
+        // Features a test does not exercise answer like a fresh install instead of a 404 page.
+        case '/api/push': return json({ available: true, error: '', public_key: null, devices: [], events: { questions: true, finished: true } });
+        case '/api/backups': return json({ configured: false, key_id: null, instance: 'c'.repeat(24), name: 'demo-server', last: null, stored: [], report: null });
+        case '/api/inbox': return json({ questions: [] });
         default: return route.fulfill({ status: 404, body: 'Not found' });
       }
     });

@@ -44,18 +44,19 @@ function renderInboxItem(item){
   head.type="button";head.onclick=()=>openInboxSession(deck,session);
   const box=el("div","inbox-item",head);
   if(item.kind==="finished"){box.append(el("p","inbox-status",tr("Агент закончил работу")));return box}
-  const card=el("div","inbox-question"),state=inbox.cards.get(item.key)||{expanded:false,busy:null,textIndex:null,draft:""};
+  const draftKey=item.key+"/"+item.question.id,saved=answerDraft(draftKey);
+  const card=el("div","inbox-question"),state=inbox.cards.get(item.key)||{expanded:false,busy:null,textIndex:saved?.index??null,draft:saved?.text||""};
   inbox.cards.set(item.key,state);
   const answer=async(index,text)=>{
     state.busy=index;draw();
     const q=item.question,body={name:q.session,id:q.id,index};if(text!==undefined)body.text=text;
     try{await api(instancePath(deck,"/api/answer"),body,true);toast(tr("Ответ отправлен: {0}",[text===undefined?q.options[index].label:text.slice(0,80)]),"success");
-      inbox.questions=inbox.questions.filter(x=>x!==q);inbox.cards.delete(item.key);renderInbox();if(deck===selectedDeck)load()}
+      saveAnswerDraft(draftKey,null);inbox.questions=inbox.questions.filter(x=>x!==q);inbox.cards.delete(item.key);renderInbox();if(deck===selectedDeck)load()}
     catch(e){state.busy=null;draw();toast(e.message)}
   };
   const draw=()=>renderQuestionCard({box:card,question:item.question,expanded:state.expanded,busyIndex:state.busy,textIndex:state.textIndex,textDraft:state.draft,translate:tr,
     onToggle:()=>{state.expanded=!state.expanded;draw()},onAnswer:index=>answer(index),
-    onTextOption:index=>{state.textIndex=state.textIndex===index?null:index;draw();card.querySelector(".q-text textarea")?.focus()},onTextInput:value=>{state.draft=value},onSubmitText:answer});
+    onTextOption:index=>{state.textIndex=state.textIndex===index?null:index;draw();card.querySelector(".q-text textarea")?.focus()},onTextInput:value=>{state.draft=value;saveAnswerDraft(draftKey,{index:state.textIndex,text:value})},onSubmitText:answer});
   draw();box.append(card);return box;
 }
 function openInbox(){

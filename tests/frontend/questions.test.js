@@ -1,6 +1,6 @@
 const fs=require('fs');
 const path=require('path');
-const {renderQuestionCard,askConfirm}=require('../../frontend/questions');
+const {renderQuestionCard,askConfirm,answerDraft,saveAnswerDraft}=require('../../frontend/questions');
 
 const question={id:'q1',title:'Run <img src=x> now?',progress:'Question 1/2',selected:1,
  options:[{label:'Yes',text:false},{label:'Always <b>',text:false},{label:'Type something',text:true}]};
@@ -72,4 +72,15 @@ test('phone layout query is identical in script and stylesheet',()=>{
  const css=fs.readFileSync(path.resolve(__dirname,'../../frontend/style.css'),'utf8');
  const query=script.match(/const MOBILE_QUERY="([^"]+)"/)[1];
  expect(css).toContain('@media '+query+'{');
+});
+
+test('typed answers are kept per question until they are sent',()=>{
+  sessionStorage.clear();
+  saveAnswerDraft('/api/q1',{index:2,text:'Use staging'});
+  expect(answerDraft('/api/q1')).toEqual({index:2,text:'Use staging'});
+  expect(answerDraft('/api/q2')).toBeNull();
+  saveAnswerDraft('/api/q1',{index:2,text:''});
+  expect(answerDraft('/api/q1')).toBeNull();
+  sessionStorage.setItem('cc.answer-drafts','not json');
+  expect(answerDraft('/api/q1')).toBeNull();
 });

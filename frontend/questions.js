@@ -37,6 +37,16 @@ function renderQuestionCard({box,question,expanded,busyIndex,textIndex,textDraft
   box.append(head,title,options);
 }
 
+// Typed answers survive reloads, language switches, logout and computer switches, like message drafts.
+const ANSWER_DRAFTS="cc.answer-drafts";
+function readAnswerDrafts(){try{const all=JSON.parse(sessionStorage.getItem(ANSWER_DRAFTS)||"{}");return all&&typeof all==="object"?all:{}}catch(e){return {}}}
+function answerDraft(key){const draft=readAnswerDrafts()[key];return draft&&typeof draft.text==="string"&&Number.isInteger(draft.index)?draft:null}
+function saveAnswerDraft(key,draft){
+  const all=readAnswerDrafts();
+  if(draft&&draft.text)all[key]={index:draft.index,text:draft.text};else delete all[key];
+  try{sessionStorage.setItem(ANSWER_DRAFTS,JSON.stringify(all))}catch(e){}
+}
+
 // One styled confirm for every destructive action; resolves false on Escape or backdrop close.
 function askConfirm(dialog,{title,text="",confirm,danger=false}){
   return new Promise(resolve=>{
@@ -50,4 +60,4 @@ function askConfirm(dialog,{title,text="",confirm,danger=false}){
   });
 }
 
-if(typeof module!=="undefined")module.exports={svgIcon,renderQuestionCard,askConfirm};
+if(typeof module!=="undefined")module.exports={svgIcon,renderQuestionCard,askConfirm,answerDraft,saveAnswerDraft};

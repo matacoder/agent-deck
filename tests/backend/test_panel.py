@@ -478,11 +478,11 @@ class RemoteQuestionTests(PanelCase):
 
     def setUp(self):
         super().setUp()
-        self.panel.remote_question_backoff.clear()
-        self.panel.remote_question_snapshot.clear()
+        from integrations.gateway import Gateway
         self.decks = Mock()
         self.decks.status.return_value = {'decks': [{'id': self.REMOTE, 'name': 'Mac Studio'}]}
         self.enterContext(patch.object(self.panel, 'remote_decks', self.decks))
+        self.enterContext(patch.object(self.panel, 'gateway', Gateway(lambda: self.panel.remote_decks)))
 
     def test_connected_machine_questions_carry_their_origin_and_remote_id(self):
         self.decks.request.return_value = (200, {}, json.dumps({'questions': [self.ITEM]}).encode())
@@ -503,8 +503,9 @@ class RemoteQuestionTests(PanelCase):
         self.decks.request.side_effect = OSError('timed out')
         # Disappearing would retire the Telegram message and re-announce it on return.
         self.assertEqual([q.instance for q in self.panel.remote_questions()], ['remote-fp'])
-        at, items = self.panel.remote_question_snapshot[self.REMOTE]
-        self.panel.remote_question_snapshot[self.REMOTE] = (at - self.panel.REMOTE_QUESTIONS_STALE_FOR, items)
+        from integrations.gateway import QUESTIONS_STALE_FOR
+        at, items = self.panel.gateway.snapshot[self.REMOTE]
+        self.panel.gateway.snapshot[self.REMOTE] = (at - QUESTIONS_STALE_FOR, items)
         self.assertEqual(self.panel.remote_questions(), [])
 
     def test_shared_questions_readers_do_not_wait_for_a_slow_refresh(self):
@@ -530,14 +531,12 @@ class RemoteQuestionTests(PanelCase):
         other = 'b' * 24
         self.decks.status.return_value = {'decks': [{'id': self.REMOTE, 'name': 'Mac Studio'}, {'id': other, 'name': 'Server'}]}
         self.enterContext(patch.object(self.panel, 'list_sessions', return_value=[]))
-        self.panel._remote_sessions.update(at=-100, items=[])
-        self.addCleanup(self.panel._remote_sessions.update, at=-100, items=[])
         answers = {self.REMOTE: (200, {}, b'{"sessions":[{"name":"api","activity":1},{"title":"no name"},"junk"]}'),
                    other: (200, {}, b'["not a dict"]')}
         self.decks.request.side_effect = lambda deck, *args, **kwargs: answers[deck]
         self.assertEqual([(s['deck'], s['name']) for s in self.panel.push_sessions()], [(self.REMOTE, 'api')])
         self.decks.request.side_effect = OSError('timed out')
-        self.panel._remote_sessions['at'] = -100
+        self.panel.gateway.sessions_at = None
         # Unreachable for one poll: its sessions stay, so they do not look finished and restarted.
         self.assertEqual([(s['deck'], s['name']) for s in self.panel.push_sessions()], [(self.REMOTE, 'api')])
 

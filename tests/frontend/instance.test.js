@@ -96,6 +96,20 @@ test('a response from the previous computer that arrives after the switch is rej
   }finally{window.close()}
 });
 
+test('an unchanged sidebar keeps its nodes, so focus and screen-reader position survive polls',async()=>{
+  const state={local:()=>({sessions:[session('alpha')]})};
+  const window=boot(routesFor(state));
+  try{
+  await settle();await settle();
+  const row=window.document.querySelector('#tabs [data-session="alpha"]');
+  window.eval('renderTabs()');
+  expect(window.document.querySelector('#tabs [data-session="alpha"]')).toBe(row);
+  state.local=()=>({sessions:[session('alpha',{title:'Renamed'})]});
+  await window.eval('load()');await settle();
+  expect(window.document.querySelector('#tabs [data-session="alpha"] .n').textContent).toBe('Renamed');
+  }finally{window.close()}
+});
+
 test('gateway answers survive a switch: the sidebar keeps other computers reachable',async()=>{
   let release;
   const state={local:()=>({sessions:[session('alpha')]})};

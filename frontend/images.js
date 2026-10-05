@@ -51,6 +51,7 @@ function imageStrip(session,paths){
 function openViewer(path){
   viewerIndex=Math.max(0,screenImages.indexOf(path));
   if(!screenImages.includes(path))screenImages=[path];
+  viewerReturn=document.activeElement;
   renderViewer();$("viewer").hidden=false;$("viewer_close").focus();
 }
 function renderViewer(){
@@ -61,10 +62,21 @@ function renderViewer(){
   $("viewer_prev").hidden=$("viewer_next").hidden=screenImages.length<2;
 }
 function stepViewer(delta){viewerIndex=(viewerIndex+delta+screenImages.length)%screenImages.length;renderViewer()}
-function closeViewer(){$("viewer").hidden=true;$("viewer_img").removeAttribute("src")}
+let viewerReturn=null;
+function closeViewer(){
+  if($("viewer").hidden)return;
+  $("viewer").hidden=true;$("viewer_img").removeAttribute("src");
+  if(viewerReturn?.isConnected)viewerReturn.focus({preventScroll:true});viewerReturn=null;
+}
 if(typeof document!=="undefined"&&document.getElementById("viewer")){
   addEventListener("keydown",e=>{
     if($("viewer").hidden)return;
+    if(e.key==="Tab"){
+      // A modal viewer keeps keyboard focus inside until it is closed.
+      const items=[...$("viewer").querySelectorAll("button,a[href]")].filter(x=>!x.hidden&&x.offsetParent!==null);
+      const index=items.indexOf(document.activeElement),next=items[(index+(e.shiftKey?-1:1)+items.length)%items.length];
+      if(next){e.preventDefault();next.focus()}return;
+    }
     if(e.key==="Escape")closeViewer();else if(e.key==="ArrowRight")stepViewer(1);else if(e.key==="ArrowLeft")stepViewer(-1);else return;
     e.preventDefault();e.stopPropagation();
   },true);

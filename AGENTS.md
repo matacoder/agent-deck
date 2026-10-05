@@ -26,13 +26,15 @@ Key files (don't read everything — only what you're touching):
 
 | File | Purpose |
 |---|---|
-| `panel/panel.py` | Entire HTTP backend: login, ttyd proxy, tmux commands, uploads, limits. **~1600 lines; don't refactor without a reason.** |
+| `panel/panel.py` | HTTP backend: login, ttyd proxy, tmux commands, uploads, session persistence. **~2200 lines; don't refactor without a reason.** |
 | `panel/updater.py` | Single-flight update job, release validation, rollback after failed startup |
 | `panel/session_hook.py` | SessionStart hook: records the top-level conversation ID (Claude/Codex) |
 | `claude/register-hooks.py`, `claude/cc-session-hook.py` | Claude hook registration. **Nested review agents must not overwrite `@cc_sid`.** |
 | `integrations/telegram.py` | Long-polling, pairing, callback validation. **Never deletes foreign webhooks.** |
 | `integrations/questions.py` | Question normalization (question + options only, no history) |
 | `integrations/store.py` | SQLite outbox: claim-before-input, uncertain state, 7-day TTL |
+| `integrations/gateway.py` | What the gateway asks connected Agent Decks (questions, session lists, Telegram state, remote answers): parallel, keeps the last answer through blips. `get_json` is the one way to read a remote JSON answer |
+| `integrations/usage.py` | Claude/Codex/Kimi limits parsing; network and credentials are passed in by the panel |
 | `integrations/backups.py` | Encrypted settings/keys backups, peer replication through the gateway, whitelisted restore |
 | `integrations/lmstudio.py`, `relay.py` | LM Studio profiles + loopback relay (timing/usage only, no conversation text) |
 | `locales/*.json` | 16 catalogs. New language = one JSON + a row in `docs/localization.md` |
