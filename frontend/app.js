@@ -1000,7 +1000,21 @@ function renderVersion(v){
   }
   if(!label)$("hub_version").replaceChildren(versionInfo(v));
   if(action!==refreshInterface){const refresh=btn(tr("Обновить интерфейс"),"pri",refreshInterface);refresh.id="b_refresh_interface";refresh.disabled=panelUpdating;$("hub_version").append(refresh)}
+  const check=btn(tr("Проверить обновления"),"",checkPanelUpdates);check.id="b_check_updates";check.disabled=panelUpdating;$("hub_version").append(check);
+  $("auto_update_enabled").checked=v.auto_update?.enabled!==false;
+  $("auto_update_enabled").disabled=!v.can_update||!v.auto_update||panelUpdating;
+  $("auto_update_status").textContent=v.release_error?tr("Не удалось проверить обновления. Повторите проверку."):v.auto_update?.phase==="waiting"?tr("Обновление ждёт завершения локальной генерации"):"";
   renderAttachments();
+}
+async function checkPanelUpdates(){
+  const button=$("b_check_updates");if(button)button.disabled=true;
+  try{renderVersion(await api("/api/check_update",{}));toast(tr("Проверка завершена"),"success")}
+  catch(e){toast(e.message)}finally{if(button)button.disabled=false}
+}
+async function saveAutoUpdates(){
+  const input=$("auto_update_enabled"),enabled=input.checked;input.disabled=true;
+  try{const data=await api("/api/auto_update",{enabled});renderVersion({...panelVersion,auto_update:data.auto_update})}
+  catch(e){input.checked=!enabled;toast(e.message)}finally{input.disabled=!panelVersion?.can_update}
 }
 let UI_PANEL_VERSION=null;
 async function loadVersion(){

@@ -18,7 +18,7 @@ import urllib.request
 REPO_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]*/[A-Za-z0-9][A-Za-z0-9_.-]*")
 TAG_RE = re.compile(r"v?(\d+)\.(\d+)\.(\d+)")
 REQUIRED = {"panel.py", "index.html", "login.html", "VERSION", "updater.py", "session_hook.py"}
-PACKAGES = {"integrations/" + name for name in ("__init__.py", "questions.py", "store.py", "telegram.py", "lmstudio.py", "relay.py", "pi.py", "preferences.py", "names.py", "decks.py")}
+PACKAGES = {"integrations/" + name for name in ("__init__.py", "questions.py", "store.py", "telegram.py", "lmstudio.py", "relay.py", "pi.py", "preferences.py", "names.py", "decks.py", "updates.py")}
 LOCALES = {"locales/__init__.py", "locales/en.json", "locales/ru.json"}
 REQUIRED |= PACKAGES | LOCALES
 ALLOWED = REQUIRED | {"icon-180.png", "icon-192.png", "icon-512.png", "manifest.webmanifest", "make_icons.py"}
@@ -160,7 +160,25 @@ def healthy(url):
     raise RuntimeError("Панель не ответила после перезапуска: " + last_error)
 
 
+def local_requests_active(directory=None, clock=time.time):
+    directory = Path(directory) if directory else Path.home()/'.config/cc-panel/integrations/live-requests'
+    for path in directory.glob('*.json'):
+        try:
+            data = json.loads(path.read_text())
+            if clock()-data.get('updated_at', 0)<660:return True
+        except (OSError,ValueError,TypeError):return True
+    return False
+
+
+def wait_for_local_requests(directory=None, timeout=660):
+    deadline=time.monotonic()+timeout
+    while local_requests_active(directory):
+        if time.monotonic()>=deadline:raise ValueError('Local model request is still active; retry the update after it finishes')
+        time.sleep(1)
+
+
 def install(stage, target, names, state, version, url):
+    wait_for_local_requests(Path(state).parent/'integrations/live-requests')
     backup = stage / "backup"
     backup.mkdir()
     existing = set()

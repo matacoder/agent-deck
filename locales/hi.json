@@ -390,6 +390,11 @@
     "Инструменты: ?": "टूल: ?",
     " сред.": " औसत",
     "Переподключить терминал": "Reconnect terminal",
-    "Нет сохранённых черновиков": "No saved drafts"
+    "Нет сохранённых черновиков": "No saved drafts",
+    "Автоматически обновлять Agent Deck": "Automatically update Agent Deck",
+    "Проверка каждые 30 минут. Обновление ждёт завершения запросов локальной модели и сохраняет сессии.": "Check every 30 minutes. Updates wait for local model requests to finish and preserve sessions.",
+    "Проверить обновления": "Check for updates",
+    "Не удалось проверить обновления. Повторите проверку.": "Could not check for updates. Try again.",
+    "Обновление ждёт завершения локальной генерации": "Update waiting for local generation to finish"
   }
 }

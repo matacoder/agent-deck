@@ -6,6 +6,28 @@ from integrations.relay import Bindings, private_write
 
 
 class ModelSourceTests(PanelCase):
+    def test_new_local_conversation_preserves_model_and_uses_foreground_job_control(self):
+        import shlex
+        p=self.profile()
+        binding=self.panel._model_relay.bindings.create(self.panel.model_service().get(p['id']),'qwen-coder')
+        source={'kind':'lmstudio','profile':p['id'],'model':'qwen-coder','binding':binding}
+        sid='11111111-1111-4111-8111-111111111111'
+        new_sid='22222222-2222-4222-8222-222222222222'
+        for agent in ('claude','pi'):
+            with self.subTest(agent=agent), patch.object(self.panel._model_relay,'server',object()), patch.object(self.panel.uuid,'uuid4',return_value=new_sid):
+                self.panel.session_exists=Mock(return_value=True)
+                self.panel.opt=Mock(side_effect=lambda name,key:{'@cc_agent':agent,'@cc_source':json.dumps(source),'@cc_sid':sid,'@cc_skip':'0'}.get(key))
+                self.panel.stop_children=Mock()
+                self.panel.tmux=Mock(side_effect=lambda *args,**kwargs:str(self.home) if args[0]=='display-message' else '/bin/bash' if args[0]=='show-options' else '')
+                self.panel.action_restart({'name':'local','mode':'new'})
+                calls=self.panel.tmux.call_args_list
+                respawn=next(call.args for call in calls if call.args[0]=='respawn-pane')
+                shell,flags,script=shlex.split(respawn[-1])
+                self.assertEqual((shell,flags),('/bin/bash','-lic'))
+                self.assertIn(binding,script);self.assertIn(new_sid,script);self.assertNotIn('--resume',script)
+                self.assertNotIn('--deck-resume',script)
+                self.assertEqual(self.panel.saved_source('local'),source)
+
     def profile(self):
         service=self.panel.model_service()
         p=service.save({'name':'Local','url':'http://100.64.1.2:1234','key':'private-test-key'})

@@ -190,6 +190,9 @@ CHECKOUT = os.environ.get("CHECKOUT", "")                             # where in
 UPDATE_STATE = os.path.expanduser("~/.config/cc-panel/update.json")
 action_lock = threading.Lock()
 actions_in_progress = 0
+_release_lock = threading.RLock()
+_auto_updates_lock = threading.RLock()
+_auto_updates = None
 STATIC = {"/icon-180.png": "image/png", "/icon-192.png": "image/png", "/icon-512.png": "image/png",
           "/manifest.webmanifest": "application/manifest+json"}
 
@@ -599,9 +602,11 @@ def action_restart(d):
     # A killed TUI can leave mouse reporting and queued input in the old PTY.
     # Respawning resets tmux's terminal modes and runs the command directly,
     # so mouse reports cannot become part of the agent's shell command.
+    # An interactive shell puts the agent in the foreground process group;
+    # without job control tmux reports bash and the UI treats a running agent as stopped.
     script = "clear; " + (f"{cmd}; " if cmd else "") + "exec " + shlex.quote(shell)
     tmux("respawn-pane", "-k", "-t", target, "-c", path,
-         shlex.join([shell, "-lc", script]))
+         shlex.join([shell, "-lic", script]))
 
 
 def action_kill(d):
@@ -912,9 +917,10 @@ def _semver(v):
     return tuple(map(int, m.groups())) if m else None
 
 
-def version_info():
+def version_info(force=False):
     info = {"version": VERSION, "checkout": CHECKOUT, "repo": UPDATE_REPO,
-            "can_update": updater.available(HERE, UPDATE_REPO), "job": updater.status(UPDATE_STATE)}
+            "can_update": updater.available(HERE, UPDATE_REPO), "job": updater.status(UPDATE_STATE),
+            "auto_update": auto_update_service().status()}
     info['incomplete'] = Telegram is None or locales is None
     if not UPDATE_REPO:
         return info
@@ -923,11 +929,37 @@ def version_info():
         r = http_json(f"https://api.github.com/repos/{UPDATE_REPO}/releases/latest",
                       {"Accept": "application/vnd.github+json"}, timeout=8)
         return {"latest": (r.get("tag_name") or "").lstrip("v"), "url": r.get("html_url")}
-    rel = cached("release", 6 * 3600, fetch)
+    with _release_lock:
+        if force:_cache.pop("release", None)
+        rel = cached("release", 1800, fetch)
     if rel.get("latest"):
         cur, new = _semver(VERSION), _semver(rel["latest"])
         info.update(latest=rel["latest"], url=rel["url"], update=bool(cur and new and (new > cur or (new == cur and Telegram is None))))
+    if rel.get("error"):info["release_error"] = "Could not check the latest release"
     return info
+
+
+def auto_update_idle():
+    with action_lock:
+        if actions_in_progress:return False
+    return not updater.local_requests_active()
+
+
+def start_auto_update():
+    with action_lock:
+        if actions_in_progress or updater.local_requests_active():return {'job':{'phase':'waiting'}}
+        return action_update({})
+
+
+def auto_update_service():
+    global _auto_updates
+    from integrations.updates import AutoUpdates
+    with _auto_updates_lock:
+        if _auto_updates is None:
+            _auto_updates = AutoUpdates(os.path.expanduser('~/.config/cc-panel/integrations'),
+                lambda:version_info(force=True),start_auto_update,
+                lambda:updater.available(HERE,UPDATE_REPO),auto_update_idle)
+        return _auto_updates
 
 
 def action_update(d):
@@ -1087,6 +1119,8 @@ def usage():
 
 
 ACTIONS = {
+    "check_update": lambda d: version_info(force=True),
+    "auto_update": lambda d: {"auto_update":auto_update_service().save(d.get("enabled"))},
     'decks_save': lambda d: {'deck':remote_decks.save(d)},
     'decks_remove': lambda d: remote_decks.remove(d.get('id')),
     'decks_discover': lambda d: {'discovery':remote_decks.discover(d.get('port',8790))},
@@ -1786,6 +1820,7 @@ def main():
             _model_relay.bindings.prune(references)
         except (OSError, ValueError):
             print('Local model relay could not be started', flush=True)
+    auto_update_service().run()
     threading.Thread(target=sync_loop, daemon=True).start()
     if Telegram:
         try:

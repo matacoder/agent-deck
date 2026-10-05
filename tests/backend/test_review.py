@@ -67,7 +67,7 @@ class ReviewRegressions(PanelCase):
                 respawn = next(c.args for c in calls if c.args[0] == "respawn-pane")
                 self.assertEqual(respawn[1:6], ("-k", "-t", "=cc-demo:", "-c", str(self.home)))
                 shell, flag, script = shlex.split(respawn[6])
-                self.assertEqual((shell, flag), ("/bin/bash", "-lc"))
+                self.assertEqual((shell, flag), ("/bin/bash", "-lic"))
                 expected = self.panel.agent_cmd("codex", sid, mode == "continue")
                 self.assertEqual(script, "clear; " + expected + "; exec /bin/bash")
                 self.assertEqual(self.pasted, [])

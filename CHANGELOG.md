@@ -2,6 +2,13 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.2.0 — 2026-10-05
+
+- Enable automatic stable-release updates for installed Linux/macOS panels with a settings toggle, 30-minute checks, single-flight installation and rollback.
+- Add an explicit update check that bypasses the release cache; show check failures instead of silently hiding available updates.
+- Wait for active local model requests before update installation.
+- Restart agents in an interactive shell so tmux reports the foreground Claude/Pi process correctly and local sessions accept screen messages after restart.
+
 ## 1.1.4 — 2026-10-05
 
 - Open links to the current panel through the browser origin instead of its internal address; panel login links reuse the existing authenticated interface.

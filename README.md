@@ -264,3 +264,10 @@ The model setting is the default for new native Kimi sessions; existing sessions
 
 Kimi quota cards show the account’s returned monthly total/coding and short-period limits,
 with reset dates. Monthly windows do not assume a fixed 30-day duration for pace forecasts.
+
+Installed Agent Deck panels automatically check stable releases every 30 minutes.
+Disable this in **Settings → App → Automatically update Agent Deck** if desired.
+**Check for updates** bypasses the cached release check. Updates preserve tmux
+sessions, wait for active local-model requests, and roll back after a failed health check.
+Development git checkouts remain excluded. Existing versions need one update to
+1.2.0 or later to enable the background updater.
