@@ -129,20 +129,27 @@ self.addEventListener('push', event => {
 self.addEventListener('notificationclick', event => {
   event.notification.close();
   const data = event.notification.data || {};
+  const url = data.url || '/';
   const target = {deck: data.deck || '', session: data.session || '', at: Date.now()};
-  // iOS often resumes a suspended Home Screen app without delivering postMessage or navigating,
-  // so the target is stored where the page reads it whenever it starts or becomes visible.
-  event.waitUntil(caches.open('agent-deck-open')
-    .then(cache => cache.put('/__agent-deck-open', new Response(JSON.stringify(target))))
-    .then(() => self.clients.matchAll({type: 'window', includeUncontrolled: true}))
-    .then(list => {
-      for (const client of list) {
-        if (new URL(client.url).origin === self.location.origin) {
-          client.postMessage({type: 'agent-deck-open'});
-          return client.focus();
-        }
-      }
-      return self.clients.openWindow(data.url || '/');
-    }));
+  const key = '/__agent-deck-open';
+  // iOS may resume a suspended Home Screen app without delivering postMessage or navigating:
+  // the page reads the target from Cache Storage when it becomes visible and deletes it. If the
+  // entry is still there shortly after, the page did not handle it and the window is navigated.
+  event.waitUntil((async () => {
+    const cache = await caches.open('agent-deck-open');
+    await cache.put(key, new Response(JSON.stringify(target)));
+    const list = await self.clients.matchAll({type: 'window', includeUncontrolled: true});
+    const client = list.find(c => new URL(c.url).origin === self.location.origin);
+    if (!client) return self.clients.openWindow(url);
+    client.postMessage({type: 'agent-deck-open'});
+    try { await client.focus(); } catch (e) {}
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    if (!(await cache.match(key))) return;
+    await cache.delete(key);
+    if (client.navigate) {
+      try { return await client.navigate(url); } catch (e) {}
+    }
+    return self.clients.openWindow(url);
+  })());
 });
 """

@@ -113,3 +113,22 @@ test('tapping a notification opens its session on cold start and when the app re
   expect(window.document.querySelector('#title b').textContent).toBe('beta');
   }finally{window.close()}
 });
+
+test('a notification that lands after the app became visible is still opened',async()=>{
+  const state={local:()=>({sessions:[session('alpha',{activity:9}),session('api')]})};
+  const window=boot(routesFor(state));
+  try{
+  await settle();await settle();
+  expect(window.document.querySelector('#title b').textContent).toBe('alpha');
+  window.document.dispatchEvent(new window.Event('visibilitychange'));
+  await new Promise(resolve=>setTimeout(resolve,400));
+  // The service worker stores the target only now, after the page has already checked once.
+  window.notificationTargets.set('/__agent-deck-open',JSON.stringify({deck:'',session:'api',at:Date.now()}));
+  await new Promise(resolve=>setTimeout(resolve,1000));
+  expect(window.document.querySelector('#title b').textContent).toBe('api');
+  // The worker's last resort navigates to /#session; the page follows the hash.
+  window.location.hash='#alpha';
+  await settle();await settle();
+  expect(window.document.querySelector('#title b').textContent).toBe('alpha');
+  }finally{window.close()}
+});

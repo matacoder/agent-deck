@@ -1190,18 +1190,28 @@ function openNotificationTarget(target){
   if(load.done)select(session);
   else activate(session);  // Before the first list: the load keeps this session when it exists.
 }
+// The page can become visible before the worker has stored the tapped target: look a few times.
+let notificationWatch=null;
+function watchNotificationTarget(){
+  clearTimeout(notificationWatch);
+  let attempt=0;
+  const delays=[0,250,600,1200,2000,3000];
+  const step=async()=>{if(await consumeNotificationTarget())return;if(++attempt<delays.length)notificationWatch=setTimeout(step,delays[attempt]-delays[attempt-1])};
+  step();
+}
 async function consumeNotificationTarget(){
   const target=await takeNotificationTarget(window.caches);
   if(target)openNotificationTarget(target);
+  return Boolean(target);
 }
 if("serviceWorker" in navigator&&window.isSecureContext){
   navigator.serviceWorker.addEventListener("message",event=>{if((event.data||{}).type==="agent-deck-open")consumeNotificationTarget()});
   navigator.serviceWorker.startMessages?.();
   navigator.serviceWorker.register("/sw.js").catch(()=>{});
-  document.addEventListener("visibilitychange",()=>{if(!document.hidden)consumeNotificationTarget()});
-  addEventListener("focus",consumeNotificationTarget);
-  addEventListener("pageshow",consumeNotificationTarget);
-  setTimeout(consumeNotificationTarget,0);  // After app.js has restored this computer's state.
+  document.addEventListener("visibilitychange",()=>{if(!document.hidden)watchNotificationTarget()});
+  addEventListener("focus",watchNotificationTarget);
+  addEventListener("pageshow",watchNotificationTarget);
+  setTimeout(watchNotificationTarget,0);  // After app.js has restored this computer's state.
 }
 
 if(typeof module!=="undefined")module.exports={pushBlocker,deviceLabel,base64UrlBytes,takeNotificationTarget};
@@ -2596,6 +2606,11 @@ function hotkeys(e){
   e.preventDefault();e.stopPropagation();if(target)select(target);
 }
 addEventListener("keydown",hotkeys,true);
+// A notification fallback (or a pasted link) can change only the #session part of the address.
+addEventListener("hashchange",()=>{
+  let name="";try{name=decodeURIComponent(location.hash.slice(1))}catch(e){}
+  if(name&&name!==active)select(name);
+});
 let lastMobile=isMobile();
 addEventListener("resize",()=>{if(isMobile()!==lastMobile){lastMobile=isMobile();try{mode=deckLocalStorage.getItem("cc.mode."+(lastMobile?"m":"d"))}catch(e){mode=null}show()}});
 

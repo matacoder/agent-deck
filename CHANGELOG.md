@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.8.2 — 2026-10-05
+
+- Fix: tapping a notification opens its session reliably on iPhone. The page checks for the tapped target several times during 3 seconds after it becomes visible (the worker may store it later than iOS shows the app); if the page still has not taken it after 1.5 seconds, the service worker navigates the window to the session's address, and the panel now follows `#session` changes in the address.
+
 ## 1.8.1 — 2026-10-05
 
 - Documentation: fresh screenshots for the README, including one-tap answers, screenshots from agents, notifications, sessions of connected computers and backups.

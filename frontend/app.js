@@ -1307,6 +1307,11 @@ function hotkeys(e){
   e.preventDefault();e.stopPropagation();if(target)select(target);
 }
 addEventListener("keydown",hotkeys,true);
+// A notification fallback (or a pasted link) can change only the #session part of the address.
+addEventListener("hashchange",()=>{
+  let name="";try{name=decodeURIComponent(location.hash.slice(1))}catch(e){}
+  if(name&&name!==active)select(name);
+});
 let lastMobile=isMobile();
 addEventListener("resize",()=>{if(isMobile()!==lastMobile){lastMobile=isMobile();try{mode=deckLocalStorage.getItem("cc.mode."+(lastMobile?"m":"d"))}catch(e){mode=null}show()}});
 
