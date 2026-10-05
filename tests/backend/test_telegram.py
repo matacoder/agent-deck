@@ -414,3 +414,19 @@ class QuestionInputTests(PanelCase):
         self.panel.current_question=Mock(return_value=None)
         with self.assertRaises(ValueError):self.panel.answer_question(q,0)
         self.panel.tmux.assert_not_called()
+
+
+class DuplicateBotTests(PanelCase):
+    def test_gateway_names_connected_decks_polling_the_same_bot(self):
+        decks = Mock()
+        decks.status.return_value = {'decks': [{'id': 'a' * 24, 'name': 'Mac'}, {'id': 'b' * 24, 'name': 'uk'}, {'id': 'c' * 24, 'name': 'old'}]}
+        replies = {'a' * 24: (200, {}, json.dumps({'telegram': {'configured': True, 'enabled': True, 'bot': 'deck_bot'}}).encode()),
+                   'b' * 24: (200, {}, json.dumps({'telegram': {'configured': True, 'enabled': True, 'bot': 'other_bot'}}).encode())}
+        def request(deck, method, path, body=None, timeout=30):
+            if deck not in replies:
+                raise ValueError('Remote Agent Deck did not respond')
+            return replies[deck]
+        decks.request.side_effect = request
+        with patch.object(self.panel, 'remote_decks', decks):
+            self.assertEqual(self.panel.telegram_duplicates('deck_bot'), ['Mac'])
+            self.assertEqual(self.panel.telegram_duplicates(''), [])

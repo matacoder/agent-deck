@@ -257,3 +257,9 @@ class PackageListTests(unittest.TestCase):
         # Installers copy integrations/*.py; the updater must not silently drop a new module.
         shipped = {"integrations/" + path.name for path in (ROOT / "integrations").glob("*.py")}
         self.assertEqual(updater.PACKAGES, shipped)
+
+    def test_panel_directory_only_holds_files_installed_updaters_accept(self):
+        # Updaters already running on users' machines reject unknown panel/ files and would stop
+        # updating; new code must live in integrations/*.py (accepted by every release since 0.7).
+        files = {path.name for path in (ROOT / "panel").iterdir() if path.is_file() and path.suffix != ".pyc"}
+        self.assertLessEqual(files, {name for name in updater.ALLOWED if "/" not in name})

@@ -1,4 +1,8 @@
-"""Encrypted backups of Agent Deck settings, integration keys and agent logins (stdlib only)."""
+"""Encrypted backups of Agent Deck settings, integration keys and agent logins.
+
+New backups use AES-256-GCM from `cryptography` (format ADBK2). Files written by 1.5.0 (ADBK1,
+keyed BLAKE2b) remain readable so existing copies can still be restored.
+"""
 import base64
 import hashlib
 import hmac
@@ -13,7 +17,10 @@ import tempfile
 import threading
 import time
 
-MAGIC = b'ADBK1\n'
+from .dependencies import require
+
+MAGIC = b'ADBK2\n'
+LEGACY_MAGIC = b'ADBK1\n'
 MAX_SEALED = 700 * 1024  # Base64 of this still fits the panel's 1 MB JSON request limit.
 KEEP = 14
 MAX_ORIGINS = 32
@@ -74,21 +81,28 @@ def _keystream_xor(key, nonce, data):
     return bytes(out)
 
 
+def _aes_key(key):
+    from cryptography.hazmat.primitives import hashes
+    from cryptography.hazmat.primitives.kdf.hkdf import HKDF
+    return HKDF(algorithm=hashes.SHA256(), length=32, salt=None, info=b'agent-deck backup aes-256-gcm').derive(key)
+
+
 def seal(key, meta, data):
+    require()
+    from cryptography.hazmat.primitives.ciphers.aead import AESGCM
     header = json.dumps({**meta, 'key_id': key_id(key)}, sort_keys=True, separators=(',', ':')).encode()
-    nonce = secrets.token_bytes(24)
-    body = _keystream_xor(_derive(key, b'adbk-enc'), nonce, data)
-    signed = MAGIC + len(header).to_bytes(4, 'big') + header + nonce + body
-    tag = hashlib.blake2b(signed, key=_derive(key, b'adbk-mac'), digest_size=32).digest()
-    return signed + tag
+    prefix = MAGIC + len(header).to_bytes(4, 'big') + header
+    nonce = secrets.token_bytes(12)
+    # The header (origin, time, key id) is authenticated as associated data.
+    return prefix + nonce + AESGCM(_aes_key(key)).encrypt(nonce, data, prefix)
 
 
 def read_meta(blob):
-    if not isinstance(blob, bytes) or not blob.startswith(MAGIC) or len(blob) > MAX_SEALED:
+    if not isinstance(blob, bytes) or not blob.startswith((MAGIC, LEGACY_MAGIC)) or len(blob) > MAX_SEALED:
         raise ValueError('Это не файл бэкапа Agent Deck')
     size = int.from_bytes(blob[len(MAGIC):len(MAGIC) + 4], 'big')
     start = len(MAGIC) + 4
-    if size > 4096 or len(blob) < start + size + 24 + 32:
+    if size > 4096 or len(blob) < start + size + 12 + 16:
         raise ValueError('Файл бэкапа повреждён')
     try:
         meta = json.loads(blob[start:start + size])
@@ -104,11 +118,24 @@ def unseal(key, blob):
     meta, offset = read_meta(blob)
     if meta.get('key_id') != key_id(key):
         raise ValueError('Бэкап зашифрован другим кодом восстановления')
+    if blob.startswith(LEGACY_MAGIC):
+        return meta, _unseal_legacy(key, blob, offset)
+    require()
+    from cryptography.exceptions import InvalidTag
+    from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+    try:
+        return meta, AESGCM(_aes_key(key)).decrypt(blob[offset:offset + 12], blob[offset + 12:], blob[:offset])
+    except InvalidTag:
+        raise ValueError('Файл бэкапа повреждён или изменён') from None
+
+
+def _unseal_legacy(key, blob, offset):
+    """Read-only support for ADBK1 files from 1.5.0."""
     signed, tag = blob[:-32], blob[-32:]
-    if not hmac.compare_digest(tag, hashlib.blake2b(signed, key=_derive(key, b'adbk-mac'), digest_size=32).digest()):
+    if len(blob) < offset + 24 + 32 or not hmac.compare_digest(
+            tag, hashlib.blake2b(signed, key=_derive(key, b'adbk-mac'), digest_size=32).digest()):
         raise ValueError('Файл бэкапа повреждён или изменён')
-    nonce = blob[offset:offset + 24]
-    return meta, _keystream_xor(_derive(key, b'adbk-enc'), nonce, signed[offset + 24:])
+    return _keystream_xor(_derive(key, b'adbk-enc'), blob[offset:offset + 24], signed[offset + 24:])
 
 
 def pack(home):

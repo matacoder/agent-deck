@@ -2,6 +2,15 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.6.0 — 2026-10-05
+
+- **New runtime dependency:** `cryptography`, pinned per platform and Python version (URL + SHA-256 in `integrations/dependency_lock.py`). The installer or the running panel downloads the wheels into `~/.local/share/agent-deck/python/` without pip, virtualenv or root; offline panels keep working and retry every 10 minutes. Intel Macs use cryptography 48.0.1, the last release with Intel macOS wheels.
+- Notifications (Web Push) on iPhone (Home Screen app, iOS 16.4+), Android and desktop browsers: an agent asked a question or finished work, on any connected Agent Deck; tapping opens that session on the right computer. Requires the panel over HTTPS. Settings → Connections → Notifications; test message, per-event switches, per-device removal. New API: `GET /api/push`, `POST /api/push_subscribe|push_unsubscribe|push_test|push_events`, public `/sw.js`.
+- Backups are now encrypted with AES-256-GCM; backups made by 1.5.0 remain restorable.
+- Sessions on other computers show the "done" dot; the menu badge, tab title and the Home Screen icon badge count them.
+- Telegram warns when a connected Agent Deck polls the same bot (questions would arrive twice).
+- Help: install, update and stop commands are split per platform, one command per block.
+
 ## 1.5.0 — 2026-10-05
 
 - Backups of Agent Deck settings, integration keys and agent logins (Codex, Claude on Linux, GitHub CLI) under Settings → Backups: a one-time recovery code, daily and on-demand backups, the last 14 copies per computer.

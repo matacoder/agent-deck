@@ -47,8 +47,13 @@ tmux sessions: name `cc-<name>`, options `@cc_agent` (claude\|codex\|shell),
 ## 3. Code rules
 
 ### 3.1. Python
-- 3.10+, **no runtime third-party dependencies** (stdlib + `tmux` + `gh` only).
-- Do not add `requests`, `aiohttp`, `pydantic`, etc. — use `urllib` from stdlib.
+- 3.10+. Runtime: stdlib + `tmux` + `gh`, plus **one pinned dependency: `cryptography`** for backups and notifications.
+- `cryptography` is never installed with pip: `integrations/dependencies.py` downloads the wheels pinned (URL + SHA-256) in
+  `integrations/dependency_lock.py` (regenerate with `scripts/lock-dependencies.py`) into `~/.local/share/agent-deck/python/`.
+  Code using it calls `dependencies.require()` and degrades with a clear message while it is missing.
+- Do not add other packages (`requests`, `aiohttp`, `pydantic`, …) — use `urllib` from stdlib.
+- **Never add files to `panel/`**: updaters already installed on users' machines reject unknown files there and stop updating.
+  New code goes to `integrations/*.py`; static content can be served from a Python module (see `/sw.js`).
 - No global mutable state without an explicit lock — the server is threaded (`ThreadingHTTPServer`).
 - Secret files: `0600`; directories: `0700`. Never write tokens/passwords to logs, JSON responses, query strings, or tmux commands.
 - All subprocess calls: `subprocess.run(..., input=<bytes>)` with an explicit `input`. Never `shell=True` with f-strings.

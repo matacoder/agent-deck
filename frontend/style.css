@@ -371,6 +371,9 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 #lm_editor summary{font-size:13px;color:var(--fg);cursor:pointer;padding:0}
 #lm_editor form{padding-top:4px}
 .hub-card .good{color:var(--ok)}
+.push-device{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-top:1px solid var(--bd)}
+.push-device-info{display:grid;gap:2px;min-width:0}.push-device-info strong{font-size:13px;color:var(--fg2);overflow-wrap:anywhere}.push-device-info span{font-size:12px;color:var(--mut)}
+.push-device button{flex:none;min-height:36px;padding:6px 12px;border-radius:8px;background:var(--side2);font-size:12.5px}
 .recovery-code{display:block;margin:4px 0 0;padding:12px 14px;border:1px solid var(--bd);border-radius:var(--r);background:var(--bg);color:var(--fg2);font:600 14px/1.6 var(--mono);letter-spacing:.04em;overflow-wrap:anywhere;user-select:all;-webkit-user-select:all}
 .hub-card p.backup-line{margin:4px 0 0}.hub-card p.danger{color:var(--bad-text)}
 #hub_version{display:flex;align-items:center;flex-wrap:wrap;gap:10px 12px;margin-top:12px}

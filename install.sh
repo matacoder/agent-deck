@@ -156,6 +156,10 @@ chown -h "$DEV_USER:" "$PREFIX"
 as_user find "$SRC/panel" -maxdepth 1 -type f -exec install -m 644 {} "$PREFIX"/ \;
 as_user install -d -m 755 "$PREFIX/integrations"
 as_user find "$SRC/integrations" -maxdepth 1 -type f -name '*.py' -exec install -m 644 {} "$PREFIX/integrations"/ \;
+# Pinned cryptography wheels (SHA-256 checked) for backups and notifications; the panel retries on its own if offline.
+say "encryption components (cryptography) -> ~$DEV_USER/.local/share/agent-deck"
+as_user /usr/bin/python3 -c "import sys; sys.path.insert(0, '$PREFIX'); from integrations import dependencies; sys.exit(0 if dependencies.ensure(background=False) else 1)" \
+    || say "encryption components could not be downloaded now; the panel will retry automatically"
 as_user install -d -m 755 "$PREFIX/locales"
 as_user find "$SRC/locales" -maxdepth 1 -type f \( -name '*.py' -o -name '*.json' \) -exec install -m 644 {} "$PREFIX/locales"/ \;
 

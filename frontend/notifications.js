@@ -1,0 +1,85 @@
+let pushState=null;
+
+// Why notifications cannot be enabled here, as a translatable message; null when they can.
+function pushBlocker({secure,ios,standalone,pushManager,origin}){
+  if(!secure)return ["Уведомлениям нужен HTTPS-адрес панели. Сейчас она открыта по {0}.",[origin]];
+  if(ios&&!standalone)return ["На iPhone и iPad добавьте панель на экран «Домой» и откройте её оттуда.",[]];
+  if(!pushManager)return ["Этот браузер не поддерживает уведомления.",[]];
+  return null;
+}
+function deviceLabel(ua){
+  const device=/iPhone/.test(ua)?"iPhone":/iPad/.test(ua)?"iPad":/Android/.test(ua)?"Android":/Macintosh/.test(ua)?"Mac":/Windows/.test(ua)?"Windows":/Linux/.test(ua)?"Linux":"Browser";
+  const browser=/Edg\//.test(ua)?"Edge":/Firefox\//.test(ua)?"Firefox":/(Chrome|CriOS)\//.test(ua)?"Chrome":/Safari\//.test(ua)?"Safari":"";
+  return browser?device+" · "+browser:device;
+}
+function base64UrlBytes(text){
+  const raw=atob(text.replace(/-/g,"+").replace(/_/g,"/")+"=".repeat((4-text.length%4)%4));
+  return Uint8Array.from(raw,c=>c.charCodeAt(0));
+}
+
+function pushEnvironment(){
+  const ua=navigator.userAgent,ios=/iPhone|iPad/.test(ua)||(/Macintosh/.test(ua)&&navigator.maxTouchPoints>1);
+  return {secure:window.isSecureContext,ios,standalone:navigator.standalone===true||matchMedia("(display-mode: standalone)").matches,
+    pushManager:"serviceWorker" in navigator&&"PushManager" in window,origin:location.origin};
+}
+async function loadPush(){
+  try{pushState=await gatewayApi("/api/push")}catch(e){if(e.message!==STALE)toast(e.message);return}
+  renderPush();
+}
+function renderPush(){
+  const s=pushState;if(!s)return;
+  const blocker=pushBlocker(pushEnvironment()),mine=localStore.getItem("cc.push-id"),subscribed=s.devices.some(d=>d.id===mine);
+  const state=blocker?tr(blocker[0],blocker[1]):!s.available?(s.error||tr("Панель скачивает компоненты шифрования…")):
+    subscribed?tr("Включены на этом устройстве."):tr("Выключены на этом устройстве.");
+  $("push_state").textContent=state;
+  const actions=[];
+  if(!blocker&&s.available)actions.push(...(subscribed?[btn(tr("Отключить на этом устройстве"),"",disablePush),btn(tr("Отправить тест"),"pri",()=>testPush(mine))]:[btn(tr("Включить уведомления"),"pri",enablePush)]));
+  $("push_actions").replaceChildren(...(actions.length?[el("div","acts",...actions)]:[]));
+  $("push_questions").checked=s.events.questions;$("push_finished").checked=s.events.finished;
+  $("push_devices").replaceChildren(...s.devices.map(d=>el("div","push-device",
+    el("div","push-device-info",el("strong","",d.label+(d.id===mine?" · "+tr("это устройство"):"")),el("span","",formatBackupTime(d.created,DATE_LOCALE))),
+    btn(tr("Удалить"),"danger",()=>removePushDevice(d.id)))));
+}
+async function enablePush(){
+  // iOS only allows the permission prompt from a tap, which is why this runs from the button.
+  try{
+    if(await Notification.requestPermission()!=="granted"){toast(tr("Уведомления запрещены в настройках браузера или системы"));return}
+    const registration=await navigator.serviceWorker.register("/sw.js");await navigator.serviceWorker.ready;
+    const subscription=await registration.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:base64UrlBytes(pushState.public_key)});
+    const result=await gatewayApi("/api/push_subscribe",{subscription:subscription.toJSON(),label:deviceLabel(navigator.userAgent),language:I18N.language});
+    localStore.setItem("cc.push-id",result.id);
+    await loadPush();await testPush(result.id);
+  }catch(e){if(e.message!==STALE)toast(e.message||String(e))}
+}
+async function testPush(id){
+  try{await gatewayApi("/api/push_test",{id});toast(tr("Тестовое уведомление отправлено"),"success")}catch(e){if(e.message!==STALE)toast(e.message)}
+}
+async function disablePush(){
+  const id=localStore.getItem("cc.push-id");
+  try{
+    const registration=await navigator.serviceWorker.getRegistration("/");
+    const subscription=registration&&await registration.pushManager.getSubscription();
+    if(subscription)await subscription.unsubscribe();
+    if(id)await gatewayApi("/api/push_unsubscribe",{id});
+  }catch(e){if(e.message!==STALE)toast(e.message)}
+  localStore.removeItem("cc.push-id");await loadPush();
+}
+async function removePushDevice(id){
+  if(id===localStore.getItem("cc.push-id"))return disablePush();
+  try{await gatewayApi("/api/push_unsubscribe",{id});await loadPush()}catch(e){if(e.message!==STALE)toast(e.message)}
+}
+async function savePushEvents(){
+  try{pushState.events=(await gatewayApi("/api/push_events",{questions:$("push_questions").checked,finished:$("push_finished").checked})).events}
+  catch(e){if(e.message!==STALE)toast(e.message)}
+  renderPush();
+}
+// A tap on a notification focuses an open panel and asks it to show the session.
+if("serviceWorker" in navigator&&window.isSecureContext){
+  navigator.serviceWorker.addEventListener("message",event=>{
+    const data=event.data||{};if(data.type!=="agent-deck-open")return;
+    if((data.deck||"")!==selectedDeck)openDeckSession(data.deck||"",data.session);else if(data.session)select(data.session);
+  });
+  navigator.serviceWorker.register("/sw.js").catch(()=>{});
+}
+
+if(typeof module!=="undefined")module.exports={pushBlocker,deviceLabel,base64UrlBytes};

@@ -7,7 +7,7 @@ import threading
 from urllib.parse import urlencode
 from unittest.mock import Mock, patch
 
-from support import PanelCase
+from support import PanelCase, require_crypto
 
 
 class HTTPTests(PanelCase):
@@ -114,6 +114,7 @@ class HTTPTests(PanelCase):
             self.panel.ACTIONS["answer"].assert_not_called()
 
     def test_backup_lifecycle_over_http_restores_from_a_downloaded_file(self):
+        require_crypto(self)
         cookie = self.login()
         post = lambda path, body: self.request("POST", path, json.dumps(body), {"Cookie": cookie})
         kimi = self.home / ".config/cc-panel/kimi.json"

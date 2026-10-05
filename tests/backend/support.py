@@ -12,6 +12,22 @@ ROOT = Path(__file__).resolve().parents[2]
 PNG = bytes.fromhex("89504e470d0a1a0a") + b"test-image"
 
 
+def require_crypto(test):
+    """Use the pinned cryptography if this machine has it; CI installs it and must not skip."""
+    sys.path.insert(0, str(ROOT))
+    from integrations import dependencies
+    try:
+        import cryptography  # noqa: F401
+        return
+    except ImportError:
+        pass
+    if dependencies.activate():
+        return
+    if os.environ.get("AGENT_DECK_REQUIRE_CRYPTO"):
+        test.fail("cryptography is required: run python3 -m integrations.dependencies")
+    test.skipTest("cryptography not installed: run python3 -m integrations.dependencies")
+
+
 class PanelCase(unittest.TestCase):
     # unittest.TestCase.enterContext was added in 3.11; production Ubuntu 22.04 uses 3.10.
     def enterContext(self, context):

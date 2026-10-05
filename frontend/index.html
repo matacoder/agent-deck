@@ -196,9 +196,13 @@ __PANEL_STYLE__</style></head><body>
       <div class="acts"><button type="button" onclick="discoverLM()">Найти серверы</button><button type="button" id="lm_cancel" onclick="discoverLM(true)" hidden>Остановить</button></div>
       <p id="lm_progress" role="status"></p><div id="lm_results"></div></div>
     </section>
-    <section id="hub_connections"><div id="connection_cards"></div><div id="integrations_dlg" class="hub-card editor" hidden><form class="integration-dialog" onsubmit="event.preventDefault();saveTelegram()">
+    <section id="hub_connections"><div class="hub-card" id="push_card"><h4>Уведомления</h4><p>Вопросы агентов и завершение работы на всех подключённых Agent Deck приходят на телефон или компьютер, даже когда панель закрыта.</p><p id="push_state" role="status"></p><div id="push_actions"></div>
+      <label class="integration-toggle"><span>Вопросы агентов</span><input type="checkbox" role="switch" id="push_questions" onchange="savePushEvents()"></label>
+      <label class="integration-toggle"><span>Агент закончил работу</span><input type="checkbox" role="switch" id="push_finished" onchange="savePushEvents()"></label>
+      <div id="push_devices"></div></div><div id="connection_cards"></div><div id="integrations_dlg" class="hub-card editor" hidden><form class="integration-dialog" onsubmit="event.preventDefault();saveTelegram()">
       <div class="integration-heading"><span class="telegram-mark" aria-hidden="true"><svg class="ui-icon"><use href="#i-telegram"/></svg></span><div><h4>Telegram</h4><p>Вопросы и ответы в чате с ботом</p></div></div>
       <p id="telegram_state" class="integration-status" role="status"></p>
+      <p id="telegram_duplicates" class="integration-note danger" hidden></p>
       <p class="integration-note">Вопросы подключённых Agent Deck тоже приходят в этот бот. На них Telegram настраивать не нужно.</p>
       <details id="telegram_credentials" open><summary>Токен бота</summary>
       <label for="telegram_token">Токен бота из @BotFather</label>

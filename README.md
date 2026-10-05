@@ -2,7 +2,8 @@
 
 A self-hosted workspace for [Claude Code](https://claude.com/claude-code),
 [Codex](https://github.com/openai/codex), Kimi and terminals. Install on Linux or
-macOS, work from a desktop or phone browser, and answer agent questions in Telegram.
+macOS, work from a desktop or phone browser, get notified when an agent needs you, and answer
+agent questions with one tap or in Telegram.
 Sessions live in tmux, keep working after you close the tab, and can be restored
 after a reboot.
 
@@ -27,6 +28,7 @@ after a reboot.
 - LM Studio profiles: discover known Tailscale nodes or add a custom address, port and API key.
 - Local models in Claude Code, with session speed/TTFT measurements and a separate benchmark; no subscription quotas.
 - UI in 16 languages, switchable in Settings → Application; extensible file-based locales.
+- Notifications on phone and desktop when an agent asks a question or finishes, from every connected computer.
 - Telegram bot integration: receive agent questions with answer buttons in your private chat.
 - One-command installation on Linux and macOS, autostart and panel updates; in-panel agent setup and login.
 
@@ -34,39 +36,46 @@ after a reboot.
 
 ## Install
 
-New installations open in English. Change **Settings → Application → Interface language** at any
-time; the choice is saved in your browser and preserves message drafts. For Russian
-from the first launch, set `PANEL_LANGUAGE=ru` on the installer:
+Pick your platform below. Every grey block is one command: copy it as is.
 
-```bash
-# Linux
-curl -fsSL https://raw.githubusercontent.com/matacoder/agent-deck/main/get.sh | sudo PANEL_LANGUAGE=ru bash
-# macOS
-curl -fsSL https://raw.githubusercontent.com/matacoder/agent-deck/main/get.sh | PANEL_LANGUAGE=ru bash
-```
+### Linux server (Ubuntu 22.04 / 24.04)
 
-Available: English, Russian, Spanish, Brazilian Portuguese, German, French,
-Simplified/Traditional Chinese, Japanese, Korean, Indonesian, Turkish, Italian,
-Polish, Ukrainian and Hindi. For example, `PANEL_LANGUAGE=ja` starts in Japanese.
-
-[Adding another language](docs/localization.md) only requires a JSON catalog.
-
-
-On a fresh **Ubuntu 22.04 / 24.04** server:
+Run as root on a fresh server:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/matacoder/agent-deck/main/get.sh | sudo bash
 ```
 
-It sets everything up and prints the panel address and password. By default the panel is private:
-reachable only from your devices over [Tailscale](https://tailscale.com) (the installer will ask you to
-log in to it, or pass `TS_AUTHKEY=tskey-...`).
+The installer prints the panel address, login and password. By default the panel is private:
+reachable only from your devices over [Tailscale](https://tailscale.com) (the installer asks you to
+log in, or pass `TS_AUTHKEY=tskey-...`).
 
-Then:
+Russian interface from the first launch:
 
-1. Open the printed address and log in.
-2. In the sidebar, click **Sign in** next to Claude and/or Codex, and **Connect** next to GitHub.
-3. On a phone: Share → *Add to Home Screen*.
+```bash
+curl -fsSL https://raw.githubusercontent.com/matacoder/agent-deck/main/get.sh | sudo PANEL_LANGUAGE=ru bash
+```
+
+Your own domain with automatic HTTPS (needed for [phone notifications](#notifications)). Point a DNS
+A record (for example `cli.example.com`) to the server first:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/matacoder/agent-deck/main/get.sh | sudo PUBLIC_DOMAIN=cli.example.com bash
+```
+
+Certificates are issued and renewed automatically (via Dokploy's Traefik if the server has it,
+otherwise via Caddy). This makes a web terminal reachable from the internet, protected by the panel
+password.
+
+Other options go before `bash` the same way, for example `sudo MEM_MAX=8G bash`:
+
+| Option | Meaning |
+|---|---|
+| `MEM_MAX`, `CPU_QUOTA` | Cap memory / CPU for everything the panel runs, e.g. `8G`, `200%` |
+| `PANEL_LANGUAGE` | Default interface locale: `en`, `ru`, or another installed catalog; default `en` |
+| `DEV_USER` | Name of the (unprivileged) user that runs the sessions, default `dev` |
+| `WITH_DOCKER=0`, `WITH_CODEX=0` | Skip rootless Docker / Codex CLI |
+| `TS_AUTHKEY` | Join Tailscale without the interactive login |
 
 ### macOS (Apple Silicon or Intel)
 
@@ -78,77 +87,111 @@ curl -fsSL https://raw.githubusercontent.com/matacoder/agent-deck/main/get.sh | 
 
 The installer sets up Homebrew if needed (follow its prompts), Python, tmux, ttyd,
 GitHub CLI, Claude Code and Codex, then opens the panel at the Mac’s Tailscale IPv4
-address when Tailscale is connected, or `http://127.0.0.1:8790` otherwise.
-It prints your panel login and password. Sign in to your own Claude/Codex accounts
-from the sidebar. Existing installations and agent credentials are reused.
+address when Tailscale is connected, or `http://127.0.0.1:8790` otherwise. It prints your
+panel login and password. Existing installations and agent credentials are reused.
 Homebrew may ask to install Apple's command-line tools on a fresh Mac.
 
-The panel starts when you log in to your Mac and runs as your user. It uses a separate
-`agent-deck` tmux server and preserves your `.tmux.conf` and other tmux sessions.
-Without a connected Tailscale client it is local-only; Docker and Tailscale are not required. A sleeping or
-powered-off Mac cannot run agents or serve the panel.
+Russian interface from the first launch:
 
-Run the same command to reinstall/update, or update the panel from its sidebar.
-Settings/password: `~/.config/cc-panel/macos.json`; logs: `~/Library/Logs/Agent Deck/`.
-To choose your project directory during installation (for example `~/dev`):
+```bash
+curl -fsSL https://raw.githubusercontent.com/matacoder/agent-deck/main/get.sh | PANEL_LANGUAGE=ru bash
+```
+
+Choose the project directory (saved for future reinstalls; also changeable in
+**Settings → Application → Project directory**):
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/matacoder/agent-deck/main/get.sh | bash -s -- --projects-dir "$HOME/dev"
 ```
 
-The path is saved for future reinstalls. It can also be changed immediately in
-**Settings → Application → Project directory** without moving existing sessions. `PROJECTS_DIR` is also supported as an
-installation environment variable; `--projects-dir` takes precedence.
-To change the port, use `... | BIND_PORT=8791 bash`. Use `WITH_CLAUDE=0` or
-`WITH_CODEX=0` before `bash` to skip either agent. For phone access, install Tailscale
-separately, connect it and rerun the installer; it automatically selects the Mac’s
-Tailscale IPv4 address, including for older localhost installations. The panel password
-is still required. Explicit `BIND_HOST` overrides are remembered; use
-`... | BIND_HOST=127.0.0.1 bash` to keep access local-only. Keep the Mac awake while using remote sessions.
-
-To stop autostart without deleting sessions or settings:
+Another port:
 
 ```bash
-launchctl bootout gui/$(id -u)/com.agent-deck.panel
-launchctl bootout gui/$(id -u)/com.agent-deck.ttyd
+curl -fsSL https://raw.githubusercontent.com/matacoder/agent-deck/main/get.sh | BIND_PORT=8791 bash
+```
+
+Keep the panel local-only (no Tailscale access):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/matacoder/agent-deck/main/get.sh | BIND_HOST=127.0.0.1 bash
+```
+
+`WITH_CLAUDE=0` or `WITH_CODEX=0` before `bash` skips either agent. For phone access, install
+Tailscale, connect it and rerun the installer; it selects the Mac’s Tailscale IPv4 address
+automatically. The panel starts when you log in to your Mac, runs as your user and uses a separate
+`agent-deck` tmux server, preserving your `.tmux.conf`. A sleeping Mac cannot run agents or serve the
+panel. Settings/password: `~/.config/cc-panel/macos.json`; logs: `~/Library/Logs/Agent Deck/`.
+
+Stop autostart without deleting sessions or settings:
+
+```bash
+launchctl bootout gui/$(id -u)/com.agent-deck.panel; launchctl bootout gui/$(id -u)/com.agent-deck.ttyd
+```
+
+```bash
 rm ~/Library/LaunchAgents/com.agent-deck.{panel,ttyd}.plist
 ```
 
-### Your own domain (optional)
+### After installing
 
-Point a DNS A record (e.g. `cli.example.com`) to the server, then:
+1. Open the printed address and log in.
+2. In **Settings → Agents**, sign in to Claude and/or Codex; connect GitHub in **Settings → Connections**.
+3. On a phone, add the panel to the Home Screen (see [Phone](#phone)).
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/matacoder/agent-deck/main/get.sh | sudo PUBLIC_DOMAIN=cli.example.com bash
-```
+Available interface languages: English, Russian, Spanish, Brazilian Portuguese, German, French,
+Simplified/Traditional Chinese, Japanese, Korean, Indonesian, Turkish, Italian, Polish, Ukrainian and
+Hindi. [Adding another language](docs/localization.md) only requires a JSON catalog.
 
-HTTPS certificates are issued and renewed automatically (via Dokploy's Traefik if the server has it,
-otherwise via Caddy). Note: this makes a web terminal reachable from the internet, protected by the panel
-password.
-
-### Other options
-
-Put them before `bash` the same way, e.g. `sudo MEM_MAX=8G bash`:
-
-| Option | Meaning |
-|---|---|
-| `MEM_MAX`, `CPU_QUOTA` | Cap memory / CPU for everything the panel runs, e.g. `8G`, `200%` |
-| `PANEL_LANGUAGE` | Default interface locale: `en`, `ru`, or another installed catalog; default `en`. |
-| `DEV_USER` | Name of the (unprivileged) user that runs the sessions, default `dev` |
-| `WITH_DOCKER=0`, `WITH_CODEX=0` | Skip rootless Docker / Codex CLI |
-| `TS_AUTHKEY` | Join Tailscale without the interactive login |
+**Encryption components.** Backups and notifications use the
+[`cryptography`](https://cryptography.io) library. The installer (or the panel itself, later) downloads
+the exact wheels pinned in `integrations/dependency_lock.py`, checks each SHA-256 and keeps them in
+`~/.local/share/agent-deck/python/`; no pip, virtualenv or root is involved. Without internet access the
+panel works normally and retries the download every 10 minutes; only backups and notifications wait.
 
 ## Update
 
-When a new version is out, the panel shows **↑ vX.Y.Z** in the sidebar. To update, run the install
-command again, or click **Update to vX.Y.Z** in the sidebar / mobile **⋯** menu to update just the
-panel without root. For a full update including system setup:
+The panel shows **↑ vX.Y.Z** in the sidebar when a release is out; click it (or the mobile **⋯** menu)
+to update just the panel without root. Settings are kept and running sessions are not interrupted.
+See [CHANGELOG.md](CHANGELOG.md).
+
+Full update on Linux, including system setup:
 
 ```bash
 sudo /opt/agent-deck/update.sh
 ```
 
-Your settings are kept and running sessions are not interrupted. See [CHANGELOG.md](CHANGELOG.md).
+Full update on macOS — rerun the installer:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/matacoder/agent-deck/main/get.sh | bash
+```
+
+## Phone
+
+**iPhone / iPad.** Open the panel in Safari, tap **Share → Add to Home Screen**, then always start it
+from the icon. It runs full screen, keeps drafts and supports one-tap answers to agent questions.
+
+**Android.** Open the panel in Chrome, tap **⋮ → Add to Home screen** (or **Install app**).
+
+## Notifications
+
+Agent questions and finished work from **every connected Agent Deck** arrive as system notifications
+on your phone or computer, even when the panel is closed. Tapping one opens that session, on the right
+computer. No account with Apple or Google is needed: the panel signs notifications with its own key and
+encrypts them for your device, so the push service only relays ciphertext.
+
+Requirements:
+
+- The panel is opened over **HTTPS** (see the `PUBLIC_DOMAIN` install option). Browsers do not allow
+  notifications on plain `http://100.x.y.z:8790` addresses. Only the Agent Deck you open in the browser
+  needs HTTPS: it watches the connected computers and sends notifications for all of them.
+- **iPhone / iPad:** iOS 16.4 or newer, panel added to the Home Screen and opened from its icon.
+- **Android, Mac, Windows, Linux:** a current Chrome, Edge, Firefox or Safari.
+
+Turn on: **Settings → Connections → Notifications → Turn on notifications**, allow the browser prompt.
+A test notification arrives right away. Choose the events (agent questions, agent finished) with the
+switches; each device can be turned off there or removed from any other device. On iPhone the app icon
+also shows the number of sessions that finished.
 
 ## Telegram
 
@@ -204,9 +247,8 @@ its login in the Keychain, so log in to Claude again after a restore.
    enter the recovery code and restore. **Download this machine's backup** gives an
    offline `.adbk` file for **Restore from file**.
 
-Backups are encrypted with keyed BLAKE2b (counter-mode stream and a separate
-authentication tag) from the Python standard library, so other computers only hold
-ciphertext. Restoring first backs up the state it replaces, writes files only to their
+Backups are encrypted with AES-256-GCM (`cryptography`), so other computers only hold
+ciphertext; backups made by 1.5.0 remain restorable. Restoring first backs up the state it replaces, writes files only to their
 known locations with `600` permissions and restarts the panel; tmux sessions keep running.
 
 ## Security

@@ -176,6 +176,15 @@ def install(home, start=True, open_browser=True, projects_dir=None):
     for source in (SOURCE / 'locales').iterdir():
         if source.suffix in ('.py', '.json'):
             atomic_write(target / 'locales' / source.name, source.read_bytes(), 0o644)
+    if start:
+        # Pinned cryptography wheels for backups and notifications; the panel retries itself when offline.
+        try:
+            fetched = run(python, '-c', 'import sys; sys.path.insert(0, sys.argv[1]); from integrations import dependencies; '
+                          'sys.exit(0 if dependencies.ensure(background=False) else 1)', target, check=False).returncode == 0
+        except (OSError, subprocess.TimeoutExpired):
+            fetched = False
+        if not fetched:
+            print('Encryption components could not be downloaded now; the panel will retry automatically.', flush=True)
     atomic_write(config / 'tmux.conf', (SOURCE / 'config/tmux.conf').read_bytes(), 0o644)
     wrapper = home / '.claude/cc-session-hook.py'
     atomic_write(wrapper, (SOURCE / 'claude/cc-session-hook.py').read_bytes(), 0o755)

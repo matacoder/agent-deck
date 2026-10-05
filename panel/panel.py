@@ -1506,8 +1506,58 @@ def action_backup_restore_remote(d):
     return remote_json(remote_decks, d.get('deck'), 'POST', '/api/backup_restore', {'blob': base64.b64encode(blob).decode()})
 
 
+_push = None
+_push_lock = threading.Lock()
+_remote_sessions = {'at': 0, 'items': []}
+
+
+def push_sessions():
+    """Local sessions plus connected Agent Decks' lists (refreshed every 10 s) for notification events."""
+    items = [{**s, 'deck': ''} for s in list_sessions()]
+    if time.monotonic() - _remote_sessions['at'] > 10:
+        remote = []
+        for deck in remote_decks.status().get('decks', []):
+            try:
+                status, _, body = remote_decks.request(deck['id'], 'GET', '/api/sessions', timeout=5)
+                if status == 200:
+                    remote += [{**s, 'deck': deck['id'], 'deck_name': deck.get('name', '')} for s in json.loads(body).get('sessions', [])]
+            except (ValueError, OSError):
+                continue
+        _remote_sessions.update(at=time.monotonic(), items=remote)
+    return items + _remote_sessions['items']
+
+
+def push_service():
+    global _push
+    from integrations.push import Push
+    with _push_lock:
+        if _push is None:
+            _push = Push(os.path.expanduser('~/.config/cc-panel/integrations'), push_sessions, all_questions)
+        return _push
+
+
+def telegram_duplicates(bot):
+    """Connected Agent Decks polling the same bot: their questions would arrive twice."""
+    def scan():
+        names = []
+        for deck in remote_decks.status().get('decks', []):
+            try:
+                status, _, body = remote_decks.request(deck['id'], 'GET', '/api/integrations', timeout=3)
+                remote = json.loads(body).get('telegram', {}) if status == 200 else {}
+            except (ValueError, OSError, AttributeError):
+                continue
+            if remote.get('configured') and remote.get('enabled') and remote.get('bot') == bot:
+                names.append(deck.get('name', ''))
+        return names
+    result = cached('telegram-duplicates-' + bot, 60, scan) if bot else []
+    return result if isinstance(result, list) else []  # cached() reports failures as a dict.
+
+
 def integration_status():
-    return {'telegram': telegram_service().status()} if Telegram else {'telegram': {'available': False}}
+    if not Telegram:
+        return {'telegram': {'available': False}}
+    status = telegram_service().status()
+    return {'telegram': {**status, 'duplicates': telegram_duplicates(status.get('bot', '')) if status.get('paired') else []}}
 
 
 ACTIONS.update(telegram_config=lambda d: {'telegram': telegram_service().save(d)},
@@ -1518,7 +1568,11 @@ ACTIONS.update(telegram_config=lambda d: {'telegram': telegram_service().save(d)
                backup_run=lambda d: {'report': run_backups()},
                backup_store=action_backup_store,
                backup_restore=action_backup_restore,
-               backup_restore_remote=action_backup_restore_remote)
+               backup_restore_remote=action_backup_restore_remote,
+               push_subscribe=lambda d: push_service().subscribe(d),
+               push_unsubscribe=lambda d: push_service().unsubscribe(d.get('id')),
+               push_test=lambda d: push_service().test(d.get('id')),
+               push_events=lambda d: {'events': push_service().set_events(d)})
 
 
 class PanelHTTPServer(ThreadingHTTPServer):
@@ -1656,6 +1710,17 @@ class Handler(BaseHTTPRequestHandler):
         secure = "; Secure" if self.is_https() else ""
         self.redirect("/", f"{COOKIE}={make_token()}; Path=/; Max-Age={COOKIE_DAYS * 86400}; HttpOnly; SameSite=Lax{secure}")
 
+    def serve_service_worker(self):
+        # Kept inside a Python module: a new file under panel/ would be rejected by older updaters.
+        from integrations.webpush import SERVICE_WORKER
+        body = SERVICE_WORKER.encode()
+        self.send_response(200)
+        self.send_header("Content-Type", "application/javascript; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-cache")
+        self.end_headers()
+        self.wfile.write(body)
+
     def serve_static(self):
         with open(os.path.join(HERE, self.path.lstrip("/")), "rb") as f:
             body = f.read()
@@ -1721,6 +1786,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_json(200, {'languages': locales.available() if locales is not None else [{'code': 'ru', 'name': 'Русский'}]})
         if self.path in STATIC:
             return self.serve_static()
+        if self.path == "/sw.js":
+            return self.serve_service_worker()
         if self.path == "/login":
             return self.login_page()
         if not self.authorized():
@@ -1749,6 +1816,8 @@ class Handler(BaseHTTPRequestHandler):
         if parsed.path == "/api/sessions":
             preview_name = parse_qs(parsed.query).get("preview", [None])[0]
             return self.send_json(200, {"sessions": list_sessions(preview_name)})
+        if parsed.path == "/api/push":
+            return self.send_json(200, push_service().status())
         if parsed.path == "/api/backups":
             return self.send_json(200, backup_service().status())
         if parsed.path == "/api/backup_blob":
@@ -2097,6 +2166,13 @@ def main():
     auto_update_service().run()
     threading.Thread(target=sync_loop, daemon=True).start()
     threading.Thread(target=backup_loop, name='agent-deck-backups', daemon=True).start()
+    try:
+        from integrations import dependencies
+        dependencies.ensure()  # Downloads pinned cryptography in the background when missing.
+        if push_service().config['subscriptions']:
+            push_service().start()
+    except (ImportError, OSError, ValueError) as error:
+        print(f'Notifications could not start: {error}', flush=True)
     if Telegram:
         try:
             telegram_service().start()

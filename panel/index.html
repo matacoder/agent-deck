@@ -382,6 +382,9 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 #lm_editor summary{font-size:13px;color:var(--fg);cursor:pointer;padding:0}
 #lm_editor form{padding-top:4px}
 .hub-card .good{color:var(--ok)}
+.push-device{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-top:1px solid var(--bd)}
+.push-device-info{display:grid;gap:2px;min-width:0}.push-device-info strong{font-size:13px;color:var(--fg2);overflow-wrap:anywhere}.push-device-info span{font-size:12px;color:var(--mut)}
+.push-device button{flex:none;min-height:36px;padding:6px 12px;border-radius:8px;background:var(--side2);font-size:12.5px}
 .recovery-code{display:block;margin:4px 0 0;padding:12px 14px;border:1px solid var(--bd);border-radius:var(--r);background:var(--bg);color:var(--fg2);font:600 14px/1.6 var(--mono);letter-spacing:.04em;overflow-wrap:anywhere;user-select:all;-webkit-user-select:all}
 .hub-card p.backup-line{margin:4px 0 0}.hub-card p.danger{color:var(--bad-text)}
 #hub_version{display:flex;align-items:center;flex-wrap:wrap;gap:10px 12px;margin-top:12px}
@@ -747,9 +750,13 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
       <div class="acts"><button type="button" onclick="discoverLM()">Найти серверы</button><button type="button" id="lm_cancel" onclick="discoverLM(true)" hidden>Остановить</button></div>
       <p id="lm_progress" role="status"></p><div id="lm_results"></div></div>
     </section>
-    <section id="hub_connections"><div id="connection_cards"></div><div id="integrations_dlg" class="hub-card editor" hidden><form class="integration-dialog" onsubmit="event.preventDefault();saveTelegram()">
+    <section id="hub_connections"><div class="hub-card" id="push_card"><h4>Уведомления</h4><p>Вопросы агентов и завершение работы на всех подключённых Agent Deck приходят на телефон или компьютер, даже когда панель закрыта.</p><p id="push_state" role="status"></p><div id="push_actions"></div>
+      <label class="integration-toggle"><span>Вопросы агентов</span><input type="checkbox" role="switch" id="push_questions" onchange="savePushEvents()"></label>
+      <label class="integration-toggle"><span>Агент закончил работу</span><input type="checkbox" role="switch" id="push_finished" onchange="savePushEvents()"></label>
+      <div id="push_devices"></div></div><div id="connection_cards"></div><div id="integrations_dlg" class="hub-card editor" hidden><form class="integration-dialog" onsubmit="event.preventDefault();saveTelegram()">
       <div class="integration-heading"><span class="telegram-mark" aria-hidden="true"><svg class="ui-icon"><use href="#i-telegram"/></svg></span><div><h4>Telegram</h4><p>Вопросы и ответы в чате с ботом</p></div></div>
       <p id="telegram_state" class="integration-status" role="status"></p>
+      <p id="telegram_duplicates" class="integration-note danger" hidden></p>
       <p class="integration-note">Вопросы подключённых Agent Deck тоже приходят в этот бот. На них Telegram настраивать не нужно.</p>
       <details id="telegram_credentials" open><summary>Токен бота</summary>
       <label for="telegram_token">Токен бота из @BotFather</label>
@@ -1066,6 +1073,91 @@ function restoreBackupFile(input){
 }
 
 if(typeof module!=="undefined")module.exports={formatBackupTime,backupReportLines,backupLabel};
+let pushState=null;
+
+// Why notifications cannot be enabled here, as a translatable message; null when they can.
+function pushBlocker({secure,ios,standalone,pushManager,origin}){
+  if(!secure)return ["Уведомлениям нужен HTTPS-адрес панели. Сейчас она открыта по {0}.",[origin]];
+  if(ios&&!standalone)return ["На iPhone и iPad добавьте панель на экран «Домой» и откройте её оттуда.",[]];
+  if(!pushManager)return ["Этот браузер не поддерживает уведомления.",[]];
+  return null;
+}
+function deviceLabel(ua){
+  const device=/iPhone/.test(ua)?"iPhone":/iPad/.test(ua)?"iPad":/Android/.test(ua)?"Android":/Macintosh/.test(ua)?"Mac":/Windows/.test(ua)?"Windows":/Linux/.test(ua)?"Linux":"Browser";
+  const browser=/Edg\//.test(ua)?"Edge":/Firefox\//.test(ua)?"Firefox":/(Chrome|CriOS)\//.test(ua)?"Chrome":/Safari\//.test(ua)?"Safari":"";
+  return browser?device+" · "+browser:device;
+}
+function base64UrlBytes(text){
+  const raw=atob(text.replace(/-/g,"+").replace(/_/g,"/")+"=".repeat((4-text.length%4)%4));
+  return Uint8Array.from(raw,c=>c.charCodeAt(0));
+}
+
+function pushEnvironment(){
+  const ua=navigator.userAgent,ios=/iPhone|iPad/.test(ua)||(/Macintosh/.test(ua)&&navigator.maxTouchPoints>1);
+  return {secure:window.isSecureContext,ios,standalone:navigator.standalone===true||matchMedia("(display-mode: standalone)").matches,
+    pushManager:"serviceWorker" in navigator&&"PushManager" in window,origin:location.origin};
+}
+async function loadPush(){
+  try{pushState=await gatewayApi("/api/push")}catch(e){if(e.message!==STALE)toast(e.message);return}
+  renderPush();
+}
+function renderPush(){
+  const s=pushState;if(!s)return;
+  const blocker=pushBlocker(pushEnvironment()),mine=localStore.getItem("cc.push-id"),subscribed=s.devices.some(d=>d.id===mine);
+  const state=blocker?tr(blocker[0],blocker[1]):!s.available?(s.error||tr("Панель скачивает компоненты шифрования…")):
+    subscribed?tr("Включены на этом устройстве."):tr("Выключены на этом устройстве.");
+  $("push_state").textContent=state;
+  const actions=[];
+  if(!blocker&&s.available)actions.push(...(subscribed?[btn(tr("Отключить на этом устройстве"),"",disablePush),btn(tr("Отправить тест"),"pri",()=>testPush(mine))]:[btn(tr("Включить уведомления"),"pri",enablePush)]));
+  $("push_actions").replaceChildren(...(actions.length?[el("div","acts",...actions)]:[]));
+  $("push_questions").checked=s.events.questions;$("push_finished").checked=s.events.finished;
+  $("push_devices").replaceChildren(...s.devices.map(d=>el("div","push-device",
+    el("div","push-device-info",el("strong","",d.label+(d.id===mine?" · "+tr("это устройство"):"")),el("span","",formatBackupTime(d.created,DATE_LOCALE))),
+    btn(tr("Удалить"),"danger",()=>removePushDevice(d.id)))));
+}
+async function enablePush(){
+  // iOS only allows the permission prompt from a tap, which is why this runs from the button.
+  try{
+    if(await Notification.requestPermission()!=="granted"){toast(tr("Уведомления запрещены в настройках браузера или системы"));return}
+    const registration=await navigator.serviceWorker.register("/sw.js");await navigator.serviceWorker.ready;
+    const subscription=await registration.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:base64UrlBytes(pushState.public_key)});
+    const result=await gatewayApi("/api/push_subscribe",{subscription:subscription.toJSON(),label:deviceLabel(navigator.userAgent),language:I18N.language});
+    localStore.setItem("cc.push-id",result.id);
+    await loadPush();await testPush(result.id);
+  }catch(e){if(e.message!==STALE)toast(e.message||String(e))}
+}
+async function testPush(id){
+  try{await gatewayApi("/api/push_test",{id});toast(tr("Тестовое уведомление отправлено"),"success")}catch(e){if(e.message!==STALE)toast(e.message)}
+}
+async function disablePush(){
+  const id=localStore.getItem("cc.push-id");
+  try{
+    const registration=await navigator.serviceWorker.getRegistration("/");
+    const subscription=registration&&await registration.pushManager.getSubscription();
+    if(subscription)await subscription.unsubscribe();
+    if(id)await gatewayApi("/api/push_unsubscribe",{id});
+  }catch(e){if(e.message!==STALE)toast(e.message)}
+  localStore.removeItem("cc.push-id");await loadPush();
+}
+async function removePushDevice(id){
+  if(id===localStore.getItem("cc.push-id"))return disablePush();
+  try{await gatewayApi("/api/push_unsubscribe",{id});await loadPush()}catch(e){if(e.message!==STALE)toast(e.message)}
+}
+async function savePushEvents(){
+  try{pushState.events=(await gatewayApi("/api/push_events",{questions:$("push_questions").checked,finished:$("push_finished").checked})).events}
+  catch(e){if(e.message!==STALE)toast(e.message)}
+  renderPush();
+}
+// A tap on a notification focuses an open panel and asks it to show the session.
+if("serviceWorker" in navigator&&window.isSecureContext){
+  navigator.serviceWorker.addEventListener("message",event=>{
+    const data=event.data||{};if(data.type!=="agent-deck-open")return;
+    if((data.deck||"")!==selectedDeck)openDeckSession(data.deck||"",data.session);else if(data.session)select(data.session);
+  });
+  navigator.serviceWorker.register("/sw.js").catch(()=>{});
+}
+
+if(typeof module!=="undefined")module.exports={pushBlocker,deviceLabel,base64UrlBytes};
 const I18N=__PANEL_I18N__;
 const DATE_LOCALE=(()=>{try{return Intl.getCanonicalLocales(I18N.language)[0]}catch(e){return "en"}})();
 const $=id=>document.getElementById(id);
@@ -1079,6 +1171,11 @@ function browserStorage(name){
 }
 const localStore=browserStorage("localStorage"),sessionStore=browserStorage("sessionStorage");
 let selectedDeck="";
+// Notification links carry ?deck=<id> so a cold start opens the right computer.
+try{
+  const params=new URLSearchParams(location.search);
+  if(params.has("deck")){const deck=params.get("deck");if(deck===""||/^[0-9a-f]{24}$/.test(deck))localStore.setItem("cc.deck",deck);history.replaceState(null,"",location.pathname+location.hash)}
+}catch(e){}
 try{selectedDeck=localStore.getItem("cc.deck")||""}catch(e){}
 if(!/^[0-9a-f]{24}$/.test(selectedDeck))selectedDeck="";
 let deckLocalStorage=instanceStorage(localStore,selectedDeck);
@@ -1291,8 +1388,11 @@ function renderTabs(){
   if(focused)box.querySelector(`[data-session="${CSS.escape(focused)}"]`)?.focus({preventScroll:true});
   const busy=sessions.filter(s=>state(s)==="busy").length;
   $("foot").textContent=tr("{0} сессий · {1} работают",[sessions.length,busy])+(attention.size?tr(" · {0} готово",[attention.size]):"");
-  $("menuBadge").textContent=attention.size;$("menuBadge").classList.toggle("on",attention.size>0);
-  document.title=(attention.size?`(${attention.size}) `:"")+"Agent Deck";
+  const ready=attention.size+otherAttention.size;
+  $("menuBadge").textContent=ready;$("menuBadge").classList.toggle("on",ready>0);
+  document.title=(ready?`(${ready}) `:"")+"Agent Deck";
+  // Home-screen icon badge (iOS 16.4+ with notifications allowed, desktop PWAs); ignored elsewhere.
+  try{if(navigator.setAppBadge)ready?navigator.setAppBadge(ready).catch(()=>{}):navigator.clearAppBadge().catch(()=>{})}catch(e){}
 }
 function renderTitle(){
   const s=cur(),t=$("title");t.replaceChildren();
@@ -1913,6 +2013,7 @@ let hubSection="agents",lmData={profiles:[],discovery:{}},lmTimer=null,returnToN
 function settingsSection(section){
   hubSection=section;for(const name of ["agents","models","connections","network","backups","app"])$("hub_"+name).hidden=name!==section;
   if(section==="backups"&&$("settings_dlg").open)loadBackups();
+  if(section==="connections"&&$("settings_dlg").open)loadPush();
   for(const b of document.querySelectorAll(".hub-nav button")){
     b.classList.toggle("on",b.dataset.section===section);b.setAttribute("aria-current",String(b.dataset.section===section));
     if(b.dataset.section===section&&isMobile())requestAnimationFrame(()=>b.scrollIntoView({inline:"nearest",block:"nearest"}));
@@ -1926,6 +2027,7 @@ async function openSettings(section="agents"){
   drawer(false);sheet(false);settingsSection(section);
   if(!$("settings_dlg").open)$("settings_dlg").showModal();updateHubNavFade();
   if(section==="backups")loadBackups();
+  if(section==="connections")loadPush();
   renderHub();
   await Promise.allSettled([loadDeckSettings(),(async()=>{const data=await api("/api/project_directory");$("project_directory").value=data.directory})(),refreshLMModels(),loadIntegrations(),checkGithubFoot(),(async()=>{const data=await api("/api/locales");$("ui_language").replaceChildren(...data.languages.map(x=>{const o=el("option","",x.name);o.value=x.code;return o}));$("ui_language").value=I18N.language})()]);
   clearInterval(lmTimer);lmTimer=setInterval(()=>{if(!document.hidden&&$("settings_dlg").open){if(lmData.discovery?.phase==="running")loadLM(false);if(hubSection==="models"&&Date.now()-lmModelsChecked>30000)refreshLMModels()}},2000);
@@ -1957,6 +2059,7 @@ async function loadDeckSettings(){
 }
 // Sessions of every connected machine, so switching environments is one tap from the sidebar.
 let deckDirectory={decks:[],name:""},otherDecks=[],loadingOthers=false,deckOpen={};
+const otherBusy=new Map(),otherAttention=new Set();
 try{deckOpen=JSON.parse(localStore.getItem("cc.deck-open")||"{}")||{}}catch(e){}
 const currentDeckName=()=>selectedDeck?deckDirectory.decks.find(d=>d.id===selectedDeck)?.name||"Agent Deck":deckDirectory.name||tr("Этот Agent Deck");
 async function loadOtherDecks(){
@@ -1970,6 +2073,12 @@ async function loadOtherDecks(){
       catch(e){return {...d,sessions:[],error:true}}
     }));
   }finally{loadingOthers=false}
+  // Same "done" signal as local tabs: a session that stopped working since the last poll.
+  for(const deck of otherDecks)for(const s of deck.sessions){
+    const key=deck.id+"/"+s.name,busy=state(s)==="busy";
+    if(otherBusy.get(key)&&!busy)otherAttention.add(key);
+    otherBusy.set(key,busy);
+  }
   renderTabs();
 }
 function deckHeader(deck,current){
@@ -1991,6 +2100,7 @@ function renderDeckSection(box,deck,q){
     const st=state(s),word=st==="busy"?["busy",tr("работает")]:st==="off"?["off",tr("остановлен")]:null;
     const t=el("div","tab remote",el("span","dot "+st),agentIcon(s),el("div","t",el("div","n",sessionTitle(s)),
       el("div","s",...(word?[el("span","state "+word[0],word[1])," · "]:[]),shortPath(s.path))));
+    if(otherAttention.has(deck.id+"/"+s.name))t.append(el("span","bell"));
     t.title=deck.name+" · "+s.name;t.tabIndex=0;t.setAttribute("role","button");
     t.onclick=()=>openDeckSession(deck.id,s.name);
     t.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();openDeckSession(deck.id,s.name)}};
@@ -1998,6 +2108,7 @@ function renderDeckSection(box,deck,q){
   }
 }
 function openDeckSession(identity,name){
+  otherAttention.delete(identity+"/"+name);
   try{instanceStorage(localStore,identity).setItem("cc.active",name)}catch(e){}
   switchDeck(identity);
 }
@@ -2024,6 +2135,7 @@ function switchDeck(identity){
 }
 // Everything below belongs to one computer; a switch must not carry any of it to the next.
 function resetInstanceState(known){
+  for(const key of [...otherAttention,...otherBusy.keys()])if(key.startsWith(selectedDeck+"/")){otherAttention.delete(key);otherBusy.delete(key)}
   for(const frame of frames.values())frame.remove();
   frames.clear();wasBusy.clear();attention.clear();previewCache.clear();sendStates.clear();
   sessions=known;quickSignature=null;quickActive=null;
@@ -2165,6 +2277,8 @@ function renderTelegram(config){
   $("telegram_state").classList.toggle("error",!!c.error);
   $("telegram_state").textContent=c.available===false?tr("Обновите панель: установите интеграции из меню обновлений"):c.error||
     (c.paired?`@${c.bot} · ${c.account||tr("аккаунт привязан")} · ${c.enabled?tr("включён"):tr("пауза")}`:c.configured?tr("@{0} · привяжите свой Telegram",[c.bot]):tr("Бот ещё не подключён"));
+  $("telegram_duplicates").hidden=!c.duplicates?.length;
+  if(c.duplicates?.length)$("telegram_duplicates").textContent=tr("Этот бот также включён на: {0}. Вопросы будут приходить дважды; отключите Telegram там.",[c.duplicates.join(", ")]);
   $("telegram_enabled").checked=c.enabled!==false;
   $("telegram_pair").style.display=c.configured&&!c.pair_url?"flex":"none";
   $("telegram_pair").textContent=c.paired?tr("Привязать другой аккаунт"):tr("Получить ссылку привязки");

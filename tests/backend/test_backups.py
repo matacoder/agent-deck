@@ -8,7 +8,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from support import ROOT, PanelCase
+from support import ROOT, PanelCase, require_crypto
 sys.path.insert(0, str(ROOT))
 from integrations import backups as B
 
@@ -27,6 +27,9 @@ def machine(test, name='alpha'):
 
 
 class CryptoTests(unittest.TestCase):
+    def setUp(self):
+        require_crypto(self)
+
     def test_recovery_code_round_trips_and_rejects_typos(self):
         key = bytes(range(32))
         code = B.encode_code(key)
@@ -52,9 +55,24 @@ class CryptoTests(unittest.TestCase):
             B.unseal(other, blob)
         with self.assertRaises(ValueError):
             B.read_meta(b'not a backup')
+        self.assertTrue(blob.startswith(b'ADBK2\n'))
+
+    def test_backups_written_by_1_5_0_still_restore(self):
+        key = bytes(range(32))
+        header = json.dumps({'origin': 'a' * 24, 'created': 1, 'name': 'old', 'key_id': B.key_id(key)},
+                            sort_keys=True, separators=(',', ':')).encode()
+        nonce, data = bytes(24), b'legacy settings'
+        signed = B.LEGACY_MAGIC + len(header).to_bytes(4, 'big') + header + nonce + B._keystream_xor(B._derive(key, b'adbk-enc'), nonce, data)
+        legacy = signed + B.hashlib.blake2b(signed, key=B._derive(key, b'adbk-mac'), digest_size=32).digest()
+        self.assertEqual(B.unseal(key, legacy)[1], data)
+        with self.assertRaisesRegex(ValueError, 'изменён'):
+            B.unseal(key, legacy[:-1] + bytes([legacy[-1] ^ 1]))
 
 
 class BackupTests(unittest.TestCase):
+    def setUp(self):
+        require_crypto(self)
+
     def test_setup_once_creates_private_key_and_returns_code_only_then(self):
         alpha = machine(self)
         result = alpha.setup()
@@ -175,6 +193,9 @@ class FakeDecks:
 
 
 class ReplicationTests(unittest.TestCase):
+    def setUp(self):
+        require_crypto(self)
+
     def test_gateway_shares_its_key_and_every_machine_holds_every_other_backup(self):
         gateway, mac, server = machine(self, 'gw'), machine(self, 'mac'), machine(self, 'server')
         gateway.setup()
@@ -199,6 +220,10 @@ class ReplicationTests(unittest.TestCase):
 
 
 class PanelBackupTests(PanelCase):
+    def setUp(self):
+        super().setUp()
+        require_crypto(self)
+
     def test_a_machine_refuses_to_store_a_foreign_copy_of_itself_and_restore_restarts(self):
         alpha = machine(self)
         alpha.setup()

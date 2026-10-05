@@ -11,6 +11,11 @@ function browserStorage(name){
 }
 const localStore=browserStorage("localStorage"),sessionStore=browserStorage("sessionStorage");
 let selectedDeck="";
+// Notification links carry ?deck=<id> so a cold start opens the right computer.
+try{
+  const params=new URLSearchParams(location.search);
+  if(params.has("deck")){const deck=params.get("deck");if(deck===""||/^[0-9a-f]{24}$/.test(deck))localStore.setItem("cc.deck",deck);history.replaceState(null,"",location.pathname+location.hash)}
+}catch(e){}
 try{selectedDeck=localStore.getItem("cc.deck")||""}catch(e){}
 if(!/^[0-9a-f]{24}$/.test(selectedDeck))selectedDeck="";
 let deckLocalStorage=instanceStorage(localStore,selectedDeck);
@@ -223,8 +228,11 @@ function renderTabs(){
   if(focused)box.querySelector(`[data-session="${CSS.escape(focused)}"]`)?.focus({preventScroll:true});
   const busy=sessions.filter(s=>state(s)==="busy").length;
   $("foot").textContent=tr("{0} сессий · {1} работают",[sessions.length,busy])+(attention.size?tr(" · {0} готово",[attention.size]):"");
-  $("menuBadge").textContent=attention.size;$("menuBadge").classList.toggle("on",attention.size>0);
-  document.title=(attention.size?`(${attention.size}) `:"")+"Agent Deck";
+  const ready=attention.size+otherAttention.size;
+  $("menuBadge").textContent=ready;$("menuBadge").classList.toggle("on",ready>0);
+  document.title=(ready?`(${ready}) `:"")+"Agent Deck";
+  // Home-screen icon badge (iOS 16.4+ with notifications allowed, desktop PWAs); ignored elsewhere.
+  try{if(navigator.setAppBadge)ready?navigator.setAppBadge(ready).catch(()=>{}):navigator.clearAppBadge().catch(()=>{})}catch(e){}
 }
 function renderTitle(){
   const s=cur(),t=$("title");t.replaceChildren();
@@ -845,6 +853,7 @@ let hubSection="agents",lmData={profiles:[],discovery:{}},lmTimer=null,returnToN
 function settingsSection(section){
   hubSection=section;for(const name of ["agents","models","connections","network","backups","app"])$("hub_"+name).hidden=name!==section;
   if(section==="backups"&&$("settings_dlg").open)loadBackups();
+  if(section==="connections"&&$("settings_dlg").open)loadPush();
   for(const b of document.querySelectorAll(".hub-nav button")){
     b.classList.toggle("on",b.dataset.section===section);b.setAttribute("aria-current",String(b.dataset.section===section));
     if(b.dataset.section===section&&isMobile())requestAnimationFrame(()=>b.scrollIntoView({inline:"nearest",block:"nearest"}));
@@ -858,6 +867,7 @@ async function openSettings(section="agents"){
   drawer(false);sheet(false);settingsSection(section);
   if(!$("settings_dlg").open)$("settings_dlg").showModal();updateHubNavFade();
   if(section==="backups")loadBackups();
+  if(section==="connections")loadPush();
   renderHub();
   await Promise.allSettled([loadDeckSettings(),(async()=>{const data=await api("/api/project_directory");$("project_directory").value=data.directory})(),refreshLMModels(),loadIntegrations(),checkGithubFoot(),(async()=>{const data=await api("/api/locales");$("ui_language").replaceChildren(...data.languages.map(x=>{const o=el("option","",x.name);o.value=x.code;return o}));$("ui_language").value=I18N.language})()]);
   clearInterval(lmTimer);lmTimer=setInterval(()=>{if(!document.hidden&&$("settings_dlg").open){if(lmData.discovery?.phase==="running")loadLM(false);if(hubSection==="models"&&Date.now()-lmModelsChecked>30000)refreshLMModels()}},2000);
@@ -889,6 +899,7 @@ async function loadDeckSettings(){
 }
 // Sessions of every connected machine, so switching environments is one tap from the sidebar.
 let deckDirectory={decks:[],name:""},otherDecks=[],loadingOthers=false,deckOpen={};
+const otherBusy=new Map(),otherAttention=new Set();
 try{deckOpen=JSON.parse(localStore.getItem("cc.deck-open")||"{}")||{}}catch(e){}
 const currentDeckName=()=>selectedDeck?deckDirectory.decks.find(d=>d.id===selectedDeck)?.name||"Agent Deck":deckDirectory.name||tr("Этот Agent Deck");
 async function loadOtherDecks(){
@@ -902,6 +913,12 @@ async function loadOtherDecks(){
       catch(e){return {...d,sessions:[],error:true}}
     }));
   }finally{loadingOthers=false}
+  // Same "done" signal as local tabs: a session that stopped working since the last poll.
+  for(const deck of otherDecks)for(const s of deck.sessions){
+    const key=deck.id+"/"+s.name,busy=state(s)==="busy";
+    if(otherBusy.get(key)&&!busy)otherAttention.add(key);
+    otherBusy.set(key,busy);
+  }
   renderTabs();
 }
 function deckHeader(deck,current){
@@ -923,6 +940,7 @@ function renderDeckSection(box,deck,q){
     const st=state(s),word=st==="busy"?["busy",tr("работает")]:st==="off"?["off",tr("остановлен")]:null;
     const t=el("div","tab remote",el("span","dot "+st),agentIcon(s),el("div","t",el("div","n",sessionTitle(s)),
       el("div","s",...(word?[el("span","state "+word[0],word[1])," · "]:[]),shortPath(s.path))));
+    if(otherAttention.has(deck.id+"/"+s.name))t.append(el("span","bell"));
     t.title=deck.name+" · "+s.name;t.tabIndex=0;t.setAttribute("role","button");
     t.onclick=()=>openDeckSession(deck.id,s.name);
     t.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();openDeckSession(deck.id,s.name)}};
@@ -930,6 +948,7 @@ function renderDeckSection(box,deck,q){
   }
 }
 function openDeckSession(identity,name){
+  otherAttention.delete(identity+"/"+name);
   try{instanceStorage(localStore,identity).setItem("cc.active",name)}catch(e){}
   switchDeck(identity);
 }
@@ -956,6 +975,7 @@ function switchDeck(identity){
 }
 // Everything below belongs to one computer; a switch must not carry any of it to the next.
 function resetInstanceState(known){
+  for(const key of [...otherAttention,...otherBusy.keys()])if(key.startsWith(selectedDeck+"/")){otherAttention.delete(key);otherBusy.delete(key)}
   for(const frame of frames.values())frame.remove();
   frames.clear();wasBusy.clear();attention.clear();previewCache.clear();sendStates.clear();
   sessions=known;quickSignature=null;quickActive=null;
@@ -1097,6 +1117,8 @@ function renderTelegram(config){
   $("telegram_state").classList.toggle("error",!!c.error);
   $("telegram_state").textContent=c.available===false?tr("Обновите панель: установите интеграции из меню обновлений"):c.error||
     (c.paired?`@${c.bot} · ${c.account||tr("аккаунт привязан")} · ${c.enabled?tr("включён"):tr("пауза")}`:c.configured?tr("@{0} · привяжите свой Telegram",[c.bot]):tr("Бот ещё не подключён"));
+  $("telegram_duplicates").hidden=!c.duplicates?.length;
+  if(c.duplicates?.length)$("telegram_duplicates").textContent=tr("Этот бот также включён на: {0}. Вопросы будут приходить дважды; отключите Telegram там.",[c.duplicates.join(", ")]);
   $("telegram_enabled").checked=c.enabled!==false;
   $("telegram_pair").style.display=c.configured&&!c.pair_url?"flex":"none";
   $("telegram_pair").textContent=c.paired?tr("Привязать другой аккаунт"):tr("Получить ссылку привязки");
