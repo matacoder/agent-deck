@@ -3,16 +3,24 @@ const DATE_LOCALE=(()=>{try{return Intl.getCanonicalLocales(I18N.language)[0]}ca
 const $=id=>document.getElementById(id);
 function tr(message,params=[]){return (I18N.messages[message]??message).replace(/\{(\d+)\}/g,(_,n)=>String(params[n]??""))}
 
+let selectedDeck="";
+try{selectedDeck=window.localStorage.getItem("cc.deck")||""}catch(e){}
+if(!/^[0-9a-f]{24}$/.test(selectedDeck))selectedDeck="";
+const deckLocalStorage=instanceStorage(window.localStorage,selectedDeck);
+const deckSessionStorage=instanceStorage(window.sessionStorage,selectedDeck);
+function activePath(path){return instancePath(selectedDeck,path)}
+async function gatewayApi(path,body){return api(path,body,true)}
+
 const BUSY_SEC=6;
 const UI_REVISION="__PANEL_REVISION__";
 const isMobile=()=>matchMedia("(max-width:760px)").matches;
 let sessions=[],active=null,mode=null,clockSkew=0;
 const frames=new Map(),wasBusy=new Map(),attention=new Set();
-try{active=localStorage.getItem("cc.active");mode=localStorage.getItem("cc.mode."+(isMobile()?"m":"d"))}catch(e){}
+try{active=deckLocalStorage.getItem("cc.active");mode=deckLocalStorage.getItem("cc.mode."+(isMobile()?"m":"d"))}catch(e){}
 if(location.hash.length>1)active=decodeURIComponent(location.hash.slice(1));
 try{
-  const draft=JSON.parse(sessionStorage.getItem("cc.reload-draft")||"null");
-  if(draft&&draft.name===active){$("msg").value=draft.text;sessionStorage.removeItem("cc.reload-draft")}
+  const draft=JSON.parse(deckSessionStorage.getItem("cc.reload-draft")||"null");
+  if(draft&&draft.name===active){$("msg").value=draft.text;deckSessionStorage.removeItem("cc.reload-draft")}
 }catch(e){}
 
 /* keep layout glued to the visible area when the iOS keyboard opens */
@@ -31,8 +39,8 @@ if(window.visualViewport){visualViewport.addEventListener("resize",fitViewport);
 addEventListener("pageshow",fitViewport);
 addEventListener("orientationchange",()=>requestAnimationFrame(fitViewport));
 
-async function api(path,body){
-  const r=await fetch(path,body?{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}:{cache:"no-store"});
+async function api(path,body,gateway=false){
+  const r=await fetch(gateway?path:activePath(path),body?{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}:{cache:"no-store"});
   if(r.status===401){
     try{stashDrafts();location.href="/login"}catch(e){toast(tr("Войдите в новой вкладке: здесь сохранён несохранённый текст."),true,{label:tr("Войти"),run:()=>window.open("/login","_blank","noopener")})}
     throw new Error("login required");
@@ -105,7 +113,7 @@ function stateText(s){
   return {off:a+tr(" не запущен"),busy:a+tr(" работает…"),idle:a+tr(" ждёт")}[st];
 }
 function el(tag,cls,...kids){const e=document.createElement(tag);if(cls)e.className=cls;e.append(...kids);return e}
-const shortPath=p=>p.replace(/^.*\/projects\//,"~/").replace(/\.worktrees\//,"⎇ ");
+const shortPath=p=>p.replace(/^.*\/(?:projects|dev)\//,"~/").replace(/\.worktrees\//,"⎇ ");
 const curMode=()=>mode||(isMobile()?"screen":"term");
 
 function drawer(on){document.body.classList.toggle("drawer",on);if(on)$("q").blur()}
@@ -116,11 +124,11 @@ function sheet(on){
 const cur=()=>sessions.find(x=>x.name===active);
 const messageDrafts=new Map();
 const closedDrafts=new Map();
-try{for(const[name,text]of JSON.parse(sessionStorage.getItem("cc.closed-drafts")||"[]"))if(typeof name==="string"&&typeof text==="string")closedDrafts.set(name,text)}catch(e){}
+try{for(const[name,text]of JSON.parse(deckSessionStorage.getItem("cc.closed-drafts")||"[]"))if(typeof name==="string"&&typeof text==="string")closedDrafts.set(name,text)}catch(e){}
 try{
-  for(const [name,text] of JSON.parse(sessionStorage.getItem("cc.session-drafts")||"[]"))
+  for(const [name,text] of JSON.parse(deckSessionStorage.getItem("cc.session-drafts")||"[]"))
     if(typeof name==="string"&&typeof text==="string")messageDrafts.set(name,text);
-  sessionStorage.removeItem("cc.session-drafts");
+  deckSessionStorage.removeItem("cc.session-drafts");
   if(active&&!$("msg").value)$("msg").value=messageDrafts.get(active)||"";
 }catch(e){}
 if(active&&$("msg").value)messageDrafts.set(active,$("msg").value);
@@ -186,13 +194,13 @@ function renderTitle(){
   $("msg").placeholder=s?tr("Сообщение в ")+agentLabel(s)+"…":tr("Сообщение агенту…");
   if(!s){t.textContent=isMobile()?"Agent Deck":"—";return}
   const st=state(s);
-  t.append(el("b","",sessionTitle(s)),el("span","path"," — "+s.path.replace(/^\/home\/[^/]+/,"~")),el("span","st",stateText(s)+" · "+shortPath(s.path)+(s.source?.label?" · "+s.source.label:"")));
+  t.append(el("b","",sessionTitle(s)),el("span","path"," — "+s.path.replace(/^\/(?:home|Users)\/[^/]+/,"~")),el("span","st",stateText(s)+" · "+shortPath(s.path)+(s.source?.label?" · "+s.source.label:"")));
 }
 
 function frameFor(name){
   let f=frames.get(name);
   if(!f){
-    f=document.createElement("iframe");f.src="/t/?arg="+encodeURIComponent("=cc-"+name);
+    f=document.createElement("iframe");f.src=activePath("/t/?arg="+encodeURIComponent("=cc-"+name));
     f.onload=()=>{try{f.contentWindow.addEventListener("keydown",hotkeys,true);hookClipboard(f.contentWindow)}catch(e){}};
     $("stage").append(f);frames.set(name,f);
   }
@@ -214,17 +222,17 @@ function show(){
   if(s&&m==="screen")updateScreen(s,true);
   updateLink();
 }
-function setMode(m){mode=m;try{localStorage.setItem("cc.mode."+(isMobile()?"m":"d"),m)}catch(e){}show()}
+function setMode(m){mode=m;try{deckLocalStorage.setItem("cc.mode."+(isMobile()?"m":"d"),m)}catch(e){}show()}
 
 let wrapPreview=true;
-try{wrapPreview=localStorage.getItem("cc.wrap")!=="0"}catch(e){}
+try{wrapPreview=deckLocalStorage.getItem("cc.wrap")!=="0"}catch(e){}
 function applyWrap(){
   $("pre").classList.toggle("no-wrap",!wrapPreview);
   $("b_wrap").setAttribute("aria-pressed",String(wrapPreview));
 }
 function toggleWrap(){
   wrapPreview=!wrapPreview;
-  try{localStorage.setItem("cc.wrap",wrapPreview?"1":"0")}catch(e){}
+  try{deckLocalStorage.setItem("cc.wrap",wrapPreview?"1":"0")}catch(e){}
   applyWrap();
 }
 applyWrap();
@@ -376,7 +384,7 @@ function activate(name){
   active=name;attention.delete(name);
   $("msg").value=messageDrafts.get(name)||"";$("msg").style.height="";
   $("msg").dispatchEvent(new Event("input"));
-  try{if(name)localStorage.setItem("cc.active",name);else localStorage.removeItem("cc.active")}catch(e){}
+  try{if(name)deckLocalStorage.setItem("cc.active",name);else deckLocalStorage.removeItem("cc.active")}catch(e){}
   history.replaceState(null,"","#"+(name?encodeURIComponent(name):""));
   $("pre").dataset.raw="";
 }
@@ -394,7 +402,7 @@ function showClosedDrafts(){
   $("draft_dlg").showModal();sheet(false);
 }
 function saveClosedDrafts(){
-  try{sessionStorage.setItem("cc.closed-drafts",JSON.stringify([...closedDrafts]))}catch(e){}
+  try{deckSessionStorage.setItem("cc.closed-drafts",JSON.stringify([...closedDrafts]))}catch(e){}
   $("s_drafts").style.display=closedDrafts.size?"flex":"none";
   $("b_drafts").style.display=closedDrafts.size?"block":"none";
 }
@@ -472,16 +480,16 @@ async function kill(){
   if(!active)return;const n=active;
   await post("/api/kill",{name:n},tr("Закрыть сессию «{0}»? Агент будет остановлен.",[n]));
 }
-function popout(){if(active)window.open("/t/?arg="+encodeURIComponent("=cc-"+active),"_blank")}
+function popout(){if(active)window.open(activePath("/t/?arg="+encodeURIComponent("=cc-"+active)),"_blank")}
 let uploading=false,choosingImages=false;
 const imageAttachments=new Map();
 const attachmentsFor=name=>imageAttachments.get(name)||[];
 try{
-  const draft=JSON.parse(sessionStorage.getItem("cc.reload-images")||"null");
+  const draft=JSON.parse(deckSessionStorage.getItem("cc.reload-images")||"null");
   if(Array.isArray(draft)){
     for(const [name,images] of draft)if(typeof name==="string"&&Array.isArray(images))imageAttachments.set(name,images.slice(0,4));
   }else if(draft&&draft.name===active&&Array.isArray(draft.images))imageAttachments.set(active,draft.images.slice(0,4));
-  sessionStorage.removeItem("cc.reload-images");
+  deckSessionStorage.removeItem("cc.reload-images");
 }catch(e){}
 function renderAttachments(){
   const list=$("attachments");list.replaceChildren();
@@ -693,8 +701,8 @@ function usageBlock(u){
   if(u.stale)box.append(el("div","err",tr("⚠ данные устарели")));return box;
 }
 
-let integOpen=(()=>{try{const v=localStorage.getItem("cc.integ."+(isMobile()?"m":"d"));return v===null?!isMobile():v==="1"}catch(e){return !isMobile()}})();
-function toggleInteg(){integOpen=!integOpen;try{localStorage.setItem("cc.integ."+(isMobile()?"m":"d"),integOpen?"1":"0")}catch(e){}renderInteg()}
+let integOpen=(()=>{try{const v=deckLocalStorage.getItem("cc.integ."+(isMobile()?"m":"d"));return v===null?!isMobile():v==="1"}catch(e){return !isMobile()}})();
+function toggleInteg(){integOpen=!integOpen;try{deckLocalStorage.setItem("cc.integ."+(isMobile()?"m":"d"),integOpen?"1":"0")}catch(e){}renderInteg()}
 function integSummary(){
   const head=el("button","ihead"+(integOpen?" open":""));head.type="button";head.onclick=toggleInteg;
   head.title=integOpen?tr("Свернуть"):tr("Лимиты и аккаунты");
@@ -768,12 +776,61 @@ async function openSettings(section="agents"){
   drawer(false);sheet(false);settingsSection(section);
   if(!$("settings_dlg").open)$("settings_dlg").showModal();
   renderHub();
-  await Promise.allSettled([(async()=>{const data=await api("/api/project_directory");$("project_directory").value=data.directory})(),loadLM(),loadIntegrations(),checkGithubFoot(),(async()=>{const data=await api("/api/locales");$("ui_language").replaceChildren(...data.languages.map(x=>{const o=el("option","",x.name);o.value=x.code;return o}));$("ui_language").value=I18N.language})()]);
+  await Promise.allSettled([loadDeckSettings(),(async()=>{const data=await api("/api/project_directory");$("project_directory").value=data.directory})(),loadLM(),loadIntegrations(),checkGithubFoot(),(async()=>{const data=await api("/api/locales");$("ui_language").replaceChildren(...data.languages.map(x=>{const o=el("option","",x.name);o.value=x.code;return o}));$("ui_language").value=I18N.language})()]);
   clearInterval(lmTimer);lmTimer=setInterval(()=>{if($("settings_dlg").open&&lmData.discovery?.phase==="running")loadLM(false)},2000);
 }
-$("settings_dlg").addEventListener("close",()=>{if($("settings_dlg").open)return;clearInterval(lmTimer);closeKimi();closeIntegrations();$("lm_key").value="";if(returnToNew){returnToNew=false;$("dlg").showModal();renderSources()}});
+$("settings_dlg").addEventListener("close",()=>{if($("settings_dlg").open)return;clearInterval(lmTimer);clearInterval(deckTimer);closeKimi();closeIntegrations();$("lm_key").value="";if(returnToNew){returnToNew=false;$("dlg").showModal();renderSources()}});
 async function saveProjectDirectory(){
   await saveDirectorySetting({request:api,input:$("project_directory"),button:$("project_directory_save"),notify:toast,translate:tr});
+}
+let deckTimer=null;
+async function loadDeckSettings(){
+  const [data,network]=await Promise.all([gatewayApi("/api/decks"),gatewayApi("/api/network")]);
+  populateDeckSelector($("deck_select"),data.decks,selectedDeck,network.name);
+  $("network_name").value=network.name;$("network_public_url").value=network.public_url;
+  $("network_bind").textContent="http://"+network.bind_host+":"+network.bind_port;
+  $("network_browser").textContent=location.origin;
+  const box=$("deck_connections");box.replaceChildren();
+  for(const deck of data.decks){
+    const card=el("div","deck-connection",el("strong","",deck.name),el("p","",deck.url));
+    card.append(btn(tr("Переключиться"),"",()=>switchDeck(deck.id)),btn(tr("Изменить"),"",()=>editDeck(deck)),btn(tr("Удалить"),"",()=>removeDeck(deck.id)));box.append(card);
+  }
+  renderDeckDiscovery(data.discovery);
+  if(selectedDeck&&!data.decks.some(d=>d.id===selectedDeck))switchDeck("");
+}
+function switchDeck(identity){
+  if(identity===selectedDeck)return;
+  if(sending||uploading||choosingImages){$("deck_select").value=selectedDeck;toast(tr("Дождитесь окончания отправки или загрузки"));return}
+  try{stashDrafts();window.localStorage.setItem("cc.deck",identity)}catch(e){$("deck_select").value=selectedDeck;toast(tr("Не удалось сохранить черновик. Очистите поле перед обновлением."));return}
+  location.hash="";location.reload();
+}
+function editDeck(deck={}){
+  $("deck_id").value=deck.id||"";$("deck_name").value=deck.name||"";$("deck_url").value=deck.url||"";$("deck_username").value=deck.username||"";$("deck_password").value="";
+  $("deck_editor").open=true;$("deck_editor").scrollIntoView({block:"nearest"});
+}
+async function saveDeck(){
+  const button=$("deck_save");button.disabled=true;
+  try{await gatewayApi("/api/decks_save",{id:$("deck_id").value||undefined,name:$("deck_name").value.trim(),url:$("deck_url").value.trim(),username:$("deck_username").value.trim(),password:$("deck_password").value});$("deck_password").value="";$("deck_editor").open=false;await loadDeckSettings();toast(tr("Agent Deck подключён"),"success")}
+  catch(e){$("deck_password").value="";toast(e.message)}finally{button.disabled=false}
+}
+async function removeDeck(identity){
+  if(!confirm(tr("Отключить этот Agent Deck?")))return;
+  try{await gatewayApi("/api/decks_remove",{id:identity});if(identity===selectedDeck)switchDeck("");else await loadDeckSettings()}catch(e){toast(e.message)}
+}
+function renderDeckDiscovery(discovery){
+  $("deck_discover").disabled=discovery.phase==="running";
+  $("deck_discovery_status").textContent=discovery.error||tr(discovery.phase==="running"?"Поиск…":discovery.phase==="done"?"Поиск завершён":"");
+  $("deck_discovery_results").replaceChildren(...(discovery.results||[]).map(deck=>el("div","deck-connection",el("span","",deck.name+" · "+deck.url),btn(tr("Подключить"),"",()=>editDeck(deck)))));
+  clearInterval(deckTimer);
+  if(discovery.phase==="running")deckTimer=setInterval(async()=>{if(document.hidden||!$("settings_dlg").open)return;try{const data=await gatewayApi("/api/decks");renderDeckDiscovery(data.discovery)}catch(e){toast(e.message);clearInterval(deckTimer)}},2000);
+}
+async function discoverDecks(){
+  try{const result=await gatewayApi("/api/decks_discover",{port:Number($("deck_port").value)});renderDeckDiscovery(result.discovery)}catch(e){toast(e.message)}
+}
+async function saveNetwork(){
+  const button=$("network_save");button.disabled=true;
+  try{await gatewayApi("/api/network_save",{name:$("network_name").value.trim(),public_url:$("network_public_url").value.trim()});await loadDeckSettings();toast(tr("Настройки сохранены"),"success")}
+  catch(e){toast(e.message)}finally{button.disabled=false}
 }
 function card(name,status,label,action,secondary=[]){const c=el("div","hub-card",el("div","card-top",el("div","card-main",el("h4","",name),el("p","",status)),btn(label,"pri",action)));if(secondary.length){const d=el("details","",el("summary","",tr("Другие действия")));for(const [text,fn] of secondary)d.append(btn(text,"",fn));c.append(d)}return c}
 function renderHub(){
@@ -1001,14 +1058,14 @@ function hotkeys(e){
 }
 addEventListener("keydown",hotkeys,true);
 let lastMobile=isMobile();
-addEventListener("resize",()=>{if(isMobile()!==lastMobile){lastMobile=isMobile();try{mode=localStorage.getItem("cc.mode."+(lastMobile?"m":"d"))}catch(e){mode=null}show()}});
+addEventListener("resize",()=>{if(isMobile()!==lastMobile){lastMobile=isMobile();try{mode=deckLocalStorage.getItem("cc.mode."+(lastMobile?"m":"d"))}catch(e){mode=null}show()}});
 
 /* Update installed home-screen pages too, without interrupting input. */
 let checkingVersion=false;
 function stashDrafts(){
   if(active)messageDrafts.set(active,$("msg").value);
-  sessionStorage.setItem("cc.closed-drafts",JSON.stringify([...closedDrafts]));
-  sessionStorage.setItem("cc.session-drafts",JSON.stringify([...messageDrafts]));sessionStorage.setItem("cc.reload-images",JSON.stringify([...imageAttachments].map(([name,images])=>[name,images.map(x=>({attachment:x.attachment,label:x.label}))])));sessionStorage.setItem("cc.reload-draft",JSON.stringify({name:active,text:$("msg").value}));
+  deckSessionStorage.setItem("cc.closed-drafts",JSON.stringify([...closedDrafts]));
+  deckSessionStorage.setItem("cc.session-drafts",JSON.stringify([...messageDrafts]));deckSessionStorage.setItem("cc.reload-images",JSON.stringify([...imageAttachments].map(([name,images])=>[name,images.map(x=>({attachment:x.attachment,label:x.label}))])));deckSessionStorage.setItem("cc.reload-draft",JSON.stringify({name:active,text:$("msg").value}));
 }
 function refreshInterface(){
   if(sending||uploading||choosingImages)return;
@@ -1051,7 +1108,7 @@ async function loadMetrics(){
     node.setAttribute("aria-label",node.title);
   }
   try{
-    const response=await fetch("/api/server-metrics",{cache:"no-store",signal:controller.signal});
+    const response=await fetch(activePath("/api/server-metrics"),{cache:"no-store",signal:controller.signal});
     if(!response.ok)throw new Error("metrics unavailable");
     const data=await response.json();
     const cpu=Number.isFinite(data.cpu_percent)?Math.round(data.cpu_percent)+"%":"—";
@@ -1072,3 +1129,5 @@ loadVersion();
 loadIntegrations();
 document.addEventListener("visibilitychange",()=>{if(!document.hidden){checkGithubFoot(true);loadUsage();load();checkInterfaceVersion()}});
 load();setInterval(load,2500);
+
+loadDeckSettings().catch(e=>toast(e.message));

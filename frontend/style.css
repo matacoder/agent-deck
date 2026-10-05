@@ -390,3 +390,8 @@ dialog{box-shadow:0 24px 80px #0006;border-color:#ffffff12;border-radius:16px}
   #settings_dlg>.settings-hub{height:100%;max-height:100%}
   .hub-content{overscroll-behavior:contain;scroll-padding:16px}
 }
+
+.deck-switch{display:grid;grid-template-columns:auto minmax(0,1fr) 32px;align-items:center;gap:8px;padding:10px 8px;border-bottom:1px solid var(--bd)}
+.deck-switch label{font-size:11px;color:var(--mut)}.deck-switch select{min-width:0;background:var(--side2);color:var(--fg);border:1px solid var(--bd);border-radius:6px;padding:8px}.deck-switch button{min-height:36px;font-size:20px}
+.deck-connection{padding:10px 0;border-bottom:1px solid var(--bd);overflow-wrap:anywhere}.deck-connection button{margin-right:12px}#deck_editor form{display:grid;gap:8px;padding-top:12px}#deck_port{max-width:90px}.hub-card input{width:100%;box-sizing:border-box}
+@media(max-width:760px){.deck-switch select{font-size:16px}}

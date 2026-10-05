@@ -191,3 +191,25 @@ The panel reads them on startup and applies UI changes immediately for new
 sessions. Explicit installer `--projects-dir`/`PROJECTS_DIR` values override the
 saved preference; otherwise macOS reinstalls retain it. Session labels are stored
 in tmux `@cc_title` and restored from session state; internal IDs remain stable.
+
+## Connected Agent Deck instances
+
+`integrations/decks.py` owns profiles in the private
+`~/.config/cc-panel/integrations/decks.json` file (0600). Remote authentication
+cookies remain in memory; passwords and cookies never enter browser responses.
+Discovery probes only online Tailscale peers from `tailscale status --json`.
+Destinations must be numeric IPv4 addresses in 100.64.0.0/10; DNS targets,
+non-tailnet addresses, credentials in URLs and redirects are rejected.
+
+The gateway authenticates every `/deck/<id>/...` request and checks same-origin
+POSTs and WebSocket upgrades. It forwards only API and terminal paths, translates
+the remote Origin and sends its own remote cookie rather than the browser's
+gateway cookie. A remote 401 permits one authentication refresh; transport
+failures never automatically replay a mutation. Terminal handshake responses
+strip remote cookies before bridging bytes. Local `/t/` still uses the ttyd Unix
+socket. Browser storage keys are scoped by instance while local keys remain
+compatible. UI revision checks continue to use the gateway's own revision.
+
+`~/.config/cc-panel/network.json` stores the gateway label and advertised public
+URL. The effective listener is configured by BIND_HOST/BIND_PORT; DNS, HTTPS
+and reverse proxies remain installer/server settings.

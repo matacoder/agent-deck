@@ -41,7 +41,7 @@ BIND_PORT = int(os.environ.get("BIND_PORT", "8790"))
 PANEL_USER = os.environ.get("PANEL_USER", "dev")
 PANEL_PASSWORD = os.environ["PANEL_PASSWORD"]
 TTYD_SOCK = os.environ.get("TTYD_SOCK", f"/run/user/{os.getuid()}/cc-ttyd.sock")
-PROJECTS = os.path.expanduser(os.environ.get("PROJECTS_DIR", "~/projects"))
+PROJECTS = os.path.expanduser(os.environ.get("PROJECTS_DIR", "~/dev"))
 TMUX_COMMAND = ["tmux"] + (["-L", os.environ["TMUX_SOCKET_NAME"]] if os.environ.get("TMUX_SOCKET_NAME") else [])
 PREFIX = "cc-"
 NAME_RE = re.compile(r"^[A-Za-z0-9_-]{1,32}$")
@@ -79,8 +79,13 @@ except ModuleNotFoundError:
     LMStudio = None
 
 from integrations.names import unique_name
-from integrations.preferences import ProjectDirectory
+from integrations.decks import RemoteDecks, remote_path
+from integrations.preferences import ProjectDirectory, NetworkSettings
 project_directory = ProjectDirectory(os.path.expanduser('~'), PROJECTS)
+
+
+network_settings = NetworkSettings(os.path.expanduser('~'))
+remote_decks = RemoteDecks(os.path.expanduser('~/.config/cc-panel/integrations'), f'http://{BIND_HOST}:{BIND_PORT}')
 
 
 _lmstudio = None
@@ -1065,6 +1070,10 @@ def usage():
 
 
 ACTIONS = {
+    'decks_save': lambda d: {'deck':remote_decks.save(d)},
+    'decks_remove': lambda d: remote_decks.remove(d.get('id')),
+    'decks_discover': lambda d: {'discovery':remote_decks.discover(d.get('port',8790))},
+    'network_save': lambda d: {'network':network_settings.save(d)},
     'rename': action_rename,
     'project_directory': lambda d: {'directory': project_directory.save(d.get('directory'))},
     'lm_save': action_lm_save,
@@ -1254,7 +1263,7 @@ class Handler(BaseHTTPRequestHandler):
         cookie = SimpleCookie(self.headers.get("Cookie", ""))
         if COOKIE in cookie and token_valid(cookie[COOKIE].value):
             return True
-        if self.path.startswith("/api/") or self.path.startswith("/t"):
+        if self.path.startswith("/api/") or self.path.startswith("/t") or self.path.startswith("/deck/"):
             self.send_json(401, {"error": "login required"})
         else:
             self.redirect("/login")
@@ -1369,6 +1378,13 @@ class Handler(BaseHTTPRequestHandler):
             return self.login_page()
         if not self.authorized():
             return
+        if self.path.startswith('/deck/'):
+            return self.proxy_deck()
+        if self.path == '/api/decks':
+            return self.send_json(200, remote_decks.status())
+        if self.path == '/api/network':
+            value = network_settings.get()
+            return self.send_json(200, {**value, 'name':value['name'] or socket.gethostname(), 'bind_host':BIND_HOST, 'bind_port':BIND_PORT})
         if self.path.startswith("/t/") or self.path == "/t":
             return self.proxy_tty()
         if self.path in ("/", "/index.html"):
@@ -1438,6 +1454,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.redirect("/login", f"{COOKIE}=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax")
         if not self.authorized():
             return
+        if self.path.startswith('/deck/'):
+            return self.proxy_deck()
         m = re.match(r"^/api/(\w+)$", self.path)
         if not m or m.group(1) not in ACTIONS:
             return self.send_json(404, {"error": "not found"})
@@ -1478,6 +1496,73 @@ class Handler(BaseHTTPRequestHandler):
         except Exception:
             self.close_connection = True
             self.send_json(500, {"error": "не удалось выполнить операцию"})
+
+    def proxy_deck(self):
+        match = re.match(r'^/deck/([0-9a-f]{24})(/.*)$', self.path)
+        if not match:
+            return self.send_json(404, {'error':'Agent Deck route not found'})
+        identity, path = match.groups()
+        upgrade = self.headers.get('Upgrade','').lower() == 'websocket'
+        if (self.command == 'POST' or upgrade) and not self.same_origin():
+            self.close_connection = True
+            return self.send_json(403, {'error':'неверный источник запроса'})
+        try:
+            path = remote_path(path)
+            if upgrade:
+                if self.command != 'GET' or not path.startswith('/t/'):
+                    raise ValueError('Only terminal WebSocket upgrades are supported')
+                return self.proxy_remote_terminal(identity, path)
+            body = None
+            if self.command == 'POST':
+                if self.headers.get('Content-Type','').split(';',1)[0] != 'application/json':
+                    return self.send_json(403, {'error':'JSON requests are required'})
+                length = int(self.headers.get('Content-Length','0'))
+                limit = ((MAX_FILE_BYTES+2)//3)*4+10000 if urlsplit(path).path == '/api/upload' else 1000000
+                if not 0 <= length <= limit:
+                    self.close_connection = True
+                    return self.send_json(413, {'error':'Request is too large'})
+                body = self.rfile.read(length)
+            status, headers, payload = remote_decks.request(identity,self.command,path,body,self.language())
+            ctype = next((v for k,v in headers.items() if k.lower()=='content-type'), 'application/octet-stream')
+            # ttyd's absolute base path must stay on the gateway, including its WebSocket URL.
+            if path.startswith('/t') and 'text/html' in ctype:
+                prefix = '/deck/'+identity+'/t/'
+                payload = payload.replace(b'/t/', prefix.encode())
+            return self.send_body(status,payload,ctype)
+        except (ValueError,OSError,RuntimeError) as error:
+            self.close_connection = True
+            return self.send_json(502, {'error':str(error) if isinstance(error,ValueError) else 'Remote Agent Deck is unavailable'})
+
+    def proxy_remote_terminal(self, identity, path):
+        backend, origin, cookie = remote_decks.terminal_socket(identity,self.language())
+        try:
+            lines = [f'GET {path} HTTP/1.1', 'Host: '+urlsplit(origin).netloc,
+                     'Origin: '+origin, 'Cookie: '+cookie, 'Connection: Upgrade', 'Upgrade: websocket']
+            for key in ('Sec-WebSocket-Key','Sec-WebSocket-Version','Sec-WebSocket-Protocol','Sec-WebSocket-Extensions'):
+                value = self.headers.get(key)
+                if value:lines.append(key+': '+value)
+            backend.sendall(('\r\n'.join(lines)+'\r\n\r\n').encode('latin-1'))
+            incoming = b''
+            while b'\r\n\r\n' not in incoming:
+                chunk = backend.recv(4096)
+                if not chunk or len(incoming)>65536:raise ValueError('Invalid remote WebSocket handshake')
+                incoming += chunk
+            head, pending = incoming.split(b'\r\n\r\n',1)
+            rows = head.decode('latin-1').split('\r\n')
+            status = rows[0].split()
+            if len(status) < 2 or status[1] != '101':raise ValueError('Remote terminal rejected the connection; reconnect the Agent Deck')
+            allowed = {'upgrade','connection','sec-websocket-accept','sec-websocket-protocol','sec-websocket-extensions'}
+            clean = [row for row in rows[1:] if ':' in row and row.split(':',1)[0].lower() in allowed]
+            self.connection.sendall(('HTTP/1.1 101 Switching Protocols\r\n'+'\r\n'.join(clean)+'\r\n\r\n').encode('latin-1')+pending)
+            self.close_connection = True
+            while True:
+                readable,_,_ = select.select([self.connection,backend],[],[],300)
+                if not readable:break
+                for connection in readable:
+                    chunk = connection.recv(65536)
+                    if not chunk:return
+                    (backend if connection is self.connection else self.connection).sendall(chunk)
+        finally:backend.close()
 
     def proxy_tty(self):
         """Raw pass-through to ttyd (HTTP + websocket upgrade)."""

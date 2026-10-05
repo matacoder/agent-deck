@@ -82,7 +82,7 @@ def configuration(home, projects_dir=None):
     data['BIND_HOST_AUTO'] = '1' if automatic else '0'
     defaults = {'BIND_HOST': '127.0.0.1', 'BIND_PORT': '8790',
                 'PANEL_LANGUAGE': 'en', 'PANEL_USER': home.name, 'PANEL_PASSWORD': secrets.token_urlsafe(18),
-                'PROJECTS_DIR': str(home / 'projects')}
+                'PROJECTS_DIR': str(home / 'dev')}
     for key, value in defaults.items():
         data.setdefault(key, value)
     # Explicit installation options override remembered values.
@@ -211,7 +211,7 @@ def install(home, start=True, open_browser=True, projects_dir=None):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--projects-dir', help='Project directory (default: ~/projects; saved on reinstall)')
+    parser.add_argument('--projects-dir', help='Project directory (default: ~/dev; saved on reinstall)')
     parser.add_argument('--no-open', action='store_true', help='Do not open a browser after installation')
     args = parser.parse_args()
     if sys.platform != 'darwin' or os.geteuid() == 0:

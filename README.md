@@ -228,6 +228,29 @@ loopback relay credentials. A local authenticated relay forwards requests to the
 pinned server and records timing/usage only; it does not store conversation text.
 An in-progress local-model request may need retrying when the panel service updates.
 
+### Multiple Agent Deck instances
+
+Use **Settings → Application → Other Agent Deck instances** on the server whose
+web address you normally open. Click **Discover** to search online Tailscale peers
+on port 8790 (or a custom port), or enter a remote `http://100.x.y.z:8790` URL.
+Provide that instance's panel login and password, then connect. Select the instance
+in the sidebar to manage its sessions, files, models and live terminal through the
+gateway. Your browser does not need direct access to the remote Tailscale address.
+The gateway and remote computer must both be connected to the tailnet.
+
+Credentials remain in a private file on the gateway. Existing remote Agent Deck
+1.0.7 instances can be connected; only the gateway needs the new UI. Connection
+settings always belong to the gateway; session and project settings belong to the
+currently selected instance. Switching preserves separate drafts on each machine.
+
+**Network and panel address** shows the listening address and browser address and
+lets you name the gateway and record its public URL. Recording a URL does not
+create DNS records, provision HTTPS or change the reverse proxy. Public hosting
+is configured using the installer's `PUBLIC_DOMAIN` and proxy options.
+
+New installs use `~/dev`. Existing explicit project directories are retained;
+older default `~/projects` settings pick up `~/dev` when that directory exists.
+
 ### Kimi Code
 
 Open **Settings → Models → Kimi → Configure**. Save a Kimi Code API key

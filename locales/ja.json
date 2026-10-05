@@ -364,6 +364,25 @@
     "Используется для новых сессий. Существующие сессии остаются в своих папках.": "Used for new sessions. Existing sessions keep their current directories.",
     "Папка проектов сохранена": "Project directory saved",
     "Переименовать": "Rename",
-    "Переименовать сессию": "Rename session"
+    "Переименовать сессию": "Rename session",
+    "Этот Agent Deck": "This Agent Deck",
+    "Подключить Agent Deck": "Connect Agent Deck",
+    "Другие Agent Deck": "Other Agent Deck instances",
+    "Управляйте другими компьютерами через этот сервер.": "Manage other computers through this server.",
+    "Порт": "Port",
+    "Обнаружить": "Discover",
+    "Подключение Agent Deck": "Agent Deck connection",
+    "Адрес Tailscale": "Tailscale address",
+    "Пароль хранится на основном сервере. Пустое поле сохраняет пароль существующего подключения.": "The password stays on the gateway server. Leave it empty to retain an existing connection password.",
+    "Сеть и адрес панели": "Network and panel address",
+    "Адрес в браузере": "Browser address",
+    "Панель слушает": "Panel listens on",
+    "Название этого Agent Deck": "This Agent Deck name",
+    "Публичный адрес": "Public address",
+    "Для доступа по этому адресу домен и HTTPS должны быть настроены на сервере.": "Configure the domain and HTTPS on the server to use this address.",
+    "Переключиться": "Switch",
+    "Agent Deck подключён": "Agent Deck connected",
+    "Отключить этот Agent Deck?": "Disconnect this Agent Deck?",
+    "Настройки сохранены": "Settings saved"
   }
 }

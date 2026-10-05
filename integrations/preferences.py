@@ -12,10 +12,15 @@ class ProjectDirectory:
         self.path = self.home / '.config/cc-panel/projects.json'
         self.lock = threading.RLock()
         self.current = str(default)
+        if self.current == str(self.home / 'projects') and (self.home / 'dev').is_dir():
+            self.current = str(self.home / 'dev')
         if self.path.exists():
             if self.path.is_symlink():
                 raise ValueError('Project settings must not be a symlink')
-            self.current = self.validate(json.loads(self.path.read_text())['directory'])
+            saved = json.loads(self.path.read_text())
+            self.current = self.validate(saved['directory'])
+            if self.current == str(self.home / 'projects') and not saved.get('custom') and (self.home / 'dev').is_dir():
+                self.current = str(self.home / 'dev')
 
     def validate(self, raw):
         if not isinstance(raw, str) or not raw.strip():
@@ -44,7 +49,7 @@ class ProjectDirectory:
             fd, temporary = tempfile.mkstemp(dir=self.path.parent)
             try:
                 with os.fdopen(fd, 'w') as stream:
-                    json.dump({'directory': directory}, stream)
+                    json.dump({'directory': directory, 'custom':True}, stream)
                 os.chmod(temporary, 0o600)
                 os.replace(temporary, self.path)
             finally:
@@ -52,3 +57,36 @@ class ProjectDirectory:
                     os.unlink(temporary)
             self.current = directory
             return directory
+
+
+class NetworkSettings:
+    def __init__(self, home):
+        self.path = Path(home) / '.config/cc-panel/network.json'
+        self.lock = threading.RLock()
+        self.data = {'name':'', 'public_url':''}
+        if self.path.exists():
+            if self.path.is_symlink():raise ValueError('Network settings must not be a symlink')
+            self.data.update(json.loads(self.path.read_text()))
+
+    def get(self):
+        with self.lock:return dict(self.data)
+
+    def save(self, data):
+        from urllib.parse import urlsplit
+        from .relay import private_write
+        name, raw = data.get('name',''), data.get('public_url','')
+        if not isinstance(name,str) or not name.strip() or len(name)>100 or not name.isprintable():
+            raise ValueError('Enter an Agent Deck name')
+        if not isinstance(raw,str) or len(raw)>2048 or any(c in raw for c in ('\r','\n')):
+            raise ValueError('Invalid public URL')
+        if raw:
+            parsed = urlsplit(raw)
+            if parsed.scheme not in ('http','https') or not parsed.hostname or parsed.username or parsed.password or parsed.query or parsed.fragment or parsed.path not in ('','/'):
+                raise ValueError('Enter an http(s) address without a path')
+            try:parsed.port
+            except ValueError:raise ValueError('Invalid public URL port') from None
+        with self.lock:
+            value={'name':name.strip(),'public_url':raw.strip().rstrip('/')}
+            private_write(self.path,value)
+            self.data=value
+            return dict(value)

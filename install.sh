@@ -147,7 +147,7 @@ fi
 as_user install -m 644 "$SRC/config/tmux.conf" "$H/.tmux.conf"
 # the panel shows this path in the "update available" hint
 if as_user grep -q '^CHECKOUT=' "$ENV"; then as_user sed -i "s|^CHECKOUT=.*|CHECKOUT=$SRC|" "$ENV"; else echo "CHECKOUT=$SRC" | as_user tee -a "$ENV" >/dev/null; fi
-as_user install -d "$H/projects" "$H/.config" "$H/.config/systemd" "$H/.config/systemd/user" "$H/.claude"
+as_user install -d "$H/dev" "$H/.config" "$H/.config/systemd" "$H/.config/systemd/user" "$H/.claude"
 as_user install -m 644 "$SRC"/systemd/*.service "$H/.config/systemd/user/"
 as_user sed -i "s|/usr/bin/ttyd|$TTYD_BIN|" "$H/.config/systemd/user/cc-ttyd.service"
 

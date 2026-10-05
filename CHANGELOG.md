@@ -2,6 +2,20 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z`.
 
+## 1.1.0 — 2026-10-05
+
+- Connect other Agent Deck instances by Tailscale URL and their own login/password;
+  discover online instances on known tailnet peers and switch from the sidebar.
+- Proxy remote API operations, file uploads and live terminal WebSockets through
+  the gateway, without requiring browser access to the remote tailnet address.
+- Keep per-instance sessions, drafts, attachments and display preferences separate;
+  retain remote credentials only in private server-side storage.
+- Add gateway name, public address and effective listening-address settings.
+- Default new installs to `~/dev`; detect an existing `~/dev` for older default
+  `~/projects` settings while retaining explicitly saved custom directories.
+- Add Python/Jest unit coverage for gateway authorization, remote authentication,
+  terminal routing, tailnet-only discovery and cross-instance draft isolation.
+
 ## 1.0.7 — 2026-10-05
 
 - Automatically bind the macOS panel to its own connected Tailscale IPv4 address,
