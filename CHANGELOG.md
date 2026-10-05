@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.8.1 — 2026-10-05
+
+- Documentation: fresh screenshots for the README, including one-tap answers, screenshots from agents, notifications, sessions of connected computers and backups.
+
 ## 1.8.0 — 2026-10-05
 
 - Windows 11 support through WSL2: `install-windows.ps1` (PowerShell as administrator, `irm … | iex`) installs WSL, Tailscale and Ubuntu 24.04, enables mirrored networking (keeping other `.wslconfig` settings, with a backup), runs the regular Linux installer bound to the Windows Tailscale address, opens the panel port for the Tailscale range only, adds a Start menu shortcut and keeps WSL running while signed in. Rerunning updates.
