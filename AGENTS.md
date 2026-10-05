@@ -1,149 +1,57 @@
-# AGENTS.md — Agent Deck
+# AGENTS.md - Agent Deck
 
-Instructions for AI agents (Claude, Codex, Kimi, pi, etc.) working in this repository.
+Self-hosted panel (Python stdlib + static JS) for tmux sessions running Claude Code/Codex/Kimi/shell; Telegram bot, LM Studio, GitHub, 16 locales, installers for Linux (systemd), macOS (launchd), Windows (WSL2). Runs on other people's machines: installer, proxy or secret-store bugs are incidents.
 
-## 1. What this is
+## Architecture
+- Browser -> Tailscale -> `panel.py` (BIND_HOST:8790, signed cookie). `/api/*` JSON; `/t/*` raw proxy to ttyd (unix socket) -> `tmux attach -t cc-<name>`; `/deck/<id>/*` gateway to connected decks.
+- User units: cc-tmux (owns tmux server), cc-ttyd, cc-panel (`KillMode=process`).
+- tmux session `cc-<name>`, options `@cc_agent`, `@cc_sid`, `@cc_skip`; persisted in `~/.config/cc-panel/sessions.json`.
 
-Agent Deck is a self-hosted web panel (Python + static frontend) that manages
-tmux sessions running Claude Code / Codex / Kimi / a plain shell. It also ships:
-- a Telegram bot for answering agent questions,
-- an LM Studio connector, GitHub integration, i18n in 16 languages,
-- installers for Linux (systemd) and macOS (launchd).
+## Files (read only what you touch)
+- `panel/panel.py`: HTTP backend (~2200 lines), no unrelated refactors.
+- `panel/updater.py`: update job, release validation (syntax + imports), rollback. `PACKAGES` lists every `integrations/*.py`.
+- `panel/session_hook.py`, `claude/*`: conversation-id hooks; nested agents must not overwrite `@cc_sid`.
+- `integrations/`: `telegram.py` + `store.py` (claim-before-input outbox, never delete foreign webhooks), `questions.py`, `gateway.py` (parallel deck polling, `get_json`), `backups.py`, `usage.py`, `lmstudio.py`, `relay.py`, `push.py`/`webpush.py`, `images.py`, `dependencies.py`.
+- `frontend/*` bundled into `panel/index.html` by `scripts/build-panel.py`; files before `app.js` must not call `$` at top level.
+- `install-windows.ps1`: ASCII, PowerShell 5.1, never `exit`; tests in `tests/windows/`.
 
-**This is production code running on other people's servers and in their home
-directories. Any bug in the installer, the proxy, or the secret store is an incident.**
+## Python
+- 3.10+ (CI 3.10 + 3.12, no 3.11-only APIs). Deps: stdlib, `tmux`, `gh`, and pinned `cryptography` only (wheels from `dependency_lock.py` via `dependencies.py`, never pip; regenerate with `scripts/lock-dependencies.py`; call `dependencies.require()`, degrade clearly). Use `urllib`.
+- Never add files to `panel/` (installed updaters reject them); new code in `integrations/`.
+- Threaded server: lock shared mutable state.
+- Secrets: files 0600, dirs 0700; never in logs, JSON, URLs, tmux commands.
+- `subprocess.run` with explicit `input`; no `shell=True`.
+- `/api/*` errors: JSON 4xx/5xx, no tracebacks.
 
-## 2. Architecture — short reference
+## Security
+- Keep the signed-cookie HMAC scheme; new endpoints use the same auth.
+- Origin check on all mutations and WebSocket upgrades; reject sibling origins.
+- Login rate limit per IP + global; reserve slot under lock before reading body.
+- Trust `X-Forwarded-For` only from private/same host.
+- `/api/image`: path must be on the session screen; PNG/JPEG/WebP/GIF by content, max 25 MB, `nosniff` + `CSP: sandbox`; check content before thumbnails. Gateway passes non-JSON `/api/*` only for these.
+- Uploads: max 4 files x 200 MB, 7-day TTL, reject symlinks; `/api/upload_raw` streams, JSON `/api/upload` kept for old gateways.
+- `/t/*`: unix-socket ttyd, keep ttyd `-O`. `/deck/<id>/t/*` only to an authenticated deck on a numeric Tailscale IPv4; never forward gateway cookies.
+- Telegram: one-shot 10-min pairing bound to user+chat; owner-only replies; callbacks bound to owner/chat/message/session/question; never replay ambiguous deliveries.
+- tmux input is exact bytes (leading `-`, `;`, Unicode, bracketed paste).
+- Never delete foreign tmux sessions, `.tmux.conf`, webhooks, launchd plists.
 
-```
-browser ──tailscale──> panel.py (BIND_HOST:8790, signed cookie)
-                         ├─ /api/*   tmux, state, GitHub (gh), limits, version
-                         └─ /t/*     raw proxy → ttyd (unix socket) → tmux attach -t cc-<name>
-systemd --user:  cc-tmux (owns the tmux server) / cc-ttyd / cc-panel (KillMode=process)
-```
+## Frontend
+- Vanilla JS/CSS, no bundler, no npm runtime deps.
+- All UI strings via `locales/*.json`, new keys in all 16 (English value allowed). Don't translate agent output, project names, drafts, identifiers. Dates via `Intl`.
+- Keep drafts, attachments, typed answers across language switch, reload, logout, computer switch.
+- Mobile-first (iOS keyboard, inputs >= 16px); keep desktop Alt+1..9; no polling on hidden tabs.
 
-Key files (don't read everything — only what you're touching):
+## Installers
+- `install.sh` root-only, rejects user-owned/group-writable/symlinked sources; `update.sh` without root.
+- Fixed layout: `/opt/agent-deck`, `~/.config/cc-panel/` (never delete; changes need MAJOR + migration), `~/.config/systemd/user/`, `/etc/agent-deck/install.conf`.
+- Keep `KillMode=process`. macOS: no sudo.
 
-| File | Purpose |
-|---|---|
-| `panel/panel.py` | HTTP backend: login, ttyd proxy, tmux commands, uploads, session persistence. **~2200 lines; don't refactor without a reason.** |
-| `panel/updater.py` | Single-flight update job, release validation, rollback after failed startup |
-| `panel/session_hook.py` | SessionStart hook: records the top-level conversation ID (Claude/Codex) |
-| `claude/register-hooks.py`, `claude/cc-session-hook.py` | Claude hook registration. **Nested review agents must not overwrite `@cc_sid`.** |
-| `integrations/telegram.py` | Long-polling, pairing, callback validation. **Never deletes foreign webhooks.** |
-| `integrations/questions.py` | Question normalization (question + options only, no history) |
-| `integrations/store.py` | SQLite outbox: claim-before-input, uncertain state, 7-day TTL |
-| `integrations/gateway.py` | What the gateway asks connected Agent Decks (questions, session lists, Telegram state, remote answers): parallel, keeps the last answer through blips. `get_json` is the one way to read a remote JSON answer |
-| `integrations/usage.py` | Claude/Codex/Kimi limits parsing; network and credentials are passed in by the panel |
-| `integrations/backups.py` | Encrypted settings/keys backups, peer replication through the gateway, whitelisted restore |
-| `integrations/lmstudio.py`, `relay.py` | LM Studio profiles + loopback relay (timing/usage only, no conversation text) |
-| `locales/*.json` | 16 catalogs. New language = one JSON + a row in `docs/localization.md` |
-| `install.sh`, `get.sh`, `update.sh`, `deploy.sh` | Installers. **Root entrypoints** — see §5 |
-| `install-windows.ps1` | Windows 11 bootstrap: WSL2 + Tailscale + the Linux installer inside Ubuntu. ASCII only, PowerShell 5.1 compatible, never `exit` (runs under `irm | iex`). Tests: `tests/windows/` |
-| `frontend/*`, `panel/index.html` | Static UI. Localization via `locales/`, no hardcoded strings in HTML |
-| `tests/backend/`, `tests/frontend/` | Regression. **Always run** (§4) |
+## Tests (before every commit)
+`npm ci && python3 scripts/build-panel.py --check && npm run test:all`
+Python unit + Jest/jsdom only, no browser E2E. Temp dirs for settings/secrets; mock commands and network; new behavior needs tests.
 
-tmux sessions: name `cc-<name>`, options `@cc_agent` (claude\|codex\|shell),
-`@cc_sid` (conversation id), `@cc_skip` (skip-permissions). Persistence:
-`~/.config/cc-panel/sessions.json`.
+## Release
+`panel/VERSION` is the source of truth (semver). Behavior change -> `CHANGELOG.md`; breaking installer/config/API -> MAJOR or `BREAKING`. Never commit `sessions.json`, `env`, `secret/`, `node_modules/`, `test-results/`, `playwright-report/`, `__pycache__/`.
 
-## 3. Code rules
-
-### 3.1. Python
-- 3.10+. Runtime: stdlib + `tmux` + `gh`, plus **one pinned dependency: `cryptography`** for backups and notifications.
-- `cryptography` is never installed with pip: `integrations/dependencies.py` downloads the wheels pinned (URL + SHA-256) in
-  `integrations/dependency_lock.py` (regenerate with `scripts/lock-dependencies.py`) into `~/.local/share/agent-deck/python/`.
-  Code using it calls `dependencies.require()` and degrades with a clear message while it is missing.
-- Do not add other packages (`requests`, `aiohttp`, `pydantic`, …) — use `urllib` from stdlib.
-- **Never add files to `panel/`**: updaters already installed on users' machines reject unknown files there and stop updating.
-  New code goes to `integrations/*.py`; static content can be served from a Python module (see `/sw.js`).
-- No global mutable state without an explicit lock — the server is threaded (`ThreadingHTTPServer`).
-- Secret files: `0600`; directories: `0700`. Never write tokens/passwords to logs, JSON responses, query strings, or tmux commands.
-- All subprocess calls: `subprocess.run(..., input=<bytes>)` with an explicit `input`. Never `shell=True` with f-strings.
-- Every `/api/*` response sets `Content-Type: application/json`. Errors are JSON 4xx/5xx, not tracebacks in the body.
-
-### 3.2. Security (critical)
-- **Signed cookies** — do not break the HMAC scheme. New endpoints go through the same `check_auth`.
-- **Origin check** on every mutable JSON request and on the WebSocket upgrade. Sibling origins (same port, different host) **must be rejected**.
-- **Login rate limit**: per-IP + global. Reserve a slot *before* reading the body, with a lock, so five delayed requests cannot create five slots.
-- **`X-Forwarded-For` proxy header** — trusted only from private networks or the same host; otherwise client IP = socket peer.
-- **Session images** (`/api/image`): only paths visible in that session's recent output, only regular PNG/JPEG/WebP/GIF by content (no SVG), ≤25 MB, sent with `nosniff` and `CSP: sandbox`. The gateway passes non-JSON `/api/*` responses only for `/api/image` with those four types.
-- **Uploads**: ≤4 files, ≤200 MB each, 7-day TTL, per-minute cleanup. Symlinks inside the upload directory **must be rejected**.
-  Large files use `POST /api/upload_raw` (raw `application/octet-stream`, streamed to disk); the JSON `/api/upload` stays for older gateways.
-- **Local `/t/*`** — Unix-socket ttyd only, raw bytes. Connected `/deck/<id>/t/*` routes may proxy only to an authenticated Agent Deck on a numeric Tailscale IPv4 address. Never forward gateway cookies/credentials to the remote browser; check gateway origins before mutations and WebSocket upgrades.
-- **Telegram**: pairing is one-shot, 10-minute expiry, bound to `user_id` + `chat_id`. Replies only from the paired account. Callbacks are bound to owner + chat + message_id + session + conversation + question contents. On ambiguous delivery failure — **do not replay** (avoiding a duplicate is preferred to risking a double-send).
-- **Input to tmux**: exact bytes, including leading dashes, semicolons, Unicode, and bracketed paste. Tests assert exact bytes.
-
-### 3.3. Frontend (`panel/index.html`, `frontend/`)
-- Vanilla HTML/CSS/JS, no bundler. Do not add npm runtime dependencies.
-- **All UI strings go through `locales/<lang>.json`**. A new key must be added to **all 16** catalogs (`en` and `ru` are mandatory; other languages may fall back to `en`).
-- Preserve draft + attachments across language switch, interface reload, and logout (login-page round-trip).
-- Mobile-first: iPhone viewport, pinch-zoom guards, iOS keyboard. Do not break the desktop `⌥1…9` hotkeys.
-- No blocking requests on hidden tabs (respect `visibilitychange`).
-
-### 3.4. Installers and deployment
-- `install.sh` is **root-only**; `get.sh` is the bootstrap. Root entrypoints **reject** user-owned / group-writable / symlinked source files.
-- Do not change the layout: code in `/opt/agent-deck`, config in `~/.config/cc-panel/`, user units in `~/.config/systemd/user/`, install options in `/etc/agent-deck/install.conf`.
-- `update.sh` updates the panel **without root**; single-flight job, release validation, health-check rollback.
-- **Never delete** `~/.config/cc-panel/` on reinstall.
-- `cc-panel` uses `KillMode=process` — do not change to `mixed`/`control-group`, that would kill tmux.
-- macOS: launchd, **no sudo**. Do not break the user's `.tmux.conf`.
-
-### 3.5. i18n
-- New language: add `locales/<code>.json` + a row in `docs/localization.md` (+ optionally a mention in README).
-- **Do not translate**: agent output, project names, message drafts, technical identifiers.
-- Dates via `Intl` with the selected locale.
-- Telegram bot: uses the language of the browser that last saved the integration settings.
-
-## 4. Tests — required
-
-**Before any commit:**
-
-```bash
-npm ci
-python3 scripts/build-panel.py --check
-npm run test:all
-```
-
-The active test suite is Python unit tests and Jest/jsdom frontend unit tests.
-Do not add browser E2E or macOS installation smoke jobs. Legacy integration and
-Playwright sources are retained for reference, excluded from normal tests and CI.
-All settings and secrets in tests must stay in temporary directories. Mock external
-commands and network calls. New endpoints and behavior require unit coverage.
-CI checks Python 3.10/3.12 and Jest on Node 22.
-
-## 5. Release / Changelog
-
-- Versions follow semver. `panel/VERSION` is the single source of truth.
-- Behavior changes → a line in `CHANGELOG.md` (Unreleased → version).
-- Breaking changes to the installer, config layout, or API → **MAJOR** bump or an explicit `BREAKING` note in CHANGELOG.
-- Never commit: `sessions.json`, `env`, `secret/`, `node_modules/`, `test-results/`, `playwright-report/`, `__pycache__/`.
-
-## 6. Communication style
-
-- Reply in the user's language (RU/EN).
-- UI copy: neutral tone, no "clever" phrasing.
-- Log and UI errors must be concrete: what failed, which file/line, how to fix it.
-- Do not invent features beyond the task. If the task is "fix bug X", do not rewrite module Y.
-
-## 7. Do **not** do (anti-patterns)
-
-- ❌ Add npm runtime dependencies to the frontend.
-- ❌ Change the signed-cookie scheme "because it's cleaner".
-- ❌ Remove `KillMode=process` or ttyd's `-O`.
-- ❌ Write tokens/passwords to logs, tmux commands, JSON responses, or query strings.
-- ❌ Use `shell=True` with f-strings.
-- ❌ Translate agent output.
-- ❌ Replay uncertain Telegram answers.
-- ❌ Break exact-bytes input into tmux (leading `-`, `;`, bracketed paste).
-- ❌ Change the `~/.config/cc-panel/` layout without a MAJOR release + migration.
-- ❌ Delete foreign tmux sessions, `.tmux.conf`, webhooks, or launchd plists.
-- ❌ "Improve" `panel/panel.py` with refactors unrelated to the task.
-
-## 8. When in doubt
-
-1. Read `docs/DETAILS.md` — architecture and troubleshooting.
-2. Read `docs/REVIEW-FIXES.md` — the last known bugs and their fixes.
-3. Read `docs/integrations.md` for Telegram / LM Studio, `docs/localization.md` for i18n.
-4. Look at `tests/backend/` — that is **how it should work**.
-5. If still unclear — **ask the user**, don't guess.
+## Style
+Reply in the user's language. Neutral UI copy. Errors state what failed, where, how to fix. Stay in scope. Unsure: `docs/DETAILS.md`, `docs/REVIEW-FIXES.md`, `docs/integrations.md`, `docs/localization.md`, `tests/backend/`, then ask.
