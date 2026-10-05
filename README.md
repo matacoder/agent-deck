@@ -9,9 +9,9 @@ after a reboot.
 
 ![Agent Deck on desktop](docs/screenshots/desktop.png)
 
-| Session on a phone | Sessions & limits | New session from GitHub |
+| Answer with one tap | Screenshots from agents | Sessions & limits |
 |:---:|:---:|:---:|
-| <img src="docs/screenshots/mobile-screen.png" width="260" alt="Phone: session screen"> | <img src="docs/screenshots/mobile-sessions.png" width="260" alt="Phone: session list"> | <img src="docs/screenshots/mobile-new.png" width="260" alt="Phone: new session"> |
+| <img src="docs/screenshots/mobile-question.png" width="260" alt="Phone: agent question with answer buttons"> | <img src="docs/screenshots/mobile-images.png" width="260" alt="Phone: screenshot thumbnails in agent output"> | <img src="docs/screenshots/mobile-sessions.png" width="260" alt="Phone: session list"> |
 
 <sub>Screenshots use demo data.</sub>
 
@@ -225,6 +225,8 @@ from the icon. It runs full screen, keeps drafts and supports one-tap answers to
 
 ## Screenshots from agents
 
+<img src="docs/screenshots/mobile-images.png" width="300" alt="Agent output with clickable screenshot thumbnails">
+
 When an agent prints the path of a PNG, JPEG, WebP or GIF file — absolute, `~/…` or relative to the
 session folder, even if the terminal wrapped it across lines — the **Screen** view turns the path into a
 link and shows a thumbnail under that line. Tap it for a full-screen viewer: swipe or use ←/→ between
@@ -232,6 +234,8 @@ screenshots of the same screen, **Open original** for full size. A file is serve
 visible in that session's recent output, only as a real raster image (never SVG), up to 25 MB.
 
 ## Notifications
+
+<img src="docs/screenshots/mobile-notifications.png" width="300" alt="Notification settings: devices, events and test message">
 
 Agent questions and finished work from **every connected Agent Deck** arrive as system notifications
 on your phone or computer, even when the panel is closed. Tapping one opens that session, on the right
@@ -287,6 +291,8 @@ Answers are protected against stale buttons, repeated clicks and uncertain repla
 after a restart. See [integration setup and architecture](docs/integrations.md).
 
 ## Backups
+
+<img src="docs/screenshots/desktop-backups.png" width="760" alt="Backup settings: status per computer and restore">
 
 **Settings → Backups** protects Agent Deck settings, integration keys (Telegram, Kimi,
 LM Studio, connected Agent Decks) and agent logins (`~/.codex/auth.json`,
@@ -367,6 +373,8 @@ pinned server and records timing/usage only; it does not store conversation text
 An in-progress local-model request may need retrying when the panel service updates.
 
 ### Multiple Agent Deck instances
+
+<img src="docs/screenshots/desktop-computers.png" width="760" alt="Sidebar with sessions of a connected Mac">
 
 Use **Settings → Network → Other Agent Deck instances** on the server whose
 web address you normally open. Click **Discover** to search online Tailscale peers
