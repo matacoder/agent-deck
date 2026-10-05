@@ -79,3 +79,16 @@ test('a failed model server does not prevent refreshing other servers',async()=>
  expect(await refreshModelCatalog(api)).toEqual(fresh);
  expect(api).toHaveBeenCalledWith('/api/lm_probe',{id:'blue'});
 });
+
+test('terminal mode moves the same session keys into a visible toolbar and restores them in screen mode',()=>{
+ const {placeSessionKeys}=require('../../frontend/settings');
+ document.body.innerHTML='<div id="screen"><div id="row"><button id="wrap">Wrap</button><button>Tab</button></div></div><div id="terminal" hidden></div>';
+ const options={row:document.querySelector('#row'),screen:document.querySelector('#screen'),terminal:document.querySelector('#terminal'),wrap:document.querySelector('#wrap'),active:true};
+ const click=jest.fn();options.row.lastChild.onclick=click;
+ placeSessionKeys({...options,mode:'term'});
+ expect(options.row.parentNode).toBe(options.terminal);expect(options.terminal.hidden).toBe(false);expect(options.wrap.hidden).toBe(true);
+ options.row.lastChild.click();expect(click).toHaveBeenCalledTimes(1);
+ placeSessionKeys({...options,mode:'screen'});
+ expect(options.row.parentNode).toBe(options.screen);expect(options.terminal.hidden).toBe(true);expect(options.wrap.hidden).toBe(false);
+ placeSessionKeys({...options,mode:'term',active:false});expect(options.terminal.hidden).toBe(true);
+});

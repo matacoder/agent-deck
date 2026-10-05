@@ -43,7 +43,7 @@ __PANEL_STYLE__</style></head><body>
       <div id="screen">
         <div id="pre"></div>
         <div class="composer">
-          <div class="keys-row">
+          <div id="screen_keys"><div class="keys-row" id="session_keys">
           <div class="keys" id="keys">
             <button class="key key-primary question-key" onclick="key('S-Left')" aria-label="Предыдущий вопрос" title="Вопросы Codex: Shift+←">?←</button>
             <button class="key key-primary question-key" onclick="key('S-Right')" aria-label="Следующий вопрос" title="Вопросы Codex: Shift+→">?→</button>
@@ -58,6 +58,7 @@ __PANEL_STYLE__</style></head><body>
             <button class="key key-extra" id="b_wrap" onclick="toggleWrap()" aria-pressed="true">Перенос</button>
           </div>
           <button class="keyboard-hide" id="b_keyboard" onpointerdown="event.preventDefault()" onclick="hideKeyboard()" aria-label="Скрыть клавиатуру" title="Скрыть клавиатуру"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="2" y="3" width="20" height="12" rx="2"/><path d="M5 7h2m3 0h2m3 0h2m2 0h1M6 11h12m-9 8 3 3 3-3"/></svg></button>
+          </div>
           </div>
           <div id="attachments" aria-label="Приложенные файлы"></div>
           <input type="file" id="image_files" multiple hidden>
@@ -76,6 +77,7 @@ __PANEL_STYLE__</style></head><body>
         </div>
       </div>
     </div>
+    <div id="terminal_keys" hidden></div>
     <nav id="quick_tabs" aria-label="Быстрое переключение сессий"></nav>
   </main>
 </div>

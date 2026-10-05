@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z`.
 
+## 1.1.2 — 2026-10-05
+
+- Show the shared session key toolbar in live terminal mode, preserve terminal focus on button presses, and retain mobile expanded-key controls.
+
 ## 1.1.1 — 2026-10-05
 
 - Preserve project groups for existing sessions in ~/projects while using ~/dev as the new default, including worktrees.

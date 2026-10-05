@@ -19,4 +19,11 @@ async function refreshModelCatalog(request){
   return request("/api/lmstudio");
 }
 
-if(typeof module!=="undefined")module.exports={saveDirectorySetting,saveSessionName,refreshModelCatalog};
+function placeSessionKeys({row,screen,terminal,wrap,mode,active}){
+  const live=active&&mode==="term";
+  (live?terminal:screen).append(row);
+  terminal.hidden=!live;
+  wrap.hidden=live;
+}
+
+if(typeof module!=="undefined")module.exports={saveDirectorySetting,saveSessionName,refreshModelCatalog,placeSessionKeys};

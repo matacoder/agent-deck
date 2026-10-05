@@ -217,6 +217,7 @@ function show(){
     f.classList.toggle("on",!!s&&m==="term"&&n===active);
     const session=sessions.find(x=>x.name===n);f.inert=isLocal(session)&&!session.running;
   }
+  placeSessionKeys({row:$("session_keys"),screen:$("screen_keys"),terminal:$("terminal_keys"),wrap:$("b_wrap"),mode:m,active:!!s});
   $("screen").classList.toggle("on",!!s&&m==="screen");
   if(s&&m==="term"){const f=frameFor(active);f.classList.add("on");f.inert=isLocal(s)&&!s.running;if(!isMobile()&&!f.inert)setTimeout(()=>{try{f.contentWindow.focus();f.contentWindow.term&&f.contentWindow.term.focus()}catch(e){}},30)}
   if(s&&m==="screen")updateScreen(s,true);
@@ -601,6 +602,7 @@ async function send(){
     sending=false;renderAttachments();renderSendState();
   }
 }
+$("session_keys").addEventListener("pointerdown",e=>{if(e.target.closest("button"))e.preventDefault()});
 function key(k){if(active&&!sending&&!uploading&&!panelUpdating)post("/api/send",{name:active,key:k})}
 async function logout(){await fetch("/logout",{method:"POST"});location.href="/login"}
 function toggleKeys(){const expanded=$("keys").classList.toggle("expanded");$("b_keymore").setAttribute("aria-expanded",String(expanded))}

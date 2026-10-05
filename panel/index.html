@@ -412,6 +412,8 @@ dialog{box-shadow:0 24px 80px #0006;border-color:#ffffff12;border-radius:16px}
 .deck-toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:12px;margin-top:16px}.deck-port{display:flex;align-items:center;gap:8px}.deck-port label{margin:0;color:var(--mut);font-size:12px}#deck_port{width:88px;min-height:44px;padding:8px 10px;border:1px solid var(--bd);border-radius:9px;background:var(--side2);color:var(--fg);font:inherit;font-size:16px}
 .deck-result{display:flex;align-items:center;gap:16px}.deck-info{flex:1;min-width:0}.deck-result p{margin-bottom:0}.deck-result .deck-actions{flex:none}
 @media(max-width:480px){.deck-toolbar{align-items:stretch}.deck-toolbar>.deck-actions{flex:1 1 100%}.deck-toolbar .deck-actions button{flex:1}.deck-result{align-items:flex-start;flex-direction:column;gap:12px}.deck-connection>.deck-actions{margin-top:12px}.deck-actions button{padding:10px 12px}}
+
+#terminal_keys{flex:none;border-top:1px solid var(--bd);background:var(--side);padding:8px 8px max(8px,var(--sab))}#terminal_keys[hidden]{display:none}#terminal_keys .keys{padding-bottom:0}#terminal_keys .keyboard-hide{display:none}#b_wrap[hidden]{display:none}
 </style></head><body>
 <div id="app">
   <aside>
@@ -446,7 +448,7 @@ dialog{box-shadow:0 24px 80px #0006;border-color:#ffffff12;border-radius:16px}
       <div id="screen">
         <div id="pre"></div>
         <div class="composer">
-          <div class="keys-row">
+          <div id="screen_keys"><div class="keys-row" id="session_keys">
           <div class="keys" id="keys">
             <button class="key key-primary question-key" onclick="key('S-Left')" aria-label="Предыдущий вопрос" title="Вопросы Codex: Shift+←">?←</button>
             <button class="key key-primary question-key" onclick="key('S-Right')" aria-label="Следующий вопрос" title="Вопросы Codex: Shift+→">?→</button>
@@ -461,6 +463,7 @@ dialog{box-shadow:0 24px 80px #0006;border-color:#ffffff12;border-radius:16px}
             <button class="key key-extra" id="b_wrap" onclick="toggleWrap()" aria-pressed="true">Перенос</button>
           </div>
           <button class="keyboard-hide" id="b_keyboard" onpointerdown="event.preventDefault()" onclick="hideKeyboard()" aria-label="Скрыть клавиатуру" title="Скрыть клавиатуру"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="2" y="3" width="20" height="12" rx="2"/><path d="M5 7h2m3 0h2m3 0h2m2 0h1M6 11h12m-9 8 3 3 3-3"/></svg></button>
+          </div>
           </div>
           <div id="attachments" aria-label="Приложенные файлы"></div>
           <input type="file" id="image_files" multiple hidden>
@@ -479,6 +482,7 @@ dialog{box-shadow:0 24px 80px #0006;border-color:#ffffff12;border-radius:16px}
         </div>
       </div>
     </div>
+    <div id="terminal_keys" hidden></div>
     <nav id="quick_tabs" aria-label="Быстрое переключение сессий"></nav>
   </main>
 </div>
@@ -653,7 +657,14 @@ async function refreshModelCatalog(request){
   return request("/api/lmstudio");
 }
 
-if(typeof module!=="undefined")module.exports={saveDirectorySetting,saveSessionName,refreshModelCatalog};
+function placeSessionKeys({row,screen,terminal,wrap,mode,active}){
+  const live=active&&mode==="term";
+  (live?terminal:screen).append(row);
+  terminal.hidden=!live;
+  wrap.hidden=live;
+}
+
+if(typeof module!=="undefined")module.exports={saveDirectorySetting,saveSessionName,refreshModelCatalog,placeSessionKeys};
 function instancePath(identity,path){
   if(!identity)return path;
   if(!/^[0-9a-f]{24}$/.test(identity))throw new Error('Invalid Agent Deck identifier');
@@ -891,6 +902,7 @@ function show(){
     f.classList.toggle("on",!!s&&m==="term"&&n===active);
     const session=sessions.find(x=>x.name===n);f.inert=isLocal(session)&&!session.running;
   }
+  placeSessionKeys({row:$("session_keys"),screen:$("screen_keys"),terminal:$("terminal_keys"),wrap:$("b_wrap"),mode:m,active:!!s});
   $("screen").classList.toggle("on",!!s&&m==="screen");
   if(s&&m==="term"){const f=frameFor(active);f.classList.add("on");f.inert=isLocal(s)&&!s.running;if(!isMobile()&&!f.inert)setTimeout(()=>{try{f.contentWindow.focus();f.contentWindow.term&&f.contentWindow.term.focus()}catch(e){}},30)}
   if(s&&m==="screen")updateScreen(s,true);
@@ -1275,6 +1287,7 @@ async function send(){
     sending=false;renderAttachments();renderSendState();
   }
 }
+$("session_keys").addEventListener("pointerdown",e=>{if(e.target.closest("button"))e.preventDefault()});
 function key(k){if(active&&!sending&&!uploading&&!panelUpdating)post("/api/send",{name:active,key:k})}
 async function logout(){await fetch("/logout",{method:"POST"});location.href="/login"}
 function toggleKeys(){const expanded=$("keys").classList.toggle("expanded");$("b_keymore").setAttribute("aria-expanded",String(expanded))}

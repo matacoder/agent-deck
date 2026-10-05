@@ -401,3 +401,5 @@ dialog{box-shadow:0 24px 80px #0006;border-color:#ffffff12;border-radius:16px}
 .deck-toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:12px;margin-top:16px}.deck-port{display:flex;align-items:center;gap:8px}.deck-port label{margin:0;color:var(--mut);font-size:12px}#deck_port{width:88px;min-height:44px;padding:8px 10px;border:1px solid var(--bd);border-radius:9px;background:var(--side2);color:var(--fg);font:inherit;font-size:16px}
 .deck-result{display:flex;align-items:center;gap:16px}.deck-info{flex:1;min-width:0}.deck-result p{margin-bottom:0}.deck-result .deck-actions{flex:none}
 @media(max-width:480px){.deck-toolbar{align-items:stretch}.deck-toolbar>.deck-actions{flex:1 1 100%}.deck-toolbar .deck-actions button{flex:1}.deck-result{align-items:flex-start;flex-direction:column;gap:12px}.deck-connection>.deck-actions{margin-top:12px}.deck-actions button{padding:10px 12px}}
+
+#terminal_keys{flex:none;border-top:1px solid var(--bd);background:var(--side);padding:8px 8px max(8px,var(--sab))}#terminal_keys[hidden]{display:none}#terminal_keys .keys{padding-bottom:0}#terminal_keys .keyboard-hide{display:none}#b_wrap[hidden]{display:none}
