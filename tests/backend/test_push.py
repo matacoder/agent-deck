@@ -120,7 +120,8 @@ class PushServiceTests(unittest.TestCase):
         self.assertEqual(self.push.events(now=0), [])  # Pending before a restart: not re-announced.
         self.questions = [question('old'), question('api', deck='a' * 24, origin='Mac Studio')]
         [message] = self.push.events(now=3)
-        self.assertEqual(message['title'], ('{0} ждёт ответа', 'Mac Studio · api'))
+        self.assertEqual(message['title'], 'api')
+        self.assertEqual(message['body'][1], 'Proceed?')
         self.assertEqual((message['deck'], message['urgency']), ('a' * 24, 'high'))
         self.assertEqual(self.push.events(now=6), [])
 
@@ -134,7 +135,7 @@ class PushServiceTests(unittest.TestCase):
         self.assertEqual(tick(12, 2), [])  # Quiet but worked only 3 s.
         tick(20, 3); tick(45, 4)
         [done] = tick(54, 4)
-        self.assertEqual(done['title'], ('{0} закончил работу', 'API'))
+        self.assertEqual(done['title'], 'API')
         tick(60, 5); tick(90, 6)
         self.questions = [question('api')]
         self.push.seen[self.questions[0].fingerprint] = 90
@@ -154,17 +155,20 @@ class PushServiceTests(unittest.TestCase):
         self.sessions = remote(3); self.push.events(now=30)
         self.assertEqual(self.push.events(now=40), [])
         [done] = self.push.events(now=56)
-        self.assertEqual(done['title'], ('{0} закончил работу', 'Mac · ml'))
+        self.assertEqual(done['title'], 'ml')
 
     def test_delivery_translates_per_device_and_forgets_revoked_devices(self):
         ru, en = self.subscribe(language='ru'), self.subscribe(endpoint=ENDPOINT + '2', language='en')
-        self.push.deliver({'title': ('{0} ждёт ответа', 'api'), 'session': 'api', 'deck': 'a' * 24})
+        self.push.deliver({'title': 'api-tests', 'body': [self.push.status_line('{0} ждёт ответа', 'codex', 'Mac Studio'), 'Run tests?'],
+                           'session': 'api', 'deck': 'a' * 24})
         payloads = {identity: payload for identity, payload, _ in self.sent}
-        self.assertEqual(payloads[ru]['title'], 'api ждёт ответа')
-        self.assertEqual(payloads[en]['title'], 'api is waiting for an answer')
+        # The title is just the session so it fits; status and question go to the body.
+        self.assertEqual(payloads[ru]['title'], 'api-tests')
+        self.assertEqual(payloads[ru]['body'], 'Codex ждёт ответа · Mac Studio\nRun tests?')
+        self.assertEqual(payloads[en]['body'], 'Codex is waiting for an answer · Mac Studio\nRun tests?')
         self.assertEqual(payloads[en]['url'], '/?deck=' + 'a' * 24 + '#api')
         self.status = 410
-        self.push.deliver({'title': ('{0} ждёт ответа', 'api')})
+        self.push.deliver({'title': 'api'})
         self.assertEqual(self.push.status()['devices'], [])
 
     def test_events_can_be_turned_off(self):

@@ -37,6 +37,7 @@ Key files (don't read everything — only what you're touching):
 | `integrations/lmstudio.py`, `relay.py` | LM Studio profiles + loopback relay (timing/usage only, no conversation text) |
 | `locales/*.json` | 16 catalogs. New language = one JSON + a row in `docs/localization.md` |
 | `install.sh`, `get.sh`, `update.sh`, `deploy.sh` | Installers. **Root entrypoints** — see §5 |
+| `install-windows.ps1` | Windows 11 bootstrap: WSL2 + Tailscale + the Linux installer inside Ubuntu. ASCII only, PowerShell 5.1 compatible, never `exit` (runs under `irm | iex`). Tests: `tests/windows/` |
 | `frontend/*`, `panel/index.html` | Static UI. Localization via `locales/`, no hardcoded strings in HTML |
 | `tests/backend/`, `tests/frontend/` | Regression. **Always run** (§4) |
 

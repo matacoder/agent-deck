@@ -17,6 +17,7 @@ except ModuleNotFoundError:
     locales = None
 
 SUBJECT = 'https://github.com/matacoder/agent-deck'
+AGENT_LABELS = {'claude': 'Claude', 'codex': 'Codex', 'claude-kimi': 'Claude · Kimi', 'kimi': 'Kimi Code', 'pi': 'Pi'}
 MAX_DEVICES = 20
 IDLE_LOCAL, IDLE_REMOTE, MIN_BUSY = 8, 25, 20
 
@@ -104,6 +105,12 @@ class Push:
             text = locales.translate_message(text, language if language in {i['code'] for i in locales.available()} else 'en')
         return text.format(*params)
 
+    def text(self, part, language):
+        """A plain string stays as is; a (message, *params) tuple is translated; a dict adds an untranslated suffix."""
+        if isinstance(part, dict):
+            return self.text(part['message'], language) + part['suffix']
+        return part if isinstance(part, str) else self.translate(part[0], language, part[1:])
+
     def deliver(self, message, only=None):
         """message: title/body keys with params, plus tag/deck/session; sent to every (or one) device."""
         key = self.vapid()
@@ -112,8 +119,9 @@ class Push:
         gone, sent = [], 0
         for subscription in targets:
             language = subscription.get('language', 'en')
-            payload = {'title': self.translate(message['title'][0], language, message['title'][1:]),
-                       'body': self.translate(message['body'][0], language, message['body'][1:]) if message.get('body') else '',
+            # Short title (the session) that fits a lock-screen line; status and details go to the body.
+            payload = {'title': self.text(message['title'], language),
+                       'body': '\n'.join(self.text(part, language) for part in message.get('body', ())),
                        'tag': message.get('tag'), 'deck': message.get('deck', ''), 'session': message.get('session', ''),
                        'url': ('/?deck=' + message['deck'] if message.get('deck') else '/') + ('#' + message['session'] if message.get('session') else '')}
             try:
@@ -131,9 +139,14 @@ class Push:
         return sent
 
     def test(self, identity):
-        if not self.deliver({'title': ('Уведомления Agent Deck работают',), 'body': ('Так будут выглядеть вопросы агентов и завершение работы.',),
-                             'tag': 'test'}, only=identity):
+        if not self.deliver({'title': 'Agent Deck', 'body': [('Уведомления Agent Deck работают',),
+                             ('Так будут выглядеть вопросы агентов и завершение работы.',)], 'tag': 'test'}, only=identity):
             raise ValueError('Сервис уведомлений не принял сообщение; включите уведомления заново')
+
+    @staticmethod
+    def status_line(message, agent, machine):
+        # "Codex ждёт ответа · Mac Studio": the machine only appears for connected computers.
+        return {'message': (message, AGENT_LABELS.get(agent, agent or 'Agent')), 'suffix': ' · ' + machine if machine else ''}
 
     def events(self, now=None):
         """One observation; returns notifications to send. Pure apart from its own memory, for testing."""
@@ -143,8 +156,8 @@ class Push:
             for q in self.questions():
                 pending.add((q.deck, q.session))
                 if q.fingerprint not in self.seen and self.config['events'].get('questions'):
-                    out.append({'title': ('{0} ждёт ответа', ' · '.join(filter(None, (q.origin, q.session)))),
-                                'body': (q.title[:240],), 'tag': f'q-{q.deck}-{q.session}', 'deck': q.deck,
+                    out.append({'title': q.session, 'body': [self.status_line('{0} ждёт ответа', q.agent, q.origin), q.title[:240]],
+                                'tag': f'q-{q.deck}-{q.session}', 'deck': q.deck,
                                 'session': q.session, 'urgency': 'high'})
                 self.seen[q.fingerprint] = now
         self.seen = {k: t for k, t in self.seen.items() if now - t < 30}
@@ -165,8 +178,9 @@ class Push:
                 worked = now - state[2] >= MIN_BUSY
                 state[2] = None
                 if worked and key not in pending and s.get('agent') != 'shell' and self.config['events'].get('finished'):
-                    label = ' · '.join(filter(None, (s.get('deck_name', ''), s.get('title') or s['name'])))
-                    out.append({'title': ('{0} закончил работу', label), 'tag': f'f-{key[0]}-{key[1]}',
+                    out.append({'title': s.get('title') or s['name'],
+                                'body': [self.status_line('{0} закончил работу', s.get('agent'), s.get('deck_name', ''))],
+                                'tag': f'f-{key[0]}-{key[1]}',
                                 'deck': key[0], 'session': key[1]})
         self.warm = True
         return out

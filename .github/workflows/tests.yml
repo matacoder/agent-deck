@@ -28,6 +28,14 @@ jobs:
           AGENT_DECK_REQUIRE_CRYPTO: '1'
         run: python3 scripts/test-unit.py
 
+  windows-installer:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Windows installer helpers (pwsh)
+        run: pwsh -NoProfile -File tests/windows/install-windows.tests.ps1
+
   frontend:
     runs-on: ubuntu-latest
     timeout-minutes: 5

@@ -13,12 +13,18 @@ const page=fs.readFileSync(path.resolve(__dirname,'../../panel/index.html'),'utf
   .replace('__PANEL_I18N__',JSON.stringify({language:'en',messages:{}})).replace(/__PANEL_REVISION__/g,'test');
 const session=(name,extra={})=>({name,title:name,agent:'codex',group:'demo',path:'/home/demo/projects/'+name,running:true,activity:1,created:1,...extra});
 
-function boot(routes){
+function boot(routes,opened){
   // jsdom cannot replace location.reload; a reload shows up as a "navigation" not-implemented error.
   const console=new VirtualConsole(),problems=[];
   console.on('jsdomError',error=>problems.push(String(error.message)));
   const dom=new JSDOM(page,{url:'https://panel.test/',runScripts:'dangerously',pretendToBeVisual:true,virtualConsole:console,beforeParse(window){
     window.focus=()=>{};
+    // A tapped notification as the service worker leaves it in Cache Storage.
+    const store=new Map(opened?[['/__agent-deck-open',JSON.stringify({...opened,at:Date.now()})]]:[]);
+    window.notificationTargets=store;
+    window.caches={open:async()=>({match:async key=>store.has(key)?{json:async()=>JSON.parse(store.get(key))}:undefined,delete:async key=>store.delete(key)})};
+    Object.defineProperty(window.navigator,'serviceWorker',{value:{addEventListener(){},startMessages(){},register:()=>Promise.resolve()}});
+    Object.defineProperty(window,'isSecureContext',{value:true});
     window.matchMedia=()=>({matches:false,addEventListener(){},removeEventListener(){}});
     window.ResizeObserver=class{observe(){}};
     window.HTMLDialogElement.prototype.showModal=function(){this.open=true};
@@ -84,6 +90,26 @@ test('a response from the previous computer that arrives after the switch is rej
   await settle();
   release();
   await expect(inFlight).rejects.toThrow('stale Agent Deck response');
+  expect(window.document.querySelector('#title b').textContent).toBe('beta');
+  }finally{window.close()}
+});
+
+test('tapping a notification opens its session on cold start and when the app resumes',async()=>{
+  const state={local:()=>({sessions:[session('alpha',{activity:9}),session('api')]})};
+  const window=boot(routesFor(state),{deck:'',session:'api'});
+  try{
+  await settle();await settle();
+  expect(window.document.querySelector('#title b').textContent).toBe('api');
+  expect(window.notificationTargets.size).toBe(0);
+  // Back from the background: a tap on another notification while the app was suspended.
+  window.notificationTargets.set('/__agent-deck-open',JSON.stringify({deck:'',session:'alpha',at:Date.now()}));
+  window.document.dispatchEvent(new window.Event('visibilitychange'));
+  await settle();await settle();
+  expect(window.document.querySelector('#title b').textContent).toBe('alpha');
+  // A notification from another computer switches to it and opens that session.
+  window.notificationTargets.set('/__agent-deck-open',JSON.stringify({deck:DECK,session:'beta',at:Date.now()}));
+  window.dispatchEvent(new window.Event('focus'));
+  await settle();await settle();
   expect(window.document.querySelector('#title b').textContent).toBe('beta');
   }finally{window.close()}
 });

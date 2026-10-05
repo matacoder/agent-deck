@@ -1,8 +1,8 @@
 # Agent Deck
 
 A self-hosted workspace for [Claude Code](https://claude.com/claude-code),
-[Codex](https://github.com/openai/codex), Kimi and terminals. Install on Linux or
-macOS, work from a desktop or phone browser, get notified when an agent needs you, and answer
+[Codex](https://github.com/openai/codex), Kimi and terminals. Install on Linux, macOS or
+Windows 11 (WSL2), work from a desktop or phone browser, get notified when an agent needs you, and answer
 agent questions with one tap or in Telegram.
 Sessions live in tmux, keep working after you close the tab, and can be restored
 after a reboot.
@@ -31,7 +31,7 @@ after a reboot.
 - Notifications on phone and desktop when an agent asks a question or finishes, from every connected computer.
 - Screenshots an agent mentions by path (`/tmp/shot.png`, `docs/home.png`) appear as thumbnails under the line and open in a full-screen viewer, also for sessions on connected computers.
 - Telegram bot integration: receive agent questions with answer buttons in your private chat.
-- One-command installation on Linux and macOS, autostart and panel updates; in-panel agent setup and login.
+- One-command installation on Linux, macOS and Windows 11 (WSL2), autostart and panel updates; in-panel agent setup and login.
 
 <img src="docs/screenshots/mobile-settings.png" width="260" alt="Interface language settings">
 
@@ -133,6 +133,49 @@ launchctl bootout gui/$(id -u)/com.agent-deck.panel; launchctl bootout gui/$(id 
 rm ~/Library/LaunchAgents/com.agent-deck.{panel,ttyd}.plist
 ```
 
+### Windows 11 (WSL2)
+
+Agent Deck runs inside WSL2 (Ubuntu 24.04) with the regular Linux installer; agents work in Linux.
+Requirements: Windows 11 22H2 or newer and virtualization enabled (it is on most PCs). Open
+**PowerShell as administrator** (Start → type *PowerShell* → *Run as administrator*) and run:
+
+```powershell
+irm https://raw.githubusercontent.com/matacoder/agent-deck/main/install-windows.ps1 | iex
+```
+
+The script installs WSL (on a fresh PC it asks you to restart Windows once and run the command
+again), installs and signs in to Tailscale, switches WSL to mirrored networking (other settings in
+`%UserProfile%\.wslconfig` are kept, the old file is saved as `.wslconfig.agent-deck-backup`), installs
+Ubuntu 24.04 and Agent Deck in it, allows the panel port in the firewall for the Tailscale range only,
+adds **Agent Deck** to the Start menu and keeps WSL running while you are signed in. The panel login and
+password are printed at the end. If WSL settings had to change, WSL restarts once, which stops other
+running Linux programs.
+
+Russian interface from the first launch (run both lines in the same window):
+
+```powershell
+$env:AGENT_DECK_LANGUAGE = 'ru'
+```
+
+```powershell
+irm https://raw.githubusercontent.com/matacoder/agent-deck/main/install-windows.ps1 | iex
+```
+
+Other options are set the same way before the command: `AGENT_DECK_PORT` (default `8790`),
+`AGENT_DECK_DISTRO` (default `Ubuntu-24.04`), `AGENT_DECK_WITH_DOCKER=1` (rootless Docker inside WSL).
+
+Stop autostart (sessions and settings stay in WSL):
+
+```powershell
+Unregister-ScheduledTask -TaskName 'Agent Deck' -Confirm:$false; wsl --terminate Ubuntu-24.04
+```
+
+Remove the firewall rules:
+
+```powershell
+Remove-NetFirewallRule -Name AgentDeck-Tailscale; Remove-NetFirewallHyperVRule -Name AgentDeck-WSL
+```
+
 ### After installing
 
 1. Open the printed address and log in.
@@ -159,6 +202,12 @@ Full update on Linux, including system setup:
 
 ```bash
 sudo /opt/agent-deck/update.sh
+```
+
+Full update on Windows 11 — rerun the installer in PowerShell as administrator:
+
+```powershell
+irm https://raw.githubusercontent.com/matacoder/agent-deck/main/install-windows.ps1 | iex
 ```
 
 Full update on macOS — rerun the installer:

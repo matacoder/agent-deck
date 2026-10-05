@@ -1170,16 +1170,41 @@ async function savePushEvents(){
   catch(e){if(e.message!==STALE)toast(e.message)}
   renderPush();
 }
-// A tap on a notification focuses an open panel and asks it to show the session.
+// A tap on a notification stores {deck, session}; the page opens it on start, resume or a worker message.
+const OPEN_CACHE="agent-deck-open",OPEN_KEY="/__agent-deck-open";
+async function takeNotificationTarget(storage){
+  if(!storage)return null;
+  try{
+    const cache=await storage.open(OPEN_CACHE),hit=await cache.match(OPEN_KEY);
+    if(!hit)return null;
+    const target=await hit.json();
+    await cache.delete(OPEN_KEY);
+    return Date.now()-target.at<120000?target:null;  // An old tap must not jump sessions later.
+  }catch(e){return null}
+}
+function openNotificationTarget(target){
+  const deck=target.deck||"",session=target.session;
+  if(!session&&deck===selectedDeck)return;
+  if(deck!==selectedDeck){openDeckSession(deck,session);return}
+  drawer(false);
+  if(load.done)select(session);
+  else activate(session);  // Before the first list: the load keeps this session when it exists.
+}
+async function consumeNotificationTarget(){
+  const target=await takeNotificationTarget(window.caches);
+  if(target)openNotificationTarget(target);
+}
 if("serviceWorker" in navigator&&window.isSecureContext){
-  navigator.serviceWorker.addEventListener("message",event=>{
-    const data=event.data||{};if(data.type!=="agent-deck-open")return;
-    if((data.deck||"")!==selectedDeck)openDeckSession(data.deck||"",data.session);else if(data.session)select(data.session);
-  });
+  navigator.serviceWorker.addEventListener("message",event=>{if((event.data||{}).type==="agent-deck-open")consumeNotificationTarget()});
+  navigator.serviceWorker.startMessages?.();
   navigator.serviceWorker.register("/sw.js").catch(()=>{});
+  document.addEventListener("visibilitychange",()=>{if(!document.hidden)consumeNotificationTarget()});
+  addEventListener("focus",consumeNotificationTarget);
+  addEventListener("pageshow",consumeNotificationTarget);
+  setTimeout(consumeNotificationTarget,0);  // After app.js has restored this computer's state.
 }
 
-if(typeof module!=="undefined")module.exports={pushBlocker,deviceLabel,base64UrlBytes};
+if(typeof module!=="undefined")module.exports={pushBlocker,deviceLabel,base64UrlBytes,takeNotificationTarget};
 // Screenshots and previews that agents mention by path: clickable, with thumbnails and a viewer.
 const IMAGE_PATH_RE=/(?<![\w/.~@+-])(?:~?\/)?(?:[\w.@+-]+\/)*[\w.@+-]+\.(?:png|jpe?g|webp|gif)(?![\w-]|\.\w)/gi;
 const IMAGE_HEAD_RE=/^[\w./@+-]+\.(?:png|jpe?g|webp|gif)(?![\w-]|\.\w)/i;

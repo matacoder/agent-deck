@@ -19,3 +19,16 @@ test('names devices so the list in settings is recognisable',()=>{
 test('decodes the VAPID public key from base64url',()=>{
  expect([...base64UrlBytes('BP4z-_8')]).toEqual([0x04,0xfe,0x33,0xfb,0xff]);
 });
+
+test('a notification tap target is taken once and ignored when old',async()=>{
+ const {takeNotificationTarget}=require('../../frontend/notifications');
+ const store=new Map();
+ const storage={open:async()=>({match:async key=>store.has(key)?{json:async()=>JSON.parse(store.get(key))}:undefined,delete:async key=>store.delete(key)})};
+ store.set('/__agent-deck-open',JSON.stringify({deck:'',session:'api',at:Date.now()}));
+ expect(await takeNotificationTarget(storage)).toMatchObject({session:'api'});
+ expect(await takeNotificationTarget(storage)).toBeNull();
+ store.set('/__agent-deck-open',JSON.stringify({deck:'',session:'old',at:Date.now()-10*60*1000}));
+ expect(await takeNotificationTarget(storage)).toBeNull();
+ expect(store.size).toBe(0);
+ expect(await takeNotificationTarget(undefined)).toBeNull();
+});

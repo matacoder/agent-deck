@@ -2,6 +2,12 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.8.0 — 2026-10-05
+
+- Windows 11 support through WSL2: `install-windows.ps1` (PowerShell as administrator, `irm … | iex`) installs WSL, Tailscale and Ubuntu 24.04, enables mirrored networking (keeping other `.wslconfig` settings, with a backup), runs the regular Linux installer bound to the Windows Tailscale address, opens the panel port for the Tailscale range only, adds a Start menu shortcut and keeps WSL running while signed in. Rerunning updates.
+- Notifications: the title is the session name; the agent, its status and the computer move to the body with the question, so nothing is cut off.
+- Fix: tapping a notification now opens its session, including on iPhone where a resumed Home Screen app missed the worker message. The tapped target is kept in Cache Storage and opened on start, resume or focus (ignored after 2 minutes); sessions on other computers switch to that computer.
+
 ## 1.7.0 — 2026-10-05
 
 - Screenshots in agent output: image paths (absolute, `~/`, relative to the session, including paths the agent wrapped across lines) become links with thumbnails in the Screen view and open in a full-screen viewer with swipe/arrow navigation and "Open original". Works for sessions on connected Agent Decks.

@@ -129,14 +129,20 @@ self.addEventListener('push', event => {
 self.addEventListener('notificationclick', event => {
   event.notification.close();
   const data = event.notification.data || {};
-  event.waitUntil(self.clients.matchAll({type: 'window', includeUncontrolled: true}).then(list => {
-    for (const client of list) {
-      if (new URL(client.url).origin === self.location.origin) {
-        client.postMessage({type: 'agent-deck-open', deck: data.deck, session: data.session});
-        return client.focus();
+  const target = {deck: data.deck || '', session: data.session || '', at: Date.now()};
+  // iOS often resumes a suspended Home Screen app without delivering postMessage or navigating,
+  // so the target is stored where the page reads it whenever it starts or becomes visible.
+  event.waitUntil(caches.open('agent-deck-open')
+    .then(cache => cache.put('/__agent-deck-open', new Response(JSON.stringify(target))))
+    .then(() => self.clients.matchAll({type: 'window', includeUncontrolled: true}))
+    .then(list => {
+      for (const client of list) {
+        if (new URL(client.url).origin === self.location.origin) {
+          client.postMessage({type: 'agent-deck-open'});
+          return client.focus();
+        }
       }
-    }
-    return self.clients.openWindow(data.url || '/');
-  }));
+      return self.clients.openWindow(data.url || '/');
+    }));
 });
 """
