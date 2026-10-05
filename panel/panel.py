@@ -892,19 +892,66 @@ def agent_status(agent):
 _cache = {}
 
 
-def cached(key, ttl, fn):
-    """Return fn() cached for ttl seconds; on failure keep serving the last good value (marked stale)."""
+_usage_store_lock = threading.Lock()
+
+
+def usage_store_path():
+    return os.path.expanduser("~/.config/cc-panel/usage-cache.json")
+
+
+def stored_value(key):
+    try:
+        with open(usage_store_path()) as stream:
+            item = json.load(stream).get(key)
+        return (float(item[0]), item[1]) if isinstance(item, list) and len(item) == 2 and isinstance(item[1], dict) else None
+    except (OSError, ValueError, TypeError, AttributeError):
+        return None
+
+
+def store_value(key, stamp, value):
+    with _usage_store_lock:
+        try:
+            with open(usage_store_path()) as stream:
+                data = json.load(stream)
+        except (OSError, ValueError):
+            data = {}
+        data = data if isinstance(data, dict) else {}
+        data[key] = [stamp, value]
+        try:
+            kimi_config.atomic_write(usage_store_path(), json.dumps(data))
+        except OSError:
+            pass  # Losing the copy only costs one extra request after a restart.
+
+
+def cached(key, ttl, fn, persist=False):
+    """Return fn() cached for ttl seconds; on failure keep serving the last good value (marked stale).
+
+    persist keeps the last good value across panel restarts: updates restart the panel, and an
+    empty cache plus a rate-limited first request would otherwise show no data at all."""
     hit = _cache.get(key)
+    if not hit and persist and (hit := stored_value(key)):
+        _cache[key] = hit
     if hit and time.time() - hit[0] < ttl:
         return hit[1]
     try:
         val = fn()
     except Exception as e:  # network/auth errors must not break the panel
         # remember the failure only briefly (max 5 min), so a transient error doesn't stick for the whole ttl
-        _cache[key] = (time.time() - ttl + min(ttl, 300), {**hit[1], "stale": True} if hit and "error" not in hit[1]
+        backoff = min(ttl, 300)
+        if isinstance(e, urllib.error.HTTPError) and e.code == 429:
+            # An early retry only extends the block and risks the account; honour Retry-After.
+            try:
+                wait = int(e.headers.get("Retry-After") or 0)
+            except (TypeError, ValueError, AttributeError):
+                wait = 0
+            backoff = min(max(1800, wait), 6 * 3600)
+            e.close()
+        _cache[key] = (time.time() - ttl + backoff, {**hit[1], "stale": True} if hit and "error" not in hit[1]
                        else {"error": str(e)[:200]})
         return _cache[key][1]
     _cache[key] = (time.time(), val)
+    if persist and "error" not in val:
+        store_value(key, *_cache[key])
     return val
 
 
@@ -1116,7 +1163,9 @@ def usage():
             cache_key = f"usage-{agent}"
             if agent == "kimi":
                 cache_key += "-" + hashlib.sha256(kimi_config.read().get("key", "").encode()).hexdigest()
-            out[agent] = cached(cache_key, 60, fn)
+            # Anthropic rate-limits the usage endpoint (HTTP 429) that Claude Code itself also polls.
+            # Claude quotas are weekly, so a 10-minute view is current enough.
+            out[agent] = cached(cache_key, 600 if agent == "claude" else 60, fn, persist=agent != "kimi")
     return out
 
 

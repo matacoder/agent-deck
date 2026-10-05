@@ -2,6 +2,12 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.2.4 — 2026-10-05
+
+- Fix Claude quotas showing "—" after a panel update: the last successful Claude/Codex usage is kept in `~/.config/cc-panel/usage-cache.json` (0600) and served after restarts instead of a fresh request.
+- Query the Claude usage endpoint at most every 10 minutes; after HTTP 429 wait at least 30 minutes or the server's `Retry-After` (up to 6 hours).
+- "Reconnect terminal" has the same height as the other terminal keys and no longer wraps.
+
 ## 1.2.3 — 2026-10-05
 
 - Show the running agent and model, remaining quota, today's plan and reset time under the message field for Claude, Codex and Kimi sessions; the model follows `/model` switches from the conversation transcript.

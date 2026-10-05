@@ -265,6 +265,47 @@ class CacheTests(PanelCase):
         with patch.object(self.panel.time, "time", return_value=3902):
             self.assertEqual(self.panel.cached("usage", 3600, fetch), {"percent": 58})
 
+    def test_persisted_usage_survives_restart_and_rate_limited_first_request(self):
+        fetch = Mock(return_value={"windows": [{"percent": 33}]})
+        with patch.object(self.panel.time, "time", return_value=1000):
+            self.panel.cached("usage-claude", 300, fetch, persist=True)
+        path = Path(self.panel.usage_store_path())
+        self.assertEqual(path.stat().st_mode & 0o777, 0o600)
+        self.panel._cache.clear()  # a panel update restarts the process
+        with patch.object(self.panel.time, "time", return_value=1200):
+            self.assertEqual(self.panel.cached("usage-claude", 300, fetch, persist=True), {"windows": [{"percent": 33}]})
+        self.assertEqual(fetch.call_count, 1)
+        self.panel._cache.clear()
+        fetch.side_effect = RuntimeError("HTTP Error 429: Too Many Requests")
+        with patch.object(self.panel.time, "time", return_value=2000):
+            self.assertEqual(self.panel.cached("usage-claude", 300, fetch, persist=True), {"windows": [{"percent": 33}], "stale": True})
+        self.assertNotIn("stale", json.loads(path.read_text())["usage-claude"][1])
+
+    def test_rate_limit_backs_off_at_least_thirty_minutes_or_retry_after(self):
+        import email.message
+        def limited(seconds):
+            headers = email.message.Message()
+            if seconds is not None:
+                headers["Retry-After"] = seconds
+            return self.panel.urllib.error.HTTPError("https://api.example/usage", 429, "Too Many Requests", headers, None)
+        for retry_after, backoff in ((None, 1800), ("7200", 7200), ("999999", 6 * 3600), ("soon", 1800)):
+            with self.subTest(retry_after=retry_after):
+                self.panel._cache.clear()
+                fetch = Mock(side_effect=limited(retry_after))
+                with patch.object(self.panel.time, "time", return_value=10000):
+                    self.panel.cached("usage-claude", 600, fetch)
+                with patch.object(self.panel.time, "time", return_value=10000 + backoff - 1):
+                    self.panel.cached("usage-claude", 600, fetch)
+                self.assertEqual(fetch.call_count, 1)
+                with patch.object(self.panel.time, "time", return_value=10000 + backoff + 1):
+                    self.panel.cached("usage-claude", 600, fetch)
+                self.assertEqual(fetch.call_count, 2)
+
+    def test_errors_and_unpersisted_values_are_not_written(self):
+        self.panel.cached("usage-claude", 300, Mock(return_value={"error": "token expired"}), persist=True)
+        self.panel.cached("usage-kimi-hash", 60, Mock(return_value={"windows": []}))
+        self.assertFalse(Path(self.panel.usage_store_path()).exists())
+
     def test_disabled_release_checks_do_not_use_network(self):
         self.assertEqual(self.panel.version_info()["version"], self.panel.VERSION)
         self.panel.http_json.assert_not_called()
