@@ -767,17 +767,18 @@ function localUsage(profile){
   line.append(speed);box.append(line);
   return box;
 }
-let hubSection="agents",lmData={profiles:[],discovery:{}},lmTimer=null,returnToNew=false;
+let hubSection="agents",lmData={profiles:[],discovery:{}},lmTimer=null,returnToNew=false,lmRefreshPending=null,lmModelsChecked=0;
 function settingsSection(section){
   hubSection=section;for(const name of ["agents","models","connections","app"])$("hub_"+name).hidden=name!==section;
   for(const b of document.querySelectorAll(".hub-nav button"))b.classList.toggle("on",b.dataset.section===section);
+  if(section==="models"&&$("settings_dlg").open)refreshLMModels();
 }
 async function openSettings(section="agents"){
   drawer(false);sheet(false);settingsSection(section);
   if(!$("settings_dlg").open)$("settings_dlg").showModal();
   renderHub();
-  await Promise.allSettled([loadDeckSettings(),(async()=>{const data=await api("/api/project_directory");$("project_directory").value=data.directory})(),loadLM(),loadIntegrations(),checkGithubFoot(),(async()=>{const data=await api("/api/locales");$("ui_language").replaceChildren(...data.languages.map(x=>{const o=el("option","",x.name);o.value=x.code;return o}));$("ui_language").value=I18N.language})()]);
-  clearInterval(lmTimer);lmTimer=setInterval(()=>{if($("settings_dlg").open&&lmData.discovery?.phase==="running")loadLM(false)},2000);
+  await Promise.allSettled([loadDeckSettings(),(async()=>{const data=await api("/api/project_directory");$("project_directory").value=data.directory})(),refreshLMModels(),loadIntegrations(),checkGithubFoot(),(async()=>{const data=await api("/api/locales");$("ui_language").replaceChildren(...data.languages.map(x=>{const o=el("option","",x.name);o.value=x.code;return o}));$("ui_language").value=I18N.language})()]);
+  clearInterval(lmTimer);lmTimer=setInterval(()=>{if(!document.hidden&&$("settings_dlg").open){if(lmData.discovery?.phase==="running")loadLM(false);if(hubSection==="models"&&Date.now()-lmModelsChecked>30000)refreshLMModels()}},2000);
 }
 $("settings_dlg").addEventListener("close",()=>{if($("settings_dlg").open)return;clearInterval(lmTimer);clearInterval(deckTimer);closeKimi();closeIntegrations();$("lm_key").value="";if(returnToNew){returnToNew=false;$("dlg").showModal();renderSources()}});
 async function saveProjectDirectory(){
@@ -793,7 +794,7 @@ async function loadDeckSettings(){
   const box=$("deck_connections");box.replaceChildren();
   for(const deck of data.decks){
     const card=el("div","deck-connection",el("strong","",deck.name),el("p","",deck.url));
-    card.append(btn(tr("Переключиться"),"",()=>switchDeck(deck.id)),btn(tr("Изменить"),"",()=>editDeck(deck)),btn(tr("Удалить"),"",()=>removeDeck(deck.id)));box.append(card);
+    card.append(el("div","deck-actions",btn(tr("Переключиться"),"pri",()=>switchDeck(deck.id)),btn(tr("Изменить"),"",()=>editDeck(deck)),btn(tr("Удалить"),"danger",()=>removeDeck(deck.id))));box.append(card);
   }
   renderDeckDiscovery(data.discovery);
   if(selectedDeck&&!data.decks.some(d=>d.id===selectedDeck))switchDeck("");
@@ -820,7 +821,7 @@ async function removeDeck(identity){
 function renderDeckDiscovery(discovery){
   $("deck_discover").disabled=discovery.phase==="running";
   $("deck_discovery_status").textContent=discovery.error||tr(discovery.phase==="running"?"Поиск…":discovery.phase==="done"?"Поиск завершён":"");
-  $("deck_discovery_results").replaceChildren(...(discovery.results||[]).map(deck=>el("div","deck-connection",el("span","",deck.name+" · "+deck.url),btn(tr("Подключить"),"",()=>editDeck(deck)))));
+  $("deck_discovery_results").replaceChildren(...(discovery.results||[]).map(deck=>el("div","deck-connection deck-result",el("div","deck-info",el("strong","",deck.name),el("p","",deck.url)),el("div","deck-actions",btn(tr("Подключить"),"",()=>editDeck(deck))))));
   clearInterval(deckTimer);
   if(discovery.phase==="running")deckTimer=setInterval(async()=>{if(document.hidden||!$("settings_dlg").open)return;try{const data=await gatewayApi("/api/decks");renderDeckDiscovery(data.discovery)}catch(e){toast(e.message);clearInterval(deckTimer)}},2000);
 }
@@ -838,7 +839,7 @@ function renderHub(){
   $("hub_agents").replaceChildren(...["claude","codex","kimi","pi"].map(a=>{const st=lastAg[a]||{};if(a==="pi")return card("Pi",st.version||tr("Не установлен"),st.installed?tr("Обновить"):tr("Установить"),()=>agentAction("install",a));if(a==="kimi")return card(AGENTS[a].label,st.version||tr("Не установлен"),st.installed?(lastAg.kimi_config?.configured?tr("Обновить"):tr("Настроить ключ Kimi")):tr("Установить"),()=>st.installed&&!lastAg.kimi_config?.configured?openKimi():agentAction("install",a));return card(AGENTS[a].label,[st.version,st.installed?(st.logged_in?tr("подключён"):tr("Войти")):tr("Не установлен")].filter(Boolean).join(" · "),st.installed?(st.logged_in?tr("Обновить"):tr("Войти")):tr("Установить"),()=>agentAction(st.installed&&!st.logged_in?"login":"install",a),st.installed?[[tr("Обновить"),()=>agentAction("install",a)]]:[])}));
   const cards=[card("Kimi",lastAg.kimi_config?.configured?tr("Ключ сохранён на сервере"):tr("Ключ ещё не настроен"),tr("Настроить"),()=>openEditor("kimi"))];
   for(const p of lmData.profiles||[]){
-    const c=card(p.name+" · LM Studio",p.url+" · "+tr(p.status==="online"?"подключён":p.status==="needs_key"?"Нужен ключ":p.status==="offline"?"Недоступен":"Не проверен"),tr("Проверить подключение"),()=>lmAction("probe",{id:p.id}),[[tr("Изменить"),()=>editLM(p)],[tr("Удалить"),()=>lmAction("remove",{id:p.id})]]);
+    const c=card(p.name+" · LM Studio",p.url+" · "+tr(p.status==="online"?"подключён":p.status==="needs_key"?"Нужен ключ":p.status==="offline"?"Недоступен":"Не проверен"),tr("Обновить модели"),()=>lmAction("probe",{id:p.id}),[[tr("Изменить"),()=>editLM(p)],[tr("Удалить"),()=>lmAction("remove",{id:p.id})]]);
     const samples=p.measurements?Object.values(p.measurements).flatMap(group=>Object.values(group)):[p.performance||{}];for(const sample of samples)c.append(el("p","",performanceText(sample,false)));
     if(p.models?.length){const select=el("select","");select.dataset.profile=p.id;select.setAttribute("aria-label",tr("Модель"));for(const m of p.models){const o=el("option","",m.name+(m.loaded?" · "+tr("Загружена"):"")+(m.tool_tested?" · ✓ tools":""));o.value=m.id;select.append(o)}if(selections.has(p.id))select.value=selections.get(p.id);if(!select.value&&select.options.length)select.selectedIndex=0;c.append(select);const detail=el("p","");const describe=()=>{const m=p.models.find(x=>x.id===select.value);detail.textContent=[m.context_length||m.max_context_length?"Context: "+(m.context_length||m.max_context_length):"",m.quantization||"",m.tool_tested?"Tools: ✓":"Tools: ?"].filter(Boolean).join(" · ")};select.onchange=describe;describe();c.append(detail);const actions=el("div","acts",btn(tr("Проверить инструменты"),"",()=>lmAction("test",{id:p.id,model:select.value})),btn(tr("Измерить скорость"),"",()=>lmAction("benchmark",{id:p.id,model:select.value})));c.append(actions)}cards.push(c);
   }
@@ -852,6 +853,13 @@ function performanceText(m,includeModel=true){
   if(Number.isFinite(m.time_to_first_token_seconds))parts.push("TTFT "+m.time_to_first_token_seconds.toFixed(2)+" s");
   if(Number.isFinite(m.model_load_time_seconds))parts.push(tr("Загрузка")+" "+m.model_load_time_seconds.toFixed(2)+" s");
   if(includeModel&&m.model)parts.push(m.model);return parts.join(" · ");
+}
+async function refreshLMModels(){
+  if(document.hidden)return;
+  if(lmRefreshPending)return lmRefreshPending;
+  lmModelsChecked=Date.now();
+  lmRefreshPending=(async()=>{try{lmData=await refreshModelCatalog(api);if($("settings_dlg").open)renderHub();renderDiscovery();renderSources()}catch(e){toast(e.message)}finally{lmRefreshPending=null}})();
+  return lmRefreshPending;
 }
 async function loadLM(refresh=true){try{lmData=await api("/api/lmstudio");if($("settings_dlg").open&&refresh)renderHub();renderDiscovery()}catch(e){$("lm_progress").textContent=e.message}}
 function editLM(p){$("lm_editor").open=true;$("lm_id").value=p.id||"";$("lm_name").value=p.name||"";$("lm_url").value=p.url||"";$("lm_key").value="";$("lm_clear_key").checked=false;$("lm_editor").scrollIntoView({block:"nearest"})}
@@ -1035,7 +1043,7 @@ function pickAgent(a){
 async function openNew(){
   returnToNew=false;if($("settings_dlg").open)$("settings_dlg").close();drawer(false);
   try{const{projects}=await api("/api/projects");$("projlist").replaceChildren(...projects.map(p=>{const o=document.createElement("option");o.value=p;return o}))}catch(e){}
-  $("dlg").showModal();loadGithub();await loadLM();renderSources();
+  $("dlg").showModal();loadGithub();await refreshLMModels();renderSources();
 }
 async function createSession(){
   const name=$("n_name").value.trim();$("n_go").disabled=true;$("n_go").textContent=tr("Создаю…");

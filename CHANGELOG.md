@@ -2,6 +2,15 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z`.
 
+## 1.1.1 — 2026-10-05
+
+- Preserve project groups for existing sessions in ~/projects while using ~/dev as the new default, including worktrees.
+
+- Fetch current LM Studio model catalogs when opening settings or creating sessions, refresh visible model settings every 30 seconds, and provide a manual refresh button.
+
+- Group remote connection actions into styled buttons with mobile spacing.
+- Separate discovery names, addresses and connect buttons; match the port field to the dark settings theme.
+
 ## 1.1.0 — 2026-10-05
 
 - Connect other Agent Deck instances by Tailscale URL and their own login/password;

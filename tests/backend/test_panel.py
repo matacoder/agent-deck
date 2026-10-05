@@ -154,6 +154,15 @@ class AttachmentTests(PanelCase):
 
 
 class SessionTests(PanelCase):
+    def test_groups_keep_legacy_projects_and_new_dev_after_directory_change(self):
+        with patch.object(self.panel.project_directory, 'get', return_value=str(self.home/'dev')), patch.object(self.panel.os.path, 'expanduser', side_effect=lambda p:str(self.home/p[2:])):
+            for folder in ('projects','dev'):
+                self.assertEqual(self.panel.session_group(str(self.home/folder/'agent-deck')), 'agent-deck')
+                self.assertEqual(self.panel.session_group(str(self.home/folder/'agent-deck.worktrees'/'feature')), 'agent-deck')
+            self.assertEqual(self.panel.session_group(str(self.home/'projects-other'/'repo')), 'другое')
+        with patch.object(self.panel.project_directory, 'get', return_value=str(self.home/'custom')):
+            self.assertEqual(self.panel.session_group(str(self.home/'custom'/'repo'/'src')), 'repo')
+
     def test_invalid_session_names_are_rejected_before_commands(self):
         self.panel.session_exists = Mock(return_value=False)
         self.panel.create_session = Mock()

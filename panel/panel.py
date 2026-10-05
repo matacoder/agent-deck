@@ -310,6 +310,15 @@ def opt(name, key):
     return out or None
 
 
+def session_group(path):
+    roots = {project_directory.get(), os.path.expanduser('~/projects'), os.path.expanduser('~/dev')}
+    for root in sorted(roots, key=len, reverse=True):
+        root = root.rstrip(os.sep)
+        if path.startswith(root + os.sep):
+            return os.path.relpath(path, root).split(os.sep)[0].removesuffix('.worktrees')
+    return 'другое'
+
+
 def list_sessions(preview_name=None):
     fmt = ("#{session_name}\t#{session_created}\t#{session_attached}\t#{pane_current_path}\t"
            "#{pane_current_command}\t#{window_activity}\t#{@cc_agent}\t#{@cc_sid}\t#{@cc_skip}\t#{@cc_source}")
@@ -320,9 +329,7 @@ def list_sessions(preview_name=None):
         if not sname.startswith(PREFIX):
             continue
         name = sname[len(PREFIX):]
-        root = project_directory.get()
-        rel = os.path.relpath(path, root) if path.startswith(root + os.sep) else path
-        group = rel.split(os.sep)[0].removesuffix(".worktrees") if not rel.startswith("/") else "другое"
+        group = session_group(path)
         agent = agent or "claude"
         item = {
             "name": name, "title": title or name, "created": int(created or 0), "attached": int(attached or 0),

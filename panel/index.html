@@ -404,8 +404,14 @@ dialog{box-shadow:0 24px 80px #0006;border-color:#ffffff12;border-radius:16px}
 
 .deck-switch{display:grid;grid-template-columns:auto minmax(0,1fr) 32px;align-items:center;gap:8px;padding:10px 8px;border-bottom:1px solid var(--bd)}
 .deck-switch label{font-size:11px;color:var(--mut)}.deck-switch select{min-width:0;background:var(--side2);color:var(--fg);border:1px solid var(--bd);border-radius:6px;padding:8px}.deck-switch button{min-height:36px;font-size:20px}
-.deck-connection{padding:10px 0;border-bottom:1px solid var(--bd);overflow-wrap:anywhere}.deck-connection button{margin-right:12px}#deck_editor form{display:grid;gap:8px;padding-top:12px}#deck_port{max-width:90px}.hub-card input{width:100%;box-sizing:border-box}
+.deck-connection{padding:10px 0;border-bottom:1px solid var(--bd);overflow-wrap:anywhere}#deck_editor form{display:grid;gap:8px;padding-top:12px}#deck_port{max-width:90px}.hub-card input{width:100%;box-sizing:border-box}
 @media(max-width:760px){.deck-switch select{font-size:16px}}
+
+.deck-connection{padding:16px 0}.deck-connection strong{display:block;font-size:13px}.deck-connection p{margin:6px 0 12px;color:var(--mut)}
+.deck-actions{display:flex;align-items:center;flex-wrap:wrap;gap:8px}.deck-actions button{min-height:44px;padding:10px 14px;border:1px solid var(--bd);border-radius:9px;background:var(--side2);font-size:12px;line-height:1.4;white-space:normal}.deck-actions button.pri{border-color:transparent;background:var(--acc);color:#fff}.deck-actions button.danger{color:var(--bad)}.deck-actions button:hover:not(:disabled){filter:brightness(1.15)}.deck-actions button:focus-visible{outline:2px solid var(--acc);outline-offset:2px}.deck-actions button:disabled{opacity:.5;cursor:default}
+.deck-toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:12px;margin-top:16px}.deck-port{display:flex;align-items:center;gap:8px}.deck-port label{margin:0;color:var(--mut);font-size:12px}#deck_port{width:88px;min-height:44px;padding:8px 10px;border:1px solid var(--bd);border-radius:9px;background:var(--side2);color:var(--fg);font:inherit;font-size:16px}
+.deck-result{display:flex;align-items:center;gap:16px}.deck-info{flex:1;min-width:0}.deck-result p{margin-bottom:0}.deck-result .deck-actions{flex:none}
+@media(max-width:480px){.deck-toolbar{align-items:stretch}.deck-toolbar>.deck-actions{flex:1 1 100%}.deck-toolbar .deck-actions button{flex:1}.deck-result{align-items:flex-start;flex-direction:column;gap:12px}.deck-connection>.deck-actions{margin-top:12px}.deck-actions button{padding:10px 12px}}
 </style></head><body>
 <div id="app">
   <aside>
@@ -584,7 +590,7 @@ dialog{box-shadow:0 24px 80px #0006;border-color:#ffffff12;border-radius:16px}
     <p>Язык сохраняется в этом браузере. Сообщения и вывод агентов не переводятся.</p><button class="pri">Применить</button></form>
     <form class="hub-card" onsubmit="event.preventDefault();saveProjectDirectory()"><label for="project_directory">Папка проектов</label><input type="text" id="project_directory" autocomplete="off" autocapitalize="off" spellcheck="false" required><p>Используется для новых сессий. Существующие сессии остаются в своих папках.</p><div class="acts"><button class="pri" id="project_directory_save">Сохранить</button></div></form>
     <div class="hub-card"><h4>Другие Agent Deck</h4><p>Управляйте другими компьютерами через этот сервер.</p><div id="deck_connections"></div>
-      <div class="acts"><label for="deck_port">Порт</label><input type="number" id="deck_port" min="1" max="65535" value="8790"><button type="button" id="deck_discover" onclick="discoverDecks()">Обнаружить</button><button type="button" onclick="editDeck()">Подключить</button></div><p id="deck_discovery_status"></p><div id="deck_discovery_results"></div>
+      <div class="deck-toolbar"><div class="deck-port"><label for="deck_port">Порт</label><input type="number" id="deck_port" min="1" max="65535" value="8790"></div><div class="deck-actions"><button type="button" id="deck_discover" onclick="discoverDecks()">Обнаружить</button><button type="button" onclick="editDeck()">Подключить</button></div></div><p id="deck_discovery_status"></p><div id="deck_discovery_results"></div>
       <details id="deck_editor"><summary>Подключение Agent Deck</summary><form onsubmit="event.preventDefault();saveDeck()"><input type="hidden" id="deck_id"><label for="deck_name">Название</label><input type="text" id="deck_name" required maxlength="100"><label for="deck_url">Адрес Tailscale</label><input type="url" id="deck_url" required placeholder="http://100.68.39.62:8790"><label for="deck_username">Логин</label><input type="text" id="deck_username" required autocomplete="off"><label for="deck_password">Пароль</label><input type="password" id="deck_password" autocomplete="new-password"><p>Пароль хранится на основном сервере. Пустое поле сохраняет пароль существующего подключения.</p><button class="pri" id="deck_save">Подключить</button></form></details>
     </div>
     <form class="hub-card" onsubmit="event.preventDefault();saveNetwork()"><h4>Сеть и адрес панели</h4><p><span>Адрес в браузере</span>: <span id="network_browser"></span></p><p><span>Панель слушает</span>: <span id="network_bind"></span></p><label for="network_name">Название этого Agent Deck</label><input type="text" id="network_name" required maxlength="100"><label for="network_public_url">Публичный адрес</label><input type="url" id="network_public_url" placeholder="https://agents.example.com"><p>Для доступа по этому адресу домен и HTTPS должны быть настроены на сервере.</p><button class="pri" id="network_save">Сохранить</button></form>
@@ -641,7 +647,13 @@ async function saveSessionName({request,input,button,dialog,refresh,notify}){
   catch(e){notify(e.message)}finally{button.disabled=false}
 }
 
-if(typeof module!=="undefined")module.exports={saveDirectorySetting,saveSessionName};
+async function refreshModelCatalog(request){
+  const current=await request("/api/lmstudio");
+  await Promise.allSettled((current.profiles||[]).map(profile=>request("/api/lm_probe",{id:profile.id})));
+  return request("/api/lmstudio");
+}
+
+if(typeof module!=="undefined")module.exports={saveDirectorySetting,saveSessionName,refreshModelCatalog};
 function instancePath(identity,path){
   if(!identity)return path;
   if(!/^[0-9a-f]{24}$/.test(identity))throw new Error('Invalid Agent Deck identifier');
@@ -1429,17 +1441,18 @@ function localUsage(profile){
   line.append(speed);box.append(line);
   return box;
 }
-let hubSection="agents",lmData={profiles:[],discovery:{}},lmTimer=null,returnToNew=false;
+let hubSection="agents",lmData={profiles:[],discovery:{}},lmTimer=null,returnToNew=false,lmRefreshPending=null,lmModelsChecked=0;
 function settingsSection(section){
   hubSection=section;for(const name of ["agents","models","connections","app"])$("hub_"+name).hidden=name!==section;
   for(const b of document.querySelectorAll(".hub-nav button"))b.classList.toggle("on",b.dataset.section===section);
+  if(section==="models"&&$("settings_dlg").open)refreshLMModels();
 }
 async function openSettings(section="agents"){
   drawer(false);sheet(false);settingsSection(section);
   if(!$("settings_dlg").open)$("settings_dlg").showModal();
   renderHub();
-  await Promise.allSettled([loadDeckSettings(),(async()=>{const data=await api("/api/project_directory");$("project_directory").value=data.directory})(),loadLM(),loadIntegrations(),checkGithubFoot(),(async()=>{const data=await api("/api/locales");$("ui_language").replaceChildren(...data.languages.map(x=>{const o=el("option","",x.name);o.value=x.code;return o}));$("ui_language").value=I18N.language})()]);
-  clearInterval(lmTimer);lmTimer=setInterval(()=>{if($("settings_dlg").open&&lmData.discovery?.phase==="running")loadLM(false)},2000);
+  await Promise.allSettled([loadDeckSettings(),(async()=>{const data=await api("/api/project_directory");$("project_directory").value=data.directory})(),refreshLMModels(),loadIntegrations(),checkGithubFoot(),(async()=>{const data=await api("/api/locales");$("ui_language").replaceChildren(...data.languages.map(x=>{const o=el("option","",x.name);o.value=x.code;return o}));$("ui_language").value=I18N.language})()]);
+  clearInterval(lmTimer);lmTimer=setInterval(()=>{if(!document.hidden&&$("settings_dlg").open){if(lmData.discovery?.phase==="running")loadLM(false);if(hubSection==="models"&&Date.now()-lmModelsChecked>30000)refreshLMModels()}},2000);
 }
 $("settings_dlg").addEventListener("close",()=>{if($("settings_dlg").open)return;clearInterval(lmTimer);clearInterval(deckTimer);closeKimi();closeIntegrations();$("lm_key").value="";if(returnToNew){returnToNew=false;$("dlg").showModal();renderSources()}});
 async function saveProjectDirectory(){
@@ -1455,7 +1468,7 @@ async function loadDeckSettings(){
   const box=$("deck_connections");box.replaceChildren();
   for(const deck of data.decks){
     const card=el("div","deck-connection",el("strong","",deck.name),el("p","",deck.url));
-    card.append(btn(tr("Переключиться"),"",()=>switchDeck(deck.id)),btn(tr("Изменить"),"",()=>editDeck(deck)),btn(tr("Удалить"),"",()=>removeDeck(deck.id)));box.append(card);
+    card.append(el("div","deck-actions",btn(tr("Переключиться"),"pri",()=>switchDeck(deck.id)),btn(tr("Изменить"),"",()=>editDeck(deck)),btn(tr("Удалить"),"danger",()=>removeDeck(deck.id))));box.append(card);
   }
   renderDeckDiscovery(data.discovery);
   if(selectedDeck&&!data.decks.some(d=>d.id===selectedDeck))switchDeck("");
@@ -1482,7 +1495,7 @@ async function removeDeck(identity){
 function renderDeckDiscovery(discovery){
   $("deck_discover").disabled=discovery.phase==="running";
   $("deck_discovery_status").textContent=discovery.error||tr(discovery.phase==="running"?"Поиск…":discovery.phase==="done"?"Поиск завершён":"");
-  $("deck_discovery_results").replaceChildren(...(discovery.results||[]).map(deck=>el("div","deck-connection",el("span","",deck.name+" · "+deck.url),btn(tr("Подключить"),"",()=>editDeck(deck)))));
+  $("deck_discovery_results").replaceChildren(...(discovery.results||[]).map(deck=>el("div","deck-connection deck-result",el("div","deck-info",el("strong","",deck.name),el("p","",deck.url)),el("div","deck-actions",btn(tr("Подключить"),"",()=>editDeck(deck))))));
   clearInterval(deckTimer);
   if(discovery.phase==="running")deckTimer=setInterval(async()=>{if(document.hidden||!$("settings_dlg").open)return;try{const data=await gatewayApi("/api/decks");renderDeckDiscovery(data.discovery)}catch(e){toast(e.message);clearInterval(deckTimer)}},2000);
 }
@@ -1500,7 +1513,7 @@ function renderHub(){
   $("hub_agents").replaceChildren(...["claude","codex","kimi","pi"].map(a=>{const st=lastAg[a]||{};if(a==="pi")return card("Pi",st.version||tr("Не установлен"),st.installed?tr("Обновить"):tr("Установить"),()=>agentAction("install",a));if(a==="kimi")return card(AGENTS[a].label,st.version||tr("Не установлен"),st.installed?(lastAg.kimi_config?.configured?tr("Обновить"):tr("Настроить ключ Kimi")):tr("Установить"),()=>st.installed&&!lastAg.kimi_config?.configured?openKimi():agentAction("install",a));return card(AGENTS[a].label,[st.version,st.installed?(st.logged_in?tr("подключён"):tr("Войти")):tr("Не установлен")].filter(Boolean).join(" · "),st.installed?(st.logged_in?tr("Обновить"):tr("Войти")):tr("Установить"),()=>agentAction(st.installed&&!st.logged_in?"login":"install",a),st.installed?[[tr("Обновить"),()=>agentAction("install",a)]]:[])}));
   const cards=[card("Kimi",lastAg.kimi_config?.configured?tr("Ключ сохранён на сервере"):tr("Ключ ещё не настроен"),tr("Настроить"),()=>openEditor("kimi"))];
   for(const p of lmData.profiles||[]){
-    const c=card(p.name+" · LM Studio",p.url+" · "+tr(p.status==="online"?"подключён":p.status==="needs_key"?"Нужен ключ":p.status==="offline"?"Недоступен":"Не проверен"),tr("Проверить подключение"),()=>lmAction("probe",{id:p.id}),[[tr("Изменить"),()=>editLM(p)],[tr("Удалить"),()=>lmAction("remove",{id:p.id})]]);
+    const c=card(p.name+" · LM Studio",p.url+" · "+tr(p.status==="online"?"подключён":p.status==="needs_key"?"Нужен ключ":p.status==="offline"?"Недоступен":"Не проверен"),tr("Обновить модели"),()=>lmAction("probe",{id:p.id}),[[tr("Изменить"),()=>editLM(p)],[tr("Удалить"),()=>lmAction("remove",{id:p.id})]]);
     const samples=p.measurements?Object.values(p.measurements).flatMap(group=>Object.values(group)):[p.performance||{}];for(const sample of samples)c.append(el("p","",performanceText(sample,false)));
     if(p.models?.length){const select=el("select","");select.dataset.profile=p.id;select.setAttribute("aria-label",tr("Модель"));for(const m of p.models){const o=el("option","",m.name+(m.loaded?" · "+tr("Загружена"):"")+(m.tool_tested?" · ✓ tools":""));o.value=m.id;select.append(o)}if(selections.has(p.id))select.value=selections.get(p.id);if(!select.value&&select.options.length)select.selectedIndex=0;c.append(select);const detail=el("p","");const describe=()=>{const m=p.models.find(x=>x.id===select.value);detail.textContent=[m.context_length||m.max_context_length?"Context: "+(m.context_length||m.max_context_length):"",m.quantization||"",m.tool_tested?"Tools: ✓":"Tools: ?"].filter(Boolean).join(" · ")};select.onchange=describe;describe();c.append(detail);const actions=el("div","acts",btn(tr("Проверить инструменты"),"",()=>lmAction("test",{id:p.id,model:select.value})),btn(tr("Измерить скорость"),"",()=>lmAction("benchmark",{id:p.id,model:select.value})));c.append(actions)}cards.push(c);
   }
@@ -1514,6 +1527,13 @@ function performanceText(m,includeModel=true){
   if(Number.isFinite(m.time_to_first_token_seconds))parts.push("TTFT "+m.time_to_first_token_seconds.toFixed(2)+" s");
   if(Number.isFinite(m.model_load_time_seconds))parts.push(tr("Загрузка")+" "+m.model_load_time_seconds.toFixed(2)+" s");
   if(includeModel&&m.model)parts.push(m.model);return parts.join(" · ");
+}
+async function refreshLMModels(){
+  if(document.hidden)return;
+  if(lmRefreshPending)return lmRefreshPending;
+  lmModelsChecked=Date.now();
+  lmRefreshPending=(async()=>{try{lmData=await refreshModelCatalog(api);if($("settings_dlg").open)renderHub();renderDiscovery();renderSources()}catch(e){toast(e.message)}finally{lmRefreshPending=null}})();
+  return lmRefreshPending;
 }
 async function loadLM(refresh=true){try{lmData=await api("/api/lmstudio");if($("settings_dlg").open&&refresh)renderHub();renderDiscovery()}catch(e){$("lm_progress").textContent=e.message}}
 function editLM(p){$("lm_editor").open=true;$("lm_id").value=p.id||"";$("lm_name").value=p.name||"";$("lm_url").value=p.url||"";$("lm_key").value="";$("lm_clear_key").checked=false;$("lm_editor").scrollIntoView({block:"nearest"})}
@@ -1697,7 +1717,7 @@ function pickAgent(a){
 async function openNew(){
   returnToNew=false;if($("settings_dlg").open)$("settings_dlg").close();drawer(false);
   try{const{projects}=await api("/api/projects");$("projlist").replaceChildren(...projects.map(p=>{const o=document.createElement("option");o.value=p;return o}))}catch(e){}
-  $("dlg").showModal();loadGithub();await loadLM();renderSources();
+  $("dlg").showModal();loadGithub();await refreshLMModels();renderSources();
 }
 async function createSession(){
   const name=$("n_name").value.trim();$("n_go").disabled=true;$("n_go").textContent=tr("Создаю…");

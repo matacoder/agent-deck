@@ -13,4 +13,10 @@ async function saveSessionName({request,input,button,dialog,refresh,notify}){
   catch(e){notify(e.message)}finally{button.disabled=false}
 }
 
-if(typeof module!=="undefined")module.exports={saveDirectorySetting,saveSessionName};
+async function refreshModelCatalog(request){
+  const current=await request("/api/lmstudio");
+  await Promise.allSettled((current.profiles||[]).map(profile=>request("/api/lm_probe",{id:profile.id})));
+  return request("/api/lmstudio");
+}
+
+if(typeof module!=="undefined")module.exports={saveDirectorySetting,saveSessionName,refreshModelCatalog};

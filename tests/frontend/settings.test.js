@@ -63,3 +63,19 @@ test('connection name field requests text input to prevent small-font Safari foc
  expect(document.querySelector('#lm_name').type).toBe('text');
  expect(document.querySelector('#rename_dlg #session_title').maxLength).toBe(100);
 });
+
+test('refreshes every saved model server before reading the current catalog',async()=>{
+ const {refreshModelCatalog}=require('../../frontend/settings');
+ const fresh={profiles:[{id:'red',models:[{id:'new-model'}]}]};
+ const api=jest.fn().mockResolvedValueOnce({profiles:[{id:'red'},{id:'blue'}]}).mockResolvedValueOnce({}).mockResolvedValueOnce({}).mockResolvedValueOnce(fresh);
+ expect(await refreshModelCatalog(api)).toEqual(fresh);
+ expect(api.mock.calls).toEqual([['/api/lmstudio'],['/api/lm_probe',{id:'red'}],['/api/lm_probe',{id:'blue'}],['/api/lmstudio']]);
+});
+
+test('a failed model server does not prevent refreshing other servers',async()=>{
+ const {refreshModelCatalog}=require('../../frontend/settings');
+ const fresh={profiles:[{id:'blue',models:[{id:'replacement'}]}]};
+ const api=jest.fn().mockResolvedValueOnce({profiles:[{id:'red'},{id:'blue'}]}).mockRejectedValueOnce(new Error('Unavailable')).mockResolvedValueOnce({}).mockResolvedValueOnce(fresh);
+ expect(await refreshModelCatalog(api)).toEqual(fresh);
+ expect(api).toHaveBeenCalledWith('/api/lm_probe',{id:'blue'});
+});

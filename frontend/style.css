@@ -393,5 +393,11 @@ dialog{box-shadow:0 24px 80px #0006;border-color:#ffffff12;border-radius:16px}
 
 .deck-switch{display:grid;grid-template-columns:auto minmax(0,1fr) 32px;align-items:center;gap:8px;padding:10px 8px;border-bottom:1px solid var(--bd)}
 .deck-switch label{font-size:11px;color:var(--mut)}.deck-switch select{min-width:0;background:var(--side2);color:var(--fg);border:1px solid var(--bd);border-radius:6px;padding:8px}.deck-switch button{min-height:36px;font-size:20px}
-.deck-connection{padding:10px 0;border-bottom:1px solid var(--bd);overflow-wrap:anywhere}.deck-connection button{margin-right:12px}#deck_editor form{display:grid;gap:8px;padding-top:12px}#deck_port{max-width:90px}.hub-card input{width:100%;box-sizing:border-box}
+.deck-connection{padding:10px 0;border-bottom:1px solid var(--bd);overflow-wrap:anywhere}#deck_editor form{display:grid;gap:8px;padding-top:12px}#deck_port{max-width:90px}.hub-card input{width:100%;box-sizing:border-box}
 @media(max-width:760px){.deck-switch select{font-size:16px}}
+
+.deck-connection{padding:16px 0}.deck-connection strong{display:block;font-size:13px}.deck-connection p{margin:6px 0 12px;color:var(--mut)}
+.deck-actions{display:flex;align-items:center;flex-wrap:wrap;gap:8px}.deck-actions button{min-height:44px;padding:10px 14px;border:1px solid var(--bd);border-radius:9px;background:var(--side2);font-size:12px;line-height:1.4;white-space:normal}.deck-actions button.pri{border-color:transparent;background:var(--acc);color:#fff}.deck-actions button.danger{color:var(--bad)}.deck-actions button:hover:not(:disabled){filter:brightness(1.15)}.deck-actions button:focus-visible{outline:2px solid var(--acc);outline-offset:2px}.deck-actions button:disabled{opacity:.5;cursor:default}
+.deck-toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:12px;margin-top:16px}.deck-port{display:flex;align-items:center;gap:8px}.deck-port label{margin:0;color:var(--mut);font-size:12px}#deck_port{width:88px;min-height:44px;padding:8px 10px;border:1px solid var(--bd);border-radius:9px;background:var(--side2);color:var(--fg);font:inherit;font-size:16px}
+.deck-result{display:flex;align-items:center;gap:16px}.deck-info{flex:1;min-width:0}.deck-result p{margin-bottom:0}.deck-result .deck-actions{flex:none}
+@media(max-width:480px){.deck-toolbar{align-items:stretch}.deck-toolbar>.deck-actions{flex:1 1 100%}.deck-toolbar .deck-actions button{flex:1}.deck-result{align-items:flex-start;flex-direction:column;gap:12px}.deck-connection>.deck-actions{margin-top:12px}.deck-actions button{padding:10px 12px}}
