@@ -114,8 +114,10 @@ class PreviousInstallTests(unittest.TestCase):
             self.skipTest('no pinned wheels for this platform')
         old = self.root / (key + '-000000000000')
         old.mkdir(parents=True); (old / '.complete').write_text('[]')
-        self.enterContext(unittest.mock.patch.dict(D._state, {'ready': False, 'previous': False, 'error': ''}))
-        self.enterContext(unittest.mock.patch.object(D.importlib, 'import_module'))
+        # enterContext is Python 3.11+; CI also runs 3.10.
+        for patcher in (unittest.mock.patch.dict(D._state, {'ready': False, 'previous': False, 'error': ''}),
+                        unittest.mock.patch.object(D.importlib, 'import_module')):
+            patcher.start(); self.addCleanup(patcher.stop)
         path = list(sys.path); self.addCleanup(lambda: sys.path.__setitem__(slice(None), path))
         self.assertTrue(D.activate(self.root))
         self.assertEqual(sys.path[0], str(old))
