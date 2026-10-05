@@ -524,6 +524,11 @@
     "обновляется…": "memperbarui…",
     "Этот вопрос не найден или уже закрыт": "Pertanyaan ini tidak ditemukan atau sudah ditutup",
     "У этого вопроса нет варианта для своего ответа; нажмите кнопку": "Pertanyaan ini tidak punya opsi jawaban sendiri; ketuk tombol",
-    "Ответ длиннее 4000 символов": "Jawaban lebih dari 4000 karakter"
+    "Ответ длиннее 4000 символов": "Jawaban lebih dari 4000 karakter",
+    "Нет связи с панелью": "Tidak ada koneksi ke panel",
+    "Панель вернула неожиданный ответ": "Panel mengembalikan respons tak terduga",
+    "Связь восстановлена": "Koneksi pulih",
+    "Подключаюсь…": "Menghubungkan…",
+    "Нет связи с панелью · повторяю": "Tidak ada koneksi ke panel · mencoba lagi"
   }
 }

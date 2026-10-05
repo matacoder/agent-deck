@@ -524,6 +524,11 @@
     "обновляется…": "wird aktualisiert…",
     "Этот вопрос не найден или уже закрыт": "Diese Frage wurde nicht gefunden oder ist bereits geschlossen",
     "У этого вопроса нет варианта для своего ответа; нажмите кнопку": "Diese Frage hat keine Option für eine eigene Antwort; tippe auf eine Schaltfläche",
-    "Ответ длиннее 4000 символов": "Die Antwort ist länger als 4000 Zeichen"
+    "Ответ длиннее 4000 символов": "Die Antwort ist länger als 4000 Zeichen",
+    "Нет связи с панелью": "Keine Verbindung zum Panel",
+    "Панель вернула неожиданный ответ": "Das Panel hat eine unerwartete Antwort geliefert",
+    "Связь восстановлена": "Verbindung wiederhergestellt",
+    "Подключаюсь…": "Verbinde…",
+    "Нет связи с панелью · повторяю": "Keine Verbindung zum Panel · neuer Versuch"
   }
 }

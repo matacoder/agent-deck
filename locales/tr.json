@@ -524,6 +524,11 @@
     "обновляется…": "güncelleniyor…",
     "Этот вопрос не найден или уже закрыт": "Bu soru bulunamadı veya kapandı",
     "У этого вопроса нет варианта для своего ответа; нажмите кнопку": "Bu sorunun kendi yanıt seçeneği yok; bir düğmeye dokunun",
-    "Ответ длиннее 4000 символов": "Yanıt 4000 karakterden uzun"
+    "Ответ длиннее 4000 символов": "Yanıt 4000 karakterden uzun",
+    "Нет связи с панелью": "Panele bağlantı yok",
+    "Панель вернула неожиданный ответ": "Panel beklenmeyen bir yanıt döndürdü",
+    "Связь восстановлена": "Bağlantı geri geldi",
+    "Подключаюсь…": "Bağlanıyor…",
+    "Нет связи с панелью · повторяю": "Panele bağlantı yok · yeniden deneniyor"
   }
 }

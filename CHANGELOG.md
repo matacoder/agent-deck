@@ -2,6 +2,11 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.9.1 — 2026-10-05
+
+- Fix: "undefined is not an object (evaluating 's of list')" after returning to the app. A response that is not the expected JSON (proxy page, restart) is treated as a connection problem instead of breaking the session list.
+- Connection status: returning to the app shows "Connecting…" when it takes a moment, "No connection to the panel · retrying" while offline and "Connection restored" afterwards; network failures no longer appear as red error toasts.
+
 ## 1.9.0 — 2026-10-05
 
 - **Waiting for you:** one list (sidebar button, first quick tab on phones) with every agent question and finished session on all connected computers; questions are answered in place. New `GET /api/inbox`.

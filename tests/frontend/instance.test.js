@@ -34,6 +34,8 @@ function boot(routes,opened){
       const target=new URL(url,'https://panel.test/');
       const handler=routes[target.pathname];
       const body=handler?await handler(target):{};
+      if(body&&body.__network)throw new TypeError('Load failed');
+      if(body&&body.__html)return {ok:true,status:200,headers:{get:()=>null},json:async()=>{throw new SyntaxError('Unexpected token <')}};
       return {ok:true,status:200,headers:{get:()=>null},json:async()=>body};
     };
   }});
@@ -130,5 +132,27 @@ test('a notification that lands after the app became visible is still opened',as
   window.location.hash='#alpha';
   await settle();await settle();
   expect(window.document.querySelector('#title b').textContent).toBe('alpha');
+  }finally{window.close()}
+});
+
+test('a lost connection shows the status pill instead of errors and recovers on its own',async()=>{
+  const state={local:()=>({__network:true})};
+  const window=boot(routesFor(state));
+  try{
+  await settle();await settle();
+  const pill=window.document.getElementById('conn');
+  expect(pill.hidden).toBe(false);
+  expect(pill.classList.contains('bad')).toBe(true);
+  expect(window.document.getElementById('toast').classList.contains('on')).toBe(false);
+  state.local=()=>({__html:true});   // A proxy page answering 200 with HTML must not crash the list.
+  await window.load();await settle();
+  expect(window.problems.filter(p=>!p.includes('window.focus'))).toEqual([]);
+  expect(pill.classList.contains('bad')).toBe(true);
+  state.local=()=>({sessions:[session('alpha')]});
+  await window.load();await settle();
+  expect(pill.textContent).toBe('Связь восстановлена');
+  expect(window.document.querySelector('#title b').textContent).toBe('alpha');
+  await new Promise(resolve=>setTimeout(resolve,1700));
+  expect(pill.hidden).toBe(true);
   }finally{window.close()}
 });

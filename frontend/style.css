@@ -418,6 +418,11 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 .quick-inbox{border-color:#0a84ff66!important;color:var(--fg2)!important}
 .quick-inbox svg{width:18px;height:18px;color:var(--acc-text)}
 .quick-count{min-width:20px;padding:1px 6px;border-radius:10px;background:var(--acc);color:#fff;font-size:12px;text-align:center}
+.conn{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:5;display:inline-flex;align-items:center;gap:8px;padding:6px 14px;border-radius:16px;border:1px solid var(--bd);background:var(--side2);color:var(--fg);font-size:12.5px;box-shadow:0 6px 20px #0007;white-space:nowrap}
+.conn[hidden]{display:none}
+.conn::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--warn);animation:pulse 1s ease-in-out infinite}
+.conn.bad::before{background:var(--bad);animation:none}
+.conn.ok::before{background:var(--ok);animation:none}
 .recovery-code{display:block;margin:4px 0 0;padding:12px 14px;border:1px solid var(--bd);border-radius:var(--r);background:var(--bg);color:var(--fg2);font:600 14px/1.6 var(--mono);letter-spacing:.04em;overflow-wrap:anywhere;user-select:all;-webkit-user-select:all}
 .hub-card p.backup-line{margin:4px 0 0}.hub-card p.danger{color:var(--bad-text)}
 #hub_version{display:flex;align-items:center;flex-wrap:wrap;gap:10px 12px;margin-top:12px}

@@ -62,6 +62,7 @@ __PANEL_STYLE__</style></head><body>
       <button class="iconbtn" id="b_actions" onclick="sheet(true)" aria-label="Действия" title="Действия" aria-haspopup="menu"><svg class="ui-icon"><use href="#i-more"/></svg></button>
     </div>
     <div id="stage">
+      <div id="conn" class="conn" role="status" aria-live="polite" hidden></div>
       <div id="empty"><span id="empty_text">Загружаю сессии…</span><button type="button" class="pri" id="empty_new" onclick="openNew()" hidden><svg class="ui-icon"><use href="#i-plus"/></svg><span>Новая сессия</span></button></div>
       <div id="screen">
         <div id="pre_wrap"><div id="pre"></div><button type="button" id="jump" onclick="jumpToLatest()"><svg class="ui-icon"><use href="#i-arrow-down"/></svg><span>К новому выводу</span></button></div>

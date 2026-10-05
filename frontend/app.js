@@ -50,17 +50,36 @@ if(window.visualViewport){visualViewport.addEventListener("resize",fitViewport);
 addEventListener("pageshow",fitViewport);
 addEventListener("orientationchange",()=>requestAnimationFrame(fitViewport));
 
+// Network failures and proxy/restart answers are "offline", not bugs: they go to the connection pill.
+class OfflineError extends Error{constructor(message){super(message);this.offline=true}}
 async function api(path,body,gateway=false){
   const epoch=deckEpoch;
-  const r=await fetch(gateway?path:activePath(path),body?{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}:{cache:"no-store"});
+  let r;
+  try{r=await fetch(gateway?path:activePath(path),body?{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}:{cache:"no-store"})}
+  catch(e){if(epoch!==deckEpoch)throw new Error(STALE);throw new OfflineError(tr("Нет связи с панелью"))}
   if(r.status===401){
     try{stashDrafts();location.href="/login"}catch(e){toast(tr("Войдите в новой вкладке: здесь сохранён несохранённый текст."),true,{label:tr("Войти"),run:()=>window.open("/login","_blank","noopener")})}
     throw new Error("login required");
   }
   const d=r.headers.get("Date");if(d)clockSkew=Date.now()/1000-Date.parse(d)/1000;
-  const j=await r.json().catch(()=>({error:r.statusText}));
+  let j=null;try{j=await r.json()}catch(e){}
   if(epoch!==deckEpoch)throw new Error(STALE);
+  if([502,503,504].includes(r.status))throw new OfflineError(j?.error||tr("Нет связи с панелью"));
+  // A proxy or captive page can answer 200 with HTML; never hand that to code expecting JSON.
+  if(!j||typeof j!=="object")throw new OfflineError(tr("Панель вернула неожиданный ответ"));
   if(!r.ok)throw new Error(j.error||r.statusText);return j;
+}
+// Shown only when connecting takes noticeable time, so a quick resume does not flicker.
+let connection="online",connectionTimer=null;
+function setConnection(next){
+  const pill=$("conn");clearTimeout(connectionTimer);
+  if(next==="online"){
+    if(connection!=="online"&&!pill.hidden){pill.className="conn ok";pill.textContent=tr("Связь восстановлена");connectionTimer=setTimeout(()=>{pill.hidden=true},1500)}
+    else pill.hidden=true;
+  }else if(next==="connecting"){
+    connectionTimer=setTimeout(()=>{pill.className="conn";pill.textContent=tr("Подключаюсь…");pill.hidden=false},400);
+  }else{pill.className="conn bad";pill.textContent=tr("Нет связи с панелью · повторяю");pill.hidden=false}
+  connection=next;
 }
 function toast(m,info,action){
   if(m===STALE)return;
@@ -505,6 +524,8 @@ async function loadSessions(){
   const requested=active;
   try{
     const{sessions:list}=await api("/api/sessions"+(requested?"?preview="+encodeURIComponent(requested):""));
+    if(!Array.isArray(list))throw new OfflineError(tr("Панель вернула неожиданный ответ"));
+    setConnection("online");
     for(const s of list){
       if(s.preview!==undefined||s.preview_ansi!==undefined)previewCache.set(s.name,{preview:s.preview,preview_ansi:s.preview_ansi});
       else Object.assign(s,previewCache.get(s.name)||{});
@@ -536,7 +557,7 @@ async function loadSessions(){
     if(first||active!==previousActive||!s||(m==="term"&&!frames.has(active)))show();
     else if(m==="screen")updateScreen(s);
     loadQuestion();
-  }catch(e){toast(e.message)}
+  }catch(e){if(e.offline)setConnection("offline");else toast(e.message)}
 }
 let question={name:null,data:null,expanded:false,busy:null,textIndex:null},loadingQuestion=false;
 async function loadQuestion(){
@@ -1013,7 +1034,7 @@ function switchDeck(identity){
   if(mode===null)mode=previousMode;  // A computer without its own choice keeps the current view.
   renderTabs();show();
   load();checkGithubFoot(true);loadUsage();loadLM().then(renderInteg);loadServer();loadVersion();loadMetrics();loadIntegrations();
-  loadDeckSettings().catch(e=>toast(e.message));
+  loadDeckSettings().catch(e=>{if(!e.offline)toast(e.message)});
 }
 // Everything below belongs to one computer; a switch must not carry any of it to the next.
 function resetInstanceState(known){
@@ -1090,7 +1111,7 @@ async function refreshLMModels(){
   if(document.hidden)return;
   if(lmRefreshPending)return lmRefreshPending;
   lmModelsChecked=Date.now();
-  lmRefreshPending=(async()=>{try{lmData=await refreshModelCatalog(api);if($("settings_dlg").open)renderHub();renderDiscovery();renderSources()}catch(e){toast(e.message)}finally{lmRefreshPending=null}})();
+  lmRefreshPending=(async()=>{try{lmData=await refreshModelCatalog(api);if($("settings_dlg").open)renderHub();renderDiscovery();renderSources()}catch(e){if(!e.offline)toast(e.message)}finally{lmRefreshPending=null}})();
   return lmRefreshPending;
 }
 async function loadLM(refresh=true){try{lmData=await api("/api/lmstudio");if($("settings_dlg").open&&refresh)renderHub();renderDiscovery()}catch(e){if(e.message!==STALE)$("lm_progress").textContent=e.message}}
@@ -1451,9 +1472,11 @@ loadUsage();setInterval(loadUsage,60000);loadLM().then(renderInteg);setInterval(
 loadServer();setInterval(loadServer,3600000);
 loadVersion();
 loadIntegrations();
+let hiddenAt=0;
+document.addEventListener("visibilitychange",()=>{if(document.hidden){hiddenAt=Date.now();return}if(Date.now()-hiddenAt>5000)setConnection("connecting")});
 document.addEventListener("visibilitychange",()=>{if(!document.hidden){checkGithubFoot(true);loadUsage();load();checkInterfaceVersion();loadVersion();loadOtherDecks();if(!$("integrations_dlg").hidden&&!telegramDirty)loadIntegrations()}});
 load();setInterval(load,2500);
 
-loadDeckSettings().catch(e=>toast(e.message));
+loadDeckSettings().catch(e=>{if(!e.offline)toast(e.message)});
 loadInbox();setInterval(loadInbox,5000);
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)loadInbox()});
