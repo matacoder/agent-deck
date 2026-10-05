@@ -22,6 +22,7 @@ import signal
 import socket
 import urllib.request
 import urllib.error
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 import subprocess
 import sys
@@ -829,7 +830,25 @@ def send_input(d):
                 paste_to_tmux(name, text)
             elif text:
                 paste_to_tmux(name, text, bracketed=agent != "shell")
+        if text or paths:
+            wait_for_quiet_screen(name, 4 if paths or files else 1)
         tmux("send-keys", "-t", f"={PREFIX}{name}:", "Enter")
+
+
+def wait_for_quiet_screen(name, limit):
+    # Agents process a paste asynchronously (Claude turns image paths into [Image #N]);
+    # an Enter that arrives mid-way is dropped and the message stays in the prompt.
+    # Loading an image can pause the screen briefly before the prompt is redrawn, so
+    # attachments need a longer stable stretch than plain text.
+    deadline, stable_needed = time.monotonic() + limit, 3 if limit > 1 else 1
+    previous, stable = None, 0
+    while time.monotonic() < deadline:
+        screen = tmux("capture-pane", "-p", "-t", f"={PREFIX}{name}:", check=False)
+        stable = stable + 1 if screen == previous else 0
+        if stable >= stable_needed:
+            return
+        previous = screen
+        time.sleep(0.25)
 
 
 _gh_cache = {"t": 0, "repos": None}
@@ -1332,30 +1351,51 @@ def questions_payload():
 
 
 remote_question_backoff = {}
+remote_question_snapshot = {}
 remote_question_lock = threading.Lock()
+# A blip to a connected computer must not look like its questions were answered: Telegram
+# would retire and later re-send them, and notifications would fire twice.
+REMOTE_QUESTIONS_STALE_FOR = 300
+
+
+def fetch_remote_questions(deck):
+    from integrations.questions import Question
+    identity = deck.get('id')
+    status, _, body = remote_decks.request(identity, 'GET', '/api/questions', timeout=5)
+    if status != 200:
+        raise ValueError('questions unavailable')  # Older releases have no /api/questions.
+    # The remote fingerprint travels as `instance`: it is what the remote checks on answer.
+    return [Question(item['session'], item['agent'], item['id'], item['title'],
+                     tuple(o['label'] for o in item['options']), item['selected'],
+                     item.get('progress', ''), deck=identity, origin=deck.get('name', ''))
+            for item in json.loads(body).get('questions', [])]
 
 
 def remote_questions():
     """Questions of connected Agent Decks, so one Telegram bot on the gateway serves every machine."""
-    from integrations.questions import Question
-    result = []
-    for deck in remote_decks.status().get('decks', []):
-        identity = deck.get('id')
-        with remote_question_lock:
-            if remote_question_backoff.get(identity, 0) > time.monotonic():
+    decks = [deck for deck in remote_decks.status().get('decks', []) if deck.get('id')]
+    now = time.monotonic()
+    with remote_question_lock:
+        due = [deck for deck in decks if remote_question_backoff.get(deck['id'], 0) <= now]
+    if due:
+        # In parallel, so one offline computer costs one timeout instead of one per computer.
+        with ThreadPoolExecutor(max_workers=min(8, len(due))) as pool:
+            futures = {deck['id']: pool.submit(fetch_remote_questions, deck) for deck in due}
+        for identity, future in futures.items():
+            try:
+                items = future.result()
+            except (ValueError, KeyError, TypeError, AttributeError, OSError, RuntimeError):
+                with remote_question_lock:
+                    remote_question_backoff[identity] = time.monotonic() + 30
                 continue
-        try:
-            status, _, body = remote_decks.request(identity, 'GET', '/api/questions', timeout=5)
-            if status != 200:
-                raise ValueError('questions unavailable')  # Older releases have no /api/questions.
-            for item in json.loads(body).get('questions', []):
-                # The remote fingerprint travels as `instance`: it is what the remote checks on answer.
-                result.append(Question(item['session'], item['agent'], item['id'], item['title'],
-                                       tuple(o['label'] for o in item['options']), item['selected'],
-                                       item.get('progress', ''), deck=identity, origin=deck.get('name', '')))
-        except (ValueError, KeyError, TypeError, AttributeError, OSError):
             with remote_question_lock:
-                remote_question_backoff[identity] = time.monotonic() + 30
+                remote_question_snapshot[identity] = (time.monotonic(), items)
+    result = []
+    with remote_question_lock:
+        for deck in decks:
+            at, items = remote_question_snapshot.get(deck['id'], (0, []))
+            if time.monotonic() - at < REMOTE_QUESTIONS_STALE_FOR:
+                result.extend(items)
     return result
 
 
@@ -1363,16 +1403,29 @@ def all_questions():
     return scan_questions() + remote_questions()
 
 
-_questions_cache = {'at': -10.0, 'items': []}
-_questions_lock = threading.Lock()
+_questions_cache = {'at': -10.0, 'items': [], 'refreshing': False}
+_questions_lock = threading.Condition()
 
 
 def shared_questions():
-    """One scan every 2 s serves Telegram, notifications and the inbox instead of one each."""
+    """One scan every 2 s serves Telegram, notifications and the inbox instead of one each.
+    While one thread refreshes, the others get the previous result instead of waiting on slow computers."""
     with _questions_lock:
-        if time.monotonic() - _questions_cache['at'] >= 2:
-            _questions_cache.update(items=all_questions(), at=time.monotonic())
-        return list(_questions_cache['items'])
+        while _questions_cache['refreshing'] and _questions_cache['at'] < 0:
+            _questions_lock.wait()  # No result yet: an empty list would look like everything was answered.
+        if _questions_cache['refreshing'] or time.monotonic() - _questions_cache['at'] < 2:
+            return list(_questions_cache['items'])
+        _questions_cache['refreshing'] = True
+    items = None
+    try:
+        items = all_questions()
+    finally:
+        with _questions_lock:
+            if items is not None:
+                _questions_cache.update(items=items, at=time.monotonic())
+            _questions_cache['refreshing'] = False
+            _questions_lock.notify_all()
+    return list(items)
 
 
 def inbox_payload():
@@ -2078,10 +2131,12 @@ class Handler(BaseHTTPRequestHandler):
                 return self.proxy_remote_terminal(identity, path)
             body = None
             if self.command == 'POST':
-                if self.headers.get('Content-Type','').split(';',1)[0] != 'application/json':
+                route = urlsplit(path).path
+                # Streamed uploads are raw bytes; every other mutation must be JSON.
+                expected = 'application/octet-stream' if route == '/api/upload_raw' else 'application/json'
+                if self.headers.get('Content-Type','').split(';',1)[0] != expected:
                     return self.send_json(403, {'error':'JSON requests are required'})
                 length = int(self.headers.get('Content-Length','0'))
-                route = urlsplit(path).path
                 limit = ((MAX_FILE_BYTES+2)//3)*4+10000 if route == '/api/upload' else MAX_FILE_BYTES if route == '/api/upload_raw' else 1000000
                 if not 0 <= length <= limit:
                     self.close_connection = True

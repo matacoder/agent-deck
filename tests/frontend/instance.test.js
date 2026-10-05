@@ -96,6 +96,27 @@ test('a response from the previous computer that arrives after the switch is rej
   }finally{window.close()}
 });
 
+test('gateway answers survive a switch: the sidebar keeps other computers reachable',async()=>{
+  let release;
+  const state={local:()=>({sessions:[session('alpha')]})};
+  const routes=routesFor(state);
+  routes['/api/inbox']=()=>new Promise(resolve=>{release=()=>resolve({questions:[]})});
+  const window=boot(routes);
+  try{
+  await settle();await settle();
+  // Inbox, update-all and other computers' lists go to the gateway whatever computer is selected.
+  const inFlight=window.eval('api("/api/inbox",null,true)');
+  await settle();
+  window.openDeckSession(DECK,'beta');
+  await settle();
+  release();
+  await expect(inFlight).resolves.toEqual({questions:[]});
+  await window.eval('loadOtherDecks()');await settle();
+  expect(window.document.querySelector('.tab.remote .n').textContent).toBe('alpha');
+  expect([...window.document.querySelectorAll('.deck-count')].map(n=>n.textContent)).not.toContain('unavailable');
+  }finally{window.close()}
+});
+
 test('tapping a notification opens its session on cold start and when the app resumes',async()=>{
   const state={local:()=>({sessions:[session('alpha',{activity:9}),session('api')]})};
   const window=boot(routesFor(state),{deck:'',session:'api'});

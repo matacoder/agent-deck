@@ -55,7 +55,7 @@ function renderInboxItem(item){
   };
   const draw=()=>renderQuestionCard({box:card,question:item.question,expanded:state.expanded,busyIndex:state.busy,textIndex:state.textIndex,textDraft:state.draft,translate:tr,
     onToggle:()=>{state.expanded=!state.expanded;draw()},onAnswer:index=>answer(index),
-    onTextOption:index=>{state.textIndex=state.textIndex===index?null:index;draw()},onTextInput:value=>{state.draft=value},onSubmitText:answer});
+    onTextOption:index=>{state.textIndex=state.textIndex===index?null:index;draw();card.querySelector(".q-text textarea")?.focus()},onTextInput:value=>{state.draft=value},onSubmitText:answer});
   draw();box.append(card);return box;
 }
 function openInbox(){

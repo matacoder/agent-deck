@@ -31,7 +31,6 @@ function renderQuestionCard({box,question,expanded,busyIndex,textIndex,textDraft
       const send=document.createElement("button");send.type="submit";send.className="pri";send.textContent=translate("Ответить");send.disabled=busy;
       form.onsubmit=event=>{event.preventDefault();if(field.value.trim())onSubmitText(index,field.value)};
       form.append(field,send);options.append(form);
-      setTimeout(()=>field.focus(),0);
     }
   });
   box.append(head,title,options);

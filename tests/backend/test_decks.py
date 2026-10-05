@@ -142,6 +142,20 @@ class RemoteDeckTests(PanelCase):
         self.assertNotIn('GATEWAY_SECRET',str(service.request.call_args))
         handler.send_body.assert_called_once_with(200,b'{"sessions":[]}','application/json')
 
+    def test_streamed_upload_is_relayed_as_raw_bytes_but_other_posts_stay_json_only(self):
+        service=self.enterContext(patch.object(self.panel,'remote_decks'))
+        service.request.return_value=(200,{'Content-Type':'application/json'},b'{"attachment":"a.png"}')
+        handler=self.handler('POST');handler.path='/deck/'+ID+'/api/upload_raw?name=demo&filename=a.png'
+        handler.headers.update({'Content-Type':'application/octet-stream','Content-Length':'4'});handler.rfile=io.BytesIO(b'\x89PNG')
+        handler.post_request()
+        service.request.assert_called_once_with(ID,'POST','/api/upload_raw?name=demo&filename=a.png',b'\x89PNG','ru',content_type='application/octet-stream')
+        service.request.reset_mock()
+        handler=self.handler('POST');handler.path='/deck/'+ID+'/api/send'
+        handler.headers['Content-Type']='application/octet-stream'
+        handler.post_request()
+        self.assertEqual(handler.send_json.call_args.args[0],403)
+        service.request.assert_not_called()
+
     def test_terminal_html_stays_on_gateway_and_remote_cookies_are_not_forwarded(self):
         service=self.enterContext(patch.object(self.panel,'remote_decks'))
         service.request.return_value=(200,{'Content-Type':'text/html','Set-Cookie':'cc_auth=REMOTE_SECRET'},b'<base href="/t/"><script src="/t/app.js"></script>')

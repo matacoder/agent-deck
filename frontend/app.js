@@ -56,14 +56,15 @@ async function api(path,body,gateway=false){
   const epoch=deckEpoch;
   let r;
   try{r=await fetch(gateway?path:activePath(path),body?{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}:{cache:"no-store"})}
-  catch(e){if(epoch!==deckEpoch)throw new Error(STALE);throw new OfflineError(tr("Нет связи с панелью"))}
+  catch(e){if(!gateway&&epoch!==deckEpoch)throw new Error(STALE);throw new OfflineError(tr("Нет связи с панелью"))}
   if(r.status===401){
     try{stashDrafts();location.href="/login"}catch(e){toast(tr("Войдите в новой вкладке: здесь сохранён несохранённый текст."),true,{label:tr("Войти"),run:()=>window.open("/login","_blank","noopener")})}
     throw new Error("login required");
   }
   const d=r.headers.get("Date");if(d)clockSkew=Date.now()/1000-Date.parse(d)/1000;
   let j=null;try{j=await r.json()}catch(e){}
-  if(epoch!==deckEpoch)throw new Error(STALE);
+  // Gateway answers (other computers, inbox, update-all) do not depend on the selected computer.
+  if(!gateway&&epoch!==deckEpoch)throw new Error(STALE);
   if([502,503,504].includes(r.status))throw new OfflineError(j?.error||tr("Нет связи с панелью"));
   // A proxy or captive page can answer 200 with HTML; never hand that to code expecting JSON.
   if(!j||typeof j!=="object")throw new OfflineError(tr("Панель вернула неожиданный ответ"));
@@ -202,7 +203,10 @@ function renderQuickTabs(){
     button.setAttribute("aria-pressed",String(s.name===active));button.title=sessionTitle(s)+" · "+stateText(s);
     button.children[0].className="dot "+state(s);button.children[3].style.display=attention.has(s.name)?"":"none";
   }
-  for(const [key,{button,s}] of quickRemote){button.children[0].className="dot "+state(s);button.children[4].style.display=otherAttention.has(key)?"":"none"}
+  for(const [key,{button,deck,s:known}] of quickRemote){
+    // The tab keeps the session from its last rebuild; states change without a rebuild.
+    const s=others.find(d=>d.id===deck.id)?.sessions.find(x=>x.name===known.name)||known;
+    button.children[0].className="dot "+state(s);button.children[4].style.display=otherAttention.has(key)?"":"none"}
   const count=box.querySelector(".quick-count");if(count)count.textContent=waiting;
   if(active!==quickActive&&isMobile()){
     const safelySelected=active,button=quickButtons.get(active);
@@ -452,7 +456,9 @@ $("pre").addEventListener("scroll",()=>updateJump(false),{passive:true});
 function updateScreen(s,force){
   const p=$("pre"),stick=force||atBottom(p);
   const raw=s.preview_ansi??unwrapUrls(s.preview||"");
-  const changed=p.dataset.raw!==raw;
+  // Rebuilding would drop a selection the user is making to copy text; catch up once it is released.
+  const selection=getSelection(),selecting=selection&&!selection.isCollapsed&&p.contains(selection.anchorNode);
+  const changed=p.dataset.raw!==raw&&!selecting;
   if(changed){
     p.dataset.raw=raw;p.replaceChildren();
     const lines=joinImageLines(joinUrlLines(ansiLines(raw)));screenImages=[];
@@ -516,9 +522,11 @@ function load(){
   if(document.hidden)return Promise.resolve();
   // A caller arriving mid-request (e.g. right after a mutation) must wait for a list fetched after it.
   if(loadingSessions)return queuedSessions||(queuedSessions=loadingSessions.then(()=>{queuedSessions=null;return loadingSessions||load()}));
-  loadingSessions=loadSessions().finally(()=>{
+  const pending=loadSessions().finally(()=>{
+    // A computer switch may have started a newer request; only the owner clears the guard.
+    if(loadingSessions!==pending)return;
     loadingSessions=null;if(sessionsQueued){sessionsQueued=false;if(!queuedSessions)load()}
-  });return loadingSessions;
+  });return loadingSessions=pending;
 }
 async function loadSessions(){
   const requested=active;
@@ -582,7 +590,9 @@ function renderQuestion(){
   renderQuestionCard({box:$("question"),question:data,expanded:question.expanded,busyIndex:question.busy,textIndex:question.textIndex,textDraft:question.textDraft||"",translate:tr,
     onTextInput:value=>{question.textDraft=value},
     onToggle:()=>{question.expanded=!question.expanded;renderQuestion()},onAnswer:answerQuestion,
-    onTextOption:index=>{question.textIndex=question.textIndex===index?null:index;renderQuestion()},
+    // Focus inside the tap itself: iOS opens the keyboard only for a user gesture, and a
+    // refocus on every refresh would pop the keyboard back after the user dismissed it.
+    onTextOption:index=>{question.textIndex=question.textIndex===index?null:index;renderQuestion();$("question").querySelector(".q-text textarea")?.focus()},
     onSubmitText:(index,text)=>answerQuestion(index,text)});
 }
 async function answerQuestion(index,text){
@@ -965,14 +975,17 @@ try{deckOpen=JSON.parse(localStore.getItem("cc.deck-open")||"{}")||{}}catch(e){}
 const currentDeckName=()=>selectedDeck?deckDirectory.decks.find(d=>d.id===selectedDeck)?.name||"Agent Deck":deckDirectory.name||tr("Этот Agent Deck");
 async function loadOtherDecks(){
   if(document.hidden||loadingOthers||!deckDirectory.decks.length){if(!deckDirectory.decks.length&&otherDecks.length){otherDecks=[];renderTabs()}return}
-  loadingOthers=true;
+  loadingOthers=true;const epoch=deckEpoch;
   const targets=[{id:"",name:deckDirectory.name||tr("Этот Agent Deck")},...deckDirectory.decks.map(d=>({id:d.id,name:d.name}))].filter(d=>d.id!==selectedDeck);
   try{
-    otherDecks=await Promise.all(targets.map(async d=>{
+    const loaded=await Promise.all(targets.map(async d=>{
       // Lists come without previews: only names and states travel through the gateway.
       try{return {...d,sessions:(await api(instancePath(d.id,"/api/sessions"),null,true)).sessions}}
       catch(e){return {...d,sessions:[],error:true}}
     }));
+    // Built for the computer we just left; switchDeck already placed it in the sidebar.
+    if(epoch!==deckEpoch)return;
+    otherDecks=loaded;
   }finally{loadingOthers=false}
   // Same "done" signal as local tabs: a session that stopped working since the last poll.
   for(const deck of otherDecks)for(const s of deck.sessions){
@@ -1021,7 +1034,7 @@ function switchDeck(identity){
   if(sending||uploading||choosingImages||question.busy!==null){$("deck_select").value=selectedDeck;toast(tr("Дождитесь окончания отправки или загрузки"));return}
   try{stashDrafts();localStore.setItem("cc.deck",identity)}catch(e){$("deck_select").value=selectedDeck;toast(tr("Не удалось сохранить черновик. Очистите поле перед обновлением."));return}
   for(const dialog of document.querySelectorAll("dialog[open]"))dialog.close();
-  drawer(false);sheet(false);hideToast();
+  drawer(false);sheet(false);hideToast();closeViewer();
   // The computer we leave stays in the sidebar right away; the one we enter shows its known list.
   const target=otherDecks.find(d=>d.id===identity&&!d.error);
   otherDecks=[...otherDecks.filter(d=>d.id!==identity),{id:selectedDeck,name:currentDeckName(),sessions:sessions.map(({preview,preview_ansi,...rest})=>rest)}];
@@ -1210,7 +1223,7 @@ async function pairTelegram(){
   try{const data=await api("/api/telegram_pair",{});renderTelegram(data.telegram)}catch(e){toast(e.message)}
 }
 async function clearTelegram(){if(await confirmAction(tr("Отключить Telegram и удалить сохранённый токен?"),{confirm:tr("Отключить"),danger:true}))saveTelegram(true)}
-let panelUpdating=false,panelVersion=null,versionTimer=null,versionLoading=false;
+let panelUpdating=false,panelVersion=null,versionTimer=null,versionLoading=null;
 const UPDATE_PHASES=new Set(["checking","downloading","installing","restarting"]);
 function versionInfo(v){
   const revision=el("span","version-build","UI "+UI_REVISION.slice(0,7));revision.title=UI_REVISION;
@@ -1253,14 +1266,14 @@ async function saveAutoUpdates(){
 }
 let UI_PANEL_VERSION=null;
 async function loadVersion(){
-  if(versionLoading)return;clearTimeout(versionTimer);
+  if(versionLoading===deckEpoch)return;clearTimeout(versionTimer);
   if(document.hidden){versionTimer=setTimeout(loadVersion,60000);return}
-  versionLoading=true;
+  const epoch=versionLoading=deckEpoch;
   try{
     const v=await api("/api/version");if(UI_PANEL_VERSION===null)UI_PANEL_VERSION=v.version;
     renderVersion(v);
   }catch(e){/* The panel is briefly unreachable while its service restarts. */}
-  finally{versionLoading=false;versionTimer=setTimeout(loadVersion,panelUpdating?2000:60000)}
+  finally{if(versionLoading===epoch)versionLoading=null;versionTimer=setTimeout(loadVersion,panelUpdating?2000:60000)}
 }
 async function startPanelUpdate(){
   if(panelUpdating||!panelVersion||!panelVersion.can_update)return;
@@ -1468,7 +1481,9 @@ loadMetrics();setInterval(loadMetrics,5000);
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)loadMetrics()});
 
 checkGithubFoot(true);setInterval(checkGithubFoot,5000);
-loadUsage();setInterval(loadUsage,60000);loadLM().then(renderInteg);setInterval(()=>{if(!document.hidden&&!$("settings_dlg").open)loadLM(false).then(renderInteg)},1000);
+loadUsage();setInterval(()=>{loadUsage();if(!document.hidden&&!lmData.profiles?.length)loadLM(false).then(renderInteg)},60000);loadLM().then(renderInteg);let lmPolling=false;
+// Generation timing needs a fast tick, but only with a configured profile and one request at a time.
+setInterval(()=>{if(document.hidden||$("settings_dlg").open||lmPolling||!lmData.profiles?.length)return;lmPolling=true;loadLM(false).then(renderInteg).finally(()=>{lmPolling=false})},1000);
 loadServer();setInterval(loadServer,3600000);
 loadVersion();
 loadIntegrations();

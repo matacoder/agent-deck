@@ -138,6 +138,18 @@ class AttachmentTests(PanelCase):
         self.assertTrue(pasted.startswith("\x1b[200~Look"))
         self.assertEqual(self.panel.tmux.call_args_list[-1].args[-1], "Enter")
 
+    def test_enter_waits_until_the_agent_finished_attaching_images(self):
+        attachment = self.upload()
+        self.panel.opt.return_value = "claude"
+        screens = iter(["path", "[Image #1]", "[Image #1] Look", "[Image #1] Look", "[Image #1] Look", "[Image #1] Look"])
+        def tmux(*args, check=True):
+            return next(screens) if args[0] == "capture-pane" else ""
+        self.panel.tmux = Mock(side_effect=tmux)
+        self.panel.action_send({"name": "demo", "text": "Look", "attachments": [attachment]})
+        calls = [call.args[0] for call in self.panel.tmux.call_args_list if call.args[0] in ("capture-pane", "send-keys")]
+        # Enter only after three identical captures, never while the prompt is still being redrawn.
+        self.assertEqual(calls, ["capture-pane"] * 6 + ["send-keys"])
+
     def test_invalid_attachment_does_not_type_anything(self):
         with self.assertRaises(ValueError):
             self.panel.action_send({"name": "demo", "text": "Keep", "attachments": ["missing.png"]})
@@ -440,6 +452,7 @@ class RemoteQuestionTests(PanelCase):
     def setUp(self):
         super().setUp()
         self.panel.remote_question_backoff.clear()
+        self.panel.remote_question_snapshot.clear()
         self.decks = Mock()
         self.decks.status.return_value = {'decks': [{'id': self.REMOTE, 'name': 'Mac Studio'}]}
         self.enterContext(patch.object(self.panel, 'remote_decks', self.decks))
@@ -456,6 +469,35 @@ class RemoteQuestionTests(PanelCase):
         self.assertEqual(self.panel.remote_questions(), [])
         self.assertEqual(self.panel.remote_questions(), [])
         self.assertEqual(self.decks.request.call_count, 1)
+
+    def test_a_blip_keeps_the_last_questions_until_they_are_stale(self):
+        self.decks.request.return_value = (200, {}, json.dumps({'questions': [self.ITEM]}).encode())
+        self.assertEqual(len(self.panel.remote_questions()), 1)
+        self.decks.request.side_effect = OSError('timed out')
+        # Disappearing would retire the Telegram message and re-announce it on return.
+        self.assertEqual([q.instance for q in self.panel.remote_questions()], ['remote-fp'])
+        at, items = self.panel.remote_question_snapshot[self.REMOTE]
+        self.panel.remote_question_snapshot[self.REMOTE] = (at - self.panel.REMOTE_QUESTIONS_STALE_FOR, items)
+        self.assertEqual(self.panel.remote_questions(), [])
+
+    def test_shared_questions_readers_do_not_wait_for_a_slow_refresh(self):
+        import threading
+        from integrations.questions import Question
+        old = [Question('api', 'claude', '%1', 'Old?', ('Yes',), 0)]
+        self.panel._questions_cache.update(at=-10.0, items=[], refreshing=False)
+        self.addCleanup(self.panel._questions_cache.update, at=-10.0, items=[], refreshing=False)
+        started, release = threading.Event(), threading.Event()
+        def slow():
+            started.set(); release.wait(5); return []
+        with patch.object(self.panel, 'all_questions', return_value=old):
+            self.assertEqual(self.panel.shared_questions(), old)
+        self.panel._questions_cache['at'] -= 5
+        with patch.object(self.panel, 'all_questions', side_effect=slow):
+            worker = threading.Thread(target=self.panel.shared_questions); worker.start()
+            started.wait(5)
+            self.assertEqual(self.panel.shared_questions(), old)
+            release.set(); worker.join(5)
+        self.assertEqual(self.panel.shared_questions(), [])
 
     def test_answers_route_to_the_owning_machine_with_its_fingerprint(self):
         from integrations.questions import Question

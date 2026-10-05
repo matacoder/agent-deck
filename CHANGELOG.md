@@ -2,6 +2,15 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.9.2 — 2026-10-05
+
+- Fix: a message with attached images could stay in the agent's input without being sent. Enter is now sent once the agent has finished attaching the files (the screen stops changing, up to 4 s; 1 s for plain text) instead of after a fixed 0.2 s.
+- Fix: uploading files to a connected computer through the gateway failed with 403 since 1.9.0; the gateway now relays `POST /api/upload_raw`.
+- Fix: switching computers while a request was in flight could show other computers as unavailable, let "Update all" report success too early and re-enable an inbox answer that had already been sent. Gateway requests are no longer discarded on a switch.
+- A connected computer that is briefly unreachable keeps its last questions for up to 5 minutes, so Telegram no longer retires and re-sends them and notifications do not fire twice. Connected computers are asked in parallel, and readers no longer wait for a slow one.
+- Phones: the custom-answer field no longer grabs focus (and the keyboard) on every refresh, opens the keyboard on tap and no longer zooms the page.
+- Selecting text in the Screen view is no longer cleared by refreshes; the image viewer closes on a computer switch; status dots of other computers' quick tabs update; LM Studio is polled only when a profile is configured.
+
 ## 1.9.1 — 2026-10-05
 
 - Fix: "undefined is not an object (evaluating 's of list')" after returning to the app. A response that is not the expected JSON (proxy page, restart) is treated as a connection problem instead of breaking the session list.
