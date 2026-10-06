@@ -418,6 +418,23 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 .inbox-btn span{flex:1}.inbox-btn b{min-width:20px;padding:1px 7px;border-radius:10px;background:var(--acc-strong);color:#fff;font-size:11.5px;text-align:center}
 .inbox-btn svg{color:var(--acc-text)}
 #inbox_dlg{width:min(560px,calc(100vw - 32px))}
+#files_dlg{width:min(720px,calc(100vw - 32px))}
+#files_dlg .hub-heading{border-bottom:1px solid var(--bd)}
+#files_body{display:grid;gap:10px;align-content:start}
+.files-path{display:flex;align-items:center;gap:8px;min-width:0}
+.files-path code{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--fg2);font-family:var(--mono);font-size:12.5px}
+.files-up{display:inline-flex;align-items:center;gap:6px;flex:none;padding:6px 10px;border:1px solid var(--bd);border-radius:var(--r-sm);color:var(--fg2)}
+.files-new{display:flex;gap:8px}
+.files-new input{flex:1;min-width:0;min-height:38px;background:var(--bg);border:1px solid var(--bd);border-radius:9px;color:var(--fg2);padding:8px 10px;outline:none}
+.files-new button{display:inline-flex;align-items:center;gap:6px;padding:0 12px;border:1px solid var(--bd);border-radius:9px;color:var(--fg2)}
+.files-list{display:grid;border:1px solid var(--bd);border-radius:12px;overflow:hidden}
+.files-row{display:flex;align-items:center;gap:10px;min-height:40px;padding:6px 12px;border-bottom:1px solid var(--bd-soft);color:var(--fg);text-align:left}
+.files-row:last-child{border-bottom:0}.files-row:hover{background:var(--side2)}
+.files-row span:first-of-type{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--mono);font-size:13px}
+.files-row.dir svg{color:var(--acc-text)}
+.files-size{flex:none;color:var(--mut);font-size:12px;font-variant-numeric:tabular-nums}
+.files-empty{margin:0;padding:12px;color:var(--mut)}
+.files-text{width:100%;min-height:min(60vh,520px);resize:vertical;padding:12px;border:1px solid var(--bd);border-radius:10px;background:var(--bg);color:var(--fg2);font:13px/1.5 var(--mono);outline:none;white-space:pre;overflow:auto}
 #inbox_dlg .hub-heading{border-bottom:1px solid var(--bd)}
 #inbox_list{display:grid;gap:18px;align-content:start}
 .inbox-item{display:grid;gap:8px}
@@ -480,7 +497,8 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 /* ---------- mobile (phones, including landscape) ----------
    Keep in sync with MOBILE_QUERY in app.js. */
 @media (max-width:760px),(pointer:coarse) and (max-height:500px){
-  .q-text textarea{font-size:16px} /* Below 16px iOS zooms the page on focus. */
+  .q-text textarea,.files-text,.files-new input{font-size:16px} /* Below 16px iOS zooms the page on focus. */
+  .files-row{min-height:var(--tap)}
   html,body{position:fixed;inset:0;width:100%;height:100%}
   body{font-size:15px}
   .m-only{display:inline-grid!important}.d-only{display:none!important}
@@ -594,8 +612,8 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
   .chk,.dlg label.chk{font-size:15px}
   .acts{padding:12px 16px calc(12px + var(--sab))}
   .acts button{flex:1;min-height:var(--tap);padding:12px;font-size:16px;border-radius:var(--r)}
-  #inbox_dlg{width:100vw}
-  #inbox_dlg .dlg{padding-top:var(--sat)}
+  #inbox_dlg,#files_dlg{width:100vw}
+  #inbox_dlg .dlg,#files_dlg .dlg{padding-top:var(--sat)}
   #confirm_dlg{width:calc(100vw - 32px);height:fit-content;margin:auto;border:1px solid var(--bd-soft);border-radius:16px}
   #confirm_dlg .dlg{height:auto;padding-top:0}
   #confirm_dlg .acts{padding:12px 16px 16px}
@@ -641,6 +659,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
   <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14.9-3.9L4 8"/><path d="M4 4v4h4M4 13a8 8 0 0 0 14.9 3.9L20 16"/><path d="M20 20v-4h-4"/></symbol>
   <symbol id="i-pencil" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16v4zM13 7l4 4"/></symbol>
   <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
   <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></symbol>
   <symbol id="i-arrow-down" viewBox="0 0 24 24"><path d="M12 5v14M6 13l6 6 6-6"/></symbol>
   <symbol id="i-arrow-up" viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></symbol>
@@ -731,6 +750,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
     <button onclick="sheet(false);openRename()"><svg class="ui-icon"><use href="#i-pencil"/></svg><span>Переименовать</span></button>
     <button id="s_link" onclick="sheet(false);openLink()"><svg class="ui-icon"><use href="#i-link"/></svg><span>Открыть ссылку из терминала</span></button>
     <button onclick="sheet(false);termHere()"><svg class="ui-icon"><use href="#i-terminal"/></svg><span>Новый терминал в этой папке</span></button>
+    <button onclick="sheet(false);openFiles()"><svg class="ui-icon"><use href="#i-folder"/></svg><span>Файлы проекта</span></button>
     <button class="agent-only" onclick="sheet(false);restart('continue')"><svg class="ui-icon"><use href="#i-restart"/></svg><span>Перезапустить, продолжив разговор</span></button>
     <button class="agent-only" onclick="sheet(false);restart('new')"><svg class="ui-icon"><use href="#i-chat-plus"/></svg><span>Перезапустить с новым разговором</span></button>
     <button onclick="sheet(false);popout()"><svg class="ui-icon"><use href="#i-external"/></svg><span>Терминал в новой вкладке</span></button>
@@ -755,6 +775,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
   <div class="viewer-bar"><span id="viewer_caption"></span><a id="viewer_open" target="_blank" rel="noopener">Открыть оригинал</a></div>
 </div>
 <dialog id="confirm_dlg"><form class="dlg" method="dialog"><div class="dlg-body"><h3 id="confirm_title"></h3><p id="confirm_text"></p></div><div class="acts"><button value="cancel">Отмена</button><button value="ok" class="pri" id="confirm_ok">OK</button></div></form></dialog>
+<dialog id="files_dlg"><div class="dlg"><div class="hub-heading"><h3>Файлы проекта</h3><button type="button" onclick="closeFiles()" aria-label="Закрыть"><svg class="ui-icon"><use href="#i-x"/></svg></button></div><div class="dlg-body" id="files_body"></div></div></dialog>
 <dialog id="inbox_dlg"><div class="dlg"><div class="hub-heading"><h3>Ждут ответа</h3><button type="button" onclick="$('inbox_dlg').close()" aria-label="Закрыть"><svg class="ui-icon"><use href="#i-x"/></svg></button></div><div class="dlg-body" id="inbox_list"></div></div></dialog>
 <dialog id="draft_dlg"><div class="dlg"><div class="dlg-body"><h3>Черновики закрытых сессий</h3><div id="closed_drafts"></div></div><div class="acts"><button type="button" onclick="$('draft_dlg').close()">Закрыть</button></div></div></dialog>
 
@@ -1719,6 +1740,100 @@ function attachDrawerSwipe(doc,{panel,isOpen,setOpen,enabled}){
 }
 
 if(typeof module!=="undefined")module.exports={attachDrawerSwipe,EDGE};
+// Project files of the open session: browse folders, open a text file, copy or paste into it and save.
+// The server keeps everything inside the home folder and refuses to overwrite a file changed meanwhile.
+const files={session:null,listing:null,file:null,loading:false};
+
+function formatSize(bytes){
+  return bytes<1024?bytes+" B":bytes<1048576?(bytes/1024).toFixed(1)+" KB":(bytes/1048576).toFixed(1)+" MB";
+}
+function homeRelative(path,home){return path===home?"~":path.startsWith(home+"/")?"~/"+path.slice(home.length+1):path}
+function filesDirty(){return Boolean(files.file&&files.file.content!==files.file.saved)}
+
+async function openFiles(){
+  if(!active)return;
+  files.session=active;files.file=null;files.listing=null;
+  if(!$("files_dlg").open)$("files_dlg").showModal();
+  await loadFolder("");
+}
+async function loadFolder(path){
+  if(files.loading)return;
+  files.loading=true;
+  try{files.listing=await api("/api/files?name="+encodeURIComponent(files.session)+"&path="+encodeURIComponent(path));files.file=null}
+  catch(e){if(e.message!==STALE)toast(e.message)}
+  finally{files.loading=false;renderFiles()}
+}
+async function openFile(path){
+  try{const data=await api("/api/file?path="+encodeURIComponent(path));files.file={...data,saved:data.content,isNew:false}}
+  catch(e){if(e.message!==STALE)toast(e.message);return}
+  renderFiles();
+}
+async function leaveFile(){
+  if(filesDirty()&&!await confirmAction(tr("Изменения не сохранены. Закрыть без сохранения?"),{confirm:tr("Закрыть без сохранения"),danger:true}))return false;
+  files.file=null;renderFiles();return true;
+}
+async function saveFile(){
+  const file=files.file;if(!file)return;
+  try{
+    const result=await api("/api/file_save",{path:file.path,content:file.content,hash:file.isNew?null:file.hash});
+    Object.assign(file,{hash:result.hash,saved:file.content,isNew:false});
+    toast(tr("Файл сохранён"),"success");
+  }catch(e){if(e.message!==STALE)toast(e.message)}
+  // Only the button changes: re-rendering would move the cursor and scroll of the open text.
+  if(files.file===file&&files.saveButton)files.saveButton.disabled=!filesDirty();
+}
+function newFile(name){
+  name=name.trim();
+  if(!name||name.includes("/")||name==="."||name===".."){toast(tr("Введите имя файла без папок"));return}
+  const folder=files.listing.path;
+  files.file={path:folder+"/"+name,content:"",saved:"",hash:null,isNew:true};renderFiles();
+}
+async function closeFiles(){if(!files.file||await leaveFile())$("files_dlg").close()}
+function fileButton(label,cls,run,icon){
+  const b=el("button",cls,...(icon?[svgIcon(icon)]:[]),el("span","",label));b.type="button";b.onclick=run;return b;
+}
+
+function renderFiles(){
+  const box=$("files_body"),listing=files.listing;box.replaceChildren();
+  if(!listing){box.append(el("p","files-empty",tr("Загрузка…")));return}
+  if(files.file)return renderEditor(box,listing);
+  const crumbs=el("div","files-path",el("code","",homeRelative(listing.path,listing.home)));
+  if(listing.parent)crumbs.prepend(fileButton(tr("Вверх"),"files-up",()=>loadFolder(listing.parent),"arrow-up"));
+  const create=el("form","files-new");
+  const input=el("input","");input.type="text";input.placeholder=tr("Имя нового файла, например .env");
+  input.setAttribute("autocapitalize","none");input.setAttribute("autocorrect","off");input.spellcheck=false;
+  create.append(input,fileButton(tr("Создать"),"",()=>newFile(input.value),"plus"));
+  create.onsubmit=e=>{e.preventDefault();newFile(input.value)};
+  const list=el("div","files-list");
+  for(const entry of listing.entries){
+    const path=listing.path+"/"+entry.name;
+    const row=fileButton(entry.name,"files-row"+(entry.dir?" dir":""),()=>entry.dir?loadFolder(path):openFile(path),entry.dir?"folder":"file");
+    if(!entry.dir)row.append(el("span","files-size",formatSize(entry.size)));
+    list.append(row);
+  }
+  if(!listing.entries.length)list.append(el("p","files-empty",tr("Папка пуста")));
+  if(listing.truncated)list.append(el("p","files-empty",tr("Показаны первые 2000 элементов")));
+  box.append(crumbs,create,list);
+}
+function renderEditor(box,listing){
+  const file=files.file,name=file.path.split("/").pop();
+  const head=el("div","files-path",fileButton(tr("К папке"),"files-up",leaveFile,"arrow-up"),el("code","",homeRelative(file.path,listing.home)));
+  const area=el("textarea","files-text");area.value=file.content;area.spellcheck=false;
+  area.setAttribute("autocapitalize","none");area.setAttribute("autocorrect","off");area.setAttribute("aria-label",name);
+  const save=fileButton(tr("Сохранить"),"pri",saveFile);save.disabled=!filesDirty()&&!file.isNew;files.saveButton=save;
+  area.oninput=()=>{file.content=area.value;save.disabled=!filesDirty()&&!file.isNew};
+  const copy=fileButton(tr("Копировать"),"",()=>{
+    const text=area.selectionStart!==area.selectionEnd?area.value.slice(area.selectionStart,area.selectionEnd):area.value;
+    copyText(text);
+  });
+  box.append(head,area,el("div","acts",copy,save));
+}
+async function copyText(text){
+  try{if(navigator.clipboard&&window.isSecureContext){await navigator.clipboard.writeText(text);toast(tr("Скопировано: {0} симв.",[text.length]),"success");return}}catch(e){}
+  if(execCopy(text,document))toast(tr("Скопировано: {0} симв.",[text.length]),"success");else toast(tr("Браузер запретил копирование"));
+}
+
+if(typeof module!=="undefined")module.exports={formatSize,homeRelative};
 const I18N=__PANEL_I18N__;
 const DATE_LOCALE=(()=>{try{return Intl.getCanonicalLocales(I18N.language)[0]}catch(e){return "en"}})();
 const $=id=>document.getElementById(id);
@@ -1896,6 +2011,8 @@ function sheet(on){
   if(!on&&wasOpen&&$("sheet").contains(document.activeElement))$("b_actions").focus();
 }
 for(const item of $("sheet").querySelectorAll(".panel button"))item.setAttribute("role","menuitem");
+// Escape on an edited file asks first instead of dropping the changes.
+$("files_dlg").addEventListener("cancel",e=>{if(filesDirty()){e.preventDefault();leaveFile()}});
 addEventListener("keydown",e=>{if(e.key==="Escape"&&$("sheet").classList.contains("on"))sheet(false)});
 async function confirmAction(title,{text="",confirm=tr("Продолжить"),danger=false}={}){
   return askConfirm($("confirm_dlg"),{title,text,confirm,danger});

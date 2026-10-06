@@ -294,6 +294,16 @@ question and every session that finished work, on all connected computers. Answe
 tap right there; options such as *Other* or *Type something* open a text field and send your own answer.
 Tap a session name to open it, on the right computer.
 
+## Project files
+
+**⋯ → Project files** browses the session's folder and everything else in your home folder. Text files
+up to 1 MB (including `.env`) open in an editor: copy from them, paste a secret in and save, or create a
+new file — new files are private (`0600`), existing ones keep their permissions, and a file that changed
+on disk after you opened it is never overwritten. The panel's own settings folder (`~/.config/cc-panel`)
+is not shown. Works for sessions on connected computers too.
+
+<img src="docs/screenshots/mobile-file.png" width="260" alt="Editing .env in Project files">
+
 ## Screenshots from agents
 
 <img src="docs/screenshots/mobile-images.png" width="300" alt="Agent output with clickable screenshot thumbnails">

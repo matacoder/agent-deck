@@ -37,7 +37,7 @@ function boot(routes,opened){
       const target=new URL(url,'https://panel.test/');
       if(routes.__parked&&target.pathname===routes.__parked)return new Promise((_,reject)=>options.signal?.addEventListener('abort',()=>reject(new Error('aborted'))));
       const handler=routes[target.pathname];
-      const body=handler?await handler(target):{};
+      const body=handler?await handler(target,options):{};
       if(body&&body.__network)throw new TypeError('Load failed');
       if(body&&body.__html)return {ok:true,status:200,headers:{get:()=>null},json:async()=>{throw new SyntaxError('Unexpected token <')}};
       return {ok:true,status:200,headers:{get:()=>null},json:async()=>body};
@@ -143,6 +143,36 @@ test('a read that iOS parked in the background gives up instead of blocking ever
   await settle();await settle();
   routes.__parked='/api/usage';
   await expect(window.eval('api("/api/usage")')).rejects.toMatchObject({offline:true});
+  }finally{window.close()}
+});
+
+test('project files: browse, open .env, paste a secret and save it with the version that was opened',async()=>{
+  const state={local:()=>({sessions:[session('alpha')]})};
+  const routes=routesFor(state),saved=[];
+  routes['/api/files']=url=>url.searchParams.get('path')?{path:'/home/demo/projects/alpha/config',home:'/home/demo',parent:'/home/demo/projects/alpha',entries:[{name:'.env',dir:false,size:9,mtime:1}]}
+    :{path:'/home/demo/projects/alpha',home:'/home/demo',parent:'/home/demo/projects',entries:[{name:'config',dir:true,size:0,mtime:1}]};
+  routes['/api/file']=()=>({path:'/home/demo/projects/alpha/config/.env',content:'TOKEN=\n',hash:'h1',size:7});
+  routes['/api/file_save']=(url,options)=>{saved.push(JSON.parse(options.body));return {ok:true,hash:'h2'}};
+  const window=boot(routes);
+  try{
+  await settle();await settle();
+  const doc=window.document;
+  await window.eval('openFiles()');await settle();
+  expect(doc.querySelector('.files-path code').textContent).toBe('~/projects/alpha');
+  doc.querySelector('.files-row.dir').click();await settle();
+  doc.querySelector('.files-row').click();await settle();
+  const area=doc.querySelector('.files-text');
+  expect(area.value).toBe('TOKEN=\n');
+  area.value='TOKEN=pasted-secret\n';area.dispatchEvent(new window.Event('input'));
+  [...doc.querySelectorAll('#files_body button')].find(b=>b.textContent==='Сохранить'||b.textContent==='Save').click();await settle();
+  expect(saved).toEqual([{path:'/home/demo/projects/alpha/config/.env',content:'TOKEN=pasted-secret\n',hash:'h1'}]);
+  // A saved file closes without asking; an edited one asks first.
+  area.value='TOKEN=changed\n';area.dispatchEvent(new window.Event('input'));
+  const leaving=window.eval('leaveFile()');await settle();
+  expect(doc.getElementById('confirm_dlg').open).toBe(true);
+  doc.getElementById('confirm_dlg').close();await settle();
+  await expect(leaving).resolves.toBe(false);
+  expect(doc.querySelector('.files-text').value).toBe('TOKEN=changed\n');
   }finally{window.close()}
 });
 

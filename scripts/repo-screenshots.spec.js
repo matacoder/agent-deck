@@ -114,3 +114,17 @@ test('phone inbox',async({app,page},info)=>{
  await page.evaluate(()=>document.activeElement?.blur());
  await page.screenshot({path:target('mobile-inbox')});
 });
+
+test('phone files',async({app,page},info)=>{
+ test.skip(info.project.name!=='phone');
+ await demo(app,page,async()=>{
+  await page.route('**/api/files?*',json({path:'/home/dev/dev/agent-deck',home:'/home/dev',parent:'/home/dev/dev',entries:[
+   {name:'frontend',dir:true,size:0,mtime:1},{name:'integrations',dir:true,size:0,mtime:1},{name:'panel',dir:true,size:0,mtime:1},
+   {name:'.env',dir:false,size:142,mtime:1},{name:'README.md',dir:false,size:41210,mtime:1},{name:'install.sh',dir:false,size:16890,mtime:1}]}));
+  await page.route('**/api/file?*',json({path:'/home/dev/dev/agent-deck/.env',content:'# Deploy secrets\nDATABASE_URL=postgres://app@db/app\nSTRIPE_KEY=sk_live_paste_here\n',hash:'h',size:142}));
+ });
+ await page.evaluate(()=>openFiles());await page.waitForTimeout(500);
+ await page.screenshot({path:target('mobile-files')});
+ await page.locator('.files-row:not(.dir)').first().click();await page.waitForTimeout(400);
+ await page.screenshot({path:target('mobile-file')});
+});

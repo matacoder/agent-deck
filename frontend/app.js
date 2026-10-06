@@ -175,6 +175,8 @@ function sheet(on){
   if(!on&&wasOpen&&$("sheet").contains(document.activeElement))$("b_actions").focus();
 }
 for(const item of $("sheet").querySelectorAll(".panel button"))item.setAttribute("role","menuitem");
+// Escape on an edited file asks first instead of dropping the changes.
+$("files_dlg").addEventListener("cancel",e=>{if(filesDirty()){e.preventDefault();leaveFile()}});
 addEventListener("keydown",e=>{if(e.key==="Escape"&&$("sheet").classList.contains("on"))sheet(false)});
 async function confirmAction(title,{text="",confirm=tr("Продолжить"),danger=false}={}){
   return askConfirm($("confirm_dlg"),{title,text,confirm,danger});

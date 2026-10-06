@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.15.0 — 2026-10-06
+
+- **Project files** (⋯ menu): browse the session's folder and the rest of the home folder, open text files up to 1 MB such as `.env`, copy from them, paste a secret in and save, or create a new file. New files are `0600`, existing ones keep their mode, saves are atomic and refuse to overwrite a file that changed on disk after it was opened. The panel's settings folder (`~/.config/cc-panel`) and anything outside the home folder (including through symlinks) are not reachable. Works for connected computers through the gateway. New `GET /api/files`, `GET /api/file`, action `file_save`.
+
 ## 1.14.0 — 2026-10-06
 
 - SteamOS (Steam Machine, Steam Deck): `install-steamos.sh` runs Agent Deck as a rootless Podman container built from the Docker image, started by a systemd user service; everything stays in the home folder and survives SteamOS updates, no sudo needed. Re-running the script updates it.

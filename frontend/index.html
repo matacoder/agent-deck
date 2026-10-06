@@ -24,6 +24,7 @@ __PANEL_STYLE__</style></head><body>
   <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14.9-3.9L4 8"/><path d="M4 4v4h4M4 13a8 8 0 0 0 14.9 3.9L20 16"/><path d="M20 20v-4h-4"/></symbol>
   <symbol id="i-pencil" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16v4zM13 7l4 4"/></symbol>
   <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
   <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></symbol>
   <symbol id="i-arrow-down" viewBox="0 0 24 24"><path d="M12 5v14M6 13l6 6 6-6"/></symbol>
   <symbol id="i-arrow-up" viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></symbol>
@@ -114,6 +115,7 @@ __PANEL_STYLE__</style></head><body>
     <button onclick="sheet(false);openRename()"><svg class="ui-icon"><use href="#i-pencil"/></svg><span>Переименовать</span></button>
     <button id="s_link" onclick="sheet(false);openLink()"><svg class="ui-icon"><use href="#i-link"/></svg><span>Открыть ссылку из терминала</span></button>
     <button onclick="sheet(false);termHere()"><svg class="ui-icon"><use href="#i-terminal"/></svg><span>Новый терминал в этой папке</span></button>
+    <button onclick="sheet(false);openFiles()"><svg class="ui-icon"><use href="#i-folder"/></svg><span>Файлы проекта</span></button>
     <button class="agent-only" onclick="sheet(false);restart('continue')"><svg class="ui-icon"><use href="#i-restart"/></svg><span>Перезапустить, продолжив разговор</span></button>
     <button class="agent-only" onclick="sheet(false);restart('new')"><svg class="ui-icon"><use href="#i-chat-plus"/></svg><span>Перезапустить с новым разговором</span></button>
     <button onclick="sheet(false);popout()"><svg class="ui-icon"><use href="#i-external"/></svg><span>Терминал в новой вкладке</span></button>
@@ -138,6 +140,7 @@ __PANEL_STYLE__</style></head><body>
   <div class="viewer-bar"><span id="viewer_caption"></span><a id="viewer_open" target="_blank" rel="noopener">Открыть оригинал</a></div>
 </div>
 <dialog id="confirm_dlg"><form class="dlg" method="dialog"><div class="dlg-body"><h3 id="confirm_title"></h3><p id="confirm_text"></p></div><div class="acts"><button value="cancel">Отмена</button><button value="ok" class="pri" id="confirm_ok">OK</button></div></form></dialog>
+<dialog id="files_dlg"><div class="dlg"><div class="hub-heading"><h3>Файлы проекта</h3><button type="button" onclick="closeFiles()" aria-label="Закрыть"><svg class="ui-icon"><use href="#i-x"/></svg></button></div><div class="dlg-body" id="files_body"></div></div></dialog>
 <dialog id="inbox_dlg"><div class="dlg"><div class="hub-heading"><h3>Ждут ответа</h3><button type="button" onclick="$('inbox_dlg').close()" aria-label="Закрыть"><svg class="ui-icon"><use href="#i-x"/></svg></button></div><div class="dlg-body" id="inbox_list"></div></div></dialog>
 <dialog id="draft_dlg"><div class="dlg"><div class="dlg-body"><h3>Черновики закрытых сессий</h3><div id="closed_drafts"></div></div><div class="acts"><button type="button" onclick="$('draft_dlg').close()">Закрыть</button></div></div></dialog>
 

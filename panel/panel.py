@@ -1609,7 +1609,45 @@ def integration_status():
     return {'telegram': {**status, 'duplicates': telegram_duplicates(status.get('bot', '')) if status.get('paired') else []}}
 
 
-ACTIONS.update(telegram_config=lambda d: {'telegram': telegram_service().save(d)},
+def session_folder(name):
+    if not isinstance(name, str) or not NAME_RE.fullmatch(name) or not session_exists(name):
+        raise ValueError("сессия не найдена")
+    folder = tmux("display-message", "-p", "-t", f"={PREFIX}{name}:", "#{session_path}", check=False).strip()
+    return folder or os.path.expanduser("~")
+
+
+def file_errors(work):
+    """File problems are answers for the user, not server errors."""
+    try:
+        return work()
+    except PermissionError:
+        raise ValueError("Нет прав на этот файл или папку") from None
+    except (FileNotFoundError, FileExistsError, IsADirectoryError, NotADirectoryError) as error:
+        raise ValueError(str(error) if error.args and isinstance(error.args[0], str) and not error.filename
+                         else "Файл или папка недоступны") from None
+
+
+def files_payload(query):
+    from integrations import files
+    path = query.get("path", [""])[0] or session_folder(query.get("name", [""])[0])
+    return file_errors(lambda: files.listing(os.path.expanduser("~"), path))
+
+
+def file_payload(query):
+    from integrations import files
+    return file_errors(lambda: files.read_text(os.path.expanduser("~"), query.get("path", [""])[0]))
+
+
+def action_file_save(d):
+    from integrations import files
+    expected = d.get("hash")
+    if expected is not None and not isinstance(expected, str):
+        raise ValueError("Неверная версия файла")
+    return file_errors(lambda: files.save_text(os.path.expanduser("~"), d.get("path"), d.get("content"), expected))
+
+
+ACTIONS.update(file_save=action_file_save,
+               telegram_config=lambda d: {'telegram': telegram_service().save(d)},
                telegram_pair=lambda d: {'telegram': telegram_service().pair()},
                answer=action_answer,
                backup_setup=lambda d: backup_service().setup(d.get('code') or None),
@@ -1927,6 +1965,12 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_json(200, {"sessions": list_sessions(preview_name)})
         if parsed.path == "/api/image":
             return self.serve_session_image(parse_qs(parsed.query))
+        if parsed.path in ("/api/files", "/api/file"):
+            try:
+                load = files_payload if parsed.path == "/api/files" else file_payload
+                return self.send_json(200, load(parse_qs(parsed.query)))
+            except ValueError as error:
+                return self.send_json(400, {"error": str(error)})
         if parsed.path == "/api/push":
             return self.send_json(200, push_service().status())
         if parsed.path == "/api/backups":
