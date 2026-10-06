@@ -1,0 +1,105 @@
+import json
+from pathlib import Path
+import subprocess
+import sys
+import tempfile
+import unittest
+from unittest.mock import patch
+
+from support import ROOT, PanelCase
+sys.path.insert(0, str(ROOT))
+from integrations import git as G
+
+
+def repo(test):
+    tmp = tempfile.TemporaryDirectory(dir='/tmp')
+    test.addCleanup(tmp.cleanup)
+    path = Path(tmp.name)
+    env = ['-c', 'user.name=Dev', '-c', 'user.email=dev@example.test', '-c', 'commit.gpgsign=false']
+    def git(*args):
+        subprocess.run(['git', *env, '-C', str(path), *args], check=True, capture_output=True)
+    git('init', '-q', '-b', 'main')
+    (path / 'app.py').write_text('a = 1\nb = 2\n')
+    git('add', '.'); git('commit', '-q', '-m', 'Add app')
+    (path / 'app.py').write_text('a = 1\nb = 3\nc = 4\n')
+    (path / 'README.md').write_text('# Demo\n')
+    git('add', '.'); git('commit', '-q', '-m', 'Change b and add readme\n\nLonger explanation.')
+    return path
+
+
+class HistoryTests(unittest.TestCase):
+    def test_history_lists_commits_with_their_change_counts(self):
+        path = repo(self)
+        data = G.history(path)
+        self.assertEqual((data['branch'], data['more']), ('main', False))
+        self.assertEqual([c['subject'] for c in data['commits']], ['Change b and add readme', 'Add app'])
+        self.assertEqual({k: data['commits'][0][k] for k in ('files', 'added', 'removed')}, {'files': 2, 'added': 3, 'removed': 1})
+
+    def test_commit_has_its_message_and_a_diff_per_file(self):
+        path = repo(self)
+        sha = G.history(path)['commits'][0]['sha']
+        detail = G.commit(path, sha)
+        self.assertEqual(detail['message'], 'Change b and add readme\n\nLonger explanation.')
+        files = {f['path']: f for f in detail['files']}
+        self.assertEqual((files['README.md']['status'], files['app.py']['status']), ('added', 'modified'))
+        self.assertIn('+c = 4', files['app.py']['patch'])
+        self.assertEqual((files['app.py']['added'], files['app.py']['removed']), (2, 1))
+
+    def test_group_diff_collects_every_commit_per_file_oldest_first(self):
+        path = repo(self)
+        shas = [c['sha'] for c in G.history(path)['commits']]
+        app = next(f for f in G.group_diff(path, shas)['files'] if f['path'] == 'app.py')
+        self.assertEqual([c['subject'] for c in app['changes']], ['Add app', 'Change b and add readme'])
+
+    def test_only_real_commit_ids_reach_git(self):
+        path = repo(self)
+        for bad in ('HEAD', '--output=/tmp/x', 'abc', 'a' * 41, None):
+            with self.subTest(bad=bad), self.assertRaises(ValueError):
+                G.commit(path, bad)
+        with self.assertRaisesRegex(ValueError, 'git-репозитории'):
+            G.history(tempfile.gettempdir())
+
+
+class GroupingTests(unittest.TestCase):
+    COMMITS = [{'sha': 'a' * 40, 'subject': 'Add login'}, {'sha': 'b' * 40, 'subject': 'Fix login'},
+               {'sha': 'c' * 40, 'subject': 'Docs'}]
+
+    def test_model_answer_is_trusted_only_for_structure(self):
+        answer = 'Sure! {"groups":[{"title":"Login","summary":"Login flow","commits":["aaaaaaaaaaaa","bbbbbbbbbbbb","bbbbbbbbbbbb","deadbeef0000"]},' \
+                 '{"title":"Empty","commits":["ffffffffffff"]}]}'
+        groups = G.parse_groups(answer, self.COMMITS)
+        self.assertEqual(groups[0]['commits'], ['a' * 40, 'b' * 40])  # Unknown and repeated ids are dropped.
+        self.assertEqual(groups[1], {'title': 'Без группы', 'summary': '', 'commits': ['c' * 40], 'ungrouped': True})
+        with self.assertRaisesRegex(ValueError, 'формате'):
+            G.parse_groups('no json here', self.COMMITS)
+
+    def test_grouping_runs_haiku_without_tools_in_an_empty_folder_and_caches_by_head(self):
+        path = repo(self)
+        cache = Path(tempfile.mkdtemp(dir='/tmp'))
+        self.addCleanup(lambda: __import__('shutil').rmtree(cache))
+        calls = []
+        def run(command, **kwargs):
+            if command[0] != '/bin/claude':
+                return subprocess.run(command, **kwargs)
+            calls.append((command, kwargs))
+            shas = [line.split(' | ')[0] for line in kwargs['input'].decode().split('\n') if ' | ' in line and not line.startswith('Commits')]
+            result = json.dumps({'groups': [{'title': 'Демо', 'summary': 'Всё', 'commits': shas}]})
+            return subprocess.CompletedProcess(command, 0, json.dumps({'result': result}).encode(), b'')
+        grouper = G.Grouper(cache, which=lambda name: '/bin/claude', run=run)
+        with patch.object(G.os, 'access', return_value=True), patch.object(G.threading, 'Thread') as thread:
+            grouper.start(path, 'ru')
+            thread.call_args.kwargs['target'](*thread.call_args.kwargs['args'])  # Run the job inline.
+        command, kwargs = calls[0]
+        self.assertEqual(command[1:5], ['-p', '--model', 'haiku', '--tools'])
+        self.assertEqual(command[5], '')
+        self.assertNotIn('a = 1', kwargs['input'].decode())  # Subjects and file names only, never code.
+        self.assertIn('app.py', kwargs['input'].decode())
+        self.assertEqual(list(Path(kwargs['cwd']).parent.glob(Path(kwargs['cwd']).name)), [])  # Temporary, removed.
+        status = grouper.status(path)
+        self.assertEqual((status['phase'], status['groups'][0]['title'], len(status['groups'][0]['commits'])), ('done', 'Демо', 2))
+
+
+class PanelGitTests(PanelCase):
+    def test_git_routes_need_a_real_session(self):
+        with self.assertRaisesRegex(ValueError, 'сессия не найдена'):
+            self.panel.git_payload('/api/git/log', {'name': ['../x']})

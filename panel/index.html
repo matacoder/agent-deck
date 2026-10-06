@@ -419,6 +419,41 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 .inbox-btn svg{color:var(--acc-text)}
 #inbox_dlg{width:min(560px,calc(100vw - 32px))}
 #files_dlg{width:min(720px,calc(100vw - 32px))}
+#git_dlg{width:min(900px,calc(100vw - 32px))}
+.git-tabs{display:flex;gap:6px;padding:10px 22px;border-bottom:1px solid var(--bd)}
+.git-tabs button{padding:6px 12px;border-radius:var(--r-sm);color:var(--mut)}
+.git-tabs button.on{background:var(--sel);color:var(--fg2)}
+#git_body{display:flex;flex-direction:column;gap:10px}
+#git_body>*{flex:none}
+.git-repo{margin:0;color:var(--mut)}
+.git-list{display:grid;border:1px solid var(--bd);border-radius:12px;overflow:hidden}
+.git-row,.git-group{display:grid;gap:4px;padding:10px 12px;border-bottom:1px solid var(--bd-soft);text-align:left;color:var(--fg)}
+.git-row:last-child{border-bottom:0}.git-row:hover,.git-group:hover{background:var(--side2)}
+.git-group{border:1px solid var(--bd);border-radius:12px}
+.git-subject{color:var(--fg2);font-weight:600;overflow-wrap:anywhere}
+.git-meta{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0;color:var(--mut);font-size:12px}
+.git-summary{margin:0;color:var(--fg);font-size:13px;line-height:1.5}
+.git-title{margin:4px 0 0;color:var(--fg2);font-size:16px;overflow-wrap:anywhere}
+.git-section{margin:8px 0 0;color:var(--mut);font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+.git-message{margin:0;padding:10px 12px;border-radius:10px;background:var(--bg);color:var(--fg);font:12.5px/1.5 var(--mono);white-space:pre-wrap;overflow-wrap:anywhere}
+.git-more{align-self:center;padding:8px 14px;border:1px solid var(--bd);border-radius:var(--r-sm);color:var(--fg2)}
+.diff-count{display:inline-flex;gap:6px;font-variant-numeric:tabular-nums}.diff-count b{font-weight:600}
+.diff-count .plus{color:var(--ok)}.diff-count .minus{color:var(--bad-text)}
+.diff-file{border:1px solid var(--bd);border-radius:10px;overflow:hidden}
+.diff-file summary{display:flex;align-items:center;gap:8px;padding:8px 10px;cursor:pointer;background:var(--side2);list-style:none}
+.diff-file summary::-webkit-details-marker{display:none}
+.diff-path{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:12.5px var(--mono);color:var(--fg2)}
+.diff-status{flex:none;width:18px;text-align:center;font:600 11px var(--mono);border-radius:4px;color:var(--mut)}
+.diff-status.added{color:var(--ok)}.diff-status.deleted{color:var(--bad-text)}.diff-status.renamed{color:var(--acc-text)}
+.diff{overflow-x:auto;font:12px/1.45 var(--mono);background:var(--bg)}
+.dl{display:flex;min-width:max-content}
+.dl .ln{flex:none;width:44px;padding:0 6px;text-align:right;color:var(--dim);user-select:none;-webkit-user-select:none}
+.dl .code{padding:0 10px;white-space:pre;color:var(--fg)}
+.dl.add{background:var(--toast-ok-bg)}.dl.add .code{color:var(--toast-ok-fg)}
+.dl.del{background:var(--toast-bad-bg)}.dl.del .code{color:var(--toast-bad-fg)}
+.dl.hunk{padding:4px 10px;color:var(--acc-text);background:var(--acc-soft);white-space:pre}
+.diff-note{margin:0;padding:8px 10px;color:var(--mut);font-size:12px}
+.diff-commit{padding:6px 10px;border-top:1px solid var(--bd);color:var(--mut);font:12px var(--mono);background:var(--side)}
 #files_dlg .hub-heading{border-bottom:1px solid var(--bd)}
 /* A column, not a grid: in a grid the clipped list (overflow:hidden for its corners) shrank to the dialog
    and cut off rows instead of letting the dialog scroll. */
@@ -615,8 +650,10 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
   .chk,.dlg label.chk{font-size:15px}
   .acts{padding:12px 16px calc(12px + var(--sab))}
   .acts button{flex:1;min-height:var(--tap);padding:12px;font-size:16px;border-radius:var(--r)}
-  #inbox_dlg,#files_dlg{width:100vw}
-  #inbox_dlg .dlg,#files_dlg .dlg{padding-top:var(--sat)}
+  #inbox_dlg,#files_dlg,#git_dlg{width:100vw}
+  #inbox_dlg .dlg,#files_dlg .dlg,#git_dlg .dlg{padding-top:var(--sat)}
+  .git-tabs{padding:10px 20px}.git-tabs button{min-height:var(--tap);padding:0 14px}
+  .dl .ln{width:36px}
   #confirm_dlg{width:calc(100vw - 32px);height:fit-content;margin:auto;border:1px solid var(--bd-soft);border-radius:16px}
   #confirm_dlg .dlg{height:auto;padding-top:0}
   #confirm_dlg .acts{padding:12px 16px 16px}
@@ -662,6 +699,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
   <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14.9-3.9L4 8"/><path d="M4 4v4h4M4 13a8 8 0 0 0 14.9 3.9L20 16"/><path d="M20 20v-4h-4"/></symbol>
   <symbol id="i-pencil" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16v4zM13 7l4 4"/></symbol>
   <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></symbol>
+  <symbol id="i-history" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v6M12 15v6"/></symbol>
   <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
   <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></symbol>
   <symbol id="i-arrow-down" viewBox="0 0 24 24"><path d="M12 5v14M6 13l6 6 6-6"/></symbol>
@@ -754,6 +792,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
     <button id="s_link" onclick="sheet(false);openLink()"><svg class="ui-icon"><use href="#i-link"/></svg><span>Открыть ссылку из терминала</span></button>
     <button onclick="sheet(false);termHere()"><svg class="ui-icon"><use href="#i-terminal"/></svg><span>Новый терминал в этой папке</span></button>
     <button onclick="sheet(false);openFiles()"><svg class="ui-icon"><use href="#i-folder"/></svg><span>Файлы проекта</span></button>
+    <button onclick="sheet(false);openHistory()"><svg class="ui-icon"><use href="#i-history"/></svg><span>История изменений</span></button>
     <button class="agent-only" onclick="sheet(false);restart('continue')"><svg class="ui-icon"><use href="#i-restart"/></svg><span>Перезапустить, продолжив разговор</span></button>
     <button class="agent-only" onclick="sheet(false);restart('new')"><svg class="ui-icon"><use href="#i-chat-plus"/></svg><span>Перезапустить с новым разговором</span></button>
     <button onclick="sheet(false);popout()"><svg class="ui-icon"><use href="#i-external"/></svg><span>Терминал в новой вкладке</span></button>
@@ -778,6 +817,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
   <div class="viewer-bar"><span id="viewer_caption"></span><a id="viewer_open" target="_blank" rel="noopener">Открыть оригинал</a></div>
 </div>
 <dialog id="confirm_dlg"><form class="dlg" method="dialog"><div class="dlg-body"><h3 id="confirm_title"></h3><p id="confirm_text"></p></div><div class="acts"><button value="cancel">Отмена</button><button value="ok" class="pri" id="confirm_ok">OK</button></div></form></dialog>
+<dialog id="git_dlg"><div class="dlg"><div class="hub-heading"><h3>История изменений</h3><button type="button" onclick="clearTimeout(hist.timer);$('git_dlg').close()" aria-label="Закрыть"><svg class="ui-icon"><use href="#i-x"/></svg></button></div><div class="git-tabs" id="git_tabs" role="tablist"><button type="button" data-tab="commits" onclick="historyTab('commits')">Коммиты</button><button type="button" data-tab="groups" onclick="historyTab('groups')">Группы фич</button></div><div class="dlg-body" id="git_body"></div></div></dialog>
 <dialog id="files_dlg"><div class="dlg"><div class="hub-heading"><h3>Файлы проекта</h3><button type="button" onclick="closeFiles()" aria-label="Закрыть"><svg class="ui-icon"><use href="#i-x"/></svg></button></div><div class="dlg-body" id="files_body"></div></div></dialog>
 <dialog id="inbox_dlg"><div class="dlg"><div class="hub-heading"><h3>Ждут ответа</h3><button type="button" onclick="$('inbox_dlg').close()" aria-label="Закрыть"><svg class="ui-icon"><use href="#i-x"/></svg></button></div><div class="dlg-body" id="inbox_list"></div></div></dialog>
 <dialog id="draft_dlg"><div class="dlg"><div class="dlg-body"><h3>Черновики закрытых сессий</h3><div id="closed_drafts"></div></div><div class="acts"><button type="button" onclick="$('draft_dlg').close()">Закрыть</button></div></div></dialog>
@@ -1844,6 +1884,152 @@ async function copyText(text){
 }
 
 if(typeof module!=="undefined")module.exports={formatSize,homeRelative};
+// Git history of the open session's repository: commits with their diffs, and feature groups that a
+// cheap model (Claude Haiku) proposes from commit subjects and file names, each with a combined diff.
+// Agent and repository text is rendered with textContent only.
+const hist={session:null,tab:"commits",log:null,commits:[],back:null,view:null,groups:null,timer:null};
+
+function relativeTime(seconds){
+  const diff=seconds-Date.now()/1000,units=[["year",31536000],["month",2592000],["day",86400],["hour",3600],["minute",60]];
+  const format=new Intl.RelativeTimeFormat(DATE_LOCALE,{numeric:"auto"});
+  for(const [unit,size] of units)if(Math.abs(diff)>=size)return format.format(Math.round(diff/size),unit);
+  return format.format(0,"minute");
+}
+// Unified diff text -> rows with old/new line numbers; headers before the first hunk are dropped.
+function diffRows(patch){
+  const rows=[];let oldLine=0,newLine=0,inHunk=false;
+  for(const line of patch.split("\n")){
+    const hunk=line.match(/^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@(.*)$/);
+    if(hunk){oldLine=+hunk[1];newLine=+hunk[2];inHunk=true;rows.push({kind:"hunk",text:line});continue}
+    if(!inHunk||line.startsWith("\\"))continue;
+    if(line.startsWith("+"))rows.push({kind:"add",old:"",new:newLine++,text:line.slice(1)});
+    else if(line.startsWith("-"))rows.push({kind:"del",old:oldLine++,new:"",text:line.slice(1)});
+    else if(line.length||rows.length)rows.push({kind:"ctx",old:oldLine++,new:newLine++,text:line.slice(1)});
+  }
+  while(rows.length&&rows[rows.length-1].kind==="ctx"&&!rows[rows.length-1].text)rows.pop();
+  return rows;
+}
+function renderDiff(patch,file){
+  const box=el("div","diff");
+  if(file.binary){box.append(el("p","diff-note",tr("Двоичный файл")));return box}
+  if(!patch){box.append(el("p","diff-note",tr("Дифф слишком большой для просмотра; откройте его в терминале")));return box}
+  for(const row of diffRows(patch)){
+    if(row.kind==="hunk"){box.append(el("div","dl hunk",row.text));continue}
+    box.append(el("div","dl "+row.kind,el("span","ln",String(row.old)),el("span","ln",String(row.new)),el("span","code",row.text||" ")));
+  }
+  if(file.truncated)box.append(el("p","diff-note",tr("Показана только часть изменений")));
+  return box;
+}
+const STATUS_MARK={added:"A",deleted:"D",renamed:"R",modified:"M"};
+// Collapsed files render their diff only when opened, so large commits stay fast on a phone.
+function fileBlock(title,file,open,content){
+  const details=el("details","diff-file"),summary=el("summary","",el("span","diff-status "+(file.status||"modified"),STATUS_MARK[file.status]||"M"),
+    el("span","diff-path",title),el("span","diff-count",el("b","plus","+"+file.added),el("b","minus","−"+file.removed)));
+  details.append(summary);
+  details.addEventListener("toggle",()=>{if(details.open&&details.childElementCount===1)details.append(content())});
+  details.open=open;return details;
+}
+
+async function openHistory(){
+  if(!active)return;
+  hist.session=active;hist.tab="commits";hist.view=null;hist.back=null;hist.log=null;hist.commits=[];hist.groups=null;
+  if(!$("git_dlg").open)$("git_dlg").showModal();
+  renderHistory();await loadHistoryPage();
+}
+function gitPath(route,params={}){return "/api/git/"+route+"?"+new URLSearchParams({name:hist.session,...params})}
+async function loadHistoryPage(){
+  try{const page=await api(gitPath("log",{skip:hist.commits.length}));hist.log=page;hist.commits.push(...page.commits)}
+  catch(e){if(e.message!==STALE)hist.error=e.message}
+  renderHistory();
+}
+async function showCommit(sha,back){
+  hist.view={kind:"loading"};hist.back=back||null;renderHistory();
+  try{hist.view={kind:"commit",data:await api(gitPath("commit",{sha}))}}
+  catch(e){hist.view=null;if(e.message!==STALE)toast(e.message)}
+  renderHistory();$("git_body").scrollTop=0;
+}
+async function showGroup(group){
+  hist.view={kind:"group",group,diff:null};renderHistory();$("git_body").scrollTop=0;
+  try{hist.view.diff=await api(gitPath("group_diff",{shas:group.commits.join(",")}))}
+  catch(e){if(e.message!==STALE)toast(e.message)}
+  if(hist.view?.group===group)renderHistory();
+}
+async function loadGroups(){
+  clearTimeout(hist.timer);
+  try{hist.groups=await api(gitPath("groups"))}catch(e){if(e.message!==STALE)hist.groups={phase:"error",error:e.message}}
+  if(hist.groups?.phase==="running"&&$("git_dlg").open)hist.timer=setTimeout(loadGroups,3000);
+  if(hist.tab==="groups"&&!hist.view)renderHistory();
+}
+async function startGrouping(){
+  try{hist.groups=await api("/api/git_group",{name:hist.session})}catch(e){if(e.message!==STALE)toast(e.message);return}
+  renderHistory();hist.timer=setTimeout(loadGroups,3000);
+}
+function historyTab(tab){hist.tab=tab;hist.view=null;if(tab==="groups"&&!hist.groups)loadGroups();renderHistory()}
+
+function commitRow(c,back){
+  const row=el("button","git-row",el("span","git-subject",c.subject),
+    el("span","git-meta",[c.short,c.author,relativeTime(c.time)].join(" · "),el("span","diff-count",el("b","plus","+"+c.added),el("b","minus","−"+c.removed))));
+  row.type="button";row.onclick=()=>showCommit(c.sha,back);return row;
+}
+function renderHistory(){
+  const box=$("git_body");box.replaceChildren();
+  for(const b of $("git_tabs").children)b.classList.toggle("on",b.dataset.tab===hist.tab);
+  if(hist.view)return renderHistoryView(box);
+  if(hist.tab==="groups")return renderGroups(box);
+  if(hist.error&&!hist.commits.length){box.append(el("p","files-empty",hist.error));return}
+  if(!hist.log){box.append(el("p","files-empty",tr("Загрузка…")));return}
+  box.append(el("p","git-repo",el("code","",hist.log.name+" · "+hist.log.branch)));
+  const list=el("div","git-list");for(const c of hist.commits)list.append(commitRow(c));box.append(list);
+  if(!hist.commits.length)box.append(el("p","files-empty",tr("В репозитории ещё нет коммитов")));
+  if(hist.log.more){const more=el("button","git-more",tr("Показать ещё"));more.type="button";more.onclick=loadHistoryPage;box.append(more)}
+}
+function backButton(label,run){const b=fileButton(label,"files-up",run,"arrow-up");return el("div","files-path",b)}
+function renderHistoryView(box){
+  const view=hist.view;
+  if(view.kind==="loading"){box.append(el("p","files-empty",tr("Загрузка…")));return}
+  if(view.kind==="commit"){
+    const c=view.data,[subject,...rest]=c.message.split("\n");
+    const back=hist.back;
+    box.append(backButton(back?tr("К группе"):tr("К коммитам"),()=>{hist.view=back?{kind:"group",group:back,diff:null}:null;if(back)showGroup(back);else renderHistory()}),
+      el("h4","git-title",subject),el("p","git-meta",[c.short,c.author,new Date(c.time*1000).toLocaleString(DATE_LOCALE)].join(" · ")));
+    const body=rest.join("\n").trim();if(body)box.append(el("pre","git-message",body));
+    c.files.forEach((f,i)=>box.append(fileBlock(f.path,f,i<3&&c.files.length<=12,()=>renderDiff(f.patch,f))));
+    return;
+  }
+  const group=view.group;
+  box.append(backButton(tr("К группам"),()=>{hist.view=null;renderHistory()}),el("h4","git-title",group.ungrouped?tr("Без группы"):group.title));
+  if(group.summary)box.append(el("p","git-summary",group.summary));
+  const list=el("div","git-list");
+  for(const sha of group.commits){const c=hist.groups?.commits?.[sha];if(c)list.append(commitRow(c,group))}
+  box.append(list,el("h5","git-section",tr("Общий дифф")));
+  if(!view.diff){box.append(el("p","files-empty",tr("Загрузка…")));return}
+  for(const file of view.diff.files){
+    box.append(fileBlock(file.path,file,false,()=>{
+      const wrap=el("div","");
+      for(const change of file.changes)wrap.append(el("div","diff-commit",change.short+" · "+change.subject),renderDiff(change.patch,change));
+      return wrap;
+    }));
+  }
+}
+function renderGroups(box){
+  const state=hist.groups;
+  if(!state){box.append(el("p","files-empty",tr("Загрузка…")));return}
+  if(state.phase==="done"){
+    for(const group of state.groups){
+      const card=el("button","git-group",el("span","git-subject",group.ungrouped?tr("Без группы"):group.title),
+        ...(group.summary?[el("span","git-summary",group.summary)]:[]),el("span","git-meta",tr("Коммитов: {0}",[group.commits.length])));
+      card.type="button";card.onclick=()=>showGroup(group);box.append(card);
+    }
+    const again=el("button","git-more",tr("Сгруппировать заново"));again.type="button";again.onclick=startGrouping;box.append(again);
+    return;
+  }
+  if(state.phase==="running"){box.append(el("p","files-empty",tr("Claude Haiku группирует коммиты по фичам. Это занимает до пары минут.")));return}
+  box.append(el("p","git-summary",tr("Claude Haiku прочитает заголовки последних 80 коммитов и имена изменённых файлов (без кода) и объединит их в группы по фичам. Результат сохраняется до следующего коммита.")));
+  if(state.phase==="error")box.append(el("p","diff-note",state.error));
+  const start=fileButton(tr("Сгруппировать коммиты"),"pri",startGrouping);box.append(el("div","acts",start));
+}
+
+if(typeof module!=="undefined")module.exports={diffRows};
 const I18N=__PANEL_I18N__;
 const DATE_LOCALE=(()=>{try{return Intl.getCanonicalLocales(I18N.language)[0]}catch(e){return "en"}})();
 const $=id=>document.getElementById(id);

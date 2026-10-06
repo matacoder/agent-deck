@@ -1649,7 +1649,39 @@ def action_file_save(d):
     return file_errors(lambda: files.save_text(os.path.expanduser("~"), d.get("path"), d.get("content"), expected))
 
 
-ACTIONS.update(file_save=action_file_save,
+_grouper = None
+_grouper_lock = threading.Lock()
+
+
+def git_grouper():
+    global _grouper
+    from integrations.git import Grouper
+    with _grouper_lock:
+        if _grouper is None:
+            _grouper = Grouper(os.path.expanduser("~/.cache/agent-deck/git-groups"))
+        return _grouper
+
+
+def git_payload(route, query):
+    from integrations import git
+    folder = session_folder(query.get("name", [""])[0])
+    if route == "/api/git/log":
+        skip = query.get("skip", ["0"])[0]
+        return git.history(folder, int(skip) if skip.isdigit() else -1)
+    if route == "/api/git/commit":
+        return git.commit(folder, query.get("sha", [""])[0])
+    if route == "/api/git/group_diff":
+        return git.group_diff(folder, [s for s in query.get("shas", [""])[0].split(",") if s])
+    if route == "/api/git/groups":
+        return git_grouper().status(folder)
+    raise ValueError("Agent Deck route not found")
+
+
+def action_git_group(d):
+    return git_grouper().start(session_folder(d.get("name")), d.get("_language", DEFAULT_LANGUAGE))
+
+
+ACTIONS.update(file_save=action_file_save, git_group=action_git_group,
                telegram_config=lambda d: {'telegram': telegram_service().save(d)},
                telegram_pair=lambda d: {'telegram': telegram_service().pair()},
                answer=action_answer,
@@ -1968,6 +2000,11 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_json(200, {"sessions": list_sessions(preview_name)})
         if parsed.path == "/api/image":
             return self.serve_session_image(parse_qs(parsed.query))
+        if parsed.path.startswith("/api/git/"):
+            try:
+                return self.send_json(200, git_payload(parsed.path, parse_qs(parsed.query)))
+            except (ValueError, OSError, subprocess.TimeoutExpired) as error:
+                return self.send_json(400, {"error": str(error) if isinstance(error, ValueError) else "git не ответил"})
         if parsed.path in ("/api/files", "/api/file"):
             try:
                 load = files_payload if parsed.path == "/api/files" else file_payload
@@ -2056,7 +2093,7 @@ class Handler(BaseHTTPRequestHandler):
             if not isinstance(data, dict):
                 raise ValueError("неверный запрос")
             action = m.group(1)
-            if action == 'send':
+            if action in ('send', 'git_group'):
                 data['_language'] = self.language()
             with action_lock:
                 if action == "update":

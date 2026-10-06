@@ -2,6 +2,11 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.16.0 — 2026-10-06
+
+- **Change history** (⋯ menu): the commits of the session's repository with author, time and line counts; each commit opens with its full message and a per-file diff with line numbers (large files render when opened). Read-only git, no shell, size-limited patches; works for connected computers.
+- **Feature groups:** Claude Haiku, run through the signed-in Claude Code CLI with no tools in an empty folder, groups the last 80 commits by feature from their subjects and file names only. Each group has a summary, its commits and a combined diff per file. The answer is checked against the real commits and cached until the next commit. New `GET /api/git/log|commit|groups|group_diff`, action `git_group`.
+
 ## 1.15.1 — 2026-10-06
 
 - Fix: Project files did not scroll on phones; long folders were cut off. Dialog bodies can now always scroll.

@@ -408,6 +408,41 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 .inbox-btn svg{color:var(--acc-text)}
 #inbox_dlg{width:min(560px,calc(100vw - 32px))}
 #files_dlg{width:min(720px,calc(100vw - 32px))}
+#git_dlg{width:min(900px,calc(100vw - 32px))}
+.git-tabs{display:flex;gap:6px;padding:10px 22px;border-bottom:1px solid var(--bd)}
+.git-tabs button{padding:6px 12px;border-radius:var(--r-sm);color:var(--mut)}
+.git-tabs button.on{background:var(--sel);color:var(--fg2)}
+#git_body{display:flex;flex-direction:column;gap:10px}
+#git_body>*{flex:none}
+.git-repo{margin:0;color:var(--mut)}
+.git-list{display:grid;border:1px solid var(--bd);border-radius:12px;overflow:hidden}
+.git-row,.git-group{display:grid;gap:4px;padding:10px 12px;border-bottom:1px solid var(--bd-soft);text-align:left;color:var(--fg)}
+.git-row:last-child{border-bottom:0}.git-row:hover,.git-group:hover{background:var(--side2)}
+.git-group{border:1px solid var(--bd);border-radius:12px}
+.git-subject{color:var(--fg2);font-weight:600;overflow-wrap:anywhere}
+.git-meta{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0;color:var(--mut);font-size:12px}
+.git-summary{margin:0;color:var(--fg);font-size:13px;line-height:1.5}
+.git-title{margin:4px 0 0;color:var(--fg2);font-size:16px;overflow-wrap:anywhere}
+.git-section{margin:8px 0 0;color:var(--mut);font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+.git-message{margin:0;padding:10px 12px;border-radius:10px;background:var(--bg);color:var(--fg);font:12.5px/1.5 var(--mono);white-space:pre-wrap;overflow-wrap:anywhere}
+.git-more{align-self:center;padding:8px 14px;border:1px solid var(--bd);border-radius:var(--r-sm);color:var(--fg2)}
+.diff-count{display:inline-flex;gap:6px;font-variant-numeric:tabular-nums}.diff-count b{font-weight:600}
+.diff-count .plus{color:var(--ok)}.diff-count .minus{color:var(--bad-text)}
+.diff-file{border:1px solid var(--bd);border-radius:10px;overflow:hidden}
+.diff-file summary{display:flex;align-items:center;gap:8px;padding:8px 10px;cursor:pointer;background:var(--side2);list-style:none}
+.diff-file summary::-webkit-details-marker{display:none}
+.diff-path{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:12.5px var(--mono);color:var(--fg2)}
+.diff-status{flex:none;width:18px;text-align:center;font:600 11px var(--mono);border-radius:4px;color:var(--mut)}
+.diff-status.added{color:var(--ok)}.diff-status.deleted{color:var(--bad-text)}.diff-status.renamed{color:var(--acc-text)}
+.diff{overflow-x:auto;font:12px/1.45 var(--mono);background:var(--bg)}
+.dl{display:flex;min-width:max-content}
+.dl .ln{flex:none;width:44px;padding:0 6px;text-align:right;color:var(--dim);user-select:none;-webkit-user-select:none}
+.dl .code{padding:0 10px;white-space:pre;color:var(--fg)}
+.dl.add{background:var(--toast-ok-bg)}.dl.add .code{color:var(--toast-ok-fg)}
+.dl.del{background:var(--toast-bad-bg)}.dl.del .code{color:var(--toast-bad-fg)}
+.dl.hunk{padding:4px 10px;color:var(--acc-text);background:var(--acc-soft);white-space:pre}
+.diff-note{margin:0;padding:8px 10px;color:var(--mut);font-size:12px}
+.diff-commit{padding:6px 10px;border-top:1px solid var(--bd);color:var(--mut);font:12px var(--mono);background:var(--side)}
 #files_dlg .hub-heading{border-bottom:1px solid var(--bd)}
 /* A column, not a grid: in a grid the clipped list (overflow:hidden for its corners) shrank to the dialog
    and cut off rows instead of letting the dialog scroll. */
@@ -604,8 +639,10 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
   .chk,.dlg label.chk{font-size:15px}
   .acts{padding:12px 16px calc(12px + var(--sab))}
   .acts button{flex:1;min-height:var(--tap);padding:12px;font-size:16px;border-radius:var(--r)}
-  #inbox_dlg,#files_dlg{width:100vw}
-  #inbox_dlg .dlg,#files_dlg .dlg{padding-top:var(--sat)}
+  #inbox_dlg,#files_dlg,#git_dlg{width:100vw}
+  #inbox_dlg .dlg,#files_dlg .dlg,#git_dlg .dlg{padding-top:var(--sat)}
+  .git-tabs{padding:10px 20px}.git-tabs button{min-height:var(--tap);padding:0 14px}
+  .dl .ln{width:36px}
   #confirm_dlg{width:calc(100vw - 32px);height:fit-content;margin:auto;border:1px solid var(--bd-soft);border-radius:16px}
   #confirm_dlg .dlg{height:auto;padding-top:0}
   #confirm_dlg .acts{padding:12px 16px 16px}

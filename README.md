@@ -304,6 +304,16 @@ is not shown. Works for sessions on connected computers too.
 
 <img src="docs/screenshots/mobile-file.png" width="260" alt="Editing .env in Project files">
 
+## Change history
+
+**⋯ → Change history** shows the commits of the session's repository: subject, author, time and line
+counts; tap one for its full message and a diff per file with line numbers. **Feature groups** asks
+Claude Haiku (through your signed-in Claude Code, no extra key) to join the last 80 commits into features —
+it sees only commit subjects and file names, never code — and shows each group's summary, its commits
+and a combined diff collected per file. Groups are kept until the next commit.
+
+<img src="docs/screenshots/mobile-commit.png" width="260" alt="A commit with its diff"> <img src="docs/screenshots/mobile-groups.png" width="260" alt="Feature groups">
+
 ## Screenshots from agents
 
 <img src="docs/screenshots/mobile-images.png" width="300" alt="Agent output with clickable screenshot thumbnails">
