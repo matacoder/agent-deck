@@ -71,6 +71,7 @@ class FileBrowserTests(unittest.TestCase):
 class PanelFileTests(PanelCase):
     def test_file_errors_reach_the_user_as_clear_messages(self):
         with self.assertRaisesRegex(ValueError, 'Папка не найдена|недоступны'):
-            self.panel.files_payload({'path': [str(Path.home() / 'no-such-folder-agent-deck')]})
+            # The panel's idea of home (patched in tests), not the runner's.
+            self.panel.files_payload({'path': [self.panel.os.path.expanduser('~') + '/no-such-folder-agent-deck']})
         with self.assertRaisesRegex(ValueError, 'сессия не найдена'):
             self.panel.files_payload({'name': ['../x']})
