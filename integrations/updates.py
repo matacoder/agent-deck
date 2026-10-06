@@ -47,17 +47,23 @@ class AutoUpdates:
         with self.lock:
             if not self.enabled or not self.available():return
             now = self.clock()
-            if self.last_check is None or now-self.last_check >= self.INTERVAL:
+            due = self.last_check is None or now-self.last_check >= self.INTERVAL
+            if due:
                 self.last_check = now
                 self.phase = 'checking'
-                try:
-                    self.latest = self.info()
-                    self.error = ''
-                except Exception:
-                    self.latest = None
+        if due:
+            # The release check takes network time; status and settings requests must not wait for it.
+            try:
+                latest, error = self.info(), ''
+            except Exception:
+                latest, error = None, 'Could not check the latest release'
+            with self.lock:
+                if not self.enabled or self.last_check != now:return  # Changed in the meantime.
+                self.latest, self.error = latest, error
+                if latest is None:
                     self.phase = 'error'
-                    self.error = 'Could not check the latest release'
                     return
+        with self.lock:
             info = self.latest or {}
             if not info.get('update') or not info.get('can_update'):
                 self.phase = 'idle'

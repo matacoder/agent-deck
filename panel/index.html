@@ -848,7 +848,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
     </form></div>
     </section>
     <section id="hub_network">
-      <form class="hub-card" onsubmit="event.preventDefault();saveNetwork()"><h4>Сеть и адрес панели</h4><p><span>Адрес в браузере</span>: <span id="network_browser"></span></p><p><span>Панель слушает</span>: <span id="network_bind"></span></p><label for="network_name">Название этого Agent Deck</label><input type="text" id="network_name" required maxlength="100"><label for="network_public_url">Публичный адрес</label><input type="url" id="network_public_url" placeholder="https://agents.example.com"><p>Для доступа по этому адресу домен и HTTPS должны быть настроены на сервере.</p><div class="acts"><button class="pri" id="network_save">Сохранить</button></div></form>
+      <form class="hub-card" onsubmit="event.preventDefault();saveNetwork()"><h4>Сеть и адрес панели</h4><p><span>Адрес в браузере</span>: <span id="network_browser"></span></p><p><span>Панель слушает</span>: <span id="network_bind"></span></p><label for="network_name">Название этого Agent Deck</label><input type="text" id="network_name" required maxlength="100"><label for="network_public_url">Публичный адрес</label><input type="url" id="network_public_url" placeholder="https://agents.example.com"><p>Для доступа по этому адресу домен и HTTPS должны быть настроены на сервере.</p><label class="chk"><input type="checkbox" id="network_isolate"><span>Изолировать терминалы других компьютеров</span></label><p>Страница терминала подключённого компьютера открывается в песочнице и не получает доступа к этой панели. В таких терминалах не работают ⌥1…9, копирование выделения и свайп меню.</p><div class="acts"><button class="pri" id="network_save">Сохранить</button></div></form>
       <div class="hub-card"><h4>Другие Agent Deck</h4><p>Управляйте другими компьютерами через этот сервер.</p><div id="fleet_bar" class="fleet-bar"></div><div id="deck_connections"></div>
         <div class="deck-toolbar"><div class="deck-port"><label for="deck_port">Порт</label><input type="number" id="deck_port" min="1" max="65535" value="8790"></div><div class="deck-actions"><button type="button" id="deck_discover" onclick="discoverDecks()">Обнаружить</button><button type="button" onclick="editDeck()">Подключить</button></div></div><p id="deck_discovery_status"></p><div id="deck_discovery_results"></div>
         <details id="deck_editor"><summary>Подключение Agent Deck</summary><form onsubmit="event.preventDefault();saveDeck()"><input type="hidden" id="deck_id"><label for="deck_name">Название</label><input type="text" id="deck_name" required maxlength="100"><label for="deck_url">Адрес Tailscale</label><input type="url" id="deck_url" required placeholder="http://100.68.39.62:8790"><label for="deck_username">Логин</label><input type="text" id="deck_username" required autocomplete="off"><label for="deck_password">Пароль</label><input type="password" id="deck_password" autocomplete="new-password"><p>Пароль хранится на основном сервере. Пустое поле сохраняет пароль существующего подключения.</p><button class="pri" id="deck_save">Подключить</button></form></details>
@@ -2547,9 +2547,9 @@ async function loadDeckSettings(){
   populateDeckSelector($("deck_select"),data.decks,selectedDeck,network.name);
   // Most installs have a single machine; the switcher appears once another Agent Deck is connected.
   $("deck_switch").hidden=!data.decks.length&&!selectedDeck;
-  deckDirectory={decks:data.decks,name:network.name};loadOtherDecks();
+  deckDirectory={decks:data.decks,name:network.name,network};loadOtherDecks();
   if(Date.now()-fleet.loadedAt>10*60*1000||$("settings_dlg").open)loadFleet();else renderFleet();
-  $("network_name").value=network.name;$("network_public_url").value=network.public_url;
+  $("network_name").value=network.name;$("network_public_url").value=network.public_url;$("network_isolate").checked=network.isolate_terminals===true;
   $("network_bind").textContent="http://"+network.bind_host+":"+network.bind_port;
   $("network_browser").textContent=location.origin;
   const box=$("deck_connections");box.replaceChildren();
@@ -2562,7 +2562,7 @@ async function loadDeckSettings(){
   if(selectedDeck&&!data.decks.some(d=>d.id===selectedDeck))switchDeck("");
 }
 // Sessions of every connected machine, so switching environments is one tap from the sidebar.
-let deckDirectory={decks:[],name:""},otherDecks=[],loadingOthers=false,deckOpen={};
+let deckDirectory={decks:[],name:"",network:{}},otherDecks=[],loadingOthers=false,deckOpen={};
 const otherBusy=new Map(),otherAttention=new Set();
 try{deckOpen=JSON.parse(localStore.getItem("cc.deck-open")||"{}")||{}}catch(e){}
 const currentDeckName=()=>selectedDeck?deckDirectory.decks.find(d=>d.id===selectedDeck)?.name||"Agent Deck":deckDirectory.name||tr("Этот Agent Deck");
@@ -2681,7 +2681,10 @@ async function discoverDecks(){
 }
 async function saveNetwork(){
   const button=$("network_save");button.disabled=true;
-  try{await gatewayApi("/api/network_save",{name:$("network_name").value.trim(),public_url:$("network_public_url").value.trim()});await loadDeckSettings();toast(tr("Настройки сохранены"),"success")}
+  const isolate=$("network_isolate").checked,changed=isolate!==(deckDirectory.network?.isolate_terminals===true);
+  try{await gatewayApi("/api/network_save",{name:$("network_name").value.trim(),public_url:$("network_public_url").value.trim(),isolate_terminals:isolate});
+    // Open terminal frames were loaded under the previous mode; reopen them under the new one.
+    if(changed&&selectedDeck)for(const frame of frames.values())frame.src=frame.src;await loadDeckSettings();toast(tr("Настройки сохранены"),"success")}
   catch(e){toast(e.message)}finally{button.disabled=false}
 }
 function card(name,status,label,action,secondary=[],hidden=false){const c=el("div","hub-card",el("div","card-top",el("div","card-main",el("h4","",name),el("p","",status)),btn(label,"pri",action)));if(secondary.length){const d=el("details","",el("summary","",tr("Другие действия")));for(const [text,fn] of secondary)d.append(btn(text,"",fn));c.append(d)}c.hidden=hidden;return c}

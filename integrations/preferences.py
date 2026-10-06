@@ -73,7 +73,7 @@ class NetworkSettings:
     def __init__(self, home):
         self.path = Path(home) / '.config/cc-panel/network.json'
         self.lock = threading.RLock()
-        self.data = {'name':'', 'public_url':''}
+        self.data = {'name':'', 'public_url':'', 'isolate_terminals':False}
         if self.path.exists():
             try:
                 self.data.update(self.load())
@@ -85,7 +85,8 @@ class NetworkSettings:
         if self.path.is_symlink():
             raise ValueError('Network settings must not be a symlink')
         saved = json.loads(self.path.read_text())
-        if not isinstance(saved, dict) or not all(isinstance(saved.get(key, ''), str) for key in self.data):
+        if (not isinstance(saved, dict) or not all(isinstance(saved.get(key, ''), str) for key in ('name', 'public_url'))
+                or not isinstance(saved.get('isolate_terminals', False), bool)):
             raise TypeError('expected a JSON object with string name and public_url')
         return {key: saved[key] for key in self.data if key in saved}
 
@@ -96,6 +97,9 @@ class NetworkSettings:
         from urllib.parse import urlsplit
         from .relay import private_write
         name, raw = data.get('name',''), data.get('public_url','')
+        isolate = data.get('isolate_terminals', self.get()['isolate_terminals'])
+        if not isinstance(isolate, bool):
+            raise ValueError('Terminal isolation must be on or off')
         if not isinstance(name,str) or not name.strip() or len(name)>100 or not name.isprintable():
             raise ValueError('Enter an Agent Deck name')
         if not isinstance(raw,str) or len(raw)>2048 or any(c in raw for c in ('\r','\n')):
@@ -107,7 +111,7 @@ class NetworkSettings:
             try:parsed.port
             except ValueError:raise ValueError('Invalid public URL port') from None
         with self.lock:
-            value={'name':name.strip(),'public_url':raw.strip().rstrip('/')}
+            value={'name':name.strip(),'public_url':raw.strip().rstrip('/'),'isolate_terminals':isolate}
             private_write(self.path,value)
             self.data=value
             return dict(value)

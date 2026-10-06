@@ -329,6 +329,26 @@ def token_valid(token):
         return False
     return hmac.compare_digest(sig, hmac.new(COOKIE_KEY, exp.encode(), hashlib.sha256).hexdigest())
 
+# Isolated remote terminals (Settings -> Network): a connected computer's ttyd page is served under a
+# signed capability path with `CSP: sandbox`, so its scripts run in an opaque origin and cannot reach
+# the gateway's API, cookies or other computers. Its token and WebSocket requests carry no cookie
+# (opaque origin), so the path itself is the credential: bound to one computer, valid for 12 hours.
+CAPABILITY_TTL = 12 * 3600
+ISOLATED_ROUTE = re.compile(r'^/deck/([0-9a-f]{24})/c/([0-9a-f]{1,12}\.[0-9a-f]{64})(/t(?:/.*)?)$')
+SANDBOX = "sandbox allow-scripts allow-forms allow-popups allow-modals allow-downloads"
+
+
+def terminal_capability(identity, now=None):
+    expiry = format(int((now or time.time()) + CAPABILITY_TTL), "x")
+    return expiry + "." + hmac.new(COOKIE_KEY, f"deck-terminal:{identity}:{expiry}".encode(), hashlib.sha256).hexdigest()
+
+
+def capability_valid(identity, token, now=None):
+    expiry, _, sig = token.partition(".")
+    if int(expiry, 16) < (now or time.time()):
+        return False
+    return hmac.compare_digest(sig, hmac.new(COOKIE_KEY, f"deck-terminal:{identity}:{expiry}".encode(), hashlib.sha256).hexdigest())
+
 os.makedirs(project_directory.get(), exist_ok=True)
 
 
@@ -1875,6 +1895,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.serve_service_worker()
         if self.path == "/login":
             return self.login_page()
+        if ISOLATED_ROUTE.match(self.path):
+            return self.proxy_isolated_terminal()  # Authorized by its signed path, not by the cookie.
         if not self.authorized():
             return
         if self.path.startswith('/deck/'):
@@ -2025,6 +2047,9 @@ class Handler(BaseHTTPRequestHandler):
                 if self.command != 'GET' or not path.startswith('/t/'):
                     raise ValueError('Only terminal WebSocket upgrades are supported')
                 return self.proxy_remote_terminal(identity, path)
+            if self.command == 'GET' and path.startswith('/t') and network_settings.get().get('isolate_terminals'):
+                # Never render a remote terminal page on the gateway origin while isolation is on.
+                return self.redirect(f'/deck/{identity}/c/{terminal_capability(identity)}{path}')
             body = None
             if self.command == 'POST':
                 route = urlsplit(path).path
@@ -2037,10 +2062,15 @@ class Handler(BaseHTTPRequestHandler):
                 if not 0 <= length <= limit:
                     self.close_connection = True
                     return self.send_json(413, {'error':'Request is too large'})
-                body = self.read_body(length)
-            raw = urlsplit(path).path == '/api/upload_raw'
-            status, headers, payload = remote_decks.request(identity,self.command,path,body,self.language(),
-                content_type='application/octet-stream' if raw else 'application/json')
+                if route != '/api/upload_raw':
+                    body = self.read_body(length)
+            if self.command == 'POST' and urlsplit(path).path == '/api/upload_raw':
+                # Relayed as it arrives: four parallel 200 MB uploads must not sit in the gateway's memory.
+                status, headers, payload = remote_decks.request_stream(identity, path, self.rfile, length, self.language())
+                self.body_pending = False
+            else:
+                status, headers, payload = remote_decks.request(identity,self.command,path,body,self.language(),
+                    content_type='application/json')
             ctype = next((v for k,v in headers.items() if k.lower()=='content-type'), 'application/octet-stream')
             # Remote HTML/JS under /api/* would run with the gateway origin; only JSON, and raster
             # images from the screenshot endpoint, are passed through.
@@ -2054,6 +2084,40 @@ class Handler(BaseHTTPRequestHandler):
                 prefix = '/deck/'+identity+'/t/'
                 payload = payload.replace(b'/t/', prefix.encode())
             return self.send_body(status,payload,ctype)
+        except (ValueError,OSError,RuntimeError) as error:
+            self.close_connection = True
+            return self.send_json(502, {'error':str(error) if isinstance(error,ValueError) else 'Remote Agent Deck is unavailable'})
+
+    def proxy_isolated_terminal(self):
+        identity, token, path = ISOLATED_ROUTE.match(self.path).groups()
+        upgrade = self.headers.get('Upgrade','').lower() == 'websocket'
+        if (self.command != 'GET' or not network_settings.get().get('isolate_terminals')
+                or identity not in {d.get('id') for d in remote_decks.status().get('decks', [])}
+                or not capability_valid(identity, token)):
+            self.close_connection = True
+            return self.send_json(404, {'error':'Agent Deck route not found'})
+        # The sandboxed page has an opaque origin ("null"); any other foreign origin is refused.
+        if upgrade and self.headers.get('Origin') not in (None, 'null') and not self.same_origin():
+            self.close_connection = True
+            return self.send_json(403, {'error':'неверный источник запроса'})
+        try:
+            path = remote_path(path)
+            if upgrade:
+                return self.proxy_remote_terminal(identity, path)
+            status, headers, payload = remote_decks.request(identity, 'GET', path, None, self.language())
+            ctype = next((v for k,v in headers.items() if k.lower()=='content-type'), 'application/octet-stream')
+            if 'text/html' in ctype:
+                payload = payload.replace(b'/t/', f'/deck/{identity}/c/{token}/t/'.encode())
+            self.send_response(status)
+            self.send_header('Content-Type', ctype)
+            self.send_header('Content-Length', str(len(payload)))
+            self.send_header('Cache-Control', 'no-store')
+            self.send_header('X-Content-Type-Options', 'nosniff')
+            self.send_header('Content-Security-Policy', SANDBOX)
+            self.send_header('Referrer-Policy', 'no-referrer')  # The path is the credential.
+            self.send_header('Access-Control-Allow-Origin', '*')  # ttyd fetches its token from the opaque origin.
+            self.end_headers()
+            self.wfile.write(payload)
         except (ValueError,OSError,RuntimeError) as error:
             self.close_connection = True
             return self.send_json(502, {'error':str(error) if isinstance(error,ValueError) else 'Remote Agent Deck is unavailable'})

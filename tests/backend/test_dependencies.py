@@ -128,5 +128,16 @@ class PreviousInstallTests(unittest.TestCase):
         old = self.root / 'cp312-linux-x86_64-bbbbbbbbbbbb'
         for folder in (current, old):
             folder.mkdir(parents=True); (folder / '.complete').write_text('[]')
-        D.prune(current)
+        key = current.name.rsplit('-', 1)[0]
+        with unittest.mock.patch.object(D, 'platform_key', return_value=key), \
+             unittest.mock.patch.object(D, 'target', return_value=current), \
+             unittest.mock.patch.dict(D.WHEELS, {key: []}), \
+             unittest.mock.patch.dict(D._state, {'ready': False, 'previous': False, 'error': ''}), \
+             unittest.mock.patch.object(D.importlib, 'import_module'), \
+             unittest.mock.patch.dict(sys.modules, {'cryptography': None}):
+            sys.modules.pop('cryptography')
+            path = list(sys.path); self.addCleanup(lambda: sys.path.__setitem__(slice(None), path))
+            D.activate(self.root, prune_old=False)  # An installer: the old panel still runs.
+            self.assertEqual(len(list(self.root.iterdir())), 2)
+            D.activate(self.root)                   # The new panel on its own start.
         self.assertEqual(sorted(p.name for p in self.root.iterdir()), [current.name])

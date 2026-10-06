@@ -123,6 +123,21 @@ def launch_agent(label, arguments, environment, logs):
             'StandardErrorPath': str(logs / (label + '.log'))}
 
 
+# `brew upgrade` can remove the Python the venv was built from; the panel would then restart forever.
+# The LaunchAgent checks the venv interpreter and falls back to Homebrew's current python3 (psutil, used
+# only for metrics, is optional), so the panel stays reachable until the next reinstall rebuilds the venv.
+PANEL_LAUNCH = '"$1" -c "" 2>/dev/null && exec "$1" "$3"; exec "$2" "$3"'
+
+
+def stable_python():
+    return next((path for path in ('/opt/homebrew/bin/python3', '/usr/local/bin/python3') if os.access(path, os.X_OK)), None)
+
+
+def panel_command(python, panel):
+    fallback = stable_python()
+    return [python, panel] if not fallback else ['/bin/sh', '-c', PANEL_LAUNCH, 'agent-deck-panel', python, fallback, panel]
+
+
 def run(*arguments, check=True):
     return subprocess.run(list(map(str, arguments)), check=check, capture_output=True, text=True, timeout=30)
 
@@ -155,16 +170,41 @@ def install(home, start=True, open_browser=True, projects_dir=None):
                             '-t', 'fontSize=13', '-t', 'disableLeaveAlert=true', '-t', 'titleFixed=AgentDeck',
                             tmux, '-L', 'agent-deck', 'attach', '-t'],
                             {key: env[key] for key in ('HOME', 'PATH', 'LANG', 'TMUX_SOCKET_NAME')}, logs),
-        LABELS[1]: launch_agent(LABELS[1], [python, target / 'panel.py'], env, logs),
+        LABELS[1]: launch_agent(LABELS[1], panel_command(python, target / 'panel.py'), env, logs),
     }
     # Compile before stopping anything, and preserve the previous runtime for recovery.
     for source in (SOURCE / 'panel').glob('*.py'):
         compile(source.read_text(), str(source), 'exec')
     for source in (SOURCE / 'integrations').glob('*.py'):
         compile(source.read_text(), str(source), 'exec')
+    backup = runtime / 'backup'
     if (target / 'VERSION').exists():
-        shutil.copytree(target, runtime / 'backup', dirs_exist_ok=True, ignore=shutil.ignore_patterns('__pycache__'))
+        shutil.rmtree(backup, ignore_errors=True)  # Only the version being replaced, not older leftovers.
+        shutil.copytree(target, backup, ignore=shutil.ignore_patterns('__pycache__'))
     domain = f'gui/{os.getuid()}'
+    try:
+        return replace_and_start(home, target, config, agents, definitions, settings, python, socket_path, logs,
+                                 domain, start, open_browser)
+    except Exception:
+        # Services were stopped before copying: put the previous version back so a remote user keeps access.
+        if start and (backup / 'VERSION').exists():
+            restore(backup, target)
+            for label in LABELS:
+                run('launchctl', 'bootstrap', domain, agents / (label + '.plist'), check=False)
+            print(f'The new version did not start; the previous one was restored. Logs: {logs}', flush=True)
+        raise
+
+
+def restore(backup, target):
+    for folder in (target, target / 'integrations', target / 'locales'):
+        for path in folder.glob('*'):
+            if path.is_file() and not (backup / path.relative_to(target)).exists():
+                path.unlink()
+    shutil.copytree(backup, target, dirs_exist_ok=True)
+
+
+def replace_and_start(home, target, config, agents, definitions, settings, python, socket_path, logs,
+                      domain, start, open_browser):
     if start:
         for label in reversed(LABELS):
             run('launchctl', 'bootout', domain + '/' + label, check=False)
@@ -180,7 +220,7 @@ def install(home, start=True, open_browser=True, projects_dir=None):
         # Pinned cryptography wheels for backups and notifications; the panel retries itself when offline.
         try:
             fetched = run(python, '-c', 'import sys; sys.path.insert(0, sys.argv[1]); from integrations import dependencies; '
-                          'sys.exit(0 if dependencies.ensure(background=False) else 1)', target, check=False).returncode == 0
+                          'sys.exit(0 if dependencies.ensure(background=False, prune_old=False) else 1)', target, check=False).returncode == 0
         except (OSError, subprocess.TimeoutExpired):
             fetched = False
         if not fetched:
@@ -209,7 +249,7 @@ def install(home, start=True, open_browser=True, projects_dir=None):
                 pass
             time.sleep(.5)
         else:
-            raise RuntimeError(f'Panel did not start. Logs: {logs}; previous files: {runtime / "backup"}')
+            raise RuntimeError(f'Panel did not start. Logs: {logs}')
         print(f'Agent Deck is ready: {url}\nLogin: {settings["PANEL_USER"]}\nPassword: {settings["PANEL_PASSWORD"]}')
         print(f'Projects: {settings["PROJECTS_DIR"]}')
         print('Log into Claude/Codex from the sidebar. Your sessions use a separate tmux server.')

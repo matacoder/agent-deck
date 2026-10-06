@@ -26,6 +26,8 @@ fi
 runtime="$HOME/.local/share/agent-deck"
 mkdir -p "$runtime"
 [ ! -L "$runtime" ] || { echo 'Runtime must not be a symlink.' >&2; exit 1; }
+# A Homebrew Python upgrade leaves the venv pointing at a removed interpreter: rebuild it.
+"$runtime/venv/bin/python3" -c "" 2>/dev/null || rm -rf "$runtime/venv"
 "$python_bin" -m venv "$runtime/venv"
 "$runtime/venv/bin/python3" -m pip install --disable-pip-version-check 'psutil>=7,<8'
 exec "$runtime/venv/bin/python3" "$SRC/macos/install.py" "$@"

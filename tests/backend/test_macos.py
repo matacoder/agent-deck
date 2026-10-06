@@ -168,6 +168,33 @@ class MacInstallerTests(unittest.TestCase):
             self.assertEqual(settings['PROJECTS_DIR'], str(home / 'other'))
             self.assertEqual(installer.ProjectDirectory(home, home / 'projects').get(), str(home / 'other'))
 
+    def test_panel_agent_falls_back_to_homebrew_python_when_the_venv_breaks(self):
+        with patch.object(installer, 'stable_python', return_value='/opt/homebrew/bin/python3'):
+            command = installer.panel_command('/venv/bin/python3', '/runtime/panel/panel.py')
+        self.assertEqual(command[:2], ['/bin/sh', '-c'])
+        self.assertEqual(command[-3:], ['/venv/bin/python3', '/opt/homebrew/bin/python3', '/runtime/panel/panel.py'])
+        with patch.object(installer, 'stable_python', return_value=None):
+            self.assertEqual(installer.panel_command('/venv/bin/python3', '/p.py'), ['/venv/bin/python3', '/p.py'])
+
+    def test_a_new_version_that_does_not_start_is_replaced_by_the_previous_one(self):
+        with tempfile.TemporaryDirectory(prefix='mac home ', dir='/tmp') as directory:
+            home = Path(directory)
+            which = patch.object(installer.shutil, 'which', side_effect=lambda name: '/opt/homebrew/bin/' + name)
+            with which, patch.object(installer, 'tailscale_ipv4', return_value=None):
+                installer.install(home, start=False)
+            target = home / '.local/share/agent-deck/panel'
+            (target / 'VERSION').write_text('0.0.1')
+            (target / 'panel.py').write_text('# previous working panel')
+            run = Mock(return_value=SimpleNamespace(returncode=0, stdout='', stderr=''))
+            with which, patch.object(installer, 'tailscale_ipv4', return_value=None), patch.object(installer, 'run', run), \
+                    patch.object(installer.urllib.request, 'urlopen', side_effect=OSError('refused')), \
+                    patch.object(installer.time, 'sleep'), self.assertRaisesRegex(RuntimeError, 'did not start'):
+                installer.install(home, open_browser=False)
+            self.assertEqual((target / 'panel.py').read_text(), '# previous working panel')
+            self.assertEqual((target / 'VERSION').read_text(), '0.0.1')
+            bootstraps = [c.args for c in run.call_args_list if c.args[:2] == ('launchctl', 'bootstrap')]
+            self.assertEqual(len(bootstraps), 2 * len(installer.LABELS))  # The new attempt, then the restored one.
+
     def test_rerun_preserves_password_hooks_sessions_and_user_tmux_config(self):
         with tempfile.TemporaryDirectory(prefix='mac home ', dir='/tmp') as directory:
             home = Path(directory)
@@ -195,7 +222,7 @@ class MacInstallerTests(unittest.TestCase):
                     self.assertTrue(data['AbandonProcessGroup'])
                     self.assertEqual(data['EnvironmentVariables']['BIND_HOST'], '127.0.0.1')
                     self.assertEqual(data['EnvironmentVariables']['PROJECTS_DIR'], str(home / 'dev'))
-                    self.assertEqual(data['ProgramArguments'][1], str(home / '.local/share/agent-deck/panel/panel.py'))
+                    self.assertEqual(data['ProgramArguments'][-1], str(home / '.local/share/agent-deck/panel/panel.py'))
                 else:
                     self.assertNotIn('PANEL_PASSWORD', data['EnvironmentVariables'])
             self.assertEqual((config / 'macos.json').stat().st_mode & 0o777, 0o600)

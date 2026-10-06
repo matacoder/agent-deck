@@ -31,6 +31,7 @@ Self-hosted panel (Python stdlib + static JS) for tmux sessions running Claude C
 - `/api/image`: path must be on the session screen; PNG/JPEG/WebP/GIF by content, max 25 MB, `nosniff` + `CSP: sandbox`; check content before thumbnails. Gateway passes non-JSON `/api/*` only for these.
 - Uploads: max 4 files x 200 MB, 7-day TTL, reject symlinks; `/api/upload_raw` streams, JSON `/api/upload` kept for old gateways.
 - `/t/*`: unix-socket ttyd, keep ttyd `-O`. `/deck/<id>/t/*` only to an authenticated deck on a numeric Tailscale IPv4; never forward gateway cookies.
+- Isolated terminals (opt-in): `/deck/<id>/c/<signed>/t/*` with `CSP: sandbox` (no `allow-same-origin`); the signed path is the only credential there.
 - Telegram: one-shot 10-min pairing bound to user+chat; owner-only replies; callbacks bound to owner/chat/message/session/question; never replay ambiguous deliveries.
 - tmux input is exact bytes (leading `-`, `;`, Unicode, bracketed paste).
 - Never delete foreign tmux sessions, `.tmux.conf`, webhooks, launchd plists.

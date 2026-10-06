@@ -105,7 +105,7 @@ class RemoteDeckTests(PanelCase):
     def test_network_settings_persist_privately_and_reject_credential_urls(self):
         settings = NetworkSettings(self.home)
         value = settings.save({'name':'Main server','public_url':'https://deck.example.com/'})
-        self.assertEqual(value, {'name':'Main server','public_url':'https://deck.example.com'})
+        self.assertEqual(value, {'name':'Main server','public_url':'https://deck.example.com','isolate_terminals':False})
         self.assertEqual(NetworkSettings(self.home).get(), value)
         self.assertEqual(settings.path.stat().st_mode & 0o777, 0o600)
         for url in ('https://user:secret@deck.example.com','https://deck.example.com/path','https://deck.example.com?secret=x','javascript:alert(1)','https://deck.example.com:wrong'):
@@ -144,17 +144,84 @@ class RemoteDeckTests(PanelCase):
 
     def test_streamed_upload_is_relayed_as_raw_bytes_but_other_posts_stay_json_only(self):
         service=self.enterContext(patch.object(self.panel,'remote_decks'))
-        service.request.return_value=(200,{'Content-Type':'application/json'},b'{"attachment":"a.png"}')
+        service.request_stream.return_value=(200,{'Content-Type':'application/json'},b'{"attachment":"a.png"}')
         handler=self.handler('POST');handler.path='/deck/'+ID+'/api/upload_raw?name=demo&filename=a.png'
         handler.headers.update({'Content-Type':'application/octet-stream','Content-Length':'4'});handler.rfile=io.BytesIO(b'\x89PNG')
         handler.post_request()
-        service.request.assert_called_once_with(ID,'POST','/api/upload_raw?name=demo&filename=a.png',b'\x89PNG','ru',content_type='application/octet-stream')
-        service.request.reset_mock()
+        # The body is handed over as the request stream, not read into memory first.
+        service.request_stream.assert_called_once_with(ID,'/api/upload_raw?name=demo&filename=a.png',handler.rfile,4,'ru')
+        service.request.assert_not_called()
         handler=self.handler('POST');handler.path='/deck/'+ID+'/api/send'
         handler.headers['Content-Type']='application/octet-stream'
         handler.post_request()
         self.assertEqual(handler.send_json.call_args.args[0],403)
         service.request.assert_not_called()
+
+    def test_streamed_upload_refreshes_the_login_first_and_never_replays(self):
+        from integrations import decks as module
+        service=RemoteDecks(self.home,'http://100.64.0.1:8790')
+        service.authentication=Mock(return_value=({'url':'http://100.64.0.2:8790'},'cc_auth=remote'))
+        service.request=Mock(return_value=(200,{},b'{}'))
+        sent=[]
+        def fake(url,method,path,body=None,headers=None,timeout=30,limit=0):
+            chunks=[]
+            while (chunk:=body.read(3)):chunks.append(chunk)
+            sent.append((headers['Content-Length'],b''.join(chunks)))
+            return 200,{},b'{"ok":true}'
+        with patch.object(module,'http_request',side_effect=fake):
+            result=service.request_stream(ID,'/api/upload_raw?name=a&filename=b.png',io.BytesIO(b'0123456789extra'),10)
+        self.assertEqual(result[0],200)
+        self.assertEqual(sent,[('10',b'0123456789')])  # Exactly the declared length, never the next request.
+        service.request.assert_called_once()           # The login refresh happens before any byte is sent.
+        with patch.object(module,'http_request',return_value=(401,{},b'')) as transport:
+            with self.assertRaisesRegex(ValueError,'retry'):
+                service.request_stream(ID,'/api/upload_raw?name=a&filename=b.png',io.BytesIO(b'x'),1)
+        transport.assert_called_once()
+
+    def isolation(self, on):
+        settings=Mock();settings.get.return_value={'name':'gw','public_url':'','isolate_terminals':on}
+        self.enterContext(patch.object(self.panel,'network_settings',settings))
+        service=self.enterContext(patch.object(self.panel,'remote_decks'))
+        service.status.return_value={'decks':[{'id':ID}]}
+        return service
+
+    def isolated(self, path, headers=None, authorized=False, origin=True):
+        handler=self.handler(authorized=authorized,origin=origin);handler.path=path;handler.headers.update(headers or {})
+        handler.redirect=Mock();handler.send_response=Mock();handler.send_header=Mock();handler.end_headers=Mock()
+        handler.wfile=io.BytesIO();handler.proxy_remote_terminal=Mock()
+        handler.get_request()
+        return handler
+
+    def test_isolated_terminals_move_remote_pages_to_a_sandboxed_signed_path(self):
+        service=self.isolation(True)
+        handler=self.isolated('/deck/'+ID+'/t/?arg=%3Dcc-api',authorized=True)
+        location=handler.redirect.call_args.args[0]
+        self.assertRegex(location,'^/deck/'+ID+'/c/[0-9a-f]+\\.[0-9a-f]{64}/t/\\?arg=%3Dcc-api$')
+        service.request.assert_not_called()  # Nothing remote is rendered on the gateway origin.
+        service.request.return_value=(200,{'Content-Type':'text/html'},b'<script src="/t/x.js"></script>')
+        page=self.isolated(location)  # No cookie: the signed path is the credential.
+        headers={c.args[0]:c.args[1] for c in page.send_header.call_args_list}
+        self.assertTrue(headers['Content-Security-Policy'].startswith('sandbox allow-scripts'))
+        self.assertNotIn('allow-same-origin',headers['Content-Security-Policy'])
+        self.assertEqual(headers['Referrer-Policy'],'no-referrer')
+        prefix=location.split('/t/')[0]
+        self.assertEqual(page.wfile.getvalue(),('<script src="'+prefix+'/t/x.js"></script>').encode())
+        socket=self.isolated(prefix+'/t/ws',{'Upgrade':'websocket','Origin':'null'})
+        socket.proxy_remote_terminal.assert_called_once_with(ID,'/t/ws')
+        foreign=self.isolated(prefix+'/t/ws',{'Upgrade':'websocket','Origin':'https://evil.example'},origin=False)
+        foreign.proxy_remote_terminal.assert_not_called()
+        self.assertEqual(foreign.send_json.call_args.args[0],403)
+
+    def test_signed_terminal_paths_are_bound_to_one_computer_time_and_the_setting(self):
+        service=self.isolation(True)
+        token=self.panel.terminal_capability(ID)
+        for path in ('/deck/'+'b'*24+'/c/'+token+'/t/','/deck/'+ID+'/c/'+self.panel.terminal_capability(ID,now=1)+'/t/',
+                     '/deck/'+ID+'/c/'+token[:-1]+('0' if token[-1]!='0' else '1')+'/t/'):
+            with self.subTest(path=path):
+                self.assertEqual(self.isolated(path).send_json.call_args.args[0],404)
+        service.request.assert_not_called()
+        self.isolation(False)
+        self.assertEqual(self.isolated('/deck/'+ID+'/c/'+token+'/t/').send_json.call_args.args[0],404)
 
     def test_terminal_html_stays_on_gateway_and_remote_cookies_are_not_forwarded(self):
         service=self.enterContext(patch.object(self.panel,'remote_decks'))

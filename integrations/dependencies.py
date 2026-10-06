@@ -116,7 +116,7 @@ def previous_install(key, root=None):
     return max(found, key=lambda p: (p / '.complete').stat().st_mtime, default=None)
 
 
-def activate(root=None):
+def activate(root=None, prune_old=True):
     """Prefer the pinned wheels; a cryptography that is already importable (system package) also works."""
     key = platform_key()
     folder = target(key, root) if key in WHEELS else None
@@ -126,7 +126,7 @@ def activate(root=None):
         previous = previous_install(key, root)
         if previous:
             folder, _state['previous'] = previous, True
-    elif folder and (folder / '.complete').is_file() and 'cryptography' not in sys.modules:
+    elif prune_old and folder and (folder / '.complete').is_file() and 'cryptography' not in sys.modules:
         prune(folder)  # Nothing is loaded yet, so copies of earlier locks can go.
     if folder and (folder / '.complete').is_file() and str(folder) not in sys.path:
         sys.path.insert(0, str(folder))
@@ -141,9 +141,12 @@ def activate(root=None):
     return True
 
 
-def ensure(background=True, retry=600):
-    """Make cryptography importable; downloads once, retries while offline."""
-    if (_state['ready'] or activate()) and not _state['previous']:
+def ensure(background=True, retry=600, prune_old=True):
+    """Make cryptography importable; downloads once, retries while offline.
+
+    Installers pass prune_old=False: the panel they replace may still import from the old copy until it
+    restarts, and the new panel prunes on its own start."""
+    if (_state['ready'] or activate(prune_old=prune_old)) and not _state['previous']:
         return True
 
     def work():
@@ -154,9 +157,9 @@ def ensure(background=True, retry=600):
                 _state['installing'] = True
                 try:
                     # The running panel may still import modules lazily from the previous copy.
-                    install(keep_previous=_state['previous'])
+                    install(keep_previous=_state['previous'] or not prune_old)
                     _state['previous'] = False  # Loaded next start; the running copy keeps working.
-                    if _state['ready'] or activate():
+                    if _state['ready'] or activate(prune_old=prune_old):
                         return
                 except Exception as error:  # Network, disk or unsupported platform: report and retry.
                     _state['error'] = f'Could not install encryption components: {error}'
@@ -184,6 +187,6 @@ def require():
 
 if __name__ == '__main__':
     # Installers run this as the panel user so a fresh install has the components right away.
-    ensure(background=False)
+    ensure(background=False, prune_old=False)
     print('cryptography ready' if _state['ready'] else _state['error'], flush=True)
     sys.exit(0 if _state['ready'] else 1)

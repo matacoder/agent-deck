@@ -543,6 +543,8 @@
     "копий на других компьютерах: {0}": "Kopien auf anderen Computern: {0}",
     "Слишком много компьютеров в хранилище бэкапов": "Zu viele Computer im Backup-Speicher",
     "Компьютер прислал бэкап под чужим именем": "Ein Computer hat ein Backup unter dem Namen eines anderen Computers gesendet",
-    "Эта функция недоступна: обновите Agent Deck на этом компьютере": "Diese Funktion ist nicht verfügbar: Aktualisieren Sie Agent Deck auf diesem Computer"
+    "Эта функция недоступна: обновите Agent Deck на этом компьютере": "Diese Funktion ist nicht verfügbar: Aktualisieren Sie Agent Deck auf diesem Computer",
+    "Изолировать терминалы других компьютеров": "Isolate terminals of other computers",
+    "Страница терминала подключённого компьютера открывается в песочнице и не получает доступа к этой панели. В таких терминалах не работают ⌥1…9, копирование выделения и свайп меню.": "A connected computer's terminal page opens in a sandbox with no access to this panel. Alt+1…9, copying the selection and the menu swipe do not work in such terminals."
   }
 }

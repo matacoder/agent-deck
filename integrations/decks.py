@@ -67,6 +67,19 @@ def http_request(url, method, path, body=None, headers=None, timeout=30, limit=3
         connection.close()
 
 
+class LimitedReader:
+    """Exactly `length` bytes of a request body for http.client, read in blocks as it sends."""
+    def __init__(self, stream, length):
+        self.stream, self.remaining = stream, length
+
+    def read(self, size=65536):
+        if self.remaining <= 0:
+            return b''
+        chunk = self.stream.read(min(size, self.remaining, 65536))
+        self.remaining -= len(chunk)
+        return chunk
+
+
 class RemoteDecks:
     def __init__(self, directory, local_url):
         self.directory = Path(directory)
@@ -199,6 +212,22 @@ class RemoteDecks:
                     raise ValueError('Remote redirects are not supported')
                 return result
         raise ValueError('Remote authentication expired; reconnect this Agent Deck')
+
+    def request_stream(self, identity, path, stream, length, language='en', timeout=300):
+        """Raw upload relayed in chunks, so the gateway never holds a whole file in memory. A streamed body
+        cannot be sent twice, so the login is refreshed first and a later 401 is reported, never replayed."""
+        path = remote_path(path)
+        self.request(identity, 'GET', '/api/version', language=language, timeout=10)
+        profile, cookie = self.authentication(identity, language)
+        try:
+            result = http_request(profile['url'], 'POST', path, LimitedReader(stream, length),
+                {'Cookie': cookie, 'Origin': profile['url'], 'Content-Type': 'application/octet-stream',
+                 'Content-Length': str(length), 'Accept-Encoding': 'identity'}, timeout=timeout, limit=1024*1024)
+        except (OSError, http.client.HTTPException):
+            raise ValueError('Remote Agent Deck did not respond; retry the upload') from None
+        if result[0] in (301,302,303,307,308,401):
+            raise ValueError('Remote Agent Deck did not accept the upload; retry it')
+        return result
 
     def terminal_socket(self, identity, language='en'):
         profile, cookie = self.authentication(identity, language)

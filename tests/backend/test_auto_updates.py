@@ -35,6 +35,17 @@ class AutoUpdateTests(unittest.TestCase):
         self.now+=1801;self.worker.tick()
         self.start.assert_called_once()  # A newer release is tried again.
 
+    def test_status_does_not_wait_for_the_release_check(self):
+        import threading
+        started,release=threading.Event(),threading.Event()
+        self.info.side_effect=lambda:(started.set(),release.wait(5),{'update':False,'can_update':True})[2]
+        worker=threading.Thread(target=self.worker.tick);worker.start()
+        self.assertTrue(started.wait(5))
+        status=[];reader=threading.Thread(target=lambda:status.append(self.worker.status()));reader.start();reader.join(1)
+        self.assertEqual(status[0]['phase'],'checking')
+        release.set();worker.join(5)
+        self.assertEqual(self.worker.status()['phase'],'idle')
+
     def test_waits_for_local_generation_then_uses_the_checked_release(self):
         self.idle.return_value=False
         self.worker.tick();self.start.assert_not_called()

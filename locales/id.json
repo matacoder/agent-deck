@@ -543,6 +543,8 @@
     "копий на других компьютерах: {0}": "salinan di komputer lain: {0}",
     "Слишком много компьютеров в хранилище бэкапов": "Terlalu banyak komputer di penyimpanan cadangan",
     "Компьютер прислал бэкап под чужим именем": "Sebuah komputer mengirim cadangan dengan nama komputer lain",
-    "Эта функция недоступна: обновите Agent Deck на этом компьютере": "Fitur ini tidak tersedia: perbarui Agent Deck di komputer ini"
+    "Эта функция недоступна: обновите Agent Deck на этом компьютере": "Fitur ini tidak tersedia: perbarui Agent Deck di komputer ini",
+    "Изолировать терминалы других компьютеров": "Isolate terminals of other computers",
+    "Страница терминала подключённого компьютера открывается в песочнице и не получает доступа к этой панели. В таких терминалах не работают ⌥1…9, копирование выделения и свайп меню.": "A connected computer's terminal page opens in a sandbox with no access to this panel. Alt+1…9, copying the selection and the menu swipe do not work in such terminals."
   }
 }

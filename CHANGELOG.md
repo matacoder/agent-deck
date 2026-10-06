@@ -2,6 +2,16 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.12.0 — 2026-10-06
+
+No breaking changes; the new isolation setting is off by default.
+
+- Settings → Network → "Isolate terminals of other computers" (opt-in): a connected computer's terminal page is served under a signed path (bound to that computer, valid 12 h) with `Content-Security-Policy: sandbox`, so its scripts run in an opaque origin and cannot reach this panel, its cookies or other computers. Alt+1…9, copying the selection and the menu swipe do not work inside such terminals.
+- Uploads to a connected computer stream through the gateway in 64 KB blocks instead of being held in memory; the remote login is refreshed first, and a rejected streamed upload is reported, never resent.
+- `install.sh` and `deploy.sh` take the same lock as the in-panel updater and wait for a running update instead of copying files over it; installers no longer remove the previous `cryptography` copy while the old panel still runs (the new panel prunes it on start).
+- Automatic updates check for releases without holding their lock, so Settings never waits on GitHub.
+- macOS: if the new panel does not start, the installer restores the previous version and restarts it; when a Homebrew Python upgrade breaks the venv, the panel starts with Homebrew's current `python3` instead of restarting forever, and the next install rebuilds the venv.
+
 ## 1.11.3 — 2026-10-06
 
 - `sudo ./update.sh` / `install.sh`: the running panel code is snapshotted before the update; if the new version does not answer `/login` within 20 s, the previous version is restored and restarted, and the installer exits with the logs command. Previously the new files stayed and the panel restarted forever.

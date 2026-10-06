@@ -11,6 +11,12 @@ PREFIX=/opt/cc-panel
 export XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}
 export DBUS_SESSION_BUS_ADDRESS=${DBUS_SESSION_BUS_ADDRESS:-unix:path=$XDG_RUNTIME_DIR/bus}
 
+# Same lock as the in-panel updater, so its rollback cannot overwrite this deploy.
+install -d -m 700 "$HOME/.config/cc-panel"
+( umask 077; : >> "$HOME/.config/cc-panel/update.json.lock" )
+exec 9>>"$HOME/.config/cc-panel/update.json.lock"
+flock -n 9 || { echo "waiting for the running panel update to finish"; flock -w 600 9 || { echo "a panel update is still running; retry later" >&2; exit 1; }; }
+
 PYTHONDONTWRITEBYTECODE=1 python3 - "$SRC" <<'PYTHON'
 from pathlib import Path
 import sys

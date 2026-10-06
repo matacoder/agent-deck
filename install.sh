@@ -158,6 +158,14 @@ loginctl enable-linger "$DEV_USER"
 for _ in $(seq 20); do [ -S "/run/user/$UID_/bus" ] && break; sleep 0.5; done
 as_user() { sudo -u "$DEV_USER" -H env XDG_RUNTIME_DIR="/run/user/$UID_" DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$UID_/bus" "$@"; }
 
+# The in-panel updater (manual or automatic) holds this lock while it swaps files; copying at the same
+# time would let its rollback overwrite this install. The lock file is the panel user's, never root's.
+UPDATE_LOCK="$H/.config/cc-panel/update.json.lock"
+if [ -d "$H/.config/cc-panel" ]; then
+    as_user sh -c 'umask 077; : >> "$1"' sh "$UPDATE_LOCK"
+    exec 9>>"$UPDATE_LOCK"
+    flock -n 9 || { say "waiting for the running panel update to finish"; flock -w 600 9 || die "a panel update is still running; retry later"; }
+fi
 say "panel code -> $PREFIX"
 # Snapshot of the running panel code: if the new version does not answer, it is put back, so a remote
 # user is never left with a panel that cannot start.
@@ -176,7 +184,7 @@ as_user install -d -m 755 "$PREFIX/integrations"
 as_user find "$SRC/integrations" -maxdepth 1 -type f -name '*.py' -exec install -m 644 {} "$PREFIX/integrations"/ \;
 # Pinned cryptography wheels (SHA-256 checked) for backups and notifications; the panel retries on its own if offline.
 say "encryption components (cryptography) -> ~$DEV_USER/.local/share/agent-deck"
-as_user /usr/bin/python3 -c "import sys; sys.path.insert(0, '$PREFIX'); from integrations import dependencies; sys.exit(0 if dependencies.ensure(background=False) else 1)" \
+as_user /usr/bin/python3 -c "import sys; sys.path.insert(0, '$PREFIX'); from integrations import dependencies; sys.exit(0 if dependencies.ensure(background=False, prune_old=False) else 1)" \
     || say "encryption components could not be downloaded now; the panel will retry automatically"
 as_user install -d -m 755 "$PREFIX/locales"
 as_user find "$SRC/locales" -maxdepth 1 -type f \( -name '*.py' -o -name '*.json' \) -exec install -m 644 {} "$PREFIX/locales"/ \;
@@ -301,6 +309,7 @@ if ! panel_answers; then
     die "v$NEW_VERSION did not start; the previous version was restored and is running. Logs: $PANEL_LOGS"
 fi
 as_user systemctl --user is-active -q cc-tmux cc-ttyd cc-panel || die "a service failed: journalctl --user -M $DEV_USER@ -n 50"
+exec 9>&-  # Release the update lock; nothing started later may inherit it.
 
 if [ -n "$PUBLIC_DOMAIN" ]; then
     [ "$PUBLIC_PROXY" != auto ] || { [ -d "$TRAEFIK_DYNAMIC" ] && PUBLIC_PROXY=traefik || PUBLIC_PROXY=caddy; }

@@ -826,9 +826,9 @@ async function loadDeckSettings(){
   populateDeckSelector($("deck_select"),data.decks,selectedDeck,network.name);
   // Most installs have a single machine; the switcher appears once another Agent Deck is connected.
   $("deck_switch").hidden=!data.decks.length&&!selectedDeck;
-  deckDirectory={decks:data.decks,name:network.name};loadOtherDecks();
+  deckDirectory={decks:data.decks,name:network.name,network};loadOtherDecks();
   if(Date.now()-fleet.loadedAt>10*60*1000||$("settings_dlg").open)loadFleet();else renderFleet();
-  $("network_name").value=network.name;$("network_public_url").value=network.public_url;
+  $("network_name").value=network.name;$("network_public_url").value=network.public_url;$("network_isolate").checked=network.isolate_terminals===true;
   $("network_bind").textContent="http://"+network.bind_host+":"+network.bind_port;
   $("network_browser").textContent=location.origin;
   const box=$("deck_connections");box.replaceChildren();
@@ -841,7 +841,7 @@ async function loadDeckSettings(){
   if(selectedDeck&&!data.decks.some(d=>d.id===selectedDeck))switchDeck("");
 }
 // Sessions of every connected machine, so switching environments is one tap from the sidebar.
-let deckDirectory={decks:[],name:""},otherDecks=[],loadingOthers=false,deckOpen={};
+let deckDirectory={decks:[],name:"",network:{}},otherDecks=[],loadingOthers=false,deckOpen={};
 const otherBusy=new Map(),otherAttention=new Set();
 try{deckOpen=JSON.parse(localStore.getItem("cc.deck-open")||"{}")||{}}catch(e){}
 const currentDeckName=()=>selectedDeck?deckDirectory.decks.find(d=>d.id===selectedDeck)?.name||"Agent Deck":deckDirectory.name||tr("Этот Agent Deck");
@@ -960,7 +960,10 @@ async function discoverDecks(){
 }
 async function saveNetwork(){
   const button=$("network_save");button.disabled=true;
-  try{await gatewayApi("/api/network_save",{name:$("network_name").value.trim(),public_url:$("network_public_url").value.trim()});await loadDeckSettings();toast(tr("Настройки сохранены"),"success")}
+  const isolate=$("network_isolate").checked,changed=isolate!==(deckDirectory.network?.isolate_terminals===true);
+  try{await gatewayApi("/api/network_save",{name:$("network_name").value.trim(),public_url:$("network_public_url").value.trim(),isolate_terminals:isolate});
+    // Open terminal frames were loaded under the previous mode; reopen them under the new one.
+    if(changed&&selectedDeck)for(const frame of frames.values())frame.src=frame.src;await loadDeckSettings();toast(tr("Настройки сохранены"),"success")}
   catch(e){toast(e.message)}finally{button.disabled=false}
 }
 function card(name,status,label,action,secondary=[],hidden=false){const c=el("div","hub-card",el("div","card-top",el("div","card-main",el("h4","",name),el("p","",status)),btn(label,"pri",action)));if(secondary.length){const d=el("details","",el("summary","",tr("Другие действия")));for(const [text,fn] of secondary)d.append(btn(text,"",fn));c.append(d)}c.hidden=hidden;return c}
