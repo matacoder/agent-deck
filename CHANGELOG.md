@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.11.1 — 2026-10-05
+
+- Phones: a swipe from the left edge opens the session menu and follows the finger, also over the terminal in Term mode; a swipe left closes it. Short pulls snap back; vertical scrolling is unaffected.
+
 ## 1.11.0 — 2026-10-05
 
 No breaking changes: configuration, API and installers are unchanged.

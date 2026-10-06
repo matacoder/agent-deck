@@ -151,6 +151,9 @@ const shortPath=p=>p.replace(/^.*\/(?:projects|dev)\//,"~/").replace(/\.worktree
 const curMode=()=>mode||(isMobile()?"screen":"term");
 
 function drawer(on){document.body.classList.toggle("drawer",on);if(on)$("q").blur()}
+const drawerSwipe={panel:document.querySelector("aside"),isOpen:()=>document.body.classList.contains("drawer"),setOpen:on=>drawer(on),
+  enabled:()=>isMobile()&&!document.querySelector("dialog[open]")&&$("viewer").hidden&&!$("sheet").classList.contains("on")};
+attachDrawerSwipe(document,drawerSwipe);
 function sheet(on){
   if(on){
     const s=cur(),groups=$("sheet").querySelectorAll(".sheet-group");
@@ -298,7 +301,7 @@ function frameFor(name){
   let f=frames.get(name);
   if(!f){
     f=document.createElement("iframe");f.src=activePath("/t/?arg="+encodeURIComponent("=cc-"+name));
-    f.onload=()=>{try{f.contentWindow.addEventListener("keydown",hotkeys,true);hookClipboard(f.contentWindow)}catch(e){}};
+    f.onload=()=>{try{f.contentWindow.addEventListener("keydown",hotkeys,true);hookClipboard(f.contentWindow);attachDrawerSwipe(f.contentDocument,drawerSwipe)}catch(e){}};
     $("stage").append(f);frames.set(name,f);
   }
   return f;
