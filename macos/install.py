@@ -168,7 +168,7 @@ def install(home, start=True, open_browser=True, projects_dir=None):
     definitions = {
         LABELS[0]: launch_agent(LABELS[0], [ttyd, '-i', socket_path, '-b', '/t', '-W', '-a', '-O',
                             '-t', 'fontSize=13', '-t', 'disableLeaveAlert=true', '-t', 'titleFixed=AgentDeck',
-                            tmux, '-L', 'agent-deck', 'attach', '-t'],
+                            '--', tmux, '-L', 'agent-deck', 'attach', '-t'],
                             {key: env[key] for key in ('HOME', 'PATH', 'LANG', 'TMUX_SOCKET_NAME')}, logs),
         LABELS[1]: launch_agent(LABELS[1], panel_command(python, target / 'panel.py'), env, logs),
     }

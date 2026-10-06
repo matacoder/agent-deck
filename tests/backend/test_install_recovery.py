@@ -59,3 +59,12 @@ class InstallerRecoveryTests(unittest.TestCase):
         self.assertIn("previous version was restored", result.stderr)
         self.assertEqual(sorted(p.name for p in prefix.iterdir()), ["panel.py"])
         self.assertEqual((prefix / "panel.py").read_text(), "# working old release")
+
+
+class TerminalCommandTests(unittest.TestCase):
+    def test_ttyd_options_end_before_the_tmux_command(self):
+        # The static ttyd build (Ubuntu 22.04, Debian, Docker) reads a trailing "-t" as its own option and crashes.
+        for path in ("systemd/cc-ttyd.service", "docker/entrypoint.sh"):
+            with self.subTest(path=path):
+                self.assertIn("-- tmux attach -t", (ROOT / path).read_text())
+        self.assertIn("'--', tmux, '-L', 'agent-deck', 'attach', '-t'", (ROOT / "macos/install.py").read_text())

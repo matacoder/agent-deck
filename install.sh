@@ -2,7 +2,7 @@
 # Install / upgrade Agent Deck (web panel for Claude Code / Codex / terminal sessions in tmux)
 # for one unprivileged user.
 #
-# Works on a clean Ubuntu 22.04 / 24.04 server: installs Tailscale, tmux, ttyd, gh, Claude Code, Codex CLI,
+# Works on a clean Ubuntu 22.04 / 24.04, Debian 12+ or 64-bit Raspberry Pi OS 12+ server: installs Tailscale, tmux, ttyd, gh, Claude Code, Codex CLI,
 # rootless Docker for the user, the panel and its systemd user services.
 #
 #   sudo ./install.sh                          # defaults: user "dev", bind to this host's Tailscale IP
@@ -69,6 +69,11 @@ die() { printf '\033[1;31mxx\033[0m %s\n' "$*" >&2; exit 1; }
 [ "$(id -u)" = 0 ] || die "run as root (sudo ./install.sh)"
 [ -f "$SRC/panel/panel.py" ] || die "run from a checkout of the repository (panel/ not found next to install.sh)"
 export DEBIAN_FRONTEND=noninteractive
+case "$(uname -m)" in
+    x86_64|aarch64|arm64) ;;
+    armv7l|armv6l) die "32-bit ARM is not supported (Claude Code needs a 64-bit system); install the 64-bit Raspberry Pi OS" ;;
+    *) die "unsupported architecture $(uname -m); x86_64 and arm64 are supported" ;;
+esac
 
 # An in-panel self-update may have installed a newer release than this checkout; never silently downgrade.
 NEW_VERSION=$(cat "$SRC/panel/VERSION")
@@ -94,11 +99,28 @@ write_conf() {
 write_conf
 
 say "packages"
-if ! grep -rqsE '^(deb .*universe|Components:.*universe)' /etc/apt/sources.list /etc/apt/sources.list.d/; then
+OS_ID=$( . /etc/os-release 2>/dev/null; echo "${ID:-}" )
+# ttyd lives in Ubuntu's universe component (Debian and Raspberry Pi OS use the static build below).
+if [ "$OS_ID" = ubuntu ] && ! grep -rqsE '^(deb .*universe|Components:.*universe)' /etc/apt/sources.list /etc/apt/sources.list.d/; then
     apt-get install -y -q software-properties-common >/dev/null && add-apt-repository -y universe >/dev/null
 fi
 apt-get update -q >/dev/null
-apt-get install -y -q sudo tmux ttyd git gh python3 curl ca-certificates >/dev/null
+apt-get install -y -q sudo tmux git python3 curl ca-certificates >/dev/null
+# Debian has no ttyd package; without it (or with a ttyd too old for -W) the static build below is used.
+apt-get install -y -q ttyd >/dev/null 2>&1 || true
+python3 -c 'import sys; sys.exit(sys.version_info < (3, 10))' \
+    || die "Python 3.10+ is required (this system has $(python3 -V 2>&1)); use Ubuntu 22.04+, Debian 12+ or Raspberry Pi OS 12+"
+if ! apt-get install -y -q gh >/dev/null 2>&1; then
+    # Older Debian releases have no gh package: use GitHub's own signed repository.
+    say "GitHub CLI repository"
+    install -d -m 755 /etc/apt/keyrings
+    curl -fsSL -o /etc/apt/keyrings/githubcli-archive-keyring.gpg https://cli.github.com/packages/githubcli-archive-keyring.gpg
+    chmod 644 /etc/apt/keyrings/githubcli-archive-keyring.gpg
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
+        > /etc/apt/sources.list.d/github-cli.list
+    apt-get update -q >/dev/null
+    apt-get install -y -q gh >/dev/null
+fi
 systemctl disable --now ttyd 2>/dev/null || true   # the distro unit would listen on 0.0.0.0:7681
 
 TTYD_BIN=/usr/bin/ttyd

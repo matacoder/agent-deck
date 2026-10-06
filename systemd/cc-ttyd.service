@@ -3,8 +3,9 @@ Description=ttyd for Claude panel (unix socket only)
 After=cc-tmux.service
 
 [Service]
+# "--" ends ttyd's options: the static ttyd build reads the trailing "-t" as its own option and crashes.
 ExecStartPre=/bin/rm -f %t/cc-ttyd.sock
-ExecStart=/usr/bin/ttyd -i %t/cc-ttyd.sock -b /t -W -a -O -t fontSize=13 -t "fontFamily=Menlo, SF Mono, monospace" -t disableLeaveAlert=true -t macOptionClickForcesSelection=true -t rightClickSelectsWord=true -t titleFixed=AgentDeck tmux attach -t
+ExecStart=/usr/bin/ttyd -i %t/cc-ttyd.sock -b /t -W -a -O -t fontSize=13 -t "fontFamily=Menlo, SF Mono, monospace" -t disableLeaveAlert=true -t macOptionClickForcesSelection=true -t rightClickSelectsWord=true -t titleFixed=AgentDeck -- tmux attach -t
 Restart=always
 RestartSec=3
 

@@ -545,6 +545,7 @@
     "Компьютер прислал бэкап под чужим именем": "한 컴퓨터가 다른 컴퓨터의 이름으로 백업을 보냈습니다",
     "Эта функция недоступна: обновите Agent Deck на этом компьютере": "이 기능을 사용할 수 없습니다: 이 컴퓨터에서 Agent Deck을 업데이트하세요",
     "Изолировать терминалы других компьютеров": "Isolate terminals of other computers",
-    "Страница терминала подключённого компьютера открывается в песочнице и не получает доступа к этой панели. В таких терминалах не работают ⌥1…9, копирование выделения и свайп меню.": "A connected computer's terminal page opens in a sandbox with no access to this panel. Alt+1…9, copying the selection and the menu swipe do not work in such terminals."
+    "Страница терминала подключённого компьютера открывается в песочнице и не получает доступа к этой панели. В таких терминалах не работают ⌥1…9, копирование выделения и свайп меню.": "A connected computer's terminal page opens in a sandbox with no access to this panel. Alt+1…9, copying the selection and the menu swipe do not work in such terminals.",
+    "Docker: соберите или скачайте новый образ и пересоздайте контейнер (docker compose up -d --build).": "Docker: build or pull a new image and recreate the container (docker compose up -d --build)."
   }
 }

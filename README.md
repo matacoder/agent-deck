@@ -1,8 +1,8 @@
 # Agent Deck
 
 A self-hosted workspace for [Claude Code](https://claude.com/claude-code),
-[Codex](https://github.com/openai/codex), Kimi and terminals. Install on Linux, macOS or
-Windows 11 (WSL2), work from a desktop or phone browser, get notified when an agent needs you, and answer
+[Codex](https://github.com/openai/codex), Kimi and terminals. Install on Linux (Ubuntu, Debian,
+Raspberry Pi), macOS, Windows 11 (WSL2) or in Docker, work from a desktop or phone browser, get notified when an agent needs you, and answer
 agent questions with one tap or in Telegram.
 Sessions live in tmux, keep working after you close the tab, and can be restored
 after a reboot.
@@ -32,7 +32,7 @@ after a reboot.
 - Notifications on phone and desktop when an agent asks a question or finishes, from every connected computer.
 - Screenshots an agent mentions by path (`/tmp/shot.png`, `docs/home.png`) appear as thumbnails under the line and open in a full-screen viewer, also for sessions on connected computers.
 - Telegram bot integration: receive agent questions with answer buttons in your private chat.
-- One-command installation on Linux, macOS and Windows 11 (WSL2), autostart and panel updates; in-panel agent setup and login.
+- One-command installation on Linux (Ubuntu, Debian, 64-bit Raspberry Pi OS), macOS and Windows 11 (WSL2), or a Docker container for NAS and other distributions; autostart and panel updates; in-panel agent setup and login.
 
 <img src="docs/screenshots/mobile-settings.png" width="260" alt="Interface language settings">
 
@@ -40,9 +40,10 @@ after a reboot.
 
 Pick your platform below. Every grey block is one command: copy it as is.
 
-### Linux server (Ubuntu 22.04 / 24.04)
+### Linux server (Ubuntu 22.04 / 24.04, Debian 12+, Raspberry Pi OS 64-bit)
 
-Run as root on a fresh server:
+The same installer works on Ubuntu, Debian and a Raspberry Pi 4/5 with the 64-bit Raspberry Pi OS
+(32-bit systems are not supported: Claude Code needs 64-bit). Run as root on a fresh server:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/matacoder/agent-deck/main/get.sh | sudo bash
@@ -176,6 +177,40 @@ Remove the firewall rules:
 ```powershell
 Remove-NetFirewallRule -Name AgentDeck-Tailscale; Remove-NetFirewallHyperVRule -Name AgentDeck-WSL
 ```
+
+### Docker (NAS, Fedora, Arch, any host with Docker)
+
+One container runs tmux, the terminal and the panel as an unprivileged user; settings, agent logins,
+sessions and projects live in the `agent-deck-home` volume. Requires Docker with Compose v2:
+
+```bash
+git clone https://github.com/matacoder/agent-deck.git && cd agent-deck && docker compose up -d --build
+```
+
+The first start installs Claude Code and Codex into the volume and prints the login password:
+
+```bash
+docker compose logs agent-deck | grep "login:"
+```
+
+The panel listens on `127.0.0.1:8790` only. To open it from other devices, put the host on
+[Tailscale](https://tailscale.com) and run `tailscale serve --bg 8790`, or publish it on your network by
+creating `.env` next to `docker-compose.yml` (the panel gives a shell to whoever logs in, so only on a
+trusted network):
+
+```bash
+printf 'AGENT_DECK_BIND=0.0.0.0\nPANEL_PASSWORD=choose-a-long-password\n' > .env && docker compose up -d
+```
+
+To work on projects from the host instead of the volume, uncomment the `/home/dev/dev` mount in
+`docker-compose.yml`. Update by pulling the repository and rebuilding — the in-panel update button is off
+in a container:
+
+```bash
+git pull && docker compose up -d --build
+```
+
+To connect this Agent Deck to another one, publish the port on the host's Tailscale address (`AGENT_DECK_BIND=100.x.y.z` in `.env`): connections between Agent Decks use Tailscale addresses only.
 
 ### After installing
 

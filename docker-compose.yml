@@ -1,0 +1,32 @@
+# Agent Deck in Docker (NAS, Fedora/Arch, any host with Docker): docker compose up -d --build
+# The first start prints the login password: docker compose logs agent-deck
+# Reachable only from this machine by default; see README "Docker" before publishing the port.
+name: agent-deck
+services:
+  agent-deck:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    image: agent-deck:local
+    container_name: agent-deck
+    init: true
+    restart: unless-stopped
+    ports:
+      - "${AGENT_DECK_BIND:-127.0.0.1}:${AGENT_DECK_PORT:-8790}:8790"
+    environment:
+      PANEL_LANGUAGE: ${PANEL_LANGUAGE:-en}
+      # PANEL_PASSWORD: set in .env to choose the password instead of a generated one
+      PANEL_PASSWORD: ${PANEL_PASSWORD:-}
+      WITH_CODEX: ${WITH_CODEX:-1}
+    volumes:
+      # Settings, password, agent logins, sessions and the agents themselves.
+      - agent-deck-home:/home/dev
+      # Optional: work on host projects instead of the volume's ~/dev
+      # - /srv/projects:/home/dev/dev
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+volumes:
+  agent-deck-home:

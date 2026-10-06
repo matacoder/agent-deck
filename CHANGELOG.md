@@ -2,6 +2,12 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.13.0 — 2026-10-06
+
+- Debian 12+ and the 64-bit Raspberry Pi OS: the Linux installer no longer needs Ubuntu's `universe`, installs the static ttyd when the distribution has none, takes `gh` from GitHub's signed repository when missing, and stops with a clear message on Python older than 3.10 or 32-bit ARM.
+- Docker: `docker compose up -d --build` runs Agent Deck in one container (tmux, ttyd and the panel as an unprivileged user, settings and agents in a volume, health check, log limits), for NAS boxes and distributions without the installer. The port is bound to localhost by default; the in-panel update button explains that a container is updated by rebuilding the image.
+- Fix: the static ttyd build (used on Ubuntu 22.04 and now Debian) read the trailing `-t` of `tmux attach -t` as its own option and crashed; ttyd's options now end with `--` in the systemd unit, the macOS launch agent and the container.
+
 ## 1.12.0 — 2026-10-06
 
 No breaking changes; the new isolation setting is off by default.

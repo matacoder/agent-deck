@@ -1,0 +1,10 @@
+.git
+node_modules
+test-results
+playwright-report
+tests
+docs
+features
+**/__pycache__
+*.env
+.env*
