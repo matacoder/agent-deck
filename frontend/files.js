@@ -1,6 +1,8 @@
 // Project files of the open session: browse folders, open a text file, copy or paste into it and save.
 // The server keeps everything inside the home folder and refuses to overwrite a file changed meanwhile.
-const files={session:null,listing:null,file:null,loading:false};
+// seq: each opening and folder load gets a number; an answer for an older one (another session, a
+// folder left meanwhile) is dropped so it can never fill the dialog or decide where a new file goes.
+const files={session:null,listing:null,file:null,seq:0,error:"",path:""};
 
 function formatSize(bytes){
   return bytes<1024?bytes+" B":bytes<1048576?(bytes/1024).toFixed(1)+" KB":(bytes/1048576).toFixed(1)+" MB";
@@ -15,20 +17,30 @@ async function openFiles(){
   await loadFolder("");
 }
 async function loadFolder(path){
-  if(files.loading)return;
-  files.loading=true;
-  try{files.listing=await api("/api/files?name="+encodeURIComponent(files.session)+"&path="+encodeURIComponent(path));files.file=null}
-  catch(e){if(e.message!==STALE)toast(e.message)}
-  finally{files.loading=false;renderFiles()}
+  const seq=++files.seq;files.error="";files.path=path;
+  if(!files.listing)renderFiles();
+  try{
+    const listing=await api("/api/files?name="+encodeURIComponent(files.session)+"&path="+encodeURIComponent(path),null,false,{timeout:60000});
+    if(seq!==files.seq)return;
+    files.listing=listing;files.file=null;
+  }catch(e){if(seq!==files.seq)return;if(e.message!==STALE){files.error=e.message;if(files.listing)toast(e.message)}}
+  renderFiles();
 }
 async function openFile(path){
-  try{const data=await api("/api/file?path="+encodeURIComponent(path));files.file={...data,saved:data.content,isNew:false}}
-  catch(e){if(e.message!==STALE)toast(e.message);return}
+  const seq=++files.seq;
+  try{
+    const data=await api("/api/file?path="+encodeURIComponent(path),null,false,{timeout:60000});
+    if(seq!==files.seq)return;
+    files.file={...data,saved:data.content,isNew:false};
+  }catch(e){if(seq===files.seq&&e.message!==STALE)toast(e.message);return}
   renderFiles();
 }
 async function leaveFile(){
   if(filesDirty()&&!await confirmAction(tr("Изменения не сохранены. Закрыть без сохранения?"),{confirm:tr("Закрыть без сохранения"),danger:true}))return false;
-  files.file=null;renderFiles();return true;
+  files.file=null;
+  // The folder may have changed (a new file was just saved): show it as it is now.
+  if(files.listing){loadFolder(files.listing.path);return true}
+  renderFiles();return true;
 }
 async function saveFile(){
   const file=files.file;if(!file)return;
@@ -47,12 +59,14 @@ function newFile(name){
   files.file={path:folder+"/"+name,content:"",saved:"",hash:null,isNew:true};renderFiles();
 }
 async function closeFiles(){if(!files.file||await leaveFile())$("files_dlg").close()}
+function fontButton(label,name,step){const b=fileButton(label,"",()=>codeFont(step));b.setAttribute("aria-label",name);return b}
 function fileButton(label,cls,run,icon){
   const b=el("button",cls,...(icon?[svgIcon(icon)]:[]),el("span","",label));b.type="button";b.onclick=run;return b;
 }
 
 function renderFiles(){
   const box=$("files_body"),listing=files.listing;box.replaceChildren();
+  if(!listing&&files.error){box.append(errorWithRetry(files.error,()=>loadFolder(files.path)));return}
   if(!listing){box.append(el("p","files-empty",tr("Загрузка…")));return}
   if(files.file)return renderEditor(box,listing);
   const crumbs=el("div","files-path",el("code","",homeRelative(listing.path,listing.home)));
@@ -78,7 +92,7 @@ function renderFiles(){
 function renderEditor(box,listing){
   const file=files.file,name=file.path.split("/").pop();
   const head=el("div","files-path",fileButton(tr("К папке"),"files-up",leaveFile,"arrow-up"),el("code","",homeRelative(file.path,listing.home)),
-    el("span","git-font",fileButton("A−","",()=>codeFont(-1)),fileButton("A+","",()=>codeFont(1))));
+    el("span","git-font",fontButton("A−",tr("Уменьшить шрифт"),-1),fontButton("A+",tr("Увеличить шрифт"),1)));
   applyCodeFont();
   if(!file.isNew&&!file.editing)return renderReader(box,head,file);
   const area=el("textarea","files-text");area.value=file.content;area.spellcheck=false;

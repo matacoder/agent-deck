@@ -53,15 +53,20 @@ addEventListener("orientationchange",()=>requestAnimationFrame(fitViewport));
 // Network failures and proxy/restart answers are "offline", not bugs: they go to the connection pill.
 class OfflineError extends Error{constructor(message){super(message);this.offline=true}}
 const API_READ_TIMEOUT=25000;
-async function api(path,body,gateway=false){
+async function api(path,body,gateway=false,options={}){
   const epoch=deckEpoch;
   let r;
   // iOS can park a request while the app is in the background and never settle it; every poll
   // guarded by "one request at a time" would then wait forever. Reads give up; mutations are not
   // retried blindly, so they keep waiting for a definite answer.
-  const controller=body?null:new AbortController(),timer=controller&&setTimeout(()=>controller.abort(),API_READ_TIMEOUT);
+  // Another computer is reached through the gateway, which itself waits up to 30 s for it.
+  const limit=options.timeout||(selectedDeck&&!gateway?API_READ_TIMEOUT*2:API_READ_TIMEOUT);
+  const controller=body?null:new AbortController(),timer=controller&&setTimeout(()=>controller.abort(),limit);
   try{r=await fetch(gateway?path:activePath(path),body?{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}:{cache:"no-store",signal:controller.signal})}
-  catch(e){clearTimeout(timer);if(!gateway&&epoch!==deckEpoch)throw new Error(STALE);throw new OfflineError(tr("Нет связи с панелью"))}
+  catch(e){
+    clearTimeout(timer);if(!gateway&&epoch!==deckEpoch)throw new Error(STALE);
+    throw new OfflineError(controller?.signal.aborted?tr("Панель не ответила за {0} с",[Math.round(limit/1000)]):tr("Нет связи с панелью"));
+  }
   if(r.status===401){
     try{stashDrafts();location.href="/login"}catch(e){toast(tr("Войдите в новой вкладке: здесь сохранён несохранённый текст."),true,{label:tr("Войти"),run:()=>window.open("/login","_blank","noopener")})}
     // Already handled above; a caller's toast(e.message) must not replace the login prompt.
@@ -74,7 +79,7 @@ async function api(path,body,gateway=false){
   if(!gateway&&epoch!==deckEpoch)throw new Error(STALE);
   if([502,503,504].includes(r.status))throw new OfflineError(j?.error||tr("Нет связи с панелью"));
   // A proxy or captive page can answer 200 with HTML; never hand that to code expecting JSON.
-  if(!j||typeof j!=="object")throw new OfflineError(tr("Панель вернула неожиданный ответ"));
+  if(!j||typeof j!=="object")throw new OfflineError(controller?.signal.aborted?tr("Панель не ответила за {0} с",[Math.round(limit/1000)]):tr("Панель вернула неожиданный ответ"));
   // A route this computer's Agent Deck does not have yet: say what to do instead of "Not Found".
   if(r.status===404&&(!j.error||/^(not found|Agent Deck route not found)$/i.test(j.error)))throw new Error(tr("Эта функция недоступна: обновите Agent Deck на этом компьютере"));
   if(!r.ok)throw new Error(j.error||r.statusText);return j;
@@ -312,7 +317,8 @@ function frameFor(name){
   let f=frames.get(name);
   if(!f){
     f=document.createElement("iframe");f.src=activePath("/t/?arg="+encodeURIComponent("=cc-"+name));
-    f.dataset.loading="1";f.addEventListener("load",()=>{delete f.dataset.loading;show()},{once:true});
+    // Only the overlay reacts: a full show() would scroll the Screen view or move focus into the terminal.
+    f.dataset.loading="1";f.addEventListener("load",()=>{delete f.dataset.loading;if(frames.get(active)===f&&curMode()==="term")$("term_loading").hidden=true},{once:true});
     f.onload=()=>{try{f.contentWindow.addEventListener("keydown",hotkeys,true);hookClipboard(f.contentWindow);attachDrawerSwipe(f.contentDocument,drawerSwipe)}catch(e){}};
     $("stage").append(f);frames.set(name,f);
   }
@@ -1198,7 +1204,7 @@ async function loadGithub(){
 }
 async function loadRepos(refresh){
   const list=$("gh_list");if(!list)return;list.textContent=tr("Загружаю…");
-  try{repos=(await api("/api/github/repos"+(refresh?"?refresh=1":""))).repos;renderRepos()}catch(e){if(e.message!==STALE)list.textContent=e.message}
+  try{repos=(await api("/api/github/repos"+(refresh?"?refresh=1":""),null,false,{timeout:90000})).repos;renderRepos()}catch(e){if(e.message!==STALE)list.textContent=e.message}
 }
 function renderRepos(){
   const list=$("gh_list"),q=($("gh_q").value||"").toLowerCase();list.replaceChildren();

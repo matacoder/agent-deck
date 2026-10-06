@@ -223,6 +223,22 @@ class RemoteDeckTests(PanelCase):
         self.isolation(False)
         self.assertEqual(self.isolated('/deck/'+ID+'/c/'+token+'/t/').send_json.call_args.args[0],404)
 
+    def test_an_upload_that_ends_early_is_not_forwarded_as_complete(self):
+        from integrations.decks import LimitedReader
+        reader = LimitedReader(io.BytesIO(b'abc'), 10)
+        self.assertEqual(reader.read(), b'abc')
+        with self.assertRaises(OSError):
+            reader.read()
+
+    def test_isolated_terminal_signatures_never_reach_the_log(self):
+        handler=self.handler();handler.client_ip=Mock(return_value='100.64.0.9')
+        token=self.panel.terminal_capability(ID)
+        with patch('builtins.print') as printed:
+            handler.log_message('"%s" %s %s', f'GET /deck/{ID}/c/{token}/t/ws HTTP/1.1', '101', '-')
+        line=printed.call_args.args[0]
+        self.assertNotIn(token,line)
+        self.assertIn(f'/deck/{ID}/c/***/t/ws',line)
+
     def test_terminal_html_stays_on_gateway_and_remote_cookies_are_not_forwarded(self):
         service=self.enterContext(patch.object(self.panel,'remote_decks'))
         service.request.return_value=(200,{'Content-Type':'text/html','Set-Cookie':'cc_auth=REMOTE_SECRET'},b'<base href="/t/"><script src="/t/app.js"></script>')

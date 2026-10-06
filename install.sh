@@ -69,10 +69,11 @@ die() { printf '\033[1;31mxx\033[0m %s\n' "$*" >&2; exit 1; }
 [ "$(id -u)" = 0 ] || die "run as root (sudo ./install.sh)"
 [ -f "$SRC/panel/panel.py" ] || die "run from a checkout of the repository (panel/ not found next to install.sh)"
 export DEBIAN_FRONTEND=noninteractive
-case "$(uname -m)" in
-    x86_64|aarch64|arm64) ;;
-    armv7l|armv6l) die "32-bit ARM is not supported (Claude Code needs a 64-bit system); install the 64-bit Raspberry Pi OS" ;;
-    *) die "unsupported architecture $(uname -m); x86_64 and arm64 are supported" ;;
+# The packages' architecture, not the kernel's: 32-bit Raspberry Pi OS boots a 64-bit kernel on a Pi 4/5.
+case "$(dpkg --print-architecture 2>/dev/null || uname -m)" in
+    amd64|arm64|x86_64|aarch64) ;;
+    armhf|armel|armv7l|armv6l) die "32-bit ARM is not supported (Claude Code needs a 64-bit system); install the 64-bit Raspberry Pi OS" ;;
+    *) die "unsupported architecture $(dpkg --print-architecture 2>/dev/null || uname -m); x86_64 and arm64 are supported" ;;
 esac
 
 # An in-panel self-update may have installed a newer release than this checkout; never silently downgrade.
@@ -138,6 +139,9 @@ fi
 bind_is_local() { python3 -c 'import socket,sys; socket.socket().bind((sys.argv[1], 0))' "$1" 2>/dev/null; }
 if [ -n "$BIND_HOST" ] && ! bind_is_local "$BIND_HOST"; then
     [ -z "$BIND_HOST_EXPLICIT" ] || die "BIND_HOST=$BIND_HOST is not an address of this machine"
+    # Only a Tailscale address is looked up again (as the panel does); any other one needs a decision.
+    python3 -c 'import ipaddress,sys; sys.exit(ipaddress.ip_address(sys.argv[1]) not in ipaddress.ip_network("100.64.0.0/10"))' "$BIND_HOST" 2>/dev/null \
+        || die "remembered BIND_HOST=$BIND_HOST is no longer an address of this machine; rerun with BIND_HOST=<address>, or BIND_HOST= to use Tailscale"
     say "remembered address $BIND_HOST is no longer on this machine; asking Tailscale again"
     BIND_HOST=
 fi
@@ -185,18 +189,39 @@ as_user() { sudo -u "$DEV_USER" -H env XDG_RUNTIME_DIR="/run/user/$UID_" DBUS_SE
 UPDATE_LOCK="$H/.config/cc-panel/update.json.lock"
 if [ -d "$H/.config/cc-panel" ]; then
     as_user sh -c 'umask 077; : >> "$1"' sh "$UPDATE_LOCK"
-    exec 9>>"$UPDATE_LOCK"
+    # Read-only: root never creates or writes a file in the user's folder (a swapped-in symlink to a
+    # system file would otherwise be created or truncated by root); flock works on a read descriptor.
+    [ ! -L "$UPDATE_LOCK" ] || die "$UPDATE_LOCK must not be a symbolic link"
+    exec 9<"$UPDATE_LOCK"
     flock -n 9 || { say "waiting for the running panel update to finish"; flock -w 600 9 || die "a panel update is still running; retry later"; }
 fi
 say "panel code -> $PREFIX"
 # Snapshot of the running panel code: if the new version does not answer, it is put back, so a remote
 # user is never left with a panel that cannot start.
-ROLLBACK=""
+# Taken and restored as the panel user, like every other write into $PREFIX: root never writes into a
+# folder the user owns. A failure anywhere after the copy (not only a failed health check) restores it.
+ROLLBACK="" PANEL_COPIED=0 PANEL_HEALTHY=0 PANEL_RESTORED=0
+restore_panel() {
+    as_user find "$PREFIX" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+    as_user cp -a "$ROLLBACK/." "$PREFIX/"
+    PANEL_RESTORED=1
+}
+finish_install() {
+    local status=$?
+    if [ -n "$ROLLBACK" ]; then
+        if [ "$status" != 0 ] && [ "$PANEL_COPIED" = 1 ] && [ "$PANEL_HEALTHY" != 1 ] && [ "$PANEL_RESTORED" != 1 ]; then
+            echo "installation stopped; the previous panel files were put back" >&2
+            restore_panel || true
+        fi
+        as_user rm -rf "$ROLLBACK"
+    fi
+}
 if [ ! -L "$PREFIX" ] && [ -f "$PREFIX/panel.py" ]; then
-    ROLLBACK=$(mktemp -d /var/tmp/agent-deck-rollback.XXXXXX)
-    trap 'rm -rf "$ROLLBACK"' EXIT
-    cp -a "$PREFIX/." "$ROLLBACK/"
+    ROLLBACK=$(as_user mktemp -d /var/tmp/agent-deck-rollback.XXXXXX)
+    trap finish_install EXIT
+    as_user cp -a "$PREFIX/." "$ROLLBACK/"
 fi
+PANEL_COPIED=1
 # owned by the panel user: the panel runs as that user anyway, and ./deploy.sh can update it without root
 [ ! -L "$PREFIX" ] || die "panel runtime must not be a symbolic link"
 install -d -m 755 "$PREFIX"
@@ -313,23 +338,25 @@ as_user systemctl --user daemon-reload
 as_user systemctl --user enable -q cc-tmux.service cc-ttyd.service cc-panel.service
 as_user systemctl --user start cc-tmux.service          # never restarted: it owns the sessions
 as_user systemctl --user restart cc-ttyd.service cc-panel.service
+# Probe where the panel really listens: its env, which may differ from this run's options.
+PROBE="$(as_user sed -n 's/^BIND_HOST=//p' "$ENV" | head -1):$(as_user sed -n 's/^BIND_PORT=//p' "$ENV" | head -1)"
 panel_answers() {
     for _ in $(seq 40); do
-        curl -fsS -o /dev/null --max-time 2 "http://$BIND_HOST:$PANEL_PORT/login" && return 0
+        curl -fsS -o /dev/null --max-time 2 "http://$PROBE/login" && return 0
         sleep 0.5
     done
     return 1
 }
 PANEL_LOGS="journalctl --user -M $DEV_USER@ -u cc-panel -n 50"
 if ! panel_answers; then
-    [ -n "$ROLLBACK" ] || die "the panel does not answer at http://$BIND_HOST:$PANEL_PORT: $PANEL_LOGS"
+    [ -n "$ROLLBACK" ] || die "the panel does not answer at http://$PROBE: $PANEL_LOGS"
     say "v$NEW_VERSION did not answer; restoring the previous panel"
-    find "$PREFIX" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
-    cp -a "$ROLLBACK/." "$PREFIX/"
+    restore_panel
     as_user systemctl --user restart cc-panel.service
     panel_answers || die "the restored panel does not answer either: $PANEL_LOGS"
     die "v$NEW_VERSION did not start; the previous version was restored and is running. Logs: $PANEL_LOGS"
 fi
+PANEL_HEALTHY=1
 as_user systemctl --user is-active -q cc-tmux cc-ttyd cc-panel || die "a service failed: journalctl --user -M $DEV_USER@ -n 50"
 exec 9>&-  # Release the update lock; nothing started later may inherit it.
 

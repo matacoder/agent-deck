@@ -76,6 +76,9 @@ class LimitedReader:
         if self.remaining <= 0:
             return b''
         chunk = self.stream.read(min(size, self.remaining, 65536))
+        if not chunk:
+            # The browser went away mid-upload: fail here instead of sending a short body as a whole one.
+            raise OSError('Upload ended before its declared length')
         self.remaining -= len(chunk)
         return chunk
 

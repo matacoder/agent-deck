@@ -35,6 +35,19 @@ def git(folder, *args, run=subprocess.run, timeout=20, env=None):
     return result.stdout.decode('utf-8', 'replace')
 
 
+def capped(folder, args, limit):
+    """git output read up to a size limit: one huge generated commit must not fill the panel's memory."""
+    process = subprocess.Popen(['git', '-C', str(folder), '-c', 'core.quotepath=off', '--no-pager', *args],
+                               stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+    try:
+        data = process.stdout.read(limit)
+    finally:
+        process.kill()
+        process.stdout.close()
+        process.wait(timeout=10)
+    return data.decode('utf-8', 'replace')
+
+
 def checked_sha(value):
     if not isinstance(value, str) or not SHA.fullmatch(value):
         raise ValueError('Неверный коммит')
@@ -93,8 +106,14 @@ def history(folder, skip=0, run=subprocess.run, ref=None):
 def fetch(folder, run=subprocess.run):
     """Updates remote branches only (never the working tree); never waits for a password prompt."""
     root = git(folder, 'rev-parse', '--show-toplevel', run=run).strip()
-    env = {**os.environ, 'GIT_TERMINAL_PROMPT': '0', 'GIT_ASKPASS': '/bin/false',
-           'GIT_SSH_COMMAND': 'ssh -o BatchMode=yes -o ConnectTimeout=15'}
+    env = {**os.environ, 'GIT_TERMINAL_PROMPT': '0', 'GIT_ASKPASS': '/bin/false', 'SSH_ASKPASS_REQUIRE': 'never'}
+    # The user's own SSH setup (core.sshCommand, GIT_SSH*) wins; only a default ssh gets batch mode.
+    try:
+        own = git(root, 'config', '--get', 'core.sshCommand', run=run).strip()
+    except ValueError:
+        own = ''
+    if not (own or env.get('GIT_SSH_COMMAND') or env.get('GIT_SSH')):
+        env['GIT_SSH_COMMAND'] = 'ssh -o BatchMode=yes -o ConnectTimeout=15'
     try:
         git(root, 'fetch', '--prune', '--quiet', 'origin', run=run, timeout=60, env=env)
     except subprocess.TimeoutExpired:
@@ -128,8 +147,10 @@ def commit(folder, sha, run=subprocess.run):
     sha = checked_sha(sha)
     meta = git(folder, 'show', '-s', f'--format=%H{SEP}%h{SEP}%an{SEP}%ae{SEP}%at{SEP}%P{SEP}%B', sha, run=run)
     full, short, author, email, at, parents, body = (meta.split(SEP, 6) + [''] * 7)[:7]
-    patch = git(folder, 'show', '--format=', '--patch', '--find-renames', '--no-color', '--no-ext-diff',
-                '--diff-merges=first-parent', sha, run=run)
+    patch = capped(folder, ['show', '--format=', '--patch', '--find-renames', '--no-color', '--no-ext-diff',
+                            '--no-textconv', '--diff-merges=first-parent', sha], MAX_PATCH * 2) \
+        if run is subprocess.run else git(folder, 'show', '--format=', '--patch', '--find-renames', '--no-color',
+                                          '--no-ext-diff', '--no-textconv', '--diff-merges=first-parent', sha, run=run)
     files, size = [], 0
     for item in split_patch(patch):
         size += len(item['patch'])
@@ -258,18 +279,18 @@ class Grouper:
             with tempfile.TemporaryDirectory(prefix='agent-deck-groups-') as empty:
                 # No tools and an empty folder: commit text can only shape the answer, never act.
                 result = self.run([claude, '-p', '--model', 'haiku', '--tools', '', '--output-format', 'json',
-                                   '--no-session-persistence', '--strict-mcp-config'],
+                                   '--no-session-persistence', '--strict-mcp-config', '--setting-sources', ''],
                                   input=prompt.encode(), capture_output=True, timeout=GROUP_TIMEOUT, cwd=empty)
             if result.returncode:
                 raise ValueError('Claude Code не ответил; проверьте вход в Claude в настройках агентов')
             answer = json.loads(result.stdout.decode('utf-8', 'replace'))
-            groups = parse_groups(answer.get('result', ''), commits)
+            groups = parse_groups(answer.get('result', '') if isinstance(answer, dict) else '', commits)
             value = {'groups': groups, 'commits': {c['sha']: c for c in commits}, 'created': int(time.time())}
             self.cache.mkdir(parents=True, exist_ok=True, mode=0o700)
             (self.cache / (key + '.json')).write_text(json.dumps(value))
             with self.lock:
                 self.jobs.pop(key, None)
-        except (ValueError, OSError, subprocess.TimeoutExpired) as error:
+        except Exception as error:  # Any failure must end the job, or it shows "running" until a restart.
             message = str(error) if isinstance(error, ValueError) else 'Группировка не удалась; попробуйте ещё раз'
             with self.lock:
                 self.jobs[key] = {'phase': 'error', 'error': message[:300]}

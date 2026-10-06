@@ -617,6 +617,10 @@
     "Такой ветки нет в репозитории": "No such branch in the repository",
     "GitHub не ответил за минуту; попробуйте позже": "GitHub did not answer within a minute; try again later",
     "Открыть терминал": "Open the terminal",
-    "Показать экран": "Show the screen"
+    "Показать экран": "Show the screen",
+    "Панель не ответила за {0} с": "The panel did not answer within {0} s",
+    "Повторить": "Retry",
+    "Не удалось загрузить": "Could not load",
+    "В tmux пока нет текста. Терминал открывается в меню ⋯.": "No text in tmux yet. The terminal opens from the ⋯ menu."
   }
 }

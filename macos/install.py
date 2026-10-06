@@ -190,6 +190,8 @@ def install(home, start=True, open_browser=True, projects_dir=None):
         if start and (backup / 'VERSION').exists():
             restore(backup, target)
             for label in LABELS:
+                # The new version may still be loaded and running; unload it, or bootstrap fails silently.
+                run('launchctl', 'bootout', domain + '/' + label, check=False)
                 run('launchctl', 'bootstrap', domain, agents / (label + '.plist'), check=False)
             print(f'The new version did not start; the previous one was restored. Logs: {logs}', flush=True)
         raise

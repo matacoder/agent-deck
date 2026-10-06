@@ -1,5 +1,5 @@
 # Agent Deck in Docker (NAS, Fedora/Arch, any host with Docker): docker compose up -d --build
-# The first start prints the login password: docker compose logs agent-deck
+# Login password (created on the first start): docker compose exec agent-deck sed -n 's/^PANEL_PASSWORD=//p' /home/dev/.config/cc-panel/env
 # Reachable only from this machine by default; see README "Docker" before publishing the port.
 name: agent-deck
 services:

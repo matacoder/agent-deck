@@ -75,6 +75,10 @@ GIT_RE = re.compile(r"^(https://|ssh://|git@)[\w.@:/~+-]+$")
 BRANCH_RE = re.compile(r"^[\w][\w./-]{0,63}$")
 # requests from these networks are a local reverse proxy (e.g. Traefik in Docker): trust X-Forwarded-*
 TRUSTED_PROXIES = [ipaddress.ip_network(n) for n in ("127.0.0.0/8", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16")]
+if os.environ.get("AGENT_DECK_CONTAINER"):
+    # Every client of a container arrives from Docker's or Podman's gateway (172.x, 10.0.2.2): trusting
+    # X-Forwarded-For there would let anyone pick their own address and dodge the per-IP login limit.
+    TRUSTED_PROXIES = [ipaddress.ip_network(n.strip()) for n in os.environ.get("AGENT_DECK_TRUSTED_PROXIES", "").split(",") if n.strip()]
 COOKIE = "cc_auth"
 COOKIE_DAYS = 90
 MAX_IMAGE_BYTES = 200 * 1024 * 1024
@@ -334,7 +338,8 @@ def token_valid(token):
 # signed capability path with `CSP: sandbox`, so its scripts run in an opaque origin and cannot reach
 # the gateway's API, cookies or other computers. Its token and WebSocket requests carry no cookie
 # (opaque origin), so the path itself is the credential: bound to one computer, valid for 12 hours.
-CAPABILITY_TTL = 12 * 3600
+CAPABILITY_TTL = 2 * 3600  # Every terminal opening mints a new one; a leaked link soon stops working.
+CAPABILITY_IN_LOG = re.compile(r'/c/[^/\s]+/')
 ISOLATED_ROUTE = re.compile(r'^/deck/([0-9a-f]{24})/c/([0-9a-f]{1,12}\.[0-9a-f]{64})(/t(?:/.*)?)$')
 SANDBOX = "sandbox allow-scripts allow-forms allow-popups allow-modals allow-downloads"
 
@@ -1628,6 +1633,8 @@ def file_errors(work):
     except (FileNotFoundError, FileExistsError, IsADirectoryError, NotADirectoryError) as error:
         raise ValueError(str(error) if error.args and isinstance(error.args[0], str) and not error.filename
                          else "Файл или папка недоступны") from None
+    except OSError:
+        raise ValueError("Файл или папка недоступны") from None  # e.g. a name longer than the file system allows
 
 
 def files_payload(query):
@@ -1719,7 +1726,8 @@ class Handler(BaseHTTPRequestHandler):
         self.connection.settimeout(30)
 
     def log_message(self, fmt, *args):
-        print(f"{self.client_ip()} {fmt % args}", flush=True)
+        # The isolated terminal path is a credential; logs keep the route, never the signature.
+        print(f"{self.client_ip()} {CAPABILITY_IN_LOG.sub('/c/***/', fmt % args)}", flush=True)
 
     def via_proxy(self):
         try:

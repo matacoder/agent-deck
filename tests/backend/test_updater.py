@@ -202,7 +202,7 @@ class UpdaterTests(unittest.TestCase):
         self.assertEqual(updater.status(self.state)["phase"], "error")
         self.assertEqual(updater.status(self.state)["message"], "offline")
 
-    def test_a_failed_install_records_which_release_failed(self):
+    def test_only_a_failed_install_records_the_release_a_download_error_does_not(self):
         (self.target / "VERSION").write_text("0.1.0")
         answers = iter([b'{"tag_name":"v0.2.0"}', OSError("tarball unavailable")])
         def fetch(*args):
@@ -211,6 +211,12 @@ class UpdaterTests(unittest.TestCase):
                 raise answer
             return answer
         with patch.object(updater, "available", return_value=True), patch.object(updater, "fetch", side_effect=fetch):
+            updater.run("matacoder/agent-deck", self.target, self.state, "http://127.0.0.1:8790")
+        # Nothing was replaced or restarted: automatic updates may retry this release.
+        self.assertNotIn("version", updater.status(self.state))
+        with patch.object(updater, "available", return_value=True), \
+                patch.object(updater, "fetch", side_effect=[b'{"tag_name":"v0.2.0"}', self.archive()]), \
+                patch.object(updater, "install", side_effect=RuntimeError("did not start")):
             updater.run("matacoder/agent-deck", self.target, self.state, "http://127.0.0.1:8790")
         self.assertEqual({k: updater.status(self.state)[k] for k in ("phase", "version")}, {"phase": "error", "version": "0.2.0"})
 

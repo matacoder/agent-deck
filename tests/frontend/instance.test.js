@@ -40,6 +40,7 @@ function boot(routes,opened){
       const body=handler?await handler(target,options):{};
       if(body&&body.__network)throw new TypeError('Load failed');
       if(body&&body.__html)return {ok:true,status:200,headers:{get:()=>null},json:async()=>{throw new SyntaxError('Unexpected token <')}};
+      if(body&&body.__status)return {ok:false,status:body.__status,headers:{get:()=>null},json:async()=>({error:body.error})};
       return {ok:true,status:200,headers:{get:()=>null},json:async()=>body};
     };
   }});
@@ -215,6 +216,44 @@ test('switching sessions never shows the previous screen: a skeleton waits for t
   for(let i=0;i<20&&!pre.textContent.includes('BETA SCREEN');i++)await settle();
   expect(pre.textContent).toContain('BETA SCREEN');
   expect(pre.querySelector('.screen-skeleton')).toBeNull();
+  }finally{window.close()}
+});
+
+test('history drops an answer for a branch that is no longer selected and never loads a page twice',async()=>{
+  const state={local:()=>({sessions:[session('alpha')]})};
+  const routes=routesFor(state),pending={},calls=[];
+  const page=(ref,subject,more)=>({repo:'/r',name:'r',branch:ref||'feature',ref:ref||'HEAD',branches:['feature','origin/main'],remote:'origin/main',ahead:0,behind:0,
+    commits:[{sha:subject.padEnd(40,'0'),short:subject,author:'a',time:1,subject,files:1,added:1,removed:0}],more});
+  routes['/api/git/log']=url=>{calls.push(url.searchParams.get('ref')+':'+url.searchParams.get('skip'));
+    if(url.searchParams.get('ref')==='')return new Promise(resolve=>{pending.feature=()=>resolve(page('','old-branch',true))});
+    return url.searchParams.get('skip')==='0'?page('origin/main','prod',true):new Promise(resolve=>{pending.more=()=>resolve(page('origin/main','prod-older',false))})};
+  const window=boot(routes);
+  try{
+  await settle();await settle();
+  window.eval('openHistory()');await settle();
+  window.eval('chooseBranch("origin/main")');await settle();
+  pending.feature();await settle();
+  const subjects=()=>[...window.document.querySelectorAll('.git-subject')].map(n=>n.textContent);
+  expect(subjects()).toEqual(['prod']);  // The feature branch answered late and was dropped.
+  window.eval('loadHistoryPage();loadHistoryPage()');await settle();
+  pending.more();await settle();await settle();
+  expect(subjects()).toEqual(['prod','prod-older']);
+  expect(calls.filter(c=>c==='origin/main:1')).toHaveLength(1);
+  }finally{window.close()}
+});
+
+test('a folder that cannot be listed offers a retry instead of loading forever',async()=>{
+  const state={local:()=>({sessions:[session('alpha')]})};
+  const routes=routesFor(state);let fail=true;
+  routes['/api/files']=()=>fail?{__status:400,error:'Папка не найдена'}:{path:'/home/demo/p',home:'/home/demo',parent:null,entries:[]};
+  const window=boot(routes);
+  try{
+  await settle();await settle();
+  await window.eval('openFiles()');await settle();
+  const doc=window.document;
+  expect(doc.querySelector('#files_body .diff-note').textContent).toBe('Папка не найдена');
+  fail=false;[...doc.querySelectorAll('#files_body button')].find(b=>/Повторить|Retry/.test(b.textContent)).click();await settle();
+  expect(doc.querySelector('.files-path code').textContent).toBe('~/p');
   }finally{window.close()}
 });
 

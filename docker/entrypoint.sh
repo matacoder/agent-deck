@@ -19,7 +19,8 @@ TTYD_SOCK=$SOCK
 PROJECTS_DIR=$HOME/dev
 CONF
     )
-    [ -n "${PANEL_PASSWORD:-}" ] || echo "Agent Deck login: ${PANEL_USER:-dev} / $password  (stored in $ENV_FILE)"
+    # Never print the password itself: container logs are kept and shipped.
+    [ -n "${PANEL_PASSWORD:-}" ] || echo "Agent Deck login: ${PANEL_USER:-dev}; password: docker compose exec agent-deck sed -n 's/^PANEL_PASSWORD=//p' $ENV_FILE"
 fi
 # A password given in the environment always wins, so it can be rotated by recreating the container.
 if [ -n "${PANEL_PASSWORD:-}" ]; then
@@ -48,7 +49,7 @@ fi
 
 # The same three services as the systemd units: tmux owns the sessions, ttyd and the panel restart on exit.
 tmux has-session -t _keep 2>/dev/null || tmux new-session -d -s _keep
-( while :; do tmux has-session -t _keep 2>/dev/null || tmux new-session -d -s _keep; sleep 10; done ) &
+( while :; do tmux has-session -t _keep 2>/dev/null || tmux new-session -d -s _keep || true; sleep 10; done ) &
 ( while :; do
     rm -f "$SOCK"
     ttyd -i "$SOCK" -b /t -W -a -O -t fontSize=13 -t "fontFamily=Menlo, SF Mono, monospace" \
@@ -67,4 +68,6 @@ sys.path.insert(0, "/opt/cc-panel")
 runpy.run_path("/opt/cc-panel/panel.py", run_name="__main__")' "$ENV_FILE" || true
     sleep 2
   done ) &
+# docker stop: pass the signal to every child so tmux, ttyd and the panel exit cleanly instead of being killed.
+trap 'trap - TERM INT; kill 0; wait' TERM INT
 wait

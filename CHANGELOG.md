@@ -2,6 +2,20 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.18.1 — 2026-10-06
+
+Fixes from a review of today's changes.
+
+- Security: Project files kept the panel's settings folder closed only by its literal path; with a symlinked `~/.config` (stow-style dotfiles) the panel password and keys were readable. Both the literal and the real location are now closed.
+- Security: isolated terminal paths (the credential for that terminal) are masked in the panel log, and they now expire after 2 hours instead of 12 (each opening issues a new one).
+- Security (installer as root): the update lock is opened read-only and never through a symlink, and the rollback snapshot is taken and restored as the panel user, so root never creates or writes files in the user's folders.
+- Installer: the health check probes the address and port the panel really uses (its env); any failure after the code was copied, not only a failed health check, puts the previous panel files back; only a Tailscale address is looked up again when it left the machine (others stop with a clear message); the architecture check uses the system's packages, so a 32-bit Raspberry Pi OS on a 64-bit kernel is refused up front.
+- Automatic updates: a download error no longer marks a release as failed on this computer; only a failed install does.
+- Docker / SteamOS: forwarded client addresses are no longer trusted inside a container (all clients come from the gateway; set `AGENT_DECK_TRUSTED_PROXIES` for a real proxy), the generated password is no longer printed to the container log, and the container stops gracefully. macOS: a failed install unloads the new version before loading the restored one.
+- Git: `Fetch from GitHub` keeps your own SSH setup (`core.sshCommand`); Haiku grouping runs without your hooks and settings and can no longer stay "running" after an unexpected answer; very large commits are read up to a size limit.
+- Interface: Change history and Project files ignore answers that arrive for a branch, session or folder that is no longer shown, load "Show more" once, and show errors with **Retry** instead of "Loading…" forever; a saved new file appears in its folder; slow reads (GitHub repositories, git, files, other computers) get longer time limits and a clear "did not answer within N s" message; the terminal finishing loading no longer scrolls the Screen view; inputs are 16 px on every touch screen (iPad included); tabs are announced to screen readers.
+- An upload that ends early is no longer forwarded to another computer as complete; file names that are too long give a clear error.
+
 ## 1.18.0 — 2026-10-06
 
 - The session bar has icon buttons for Project files and Change history; switching between Screen and Terminal moved to the first item of the ⋯ menu ("Open the terminal" / "Show the screen").

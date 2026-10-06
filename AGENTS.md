@@ -32,7 +32,8 @@ Self-hosted panel (Python stdlib + static JS) for tmux sessions running Claude C
 - Keep the signed-cookie HMAC scheme; new endpoints use the same auth.
 - Origin check on all mutations and WebSocket upgrades; reject sibling origins.
 - Login rate limit per IP + global; reserve slot under lock before reading body.
-- Trust `X-Forwarded-For` only from private/same host.
+- Trust `X-Forwarded-For` only from private/same host; never inside a container (`AGENT_DECK_TRUSTED_PROXIES` to opt in).
+- Root never writes into user-owned paths (`as_user` for every write under `$PREFIX`/home; open user files read-only).
 - `/api/image`: path must be on the session screen; PNG/JPEG/WebP/GIF by content, max 25 MB, `nosniff` + `CSP: sandbox`; check content before thumbnails. Gateway passes non-JSON `/api/*` only for these.
 - Uploads: max 4 files x 200 MB, 7-day TTL, reject symlinks; `/api/upload_raw` streams, JSON `/api/upload` kept for old gateways.
 - `/t/*`: unix-socket ttyd, keep ttyd `-O`. `/deck/<id>/t/*` only to an authenticated deck on a numeric Tailscale IPv4; never forward gateway cookies.

@@ -560,6 +560,8 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 /* Pulses, slides and scale effects all stop; state colors still change. */
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 
+/* Any touch screen (an iPad too): iOS zooms the page when an input below 16px gets focus. */
+@media (pointer:coarse){.q-text textarea,.files-new input,.git-branch{font-size:16px}.files-text{font-size:max(16px,var(--code-font,16px))}}
 /* ---------- mobile (phones, including landscape) ----------
    Keep in sync with MOBILE_QUERY in app.js. */
 @media (max-width:760px),(pointer:coarse) and (max-height:500px){
@@ -849,7 +851,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
   <div class="viewer-bar"><span id="viewer_caption"></span><a id="viewer_open" target="_blank" rel="noopener">Открыть оригинал</a></div>
 </div>
 <dialog id="confirm_dlg"><form class="dlg" method="dialog"><div class="dlg-body"><h3 id="confirm_title"></h3><p id="confirm_text"></p></div><div class="acts"><button value="cancel">Отмена</button><button value="ok" class="pri" id="confirm_ok">OK</button></div></form></dialog>
-<dialog id="git_dlg"><div class="dlg"><div class="hub-heading"><h3>История изменений</h3><button type="button" onclick="clearTimeout(hist.timer);$('git_dlg').close()" aria-label="Закрыть"><svg class="ui-icon"><use href="#i-x"/></svg></button></div><div class="git-tabs" id="git_tabs" role="tablist"><button type="button" data-tab="commits" onclick="historyTab('commits')">Коммиты</button><button type="button" data-tab="groups" onclick="historyTab('groups')">Группы фич</button><span class="git-font"><button type="button" onclick="codeFont(-1)" aria-label="Уменьшить шрифт">A−</button><button type="button" onclick="codeFont(1)" aria-label="Увеличить шрифт">A+</button></span></div><div class="dlg-body" id="git_body"></div></div></dialog>
+<dialog id="git_dlg"><div class="dlg"><div class="hub-heading"><h3>История изменений</h3><button type="button" onclick="clearTimeout(hist.timer);$('git_dlg').close()" aria-label="Закрыть"><svg class="ui-icon"><use href="#i-x"/></svg></button></div><div class="git-tabs" id="git_tabs" role="tablist"><button type="button" role="tab" data-tab="commits" onclick="historyTab('commits')">Коммиты</button><button type="button" role="tab" data-tab="groups" onclick="historyTab('groups')">Группы фич</button><span class="git-font"><button type="button" onclick="codeFont(-1)" aria-label="Уменьшить шрифт">A−</button><button type="button" onclick="codeFont(1)" aria-label="Увеличить шрифт">A+</button></span></div><div class="dlg-body" id="git_body"></div></div></dialog>
 <dialog id="files_dlg"><div class="dlg"><div class="hub-heading"><h3>Файлы проекта</h3><button type="button" onclick="closeFiles()" aria-label="Закрыть"><svg class="ui-icon"><use href="#i-x"/></svg></button></div><div class="dlg-body" id="files_body"></div></div></dialog>
 <dialog id="inbox_dlg"><div class="dlg"><div class="hub-heading"><h3>Ждут ответа</h3><button type="button" onclick="$('inbox_dlg').close()" aria-label="Закрыть"><svg class="ui-icon"><use href="#i-x"/></svg></button></div><div class="dlg-body" id="inbox_list"></div></div></dialog>
 <dialog id="draft_dlg"><div class="dlg"><div class="dlg-body"><h3>Черновики закрытых сессий</h3><div id="closed_drafts"></div></div><div class="acts"><button type="button" onclick="$('draft_dlg').close()">Закрыть</button></div></div></dialog>
@@ -1766,7 +1768,7 @@ function updateScreen(s,force){
     p.dataset.raw=raw;p.replaceChildren();
     const lines=joinImageLines(joinUrlLines(ansiLines(raw)));screenImages=[];
     // A session known only from another computer's list has no preview yet: show nothing, not "empty".
-    if(!lines.length&&(s.preview!==undefined||s.preview_ansi!==undefined))p.append(el("div","preview-empty",tr("В tmux пока нет текста. Можно переключиться в «Терм» и проверить сессию.")));
+    if(!lines.length&&(s.preview!==undefined||s.preview_ansi!==undefined))p.append(el("div","preview-empty",tr("В tmux пока нет текста. Терминал открывается в меню ⋯.")));
     for(const runs of lines){
       const line=runs.map(r=>r.text).join("").trimEnd();
       // TUI rules (Claude's input box etc.) would wrap into a stack of lines on a phone: draw them as one rule
@@ -1835,7 +1837,9 @@ function attachDrawerSwipe(doc,{panel,isOpen,setOpen,enabled}){
 if(typeof module!=="undefined")module.exports={attachDrawerSwipe,EDGE};
 // Project files of the open session: browse folders, open a text file, copy or paste into it and save.
 // The server keeps everything inside the home folder and refuses to overwrite a file changed meanwhile.
-const files={session:null,listing:null,file:null,loading:false};
+// seq: each opening and folder load gets a number; an answer for an older one (another session, a
+// folder left meanwhile) is dropped so it can never fill the dialog or decide where a new file goes.
+const files={session:null,listing:null,file:null,seq:0,error:"",path:""};
 
 function formatSize(bytes){
   return bytes<1024?bytes+" B":bytes<1048576?(bytes/1024).toFixed(1)+" KB":(bytes/1048576).toFixed(1)+" MB";
@@ -1850,20 +1854,30 @@ async function openFiles(){
   await loadFolder("");
 }
 async function loadFolder(path){
-  if(files.loading)return;
-  files.loading=true;
-  try{files.listing=await api("/api/files?name="+encodeURIComponent(files.session)+"&path="+encodeURIComponent(path));files.file=null}
-  catch(e){if(e.message!==STALE)toast(e.message)}
-  finally{files.loading=false;renderFiles()}
+  const seq=++files.seq;files.error="";files.path=path;
+  if(!files.listing)renderFiles();
+  try{
+    const listing=await api("/api/files?name="+encodeURIComponent(files.session)+"&path="+encodeURIComponent(path),null,false,{timeout:60000});
+    if(seq!==files.seq)return;
+    files.listing=listing;files.file=null;
+  }catch(e){if(seq!==files.seq)return;if(e.message!==STALE){files.error=e.message;if(files.listing)toast(e.message)}}
+  renderFiles();
 }
 async function openFile(path){
-  try{const data=await api("/api/file?path="+encodeURIComponent(path));files.file={...data,saved:data.content,isNew:false}}
-  catch(e){if(e.message!==STALE)toast(e.message);return}
+  const seq=++files.seq;
+  try{
+    const data=await api("/api/file?path="+encodeURIComponent(path),null,false,{timeout:60000});
+    if(seq!==files.seq)return;
+    files.file={...data,saved:data.content,isNew:false};
+  }catch(e){if(seq===files.seq&&e.message!==STALE)toast(e.message);return}
   renderFiles();
 }
 async function leaveFile(){
   if(filesDirty()&&!await confirmAction(tr("Изменения не сохранены. Закрыть без сохранения?"),{confirm:tr("Закрыть без сохранения"),danger:true}))return false;
-  files.file=null;renderFiles();return true;
+  files.file=null;
+  // The folder may have changed (a new file was just saved): show it as it is now.
+  if(files.listing){loadFolder(files.listing.path);return true}
+  renderFiles();return true;
 }
 async function saveFile(){
   const file=files.file;if(!file)return;
@@ -1882,12 +1896,14 @@ function newFile(name){
   files.file={path:folder+"/"+name,content:"",saved:"",hash:null,isNew:true};renderFiles();
 }
 async function closeFiles(){if(!files.file||await leaveFile())$("files_dlg").close()}
+function fontButton(label,name,step){const b=fileButton(label,"",()=>codeFont(step));b.setAttribute("aria-label",name);return b}
 function fileButton(label,cls,run,icon){
   const b=el("button",cls,...(icon?[svgIcon(icon)]:[]),el("span","",label));b.type="button";b.onclick=run;return b;
 }
 
 function renderFiles(){
   const box=$("files_body"),listing=files.listing;box.replaceChildren();
+  if(!listing&&files.error){box.append(errorWithRetry(files.error,()=>loadFolder(files.path)));return}
   if(!listing){box.append(el("p","files-empty",tr("Загрузка…")));return}
   if(files.file)return renderEditor(box,listing);
   const crumbs=el("div","files-path",el("code","",homeRelative(listing.path,listing.home)));
@@ -1913,7 +1929,7 @@ function renderFiles(){
 function renderEditor(box,listing){
   const file=files.file,name=file.path.split("/").pop();
   const head=el("div","files-path",fileButton(tr("К папке"),"files-up",leaveFile,"arrow-up"),el("code","",homeRelative(file.path,listing.home)),
-    el("span","git-font",fileButton("A−","",()=>codeFont(-1)),fileButton("A+","",()=>codeFont(1))));
+    el("span","git-font",fontButton("A−",tr("Уменьшить шрифт"),-1),fontButton("A+",tr("Увеличить шрифт"),1)));
   applyCodeFont();
   if(!file.isNew&&!file.editing)return renderReader(box,head,file);
   const area=el("textarea","files-text");area.value=file.content;area.spellcheck=false;
@@ -1948,7 +1964,11 @@ if(typeof module!=="undefined")module.exports={formatSize,homeRelative};
 // Git history of the open session's repository: commits with their diffs, and feature groups that a
 // cheap model (Claude Haiku) proposes from commit subjects and file names, each with a combined diff.
 // Agent and repository text is rendered with textContent only.
-const hist={session:null,ref:"",tab:"commits",log:null,commits:[],back:null,view:null,groups:null,timer:null,fetching:false};
+const hist={session:null,ref:"",tab:"commits",log:null,commits:[],back:null,view:null,groups:null,timer:null,fetching:false,
+  seq:0,loadingPage:false,error:""};
+// Every list (session, branch) gets a new number; an answer for an older one is dropped instead of being
+// mixed into the list that is on screen now.
+function freshList(){hist.seq++;hist.log=null;hist.commits=[];hist.groups=null;hist.view=null;hist.error="";hist.loadingPage=false}
 
 function relativeTime(seconds){
   const diff=seconds-Date.now()/1000,units=[["year",31536000],["month",2592000],["day",86400],["hour",3600],["minute",60]];
@@ -2003,14 +2023,14 @@ function fileBlock(title,file,open,content){
 
 async function openHistory(){
   if(!active)return;
-  hist.session=active;hist.ref="";hist.tab="commits";hist.view=null;hist.back=null;hist.log=null;hist.commits=[];hist.groups=null;
+  hist.session=active;hist.ref="";hist.tab="commits";hist.back=null;freshList();
   applyCodeFont();
   if(!$("git_dlg").open)$("git_dlg").showModal();
   renderHistory();await loadHistoryPage();
 }
 function gitPath(route,params={}){return "/api/git/"+route+"?"+new URLSearchParams({name:hist.session,ref:hist.ref,...params})}
 // Another branch (a worktree's own, the local main, or GitHub's after a fetch) starts the list over.
-function chooseBranch(ref){hist.ref=ref;hist.log=null;hist.commits=[];hist.groups=null;hist.view=null;renderHistory();loadHistoryPage();if(hist.tab==="groups")loadGroups()}
+function chooseBranch(ref){hist.ref=ref;freshList();renderHistory();loadHistoryPage();if(hist.tab==="groups")loadGroups()}
 async function fetchRemote(){
   if(hist.fetching)return;
   hist.fetching=true;renderHistory();
@@ -2030,26 +2050,35 @@ function branchBar(){
   return [bar,...notes];
 }
 async function loadHistoryPage(){
-  try{const page=await api(gitPath("log",{skip:hist.commits.length}));hist.log=page;hist.commits.push(...page.commits)}
-  catch(e){if(e.message!==STALE)hist.error=e.message}
-  renderHistory();
+  if(hist.loadingPage)return;  // A double tap on "Show more" would ask for the same page twice.
+  const seq=hist.seq;hist.loadingPage=true;hist.error="";renderHistory();
+  try{
+    const page=await api(gitPath("log",{skip:hist.commits.length}),null,false,{timeout:60000});
+    if(seq!==hist.seq)return;
+    hist.log=page;hist.commits.push(...page.commits);
+  }catch(e){if(seq===hist.seq&&e.message!==STALE)hist.error=e.message}
+  finally{if(seq===hist.seq){hist.loadingPage=false;renderHistory()}}
 }
 async function showCommit(sha,back){
-  hist.view={kind:"loading"};hist.back=back||null;renderHistory();
-  try{hist.view={kind:"commit",data:await api(gitPath("commit",{sha}))}}
-  catch(e){hist.view=null;if(e.message!==STALE)toast(e.message)}
+  const view={kind:"loading",back:back||null};hist.view=view;hist.back=back||null;renderHistory();
+  try{const data=await api(gitPath("commit",{sha}),null,false,{timeout:60000});if(hist.view!==view)return;hist.view={kind:"commit",data}}
+  catch(e){if(hist.view!==view)return;hist.view={kind:"error",error:e.message===STALE?"":e.message,retry:()=>showCommit(sha,back),back:back||null}}
   renderHistory();$("git_body").scrollTop=0;
 }
 async function showGroup(group){
-  hist.view={kind:"group",group,diff:null};renderHistory();$("git_body").scrollTop=0;
-  try{hist.view.diff=await api(gitPath("group_diff",{shas:group.commits.join(",")}))}
-  catch(e){if(e.message!==STALE)toast(e.message)}
-  if(hist.view?.group===group)renderHistory();
+  const view={kind:"group",group,diff:null};hist.view=view;renderHistory();$("git_body").scrollTop=0;
+  try{view.diff=await api(gitPath("group_diff",{shas:group.commits.join(",")}),null,false,{timeout:120000})}
+  catch(e){view.error=e.message===STALE?"":e.message}
+  if(hist.view===view)renderHistory();
 }
 async function loadGroups(){
   clearTimeout(hist.timer);
-  try{hist.groups=await api(gitPath("groups"))}catch(e){if(e.message!==STALE)hist.groups={phase:"error",error:e.message}}
-  if(hist.groups?.phase==="running"&&$("git_dlg").open)hist.timer=setTimeout(loadGroups,3000);
+  const seq=hist.seq;
+  let state;
+  try{state=await api(gitPath("groups"))}catch(e){state=e.message===STALE?null:{phase:"error",error:e.message}}
+  if(seq!==hist.seq||!state)return;
+  hist.groups=state;
+  if(state.phase==="running"&&$("git_dlg").open)hist.timer=setTimeout(loadGroups,3000);
   if(hist.tab==="groups"&&!hist.view)renderHistory();
 }
 async function startGrouping(){
@@ -2065,20 +2094,31 @@ function commitRow(c,back){
 }
 function renderHistory(){
   const box=$("git_body");box.replaceChildren();
-  for(const b of $("git_tabs").children)b.classList.toggle("on",b.dataset.tab===hist.tab);
+  for(const b of $("git_tabs").querySelectorAll("[data-tab]")){b.classList.toggle("on",b.dataset.tab===hist.tab);b.setAttribute("aria-selected",String(b.dataset.tab===hist.tab))}
   if(hist.view)return renderHistoryView(box);
   if(hist.tab==="groups")return renderGroups(box);
-  if(hist.error&&!hist.commits.length){box.append(el("p","files-empty",hist.error));return}
+  if(hist.error&&!hist.log){box.append(errorWithRetry(hist.error,loadHistoryPage));return}
   if(!hist.log){box.append(el("p","files-empty",tr("Загрузка…")));return}
   box.append(...branchBar());
   const list=el("div","git-list");for(const c of hist.commits)list.append(commitRow(c));box.append(list);
   if(!hist.commits.length)box.append(el("p","files-empty",tr("В репозитории ещё нет коммитов")));
-  if(hist.log.more){const more=el("button","git-more",tr("Показать ещё"));more.type="button";more.onclick=loadHistoryPage;box.append(more)}
+  if(hist.error)box.append(errorWithRetry(hist.error,loadHistoryPage));
+  else if(hist.log.more){const more=el("button","git-more",hist.loadingPage?tr("Загрузка…"):tr("Показать ещё"));more.type="button";more.disabled=hist.loadingPage;more.onclick=loadHistoryPage;box.append(more)}
+}
+// A failed load says what went wrong and offers to try again instead of "Loading…" forever.
+function errorWithRetry(message,retry){
+  const again=fileButton(tr("Повторить"),"",retry,"refresh");
+  return el("div","git-error",el("p","diff-note",message||tr("Не удалось загрузить")),again);
 }
 function backButton(label,run){const b=fileButton(label,"files-up",run,"arrow-up");return el("div","files-path",b)}
 function renderHistoryView(box){
   const view=hist.view;
-  if(view.kind==="loading"){box.append(el("p","files-empty",tr("Загрузка…")));return}
+  const leave=()=>{if(view.back)showGroup(view.back);else{hist.view=null;renderHistory()}};
+  if(view.kind==="loading"||view.kind==="error"){
+    box.append(backButton(view.back?tr("К группе"):tr("К коммитам"),leave),
+      view.kind==="error"?errorWithRetry(view.error,view.retry):el("p","files-empty",tr("Загрузка…")));
+    return;
+  }
   if(view.kind==="commit"){
     const c=view.data,[subject,...rest]=c.message.split("\n");
     const back=hist.back;
@@ -2094,6 +2134,7 @@ function renderHistoryView(box){
   const list=el("div","git-list");
   for(const sha of group.commits){const c=hist.groups?.commits?.[sha];if(c)list.append(commitRow(c,group))}
   box.append(list,el("h5","git-section",tr("Общий дифф")));
+  if(view.error!==undefined){box.append(errorWithRetry(view.error,()=>showGroup(group)));return}
   if(!view.diff){box.append(el("p","files-empty",tr("Загрузка…")));return}
   for(const file of view.diff.files){
     box.append(fileBlock(file.path,file,true,()=>{
@@ -2177,15 +2218,20 @@ addEventListener("orientationchange",()=>requestAnimationFrame(fitViewport));
 // Network failures and proxy/restart answers are "offline", not bugs: they go to the connection pill.
 class OfflineError extends Error{constructor(message){super(message);this.offline=true}}
 const API_READ_TIMEOUT=25000;
-async function api(path,body,gateway=false){
+async function api(path,body,gateway=false,options={}){
   const epoch=deckEpoch;
   let r;
   // iOS can park a request while the app is in the background and never settle it; every poll
   // guarded by "one request at a time" would then wait forever. Reads give up; mutations are not
   // retried blindly, so they keep waiting for a definite answer.
-  const controller=body?null:new AbortController(),timer=controller&&setTimeout(()=>controller.abort(),API_READ_TIMEOUT);
+  // Another computer is reached through the gateway, which itself waits up to 30 s for it.
+  const limit=options.timeout||(selectedDeck&&!gateway?API_READ_TIMEOUT*2:API_READ_TIMEOUT);
+  const controller=body?null:new AbortController(),timer=controller&&setTimeout(()=>controller.abort(),limit);
   try{r=await fetch(gateway?path:activePath(path),body?{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}:{cache:"no-store",signal:controller.signal})}
-  catch(e){clearTimeout(timer);if(!gateway&&epoch!==deckEpoch)throw new Error(STALE);throw new OfflineError(tr("Нет связи с панелью"))}
+  catch(e){
+    clearTimeout(timer);if(!gateway&&epoch!==deckEpoch)throw new Error(STALE);
+    throw new OfflineError(controller?.signal.aborted?tr("Панель не ответила за {0} с",[Math.round(limit/1000)]):tr("Нет связи с панелью"));
+  }
   if(r.status===401){
     try{stashDrafts();location.href="/login"}catch(e){toast(tr("Войдите в новой вкладке: здесь сохранён несохранённый текст."),true,{label:tr("Войти"),run:()=>window.open("/login","_blank","noopener")})}
     // Already handled above; a caller's toast(e.message) must not replace the login prompt.
@@ -2198,7 +2244,7 @@ async function api(path,body,gateway=false){
   if(!gateway&&epoch!==deckEpoch)throw new Error(STALE);
   if([502,503,504].includes(r.status))throw new OfflineError(j?.error||tr("Нет связи с панелью"));
   // A proxy or captive page can answer 200 with HTML; never hand that to code expecting JSON.
-  if(!j||typeof j!=="object")throw new OfflineError(tr("Панель вернула неожиданный ответ"));
+  if(!j||typeof j!=="object")throw new OfflineError(controller?.signal.aborted?tr("Панель не ответила за {0} с",[Math.round(limit/1000)]):tr("Панель вернула неожиданный ответ"));
   // A route this computer's Agent Deck does not have yet: say what to do instead of "Not Found".
   if(r.status===404&&(!j.error||/^(not found|Agent Deck route not found)$/i.test(j.error)))throw new Error(tr("Эта функция недоступна: обновите Agent Deck на этом компьютере"));
   if(!r.ok)throw new Error(j.error||r.statusText);return j;
@@ -2436,7 +2482,8 @@ function frameFor(name){
   let f=frames.get(name);
   if(!f){
     f=document.createElement("iframe");f.src=activePath("/t/?arg="+encodeURIComponent("=cc-"+name));
-    f.dataset.loading="1";f.addEventListener("load",()=>{delete f.dataset.loading;show()},{once:true});
+    // Only the overlay reacts: a full show() would scroll the Screen view or move focus into the terminal.
+    f.dataset.loading="1";f.addEventListener("load",()=>{delete f.dataset.loading;if(frames.get(active)===f&&curMode()==="term")$("term_loading").hidden=true},{once:true});
     f.onload=()=>{try{f.contentWindow.addEventListener("keydown",hotkeys,true);hookClipboard(f.contentWindow);attachDrawerSwipe(f.contentDocument,drawerSwipe)}catch(e){}};
     $("stage").append(f);frames.set(name,f);
   }
@@ -3322,7 +3369,7 @@ async function loadGithub(){
 }
 async function loadRepos(refresh){
   const list=$("gh_list");if(!list)return;list.textContent=tr("Загружаю…");
-  try{repos=(await api("/api/github/repos"+(refresh?"?refresh=1":""))).repos;renderRepos()}catch(e){if(e.message!==STALE)list.textContent=e.message}
+  try{repos=(await api("/api/github/repos"+(refresh?"?refresh=1":""),null,false,{timeout:90000})).repos;renderRepos()}catch(e){if(e.message!==STALE)list.textContent=e.message}
 }
 function renderRepos(){
   const list=$("gh_list"),q=($("gh_q").value||"").toLowerCase();list.replaceChildren();

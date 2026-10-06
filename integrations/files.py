@@ -15,6 +15,15 @@ MAX_ENTRIES = 2000
 PRIVATE = ('.config/cc-panel',)
 
 
+def _private(home):
+    """Both the literal location and where it really is: ~/.config is often a symlink (stow, dotfiles)."""
+    return {home / p for p in PRIVATE} | {Path(os.path.realpath(home / p)) for p in PRIVATE}
+
+
+def _blocked(real, home):
+    return any(real == blocked or blocked in real.parents for blocked in _private(home))
+
+
 def _resolve(home, path):
     home = Path(os.path.realpath(home))
     if not isinstance(path, str) or not path or len(path) > 4096 or '\x00' in path:
@@ -22,10 +31,8 @@ def _resolve(home, path):
     real = Path(os.path.realpath(os.path.expanduser(path) if path.startswith('~') else path))
     if real != home and home not in real.parents:
         raise ValueError('Файлы доступны только внутри домашней папки')
-    for private in PRIVATE:
-        blocked = home / private
-        if real == blocked or blocked in real.parents:
-            raise ValueError('Эта папка хранит настройки и ключи панели и недоступна здесь')
+    if _blocked(real, home):
+        raise ValueError('Эта папка хранит настройки и ключи панели и недоступна здесь')
     return home, real
 
 
@@ -49,7 +56,7 @@ def listing(home, path):
             child = real / item.name
             if child.resolve() != home and home not in child.resolve().parents:
                 continue  # A symlink out of home is not followed.
-            if any(child == home / p or (home / p) in child.parents for p in PRIVATE):
+            if _blocked(child, home) or _blocked(child.resolve(), home):
                 continue
             entries.append({'name': item.name, 'dir': stat.S_ISDIR(info.st_mode), 'size': info.st_size,
                             'mtime': int(info.st_mtime)})

@@ -256,7 +256,7 @@ def remove_stale_stages(target):
 
 
 def run(repo, target, state, url):
-    version = None
+    installing = None  # Set only once files are being replaced: a failed download must not block auto-updates.
     try:
         if not available(target, repo):
             raise ValueError("Обновление доступно только для установленной панели без root")
@@ -280,12 +280,13 @@ def run(repo, target, state, url):
         with tempfile.TemporaryDirectory(prefix=".update-", dir=target) as directory:
             stage = Path(directory)
             names = unpack(data, stage, version)
+            installing = version
             install(stage, target, names, state, version, url)
         write_state(state, "done", version=version, message=f"Панель обновлена до v{version}")
     except Exception as error:
         # The version lets automatic updates skip a release that already failed here.
         write_state(state, "error", message=str(error)[:300] or "Не удалось обновить панель",
-                    **({"version": version} if version else {}))
+                    **({"version": installing} if installing else {}))
 
 
 if __name__ == "__main__":

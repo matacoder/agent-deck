@@ -149,3 +149,32 @@ class WorktreeBranchTests(unittest.TestCase):
         G.fetch(self.tree, run=run)
         self.assertEqual(seen.get('GIT_TERMINAL_PROMPT'), '0')
         self.assertEqual(G.history(self.tree, ref='origin/main')['commits'][0]['subject'], 'Pushed elsewhere')
+
+
+class ReviewFixTests(unittest.TestCase):
+    def test_fetch_keeps_the_users_own_ssh_command(self):
+        path = repo(self)
+        subprocess.run(['git', '-C', str(path), 'remote', 'add', 'origin', str(path)], check=True, capture_output=True)
+        subprocess.run(['git', '-C', str(path), 'config', 'core.sshCommand', 'ssh -i ~/.ssh/deploy_key'], check=True)
+        seen = {}
+        def run(command, **kwargs):
+            if 'fetch' in command:
+                seen.update(kwargs.get('env') or {})
+            return subprocess.run(command, **kwargs)
+        G.fetch(path, run=run)
+        self.assertEqual(seen.get('GIT_TERMINAL_PROMPT'), '0')
+        self.assertNotIn('BatchMode', seen.get('GIT_SSH_COMMAND', ''))
+
+    def test_an_unexpected_model_answer_ends_the_job_instead_of_running_forever(self):
+        path = repo(self)
+        cache = Path(tempfile.mkdtemp(dir='/tmp'))
+        self.addCleanup(lambda: __import__('shutil').rmtree(cache))
+        def run(command, **kwargs):
+            if command[0] != '/bin/claude':
+                return subprocess.run(command, **kwargs)
+            return subprocess.CompletedProcess(command, 0, b'["not", "an", "object"]', b'')
+        grouper = G.Grouper(cache, which=lambda name: '/bin/claude', run=run)
+        with patch.object(G.os, 'access', return_value=True), patch.object(G.threading, 'Thread') as thread:
+            grouper.start(path)
+            thread.call_args.kwargs['target'](*thread.call_args.kwargs['args'])
+        self.assertEqual(grouper.status(path)['phase'], 'error')

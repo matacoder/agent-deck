@@ -549,6 +549,8 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 /* Pulses, slides and scale effects all stop; state colors still change. */
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 
+/* Any touch screen (an iPad too): iOS zooms the page when an input below 16px gets focus. */
+@media (pointer:coarse){.q-text textarea,.files-new input,.git-branch{font-size:16px}.files-text{font-size:max(16px,var(--code-font,16px))}}
 /* ---------- mobile (phones, including landscape) ----------
    Keep in sync with MOBILE_QUERY in app.js. */
 @media (max-width:760px),(pointer:coarse) and (max-height:500px){

@@ -68,6 +68,21 @@ class FileBrowserTests(unittest.TestCase):
             F.save_text(self.home, str(self.home / '.config/cc-panel/env'), 'PANEL_PASSWORD=x\n', None)
 
 
+class SymlinkedConfigTests(unittest.TestCase):
+    def test_the_panel_folder_stays_closed_when_config_is_a_symlink(self):
+        import os
+        tmp = tempfile.TemporaryDirectory(dir='/tmp'); self.addCleanup(tmp.cleanup)
+        home = Path(tmp.name).resolve()
+        (home / 'dotfiles/config/cc-panel').mkdir(parents=True)
+        (home / 'dotfiles/config/cc-panel/env').write_text('PANEL_PASSWORD=secret\n')
+        os.symlink(home / 'dotfiles/config', home / '.config')  # stow-style dotfiles
+        for path in (home / '.config/cc-panel/env', home / 'dotfiles/config/cc-panel/env'):
+            with self.subTest(path=path), self.assertRaisesRegex(ValueError, 'ключи панели'):
+                F.read_text(home, str(path))
+        self.assertEqual(F.listing(home, str(home / '.config'))['entries'], [])
+        self.assertEqual(F.listing(home, str(home / 'dotfiles/config'))['entries'], [])
+
+
 class PanelFileTests(PanelCase):
     def test_file_errors_reach_the_user_as_clear_messages(self):
         with self.assertRaisesRegex(ValueError, 'Папка не найдена|недоступны'):
@@ -75,3 +90,7 @@ class PanelFileTests(PanelCase):
             self.panel.files_payload({'path': [self.panel.os.path.expanduser('~') + '/no-such-folder-agent-deck']})
         with self.assertRaisesRegex(ValueError, 'сессия не найдена'):
             self.panel.files_payload({'name': ['../x']})
+
+    def test_any_other_file_system_error_is_a_clear_message(self):
+        with self.assertRaisesRegex(ValueError, 'недоступны'):
+            self.panel.files_payload({'path': [self.panel.os.path.expanduser('~') + '/' + 'x' * 300]})

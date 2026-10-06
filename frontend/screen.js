@@ -147,7 +147,7 @@ function updateScreen(s,force){
     p.dataset.raw=raw;p.replaceChildren();
     const lines=joinImageLines(joinUrlLines(ansiLines(raw)));screenImages=[];
     // A session known only from another computer's list has no preview yet: show nothing, not "empty".
-    if(!lines.length&&(s.preview!==undefined||s.preview_ansi!==undefined))p.append(el("div","preview-empty",tr("В tmux пока нет текста. Можно переключиться в «Терм» и проверить сессию.")));
+    if(!lines.length&&(s.preview!==undefined||s.preview_ansi!==undefined))p.append(el("div","preview-empty",tr("В tmux пока нет текста. Терминал открывается в меню ⋯.")));
     for(const runs of lines){
       const line=runs.map(r=>r.text).join("").trimEnd();
       // TUI rules (Claude's input box etc.) would wrap into a stack of lines on a phone: draw them as one rule

@@ -194,6 +194,9 @@ class MacInstallerTests(unittest.TestCase):
             self.assertEqual((target / 'VERSION').read_text(), '0.0.1')
             bootstraps = [c.args for c in run.call_args_list if c.args[:2] == ('launchctl', 'bootstrap')]
             self.assertEqual(len(bootstraps), 2 * len(installer.LABELS))  # The new attempt, then the restored one.
+            # The still-loaded new version is unloaded before the restored one is loaded.
+            launch = [c.args[1] for c in run.call_args_list if c.args[:1] == ('launchctl',)]
+            self.assertEqual(launch[-2 * len(installer.LABELS):], ['bootout', 'bootstrap'] * len(installer.LABELS))
 
     def test_rerun_preserves_password_hooks_sessions_and_user_tmux_config(self):
         with tempfile.TemporaryDirectory(prefix='mac home ', dir='/tmp') as directory:

@@ -187,10 +187,10 @@ sessions and projects live in the `agent-deck-home` volume. Requires Docker with
 git clone https://github.com/matacoder/agent-deck.git && cd agent-deck && docker compose up -d --build
 ```
 
-The first start installs Claude Code and Codex into the volume and prints the login password:
+The first start installs Claude Code and Codex into the volume and creates a login password; show it with:
 
 ```bash
-docker compose logs agent-deck | grep "login:"
+docker compose exec agent-deck sed -n 's/^PANEL_PASSWORD=//p' /home/dev/.config/cc-panel/env
 ```
 
 The panel listens on `127.0.0.1:8790` only. To open it from other devices, put the host on

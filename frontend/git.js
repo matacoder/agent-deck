@@ -1,7 +1,11 @@
 // Git history of the open session's repository: commits with their diffs, and feature groups that a
 // cheap model (Claude Haiku) proposes from commit subjects and file names, each with a combined diff.
 // Agent and repository text is rendered with textContent only.
-const hist={session:null,ref:"",tab:"commits",log:null,commits:[],back:null,view:null,groups:null,timer:null,fetching:false};
+const hist={session:null,ref:"",tab:"commits",log:null,commits:[],back:null,view:null,groups:null,timer:null,fetching:false,
+  seq:0,loadingPage:false,error:""};
+// Every list (session, branch) gets a new number; an answer for an older one is dropped instead of being
+// mixed into the list that is on screen now.
+function freshList(){hist.seq++;hist.log=null;hist.commits=[];hist.groups=null;hist.view=null;hist.error="";hist.loadingPage=false}
 
 function relativeTime(seconds){
   const diff=seconds-Date.now()/1000,units=[["year",31536000],["month",2592000],["day",86400],["hour",3600],["minute",60]];
@@ -56,14 +60,14 @@ function fileBlock(title,file,open,content){
 
 async function openHistory(){
   if(!active)return;
-  hist.session=active;hist.ref="";hist.tab="commits";hist.view=null;hist.back=null;hist.log=null;hist.commits=[];hist.groups=null;
+  hist.session=active;hist.ref="";hist.tab="commits";hist.back=null;freshList();
   applyCodeFont();
   if(!$("git_dlg").open)$("git_dlg").showModal();
   renderHistory();await loadHistoryPage();
 }
 function gitPath(route,params={}){return "/api/git/"+route+"?"+new URLSearchParams({name:hist.session,ref:hist.ref,...params})}
 // Another branch (a worktree's own, the local main, or GitHub's after a fetch) starts the list over.
-function chooseBranch(ref){hist.ref=ref;hist.log=null;hist.commits=[];hist.groups=null;hist.view=null;renderHistory();loadHistoryPage();if(hist.tab==="groups")loadGroups()}
+function chooseBranch(ref){hist.ref=ref;freshList();renderHistory();loadHistoryPage();if(hist.tab==="groups")loadGroups()}
 async function fetchRemote(){
   if(hist.fetching)return;
   hist.fetching=true;renderHistory();
@@ -83,26 +87,35 @@ function branchBar(){
   return [bar,...notes];
 }
 async function loadHistoryPage(){
-  try{const page=await api(gitPath("log",{skip:hist.commits.length}));hist.log=page;hist.commits.push(...page.commits)}
-  catch(e){if(e.message!==STALE)hist.error=e.message}
-  renderHistory();
+  if(hist.loadingPage)return;  // A double tap on "Show more" would ask for the same page twice.
+  const seq=hist.seq;hist.loadingPage=true;hist.error="";renderHistory();
+  try{
+    const page=await api(gitPath("log",{skip:hist.commits.length}),null,false,{timeout:60000});
+    if(seq!==hist.seq)return;
+    hist.log=page;hist.commits.push(...page.commits);
+  }catch(e){if(seq===hist.seq&&e.message!==STALE)hist.error=e.message}
+  finally{if(seq===hist.seq){hist.loadingPage=false;renderHistory()}}
 }
 async function showCommit(sha,back){
-  hist.view={kind:"loading"};hist.back=back||null;renderHistory();
-  try{hist.view={kind:"commit",data:await api(gitPath("commit",{sha}))}}
-  catch(e){hist.view=null;if(e.message!==STALE)toast(e.message)}
+  const view={kind:"loading",back:back||null};hist.view=view;hist.back=back||null;renderHistory();
+  try{const data=await api(gitPath("commit",{sha}),null,false,{timeout:60000});if(hist.view!==view)return;hist.view={kind:"commit",data}}
+  catch(e){if(hist.view!==view)return;hist.view={kind:"error",error:e.message===STALE?"":e.message,retry:()=>showCommit(sha,back),back:back||null}}
   renderHistory();$("git_body").scrollTop=0;
 }
 async function showGroup(group){
-  hist.view={kind:"group",group,diff:null};renderHistory();$("git_body").scrollTop=0;
-  try{hist.view.diff=await api(gitPath("group_diff",{shas:group.commits.join(",")}))}
-  catch(e){if(e.message!==STALE)toast(e.message)}
-  if(hist.view?.group===group)renderHistory();
+  const view={kind:"group",group,diff:null};hist.view=view;renderHistory();$("git_body").scrollTop=0;
+  try{view.diff=await api(gitPath("group_diff",{shas:group.commits.join(",")}),null,false,{timeout:120000})}
+  catch(e){view.error=e.message===STALE?"":e.message}
+  if(hist.view===view)renderHistory();
 }
 async function loadGroups(){
   clearTimeout(hist.timer);
-  try{hist.groups=await api(gitPath("groups"))}catch(e){if(e.message!==STALE)hist.groups={phase:"error",error:e.message}}
-  if(hist.groups?.phase==="running"&&$("git_dlg").open)hist.timer=setTimeout(loadGroups,3000);
+  const seq=hist.seq;
+  let state;
+  try{state=await api(gitPath("groups"))}catch(e){state=e.message===STALE?null:{phase:"error",error:e.message}}
+  if(seq!==hist.seq||!state)return;
+  hist.groups=state;
+  if(state.phase==="running"&&$("git_dlg").open)hist.timer=setTimeout(loadGroups,3000);
   if(hist.tab==="groups"&&!hist.view)renderHistory();
 }
 async function startGrouping(){
@@ -118,20 +131,31 @@ function commitRow(c,back){
 }
 function renderHistory(){
   const box=$("git_body");box.replaceChildren();
-  for(const b of $("git_tabs").children)b.classList.toggle("on",b.dataset.tab===hist.tab);
+  for(const b of $("git_tabs").querySelectorAll("[data-tab]")){b.classList.toggle("on",b.dataset.tab===hist.tab);b.setAttribute("aria-selected",String(b.dataset.tab===hist.tab))}
   if(hist.view)return renderHistoryView(box);
   if(hist.tab==="groups")return renderGroups(box);
-  if(hist.error&&!hist.commits.length){box.append(el("p","files-empty",hist.error));return}
+  if(hist.error&&!hist.log){box.append(errorWithRetry(hist.error,loadHistoryPage));return}
   if(!hist.log){box.append(el("p","files-empty",tr("Загрузка…")));return}
   box.append(...branchBar());
   const list=el("div","git-list");for(const c of hist.commits)list.append(commitRow(c));box.append(list);
   if(!hist.commits.length)box.append(el("p","files-empty",tr("В репозитории ещё нет коммитов")));
-  if(hist.log.more){const more=el("button","git-more",tr("Показать ещё"));more.type="button";more.onclick=loadHistoryPage;box.append(more)}
+  if(hist.error)box.append(errorWithRetry(hist.error,loadHistoryPage));
+  else if(hist.log.more){const more=el("button","git-more",hist.loadingPage?tr("Загрузка…"):tr("Показать ещё"));more.type="button";more.disabled=hist.loadingPage;more.onclick=loadHistoryPage;box.append(more)}
+}
+// A failed load says what went wrong and offers to try again instead of "Loading…" forever.
+function errorWithRetry(message,retry){
+  const again=fileButton(tr("Повторить"),"",retry,"refresh");
+  return el("div","git-error",el("p","diff-note",message||tr("Не удалось загрузить")),again);
 }
 function backButton(label,run){const b=fileButton(label,"files-up",run,"arrow-up");return el("div","files-path",b)}
 function renderHistoryView(box){
   const view=hist.view;
-  if(view.kind==="loading"){box.append(el("p","files-empty",tr("Загрузка…")));return}
+  const leave=()=>{if(view.back)showGroup(view.back);else{hist.view=null;renderHistory()}};
+  if(view.kind==="loading"||view.kind==="error"){
+    box.append(backButton(view.back?tr("К группе"):tr("К коммитам"),leave),
+      view.kind==="error"?errorWithRetry(view.error,view.retry):el("p","files-empty",tr("Загрузка…")));
+    return;
+  }
   if(view.kind==="commit"){
     const c=view.data,[subject,...rest]=c.message.split("\n");
     const back=hist.back;
@@ -147,6 +171,7 @@ function renderHistoryView(box){
   const list=el("div","git-list");
   for(const sha of group.commits){const c=hist.groups?.commits?.[sha];if(c)list.append(commitRow(c,group))}
   box.append(list,el("h5","git-section",tr("Общий дифф")));
+  if(view.error!==undefined){box.append(errorWithRetry(view.error,()=>showGroup(group)));return}
   if(!view.diff){box.append(el("p","files-empty",tr("Загрузка…")));return}
   for(const file of view.diff.files){
     box.append(fileBlock(file.path,file,true,()=>{
