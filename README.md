@@ -2,7 +2,7 @@
 
 A self-hosted workspace for [Claude Code](https://claude.com/claude-code),
 [Codex](https://github.com/openai/codex), Kimi and terminals. Install on Linux (Ubuntu, Debian,
-Raspberry Pi), macOS, Windows 11 (WSL2) or in Docker, work from a desktop or phone browser, get notified when an agent needs you, and answer
+Raspberry Pi), macOS, Windows 11 (WSL2), SteamOS (Steam Machine, Steam Deck) or in Docker, work from a desktop or phone browser, get notified when an agent needs you, and answer
 agent questions with one tap or in Telegram.
 Sessions live in tmux, keep working after you close the tab, and can be restored
 after a reboot.
@@ -211,6 +211,28 @@ git pull && docker compose up -d --build
 ```
 
 To connect this Agent Deck to another one, publish the port on the host's Tailscale address (`AGENT_DECK_BIND=100.x.y.z` in `.env`): connections between Agent Decks use Tailscale addresses only.
+
+### SteamOS (Steam Machine, Steam Deck)
+
+SteamOS erases system packages on every update, so Agent Deck runs as a rootless Podman container
+(included in SteamOS 3.5+) with a user service; everything stays in your home folder and survives
+updates. No sudo password is needed. In Desktop Mode open Konsole and run:
+
+```bash
+git clone https://github.com/matacoder/agent-deck.git ~/agent-deck && ~/agent-deck/install-steamos.sh
+```
+
+The script prints the address and password. Useful options (add before the command):
+`AGENT_DECK_BIND=0.0.0.0` to reach the panel from your home network, `AGENT_DECK_PROJECTS=~/Projects`
+to let agents work in a folder of this machine. Update by pulling and running the script again:
+
+```bash
+cd ~/agent-deck && git pull && ./install-steamos.sh
+```
+
+The panel starts with your session (also in Gaming Mode). A Steam Deck sleeps when idle and pauses the
+agents with it; a Steam Machine is meant to stay on. Agents work inside the container, in its `~/dev` or
+the folder you pass, not in SteamOS itself.
 
 ### After installing
 

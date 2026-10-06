@@ -14,6 +14,7 @@ Self-hosted panel (Python stdlib + static JS) for tmux sessions running Claude C
 - `integrations/`: `telegram.py` + `store.py` (claim-before-input outbox, never delete foreign webhooks), `questions.py`, `gateway.py` (parallel deck polling, `get_json`), `backups.py`, `usage.py`, `lmstudio.py`, `relay.py`, `push.py`/`webpush.py`, `images.py`, `dependencies.py`.
 - `frontend/*` bundled into `panel/index.html` by `scripts/build-panel.py`; files before `app.js` must not call `$` at top level.
 - `install-windows.ps1`: ASCII, PowerShell 5.1, never `exit`; tests in `tests/windows/`.
+- `install-steamos.sh`: rootless Podman + systemd user unit from the same image (SteamOS wipes system packages).
 - `docker/` + `docker-compose.yml`: one-container install (entrypoint supervises tmux, ttyd, panel); code is root-owned, updates come from a rebuilt image.
 - ttyd command lines end options with `--` before `tmux attach -t` (the static build crashes otherwise).
 

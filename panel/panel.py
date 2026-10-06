@@ -1095,6 +1095,7 @@ def version_info(force=False):
             "auto_update": auto_update_service().status()}
     info['incomplete'] = Telegram is None or locales is None
     info['container'] = bool(os.environ.get('AGENT_DECK_CONTAINER'))  # Updated by a new image, not in place.
+    info['update_command'] = os.environ.get('AGENT_DECK_UPDATE_COMMAND', '')
     if not UPDATE_REPO:
         return info
 

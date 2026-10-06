@@ -2,6 +2,11 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.14.0 — 2026-10-06
+
+- SteamOS (Steam Machine, Steam Deck): `install-steamos.sh` runs Agent Deck as a rootless Podman container built from the Docker image, started by a systemd user service; everything stays in the home folder and survives SteamOS updates, no sudo needed. Re-running the script updates it.
+- In a container the update hint shows the command for that install (`docker compose up -d --build` or `install-steamos.sh`).
+
 ## 1.13.0 — 2026-10-06
 
 - Debian 12+ and the 64-bit Raspberry Pi OS: the Linux installer no longer needs Ubuntu's `universe`, installs the static ttyd when the distribution has none, takes `gh` from GitHub's signed repository when missing, and stops with a clear message on Python older than 3.10 or 32-bit ARM.

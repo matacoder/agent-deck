@@ -29,7 +29,7 @@ RUN rm -rf /opt/cc-panel/__pycache__ && chmod 755 /usr/local/bin/agent-deck-entr
 
 USER dev
 WORKDIR /home/dev
-ENV AGENT_DECK_CONTAINER=1 PATH=/home/dev/.local/bin:/usr/local/bin:/usr/bin:/bin LANG=C.UTF-8
+ENV AGENT_DECK_CONTAINER=1 AGENT_DECK_UPDATE_COMMAND="git pull && docker compose up -d --build" PATH=/home/dev/.local/bin:/usr/local/bin:/usr/bin:/bin LANG=C.UTF-8
 EXPOSE 8790
 HEALTHCHECK --interval=30s --timeout=5s --start-period=60s CMD curl -fsS -o /dev/null http://127.0.0.1:8790/login || exit 1
 ENTRYPOINT ["/usr/local/bin/agent-deck-entrypoint"]

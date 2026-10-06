@@ -546,6 +546,6 @@
     "Эта функция недоступна: обновите Agent Deck на этом компьютере": "Este recurso não está disponível: atualize o Agent Deck neste computador",
     "Изолировать терминалы других компьютеров": "Isolate terminals of other computers",
     "Страница терминала подключённого компьютера открывается в песочнице и не получает доступа к этой панели. В таких терминалах не работают ⌥1…9, копирование выделения и свайп меню.": "A connected computer's terminal page opens in a sandbox with no access to this panel. Alt+1…9, copying the selection and the menu swipe do not work in such terminals.",
-    "Docker: соберите или скачайте новый образ и пересоздайте контейнер (docker compose up -d --build).": "Docker: build or pull a new image and recreate the container (docker compose up -d --build)."
+    "Контейнер: обновите образ и пересоздайте контейнер: {0}": "Container: update the image and recreate the container: {0}"
   }
 }
