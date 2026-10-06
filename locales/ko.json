@@ -605,6 +605,8 @@
     "Уменьшить шрифт": "Smaller text",
     "Увеличить шрифт": "Larger text",
     "A−": "A−",
-    "A+": "A+"
+    "A+": "A+",
+    "Загружаю экран сессии…": "Loading the session screen…",
+    "Подключаюсь к терминалу…": "Connecting to the terminal…"
   }
 }

@@ -310,6 +310,7 @@ function frameFor(name){
   let f=frames.get(name);
   if(!f){
     f=document.createElement("iframe");f.src=activePath("/t/?arg="+encodeURIComponent("=cc-"+name));
+    f.dataset.loading="1";f.addEventListener("load",()=>{delete f.dataset.loading;show()},{once:true});
     f.onload=()=>{try{f.contentWindow.addEventListener("keydown",hotkeys,true);hookClipboard(f.contentWindow);attachDrawerSwipe(f.contentDocument,drawerSwipe)}catch(e){}};
     $("stage").append(f);frames.set(name,f);
   }
@@ -327,6 +328,7 @@ function show(){
   }
   placeSessionKeys({row:$("session_keys"),composer:$("session_composer"),screen:$("screen"),terminal:$("terminal_keys"),wrap:$("b_wrap"),reconnect:$("b_reconnect"),mode:m,active:!!s});
   $("screen").classList.toggle("on",!!s&&m==="screen");
+  $("term_loading").hidden=!(s&&m==="term"&&frameFor(active).dataset.loading);
   if(s&&m==="term"){const f=frameFor(active);f.classList.add("on");f.inert=isLocal(s)&&!s.running;if(!isMobile()&&!f.inert)setTimeout(()=>{try{f.contentWindow.focus();f.contentWindow.term&&f.contentWindow.term.focus()}catch(e){}},30)}
   if(s&&m==="screen")updateScreen(s,true);
   updateLink();fitKeys();
@@ -359,7 +361,10 @@ function activate(name){
   $("msg").dispatchEvent(new Event("input"));
   try{if(name)deckLocalStorage.setItem("cc.active",name);else deckLocalStorage.removeItem("cc.active")}catch(e){}
   history.replaceState(null,"","#"+(name?encodeURIComponent(name):""));
-  $("pre").dataset.raw="";
+  // Never leave the previous session's screen up while the new one loads: a known screen shows at
+  // once, otherwise a skeleton until the first answer. The marker differs from any real screen.
+  const p=$("pre");p.dataset.raw="\u0000";
+  if(!previewCache.has(name))p.replaceChildren(screenSkeleton());
 }
 function select(name){
   if(!sessions.some(s=>s.name===name))return;

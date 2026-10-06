@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.16.3 — 2026-10-06
+
+- Switching sessions no longer leaves the previous agent's screen up: a screen already seen appears at once, otherwise a skeleton with "Loading the session screen…" stays until the new one arrives. In Term mode a new terminal shows "Connecting to the terminal…" until it has loaded.
+
 ## 1.16.2 — 2026-10-06
 
 - Project files: a file opens for reading — wrapped lines with numbers, selectable with a long press without the keyboard popping up or the layout jumping; Copy takes the selection or the whole file. Edit switches to the editor, which also wraps lines; a new file starts in it. A− / A+ share the remembered code size with Change history (the editor never goes below 16 px on phones, so iOS does not zoom).

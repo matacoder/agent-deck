@@ -1,5 +1,11 @@
 // Screen view: tmux output with ANSI colours, joined wrapped URLs, image paths and TUI rules.
 // Bundled before app.js; nothing here runs at load time except constants.
+function screenSkeleton(){
+  const box=el("div","screen-skeleton");box.setAttribute("role","status");
+  for(const width of [72,48,86,64,38,80,56]){const line=el("span","sk-line");line.style.width=width+"%";box.append(line)}
+  box.append(el("span","sk-label",tr("Загружаю экран сессии…")));
+  return box;
+}
 const URL_RE=/https?:\/\/[^\s"'<>│]+/g;
 /* Claude hard-wraps long URLs: glue a URL at line end with following space-free lines */
 function unwrapUrls(text){
@@ -128,6 +134,11 @@ function updateJump(fresh){
 function jumpToLatest(){const p=$("pre");p.scrollTo({top:p.scrollHeight,behavior:"smooth"});$("jump").classList.remove("on","fresh")}
 function updateScreen(s,force){
   const p=$("pre"),stick=force||atBottom(p);
+  // Nothing known about this session's screen yet: keep the skeleton instead of a blank or stale view.
+  if(s.preview===undefined&&s.preview_ansi===undefined){
+    if(!p.querySelector(".screen-skeleton")){p.dataset.raw="\u0000";p.replaceChildren(screenSkeleton())}
+    return;
+  }
   const raw=s.preview_ansi??unwrapUrls(s.preview||"");
   // Rebuilding would drop a selection the user is making to copy text; catch up once it is released.
   const selection=getSelection(),selecting=selection&&!selection.isCollapsed&&p.contains(selection.anchorNode);

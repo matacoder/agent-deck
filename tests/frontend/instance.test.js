@@ -193,6 +193,31 @@ test('the code font size changes in steps, stays within limits and is remembered
   }finally{window.close()}
 });
 
+test('switching sessions never shows the previous screen: a skeleton waits for the new one',async()=>{
+  let release;
+  const state={local:()=>({sessions:[session('alpha')]})};
+  const routes=routesFor(state);
+  routes['/api/sessions']=url=>{
+    const wanted=url.searchParams.get('preview');
+    const list=()=>({sessions:[session('alpha',{preview:wanted==='alpha'?'ALPHA SCREEN':undefined}),session('beta',{preview:wanted==='beta'?'BETA SCREEN':undefined})]});
+    return wanted==='beta'?new Promise(resolve=>{release=()=>resolve(list())}):list();
+  };
+  const window=boot(routes);
+  try{
+  const pre=window.document.getElementById('pre');
+  await settle();window.eval('setMode("screen")');
+  for(let i=0;i<20&&!pre.textContent.includes('ALPHA SCREEN');i++)await settle();
+  expect(pre.textContent).toContain('ALPHA SCREEN');
+  window.eval('select("beta")');await settle();
+  expect(pre.textContent).not.toContain('ALPHA SCREEN');
+  expect(pre.querySelector('.screen-skeleton')).not.toBeNull();
+  release();
+  for(let i=0;i<20&&!pre.textContent.includes('BETA SCREEN');i++)await settle();
+  expect(pre.textContent).toContain('BETA SCREEN');
+  expect(pre.querySelector('.screen-skeleton')).toBeNull();
+  }finally{window.close()}
+});
+
 test('tapping a notification opens its session on cold start and when the app resumes',async()=>{
   const state={local:()=>({sessions:[session('alpha',{activity:9}),session('api')]})};
   const window=boot(routesFor(state),{deck:'',session:'api'});

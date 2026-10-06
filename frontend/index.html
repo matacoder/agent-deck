@@ -65,6 +65,7 @@ __PANEL_STYLE__</style></head><body>
     </div>
     <div id="stage">
       <div id="conn" class="conn" role="status" aria-live="polite" hidden></div>
+      <div id="term_loading" class="term-loading" role="status" hidden><span class="spinner" aria-hidden="true"></span><span>Подключаюсь к терминалу…</span></div>
       <div id="empty"><span id="empty_text">Загружаю сессии…</span><button type="button" class="pri" id="empty_new" onclick="openNew()" hidden><svg class="ui-icon"><use href="#i-plus"/></svg><span>Новая сессия</span></button></div>
       <div id="screen">
         <div id="pre_wrap"><div id="pre"></div><button type="button" id="jump" onclick="jumpToLatest()"><svg class="ui-icon"><use href="#i-arrow-down"/></svg><span>К новому выводу</span></button></div>
