@@ -136,10 +136,10 @@ test('phone history',async({app,page},info)=>{
   {sha:'a'.repeat(40),short:'796420d',author:'Denis',time:now-3600,subject:'Let dialogs scroll on phones and name sessions by their title',files:13,added:69,removed:14},
   {sha:'b'.repeat(40),short:'87e9171',author:'Denis',time:now-7200,subject:'Add a project file browser with a safe text editor',files:24,added:612,removed:9},
   {sha:'c'.repeat(40),short:'7e05334',author:'Denis',time:now-86400,subject:'Install on SteamOS as a rootless Podman container',files:9,added:210,removed:4}];
- const patch='diff --git a/frontend/style.css b/frontend/style.css\nindex 1..2 100644\n--- a/frontend/style.css\n+++ b/frontend/style.css\n@@ -263,7 +263,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}\n .dlg{display:flex;flex-direction:column}\n-.dlg-body{padding:22px;overflow-y:auto}\n+.dlg-body{padding:22px;overflow-y:auto;min-height:0}\n .dlg h3{margin:0 0 18px}\n';
+ const patch='diff --git a/frontend/style.css b/frontend/style.css\nindex 1..2 100644\n--- a/frontend/style.css\n+++ b/frontend/style.css\n@@ -263,7 +263,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}\n .dlg{display:flex;flex-direction:column}\n-.dlg-body{padding:22px;overflow-y:auto}\n+.dlg-body{padding:22px;overflow-y:auto;min-height:0;overscroll-behavior:contain} /* min-height:0 lets a flex child scroll instead of growing past the screen. */\n .dlg h3{margin:0 0 18px}\n';
  await demo(app,page,async()=>{
   await page.route('**/api/git/log?*',json({repo:'/home/dev/dev/agent-deck',name:'agent-deck',branch:'main',commits,more:true}));
-  await page.route('**/api/git/commit?*',json({sha:'a'.repeat(40),short:'796420d',author:'Denis',email:'d@example.test',time:now-3600,parents:[],message:'Let dialogs scroll on phones and name sessions by their title\n\nFlex children need min-height:0 to scroll.',files:[{path:'frontend/style.css',status:'modified',added:1,removed:1,binary:false,truncated:false,patch}]}));
+  await page.route('**/api/git/commit?*',json({sha:'a'.repeat(40),short:'796420d',author:'Denis',email:'d@example.test',time:now-3600,parents:[],message:'Let dialogs scroll on phones and name sessions by their title\n\nFlex children need min-height:0 to scroll.',files:[{path:'frontend/style.css',status:'modified',added:1,removed:1,binary:false,truncated:false,patch},{path:'docs/screenshots/mobile-files.png',status:'added',added:0,removed:0,binary:true,truncated:false,patch:'diff --git a/x b/x\nBinary files differ'}]}));
   await page.route('**/api/git/groups?*',json({phase:'done',head:'a'.repeat(40),groups:[
    {title:'Project files',summary:'A file browser with a safe text editor: browse folders, edit .env and save without overwriting changes.',commits:['a'.repeat(40),'b'.repeat(40)]},
    {title:'SteamOS install',summary:'Rootless Podman container with a user service that survives SteamOS updates.',commits:['c'.repeat(40)]}],
@@ -149,6 +149,8 @@ test('phone history',async({app,page},info)=>{
  await page.screenshot({path:target('mobile-history')});
  await page.locator('.git-row').first().click();await page.waitForTimeout(500);
  await page.screenshot({path:target('mobile-commit')});
+ await page.evaluate(()=>{codeFont(2)});await page.waitForTimeout(200);
+ await page.screenshot({path:'/tmp/commit-larger.png'});await page.evaluate(()=>{codeFont(-2)});
  await page.evaluate(()=>historyTab('groups'));await page.waitForTimeout(500);
  await page.screenshot({path:target('mobile-groups')});
 });

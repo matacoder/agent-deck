@@ -35,18 +35,29 @@ function renderDiff(patch,file){
   return box;
 }
 const STATUS_MARK={added:"A",deleted:"D",renamed:"R",modified:"M"};
+// One code size for diffs and commit messages, kept in this browser.
+const CODE_FONT={min:9,max:20,fallback:12};
+function codeFontSize(){const saved=+localStore.getItem("cc.code-font");return saved>=CODE_FONT.min&&saved<=CODE_FONT.max?saved:CODE_FONT.fallback}
+function applyCodeFont(){document.documentElement.style.setProperty("--code-font",codeFontSize()+"px")}
+function codeFont(step){
+  const size=Math.min(CODE_FONT.max,Math.max(CODE_FONT.min,codeFontSize()+step));
+  try{localStore.setItem("cc.code-font",String(size))}catch(e){}
+  applyCodeFont();
+}
 // Collapsed files render their diff only when opened, so large commits stay fast on a phone.
 function fileBlock(title,file,open,content){
+  const binary=file.binary||file.changes?.every(change=>change.binary);
   const details=el("details","diff-file"),summary=el("summary","",el("span","diff-status "+(file.status||"modified"),STATUS_MARK[file.status]||"M"),
-    el("span","diff-path",title),el("span","diff-count",el("b","plus","+"+file.added),el("b","minus","−"+file.removed)));
+    el("span","diff-path",title),binary?el("span","diff-binary",tr("двоичный")):el("span","diff-count",el("b","plus","+"+file.added),el("b","minus","−"+file.removed)));
   details.append(summary);
   details.addEventListener("toggle",()=>{if(details.open&&details.childElementCount===1)details.append(content())});
-  details.open=open;return details;
+  details.open=open&&!binary;return details;
 }
 
 async function openHistory(){
   if(!active)return;
   hist.session=active;hist.tab="commits";hist.view=null;hist.back=null;hist.log=null;hist.commits=[];hist.groups=null;
+  applyCodeFont();
   if(!$("git_dlg").open)$("git_dlg").showModal();
   renderHistory();await loadHistoryPage();
 }
@@ -107,7 +118,7 @@ function renderHistoryView(box){
     box.append(backButton(back?tr("К группе"):tr("К коммитам"),()=>{hist.view=back?{kind:"group",group:back,diff:null}:null;if(back)showGroup(back);else renderHistory()}),
       el("h4","git-title",subject),el("p","git-meta",[c.short,c.author,new Date(c.time*1000).toLocaleString(DATE_LOCALE)].join(" · ")));
     const body=rest.join("\n").trim();if(body)box.append(el("pre","git-message",body));
-    c.files.forEach((f,i)=>box.append(fileBlock(f.path,f,i<3&&c.files.length<=12,()=>renderDiff(f.patch,f))));
+    for(const f of c.files)box.append(fileBlock(f.path,f,true,()=>renderDiff(f.patch,f)));
     return;
   }
   const group=view.group;
@@ -118,7 +129,7 @@ function renderHistoryView(box){
   box.append(list,el("h5","git-section",tr("Общий дифф")));
   if(!view.diff){box.append(el("p","files-empty",tr("Загрузка…")));return}
   for(const file of view.diff.files){
-    box.append(fileBlock(file.path,file,false,()=>{
+    box.append(fileBlock(file.path,file,true,()=>{
       const wrap=el("div","");
       for(const change of file.changes)wrap.append(el("div","diff-commit",change.short+" · "+change.subject),renderDiff(change.patch,change));
       return wrap;

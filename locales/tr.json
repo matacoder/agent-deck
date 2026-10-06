@@ -600,6 +600,11 @@
     "Группировка не удалась; попробуйте ещё раз": "Grouping failed; try again",
     "Без группы": "Ungrouped",
     "Без названия": "Untitled",
-    "git не ответил": "git did not answer"
+    "git не ответил": "git did not answer",
+    "двоичный": "binary",
+    "Уменьшить шрифт": "Smaller text",
+    "Увеличить шрифт": "Larger text",
+    "A−": "A−",
+    "A+": "A+"
   }
 }

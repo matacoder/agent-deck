@@ -17,6 +17,8 @@
   --viewer-fg:#c8c8cc;--sub-strong:#b8b8bc;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+/* iOS enlarges long lines on its own ("text autosizing"), so code rows came out in different sizes. */
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 html,body{height:100%;margin:0;background:var(--bg);color:var(--fg);font:13px/1.4 -apple-system,BlinkMacSystemFont,system-ui,sans-serif;overflow:hidden;overscroll-behavior:none}
 button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;padding:0}
 button:disabled{cursor:default}
@@ -409,7 +411,10 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 #inbox_dlg{width:min(560px,calc(100vw - 32px))}
 #files_dlg{width:min(720px,calc(100vw - 32px))}
 #git_dlg{width:min(900px,calc(100vw - 32px))}
-.git-tabs{display:flex;gap:6px;padding:10px 22px;border-bottom:1px solid var(--bd)}
+.git-tabs{display:flex;align-items:center;gap:6px;padding:10px 22px;border-bottom:1px solid var(--bd)}
+.git-font{display:flex;gap:4px;margin-left:auto}
+.git-tabs button{white-space:nowrap}
+.git-tabs .git-font button{min-width:36px;padding:0 6px;font-weight:600}
 .git-tabs button{padding:6px 12px;border-radius:var(--r-sm);color:var(--mut)}
 .git-tabs button.on{background:var(--sel);color:var(--fg2)}
 #git_body{display:flex;flex-direction:column;gap:10px}
@@ -424,7 +429,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 .git-summary{margin:0;color:var(--fg);font-size:13px;line-height:1.5}
 .git-title{margin:4px 0 0;color:var(--fg2);font-size:16px;overflow-wrap:anywhere}
 .git-section{margin:8px 0 0;color:var(--mut);font-size:12px;text-transform:uppercase;letter-spacing:.04em}
-.git-message{margin:0;padding:10px 12px;border-radius:10px;background:var(--bg);color:var(--fg);font:12.5px/1.5 var(--mono);white-space:pre-wrap;overflow-wrap:anywhere}
+.git-message{margin:0;padding:10px 12px;border-radius:10px;background:var(--bg);color:var(--fg);font:var(--code-font,12px)/1.5 var(--mono);white-space:pre-wrap;overflow-wrap:anywhere}
 .git-more{align-self:center;padding:8px 14px;border:1px solid var(--bd);border-radius:var(--r-sm);color:var(--fg2)}
 .diff-count{display:inline-flex;gap:6px;font-variant-numeric:tabular-nums}.diff-count b{font-weight:600}
 .diff-count .plus{color:var(--ok)}.diff-count .minus{color:var(--bad-text)}
@@ -434,13 +439,14 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 .diff-path{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:12.5px var(--mono);color:var(--fg2)}
 .diff-status{flex:none;width:18px;text-align:center;font:600 11px var(--mono);border-radius:4px;color:var(--mut)}
 .diff-status.added{color:var(--ok)}.diff-status.deleted{color:var(--bad-text)}.diff-status.renamed{color:var(--acc-text)}
-.diff{overflow-x:auto;font:12px/1.45 var(--mono);background:var(--bg)}
-.dl{display:flex;min-width:max-content}
+.diff{font:var(--code-font,12px)/1.45 var(--mono);background:var(--bg)}
+.dl{display:flex}
 .dl .ln{flex:none;width:44px;padding:0 6px;text-align:right;color:var(--dim);user-select:none;-webkit-user-select:none}
-.dl .code{padding:0 10px;white-space:pre;color:var(--fg)}
+.dl .code{flex:1;min-width:0;padding:0 10px;white-space:pre-wrap;overflow-wrap:anywhere;color:var(--fg)}
 .dl.add{background:var(--toast-ok-bg)}.dl.add .code{color:var(--toast-ok-fg)}
 .dl.del{background:var(--toast-bad-bg)}.dl.del .code{color:var(--toast-bad-fg)}
-.dl.hunk{padding:4px 10px;color:var(--acc-text);background:var(--acc-soft);white-space:pre}
+.dl.hunk{padding:4px 10px;color:var(--acc-text);background:var(--acc-soft);white-space:pre-wrap;overflow-wrap:anywhere}
+.diff-binary{flex:none;color:var(--mut);font-size:12px}
 .diff-note{margin:0;padding:8px 10px;color:var(--mut);font-size:12px}
 .diff-commit{padding:6px 10px;border-top:1px solid var(--bd);color:var(--mut);font:12px var(--mono);background:var(--side)}
 #files_dlg .hub-heading{border-bottom:1px solid var(--bd)}

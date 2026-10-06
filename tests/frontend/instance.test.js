@@ -176,6 +176,19 @@ test('project files: browse, open .env, paste a secret and save it with the vers
   }finally{window.close()}
 });
 
+test('the code font size changes in steps, stays within limits and is remembered',async()=>{
+  const state={local:()=>({sessions:[session('alpha')]})};
+  const window=boot(routesFor(state));
+  try{
+  await settle();
+  window.eval('codeFont(1);codeFont(1)');
+  expect(window.localStorage.getItem('cc.code-font')).toBe('14');
+  expect(window.document.documentElement.style.getPropertyValue('--code-font')).toBe('14px');
+  window.eval('for(let i=0;i<30;i++)codeFont(-1)');
+  expect(window.localStorage.getItem('cc.code-font')).toBe('9');
+  }finally{window.close()}
+});
+
 test('tapping a notification opens its session on cold start and when the app resumes',async()=>{
   const state={local:()=>({sessions:[session('alpha',{activity:9}),session('api')]})};
   const window=boot(routesFor(state),{deck:'',session:'api'});

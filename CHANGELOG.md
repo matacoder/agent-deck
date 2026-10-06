@@ -2,6 +2,11 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.16.1 — 2026-10-06
+
+- Change history: diffs wrap long lines instead of running off the screen, all text files of a commit open expanded (binary files are marked "binary" instead of +0 −0), and A− / A+ change the code size, remembered in this browser.
+- Fix: iOS enlarged some long lines on its own (text autosizing), so code rows came out in different sizes; the panel now keeps its font sizes as set.
+
 ## 1.16.0 — 2026-10-06
 
 - **Change history** (⋯ menu): the commits of the session's repository with author, time and line counts; each commit opens with its full message and a per-file diff with line numbers (large files render when opened). Read-only git, no shell, size-limited patches; works for connected computers.
