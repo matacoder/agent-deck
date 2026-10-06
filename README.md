@@ -296,7 +296,7 @@ Tap a session name to open it, on the right computer.
 
 ## Project files
 
-**⋯ → Project files** browses the session's folder and everything else in your home folder. Text files
+The **folder icon** in the session bar (Project files) browses the session's folder and everything else in your home folder. Text files
 up to 1 MB (including `.env`) open in an editor: copy from them, paste a secret in and save, or create a
 new file — new files are private (`0600`), existing ones keep their permissions, and a file that changed
 on disk after you opened it is never overwritten. The panel's own settings folder (`~/.config/cc-panel`)
@@ -306,7 +306,7 @@ is not shown. Works for sessions on connected computers too.
 
 ## Change history
 
-**⋯ → Change history** shows the commits of the session's repository: subject, author, time and line
+The **git icon** in the session bar (Change history) shows the commits of the session's repository: subject, author, time and line
 counts; tap one for its full message and a diff per file with line numbers. **Feature groups** asks
 Claude Haiku (through your signed-in Claude Code, no extra key) to join the last 80 commits into features —
 it sees only commit subjects and file names, never code — and shows each group's summary, its commits

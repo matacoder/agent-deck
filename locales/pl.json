@@ -615,6 +615,8 @@
     "Эта ветка отстаёт от {0} на {1} коммитов": "This branch is {1} commits behind {0}",
     "Показать {0}": "Show {0}",
     "Такой ветки нет в репозитории": "No such branch in the repository",
-    "GitHub не ответил за минуту; попробуйте позже": "GitHub did not answer within a minute; try again later"
+    "GitHub не ответил за минуту; попробуйте позже": "GitHub did not answer within a minute; try again later",
+    "Открыть терминал": "Open the terminal",
+    "Показать экран": "Show the screen"
   }
 }

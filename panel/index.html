@@ -140,6 +140,8 @@ main{flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;backgrou
 #title b{color:var(--fg2);font-weight:600;overflow:hidden;text-overflow:ellipsis;flex:none;max-width:50%}
 #title .st{color:var(--mut);font-size:12px;overflow:hidden;text-overflow:ellipsis}
 #title .path{display:none}
+.bar-tools{display:flex;flex:none;gap:2px}
+.bar-tools[hidden]{display:none}
 .seg{display:flex;flex:none;background:var(--bg);border:1px solid var(--bd);border-radius:9px;padding:2px}
 .seg button{padding:4px 12px;border-radius:7px;color:var(--mut);font-size:12.5px}
 .seg button:hover{color:var(--fg)}
@@ -727,7 +729,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
   <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14.9-3.9L4 8"/><path d="M4 4v4h4M4 13a8 8 0 0 0 14.9 3.9L20 16"/><path d="M20 20v-4h-4"/></symbol>
   <symbol id="i-pencil" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16v4zM13 7l4 4"/></symbol>
   <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></symbol>
-  <symbol id="i-history" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v6M12 15v6"/></symbol>
+  <symbol id="i-history" viewBox="0 0 24 24"><circle cx="6" cy="5" r="2"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="7" r="2"/><path d="M6 7v10M18 9c0 5-5 5-11 8"/></symbol>
   <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
   <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></symbol>
   <symbol id="i-arrow-down" viewBox="0 0 24 24"><path d="M12 5v14M6 13l6 6 6-6"/></symbol>
@@ -762,7 +764,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
     <div class="bar">
       <button class="iconbtn m-only" style="position:relative" onclick="drawer(true)" aria-label="Сессии"><svg class="ui-icon"><use href="#i-menu"/></svg><span id="menuBadge"></span></button>
       <div id="title">—</div>
-      <div class="seg" id="seg" role="group" aria-label="Вид"><button data-m="screen" onclick="setMode('screen')">Экран</button><button data-m="term" onclick="setMode('term')">Терм</button></div>
+      <span class="bar-tools" id="bar_tools"><button class="iconbtn" id="b_files" onclick="openFiles()" aria-label="Файлы проекта" title="Файлы проекта"><svg class="ui-icon"><use href="#i-folder"/></svg></button><button class="iconbtn" id="b_history" onclick="openHistory()" aria-label="История изменений" title="История изменений"><svg class="ui-icon"><use href="#i-history"/></svg></button></span>
       <button class="act d-only" id="b_link" title="Открыть последнюю ссылку из терминала" onclick="openLink()" style="display:none"><svg class="ui-icon"><use href="#i-link"/></svg><span>Ссылка</span></button>
       <button class="iconbtn" id="b_actions" onclick="sheet(true)" aria-label="Действия" title="Действия" aria-haspopup="menu"><svg class="ui-icon"><use href="#i-more"/></svg></button>
     </div>
@@ -816,12 +818,13 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 
 <div id="sheet"><div class="scrim" onclick="sheet(false)"></div><div class="panel" role="menu" aria-labelledby="sheetCap">
   <div class="cap" id="sheetCap"></div>
+  <div class="sheet-group" id="s_mode_group">
+    <button id="s_mode" onclick="sheet(false);toggleMode()"><svg class="ui-icon"><use href="#i-terminal"/></svg><span id="s_mode_label">Открыть терминал</span></button>
+  </div>
   <div class="sheet-group">
     <button onclick="sheet(false);openRename()"><svg class="ui-icon"><use href="#i-pencil"/></svg><span>Переименовать</span></button>
     <button id="s_link" onclick="sheet(false);openLink()"><svg class="ui-icon"><use href="#i-link"/></svg><span>Открыть ссылку из терминала</span></button>
     <button onclick="sheet(false);termHere()"><svg class="ui-icon"><use href="#i-terminal"/></svg><span>Новый терминал в этой папке</span></button>
-    <button onclick="sheet(false);openFiles()"><svg class="ui-icon"><use href="#i-folder"/></svg><span>Файлы проекта</span></button>
-    <button onclick="sheet(false);openHistory()"><svg class="ui-icon"><use href="#i-history"/></svg><span>История изменений</span></button>
     <button class="agent-only" onclick="sheet(false);restart('continue')"><svg class="ui-icon"><use href="#i-restart"/></svg><span>Перезапустить, продолжив разговор</span></button>
     <button class="agent-only" onclick="sheet(false);restart('new')"><svg class="ui-icon"><use href="#i-chat-plus"/></svg><span>Перезапустить с новым разговором</span></button>
     <button onclick="sheet(false);popout()"><svg class="ui-icon"><use href="#i-external"/></svg><span>Терминал в новой вкладке</span></button>
@@ -2285,7 +2288,9 @@ function sheet(on){
   if(on){
     const s=cur(),groups=$("sheet").querySelectorAll(".sheet-group");
     $("sheetCap").textContent=s?sessionTitle(s):"Agent Deck";
-    groups[0].hidden=groups[2].hidden=!s;
+    groups[0].hidden=groups[1].hidden=groups[3].hidden=!s;
+    $("s_mode_label").textContent=curMode()==="term"?tr("Показать экран"):tr("Открыть терминал");
+    $("s_mode").querySelector("use").setAttribute("href",curMode()==="term"?"#i-file":"#i-terminal");
     $("s_link").style.display=lastUrl(s)?"":"none";
   }
   const wasOpen=$("sheet").classList.contains("on");
@@ -2421,7 +2426,7 @@ function renderTitle(){
   document.body.classList.toggle("is-shell",!!s&&agentOf(s)==="shell");
   document.body.classList.toggle("is-codex",!!s&&agentOf(s)==="codex");
   $("msg").placeholder=s?tr("Сообщение в ")+agentLabel(s)+"…":tr("Сообщение агенту…");
-  $("seg").hidden=!s;
+  $("bar_tools").hidden=!s;
   if(!s){t.textContent=isMobile()?"Agent Deck":"";return}
   const st=state(s);
   t.append(el("b","",sessionTitle(s)),el("span","path"," — "+s.path.replace(/^\/(?:home|Users)\/[^/]+/,"~")),el("span","st",stateText(s)+" · "+shortPath(s.path)+(s.source?.label?" · "+s.source.label:"")));
@@ -2442,7 +2447,6 @@ function show(){
   $("empty").style.display=s?"none":"grid";
   if(!s){$("empty_text").textContent=load.done?tr("Сессий пока нет"):tr("Загружаю сессии…");$("empty_new").hidden=!load.done}
   renderTitle();renderSendState();renderAttachments();renderQuestion();
-  for(const b of $("seg").children){b.classList.toggle("on",b.dataset.m===m);b.setAttribute("aria-pressed",String(b.dataset.m===m))}
   for(const[n,f]of frames){
     f.classList.toggle("on",!!s&&m==="term"&&n===active);
     const session=sessions.find(x=>x.name===n);f.inert=isLocal(session)&&!session.running;
@@ -2460,6 +2464,8 @@ function reconnectTerminal(){
   if(frame)frame.remove();
   frames.delete(active);show();
 }
+// The view switch lives in the ⋯ menu; the bar keeps Files and History, which are used more often.
+function toggleMode(){setMode(curMode()==="term"?"screen":"term")}
 function setMode(m){mode=m;try{deckLocalStorage.setItem("cc.mode."+(isMobile()?"m":"d"),m)}catch(e){}show()}
 
 let wrapPreview=true;

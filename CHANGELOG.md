@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.18.0 — 2026-10-06
+
+- The session bar has icon buttons for Project files and Change history; switching between Screen and Terminal moved to the first item of the ⋯ menu ("Open the terminal" / "Show the screen").
+
 ## 1.17.0 — 2026-10-06
 
 - Change history shows which branch it lists and lets you pick it: the checked-out one (a worktree usually has its own), the local default branch, or the remote one such as `origin/main`. A note says how many commits the branch is behind the remote, with a button to show the remote. **Fetch from GitHub** runs `git fetch --prune` (remote branches only, the working tree is untouched, never waits for a password). Feature groups follow the chosen branch.

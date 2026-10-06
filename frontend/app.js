@@ -164,7 +164,9 @@ function sheet(on){
   if(on){
     const s=cur(),groups=$("sheet").querySelectorAll(".sheet-group");
     $("sheetCap").textContent=s?sessionTitle(s):"Agent Deck";
-    groups[0].hidden=groups[2].hidden=!s;
+    groups[0].hidden=groups[1].hidden=groups[3].hidden=!s;
+    $("s_mode_label").textContent=curMode()==="term"?tr("Показать экран"):tr("Открыть терминал");
+    $("s_mode").querySelector("use").setAttribute("href",curMode()==="term"?"#i-file":"#i-terminal");
     $("s_link").style.display=lastUrl(s)?"":"none";
   }
   const wasOpen=$("sheet").classList.contains("on");
@@ -300,7 +302,7 @@ function renderTitle(){
   document.body.classList.toggle("is-shell",!!s&&agentOf(s)==="shell");
   document.body.classList.toggle("is-codex",!!s&&agentOf(s)==="codex");
   $("msg").placeholder=s?tr("Сообщение в ")+agentLabel(s)+"…":tr("Сообщение агенту…");
-  $("seg").hidden=!s;
+  $("bar_tools").hidden=!s;
   if(!s){t.textContent=isMobile()?"Agent Deck":"";return}
   const st=state(s);
   t.append(el("b","",sessionTitle(s)),el("span","path"," — "+s.path.replace(/^\/(?:home|Users)\/[^/]+/,"~")),el("span","st",stateText(s)+" · "+shortPath(s.path)+(s.source?.label?" · "+s.source.label:"")));
@@ -321,7 +323,6 @@ function show(){
   $("empty").style.display=s?"none":"grid";
   if(!s){$("empty_text").textContent=load.done?tr("Сессий пока нет"):tr("Загружаю сессии…");$("empty_new").hidden=!load.done}
   renderTitle();renderSendState();renderAttachments();renderQuestion();
-  for(const b of $("seg").children){b.classList.toggle("on",b.dataset.m===m);b.setAttribute("aria-pressed",String(b.dataset.m===m))}
   for(const[n,f]of frames){
     f.classList.toggle("on",!!s&&m==="term"&&n===active);
     const session=sessions.find(x=>x.name===n);f.inert=isLocal(session)&&!session.running;
@@ -339,6 +340,8 @@ function reconnectTerminal(){
   if(frame)frame.remove();
   frames.delete(active);show();
 }
+// The view switch lives in the ⋯ menu; the bar keeps Files and History, which are used more often.
+function toggleMode(){setMode(curMode()==="term"?"screen":"term")}
 function setMode(m){mode=m;try{deckLocalStorage.setItem("cc.mode."+(isMobile()?"m":"d"),m)}catch(e){}show()}
 
 let wrapPreview=true;
