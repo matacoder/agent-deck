@@ -34,6 +34,8 @@ function renderInbox(){
   if(!$("inbox_dlg").open)return;
   const list=$("inbox_list"),items=inboxItems(inbox.questions,finishedSessions());
   if(list.querySelector(".q-text textarea:focus"))return;  // Do not wipe a half-typed answer.
+  const live=new Set(items.filter(i=>i.kind==="question").map(i=>i.key+"/"+i.question.id));
+  for(const key of inbox.cards.keys())if(!live.has(key))inbox.cards.delete(key);
   list.replaceChildren(...(items.length?items.map(renderInboxItem):[el("p","inbox-empty",tr("Сейчас никто не ждёт ответа"))]));
 }
 function renderInboxItem(item){
@@ -44,14 +46,15 @@ function renderInboxItem(item){
   head.type="button";head.onclick=()=>openInboxSession(deck,session);
   const box=el("div","inbox-item",head);
   if(item.kind==="finished"){box.append(el("p","inbox-status",tr("Агент закончил работу")));return box}
+  // Per question, not per session: a new question in the same session starts with a clean card.
   const draftKey=item.key+"/"+item.question.id,saved=answerDraft(draftKey);
-  const card=el("div","inbox-question"),state=inbox.cards.get(item.key)||{expanded:false,busy:null,textIndex:saved?.index??null,draft:saved?.text||""};
-  inbox.cards.set(item.key,state);
+  const card=el("div","inbox-question"),state=inbox.cards.get(draftKey)||{expanded:false,busy:null,textIndex:saved?.index??null,draft:saved?.text||""};
+  inbox.cards.set(draftKey,state);
   const answer=async(index,text)=>{
     state.busy=index;draw();
     const q=item.question,body={name:q.session,id:q.id,index};if(text!==undefined)body.text=text;
     try{await api(instancePath(deck,"/api/answer"),body,true);toast(tr("Ответ отправлен: {0}",[text===undefined?q.options[index].label:text.slice(0,80)]),"success");
-      saveAnswerDraft(draftKey,null);inbox.questions=inbox.questions.filter(x=>x!==q);inbox.cards.delete(item.key);renderInbox();if(deck===selectedDeck)load()}
+      saveAnswerDraft(draftKey,null);inbox.questions=inbox.questions.filter(x=>x!==q);inbox.cards.delete(draftKey);renderInbox();if(deck===selectedDeck)load()}
     catch(e){state.busy=null;draw();toast(e.message)}
   };
   const draw=()=>renderQuestionCard({box:card,question:item.question,expanded:state.expanded,busyIndex:state.busy,textIndex:state.textIndex,textDraft:state.draft,translate:tr,

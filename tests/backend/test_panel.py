@@ -350,6 +350,22 @@ class TranscriptLookupTests(PanelCase):
         self.assertEqual(self.panel.transcript_path('claude', sid).name, sid + '.jsonl')
 
 
+class SingleFlightCacheTests(PanelCase):
+    def test_concurrent_misses_share_one_fetch(self):
+        import threading
+        self.panel._cache.pop('single-flight', None)
+        started, release, calls = threading.Event(), threading.Event(), []
+        def slow():
+            calls.append(1); started.set(); release.wait(5); return {'value': 1}
+        results = []
+        first = threading.Thread(target=lambda: results.append(self.panel.cached('single-flight', 60, slow)))
+        first.start(); self.assertTrue(started.wait(5))
+        second = threading.Thread(target=lambda: results.append(self.panel.cached('single-flight', 60, slow)))
+        second.start(); release.set(); first.join(5); second.join(5)
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(results, [{'value': 1}, {'value': 1}])
+
+
 class ReviewFixTests(PanelCase):
     def fake_tmux(self, sessions):
         def run(*args, **kwargs):

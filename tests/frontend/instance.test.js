@@ -19,6 +19,9 @@ function boot(routes,opened){
   console.on('jsdomError',error=>problems.push(String(error.message)));
   const dom=new JSDOM(page,{url:'https://panel.test/',runScripts:'dangerously',pretendToBeVisual:true,virtualConsole:console,beforeParse(window){
     window.focus=()=>{};
+    // The 25 s read timeout fires at once here, so a parked request can be tested quickly.
+    const nativeTimeout=window.setTimeout.bind(window);
+    window.setTimeout=(fn,ms,...args)=>nativeTimeout(fn,ms===25000?0:ms,...args);
     // A tapped notification as the service worker leaves it in Cache Storage.
     const store=new Map(opened?[['/__agent-deck-open',JSON.stringify({...opened,at:Date.now()})]]:[]);
     window.notificationTargets=store;
@@ -30,8 +33,9 @@ function boot(routes,opened){
     window.HTMLDialogElement.prototype.showModal=function(){this.open=true};
     window.HTMLDialogElement.prototype.close=function(){this.open=false;this.dispatchEvent(new window.Event('close'))};
     window.HTMLElement.prototype.scrollIntoView=()=>{};
-    window.fetch=async(url)=>{
+    window.fetch=async(url,options={})=>{
       const target=new URL(url,'https://panel.test/');
+      if(routes.__parked&&target.pathname===routes.__parked)return new Promise((_,reject)=>options.signal?.addEventListener('abort',()=>reject(new Error('aborted'))));
       const handler=routes[target.pathname];
       const body=handler?await handler(target):{};
       if(body&&body.__network)throw new TypeError('Load failed');
@@ -128,6 +132,17 @@ test('gateway answers survive a switch: the sidebar keeps other computers reacha
   await window.eval('loadOtherDecks()');await settle();
   expect(window.document.querySelector('.tab.remote .n').textContent).toBe('alpha');
   expect([...window.document.querySelectorAll('.deck-count')].map(n=>n.textContent)).not.toContain('unavailable');
+  }finally{window.close()}
+});
+
+test('a read that iOS parked in the background gives up instead of blocking every later poll',async()=>{
+  const state={local:()=>({sessions:[session('alpha')]})};
+  const routes=routesFor(state);
+  const window=boot(routes);
+  try{
+  await settle();await settle();
+  routes.__parked='/api/usage';
+  await expect(window.eval('api("/api/usage")')).rejects.toMatchObject({offline:true});
   }finally{window.close()}
 });
 

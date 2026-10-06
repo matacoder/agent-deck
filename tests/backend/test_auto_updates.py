@@ -25,6 +25,16 @@ class AutoUpdateTests(unittest.TestCase):
         self.now+=1801;self.worker.tick()
         self.assertEqual(self.info.call_count,2)
 
+    def test_a_release_that_failed_here_is_not_retried_automatically(self):
+        # Every attempt stops the panel: a failing release must not take it down every 15 minutes.
+        self.info.return_value={'update':True,'can_update':True,'latest':'2.0.0','job':{'phase':'error','version':'2.0.0'}}
+        self.worker.tick()
+        self.start.assert_not_called()
+        self.assertIn('v2.0.0', self.worker.status()['error'])
+        self.info.return_value={'update':True,'can_update':True,'latest':'2.0.1','job':{'phase':'error','version':'2.0.0'}}
+        self.now+=1801;self.worker.tick()
+        self.start.assert_called_once()  # A newer release is tried again.
+
     def test_waits_for_local_generation_then_uses_the_checked_release(self):
         self.idle.return_value=False
         self.worker.tick();self.start.assert_not_called()

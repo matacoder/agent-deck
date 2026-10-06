@@ -984,11 +984,26 @@ def store_value(key, stamp, value):
             pass  # Losing the copy only costs one extra request after a restart.
 
 
+_cache_locks = {}
+_cache_locks_lock = threading.Lock()
+
+
 def cached(key, ttl, fn, persist=False):
     """Return fn() cached for ttl seconds; on failure keep serving the last good value (marked stale).
 
     persist keeps the last good value across panel restarts: updates restart the panel, and an
     empty cache plus a rate-limited first request would otherwise show no data at all."""
+    hit = _cache.get(key)
+    if hit and time.time() - hit[0] < ttl:
+        return hit[1]
+    # One fetch per key: tabs polling together must not multiply calls to rate-limited endpoints.
+    with _cache_locks_lock:
+        key_lock = _cache_locks.setdefault(key, threading.Lock())
+    with key_lock:
+        return _cached_fetch(key, ttl, fn, persist)
+
+
+def _cached_fetch(key, ttl, fn, persist):
     hit = _cache.get(key)
     if not hit and persist and (hit := stored_value(key)):
         _cache[key] = hit
@@ -1493,7 +1508,10 @@ def action_backup_restore(d):
         blob = base64.b64decode(str(d['blob']), validate=True)
     elif d.get('deck'):
         query = urlencode({'origin': d.get('origin', ''), 'created': d.get('created', 0)})
-        blob = base64.b64decode(remote_json(remote_decks, d['deck'], 'GET', '/api/backup_blob?' + query)['blob'])
+        encoded = remote_json(remote_decks, d['deck'], 'GET', '/api/backup_blob?' + query).get('blob')
+        if not isinstance(encoded, str):
+            raise ValueError('Компьютер не прислал файл бэкапа')
+        blob = base64.b64decode(encoded, validate=True)
     else:
         blob = backup_service().read(d.get('origin'), d.get('created'))
     result = backup_service().restore(blob, d.get('code') or None)
@@ -1713,6 +1731,7 @@ class Handler(BaseHTTPRequestHandler):
             actions_in_progress += 1
         try:
             result = store_streamed_upload(query.get("name", [""])[0], query.get("filename", [None])[0], length, self.rfile)
+            self.body_pending = False  # Fully read: the connection can serve the next file.
             return self.send_json(200, {"ok": True, **result})
         except (ValueError, OSError) as error:
             self.close_connection = True
@@ -1984,7 +2003,7 @@ class Handler(BaseHTTPRequestHandler):
                 route = urlsplit(path).path
                 # Streamed uploads are raw bytes; every other mutation must be JSON.
                 expected = 'application/octet-stream' if route == '/api/upload_raw' else 'application/json'
-                if self.headers.get('Content-Type','').split(';',1)[0] != expected:
+                if self.headers.get('Content-Type','').split(';',1)[0].strip().lower() != expected:
                     return self.send_json(403, {'error':'JSON requests are required'})
                 length = int(self.headers.get('Content-Length','0'))
                 limit = ((MAX_FILE_BYTES+2)//3)*4+10000 if route == '/api/upload' else MAX_FILE_BYTES if route == '/api/upload_raw' else 1000000

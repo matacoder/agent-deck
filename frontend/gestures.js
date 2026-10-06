@@ -5,6 +5,8 @@ function attachDrawerSwipe(doc,{panel,isOpen,setOpen,enabled}){
   let start=null,dragging=false,width=0;
   const offset=dx=>isOpen()?Math.min(0,dx):Math.min(0,dx-width);
   doc.addEventListener("touchstart",e=>{
+    // A second finger mid-drag ends the drag where it was, instead of leaving the panel half open.
+    if(dragging){panel.style.transition="";panel.style.transform="";setOpen(start?start.open:isOpen())}
     start=null;dragging=false;
     if(e.touches.length!==1||!enabled())return;
     const t=e.touches[0],open=isOpen();

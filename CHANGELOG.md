@@ -2,6 +2,17 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.11.2 — 2026-10-06
+
+- Fix: Codex limits showed "name 'json' is not defined" since 1.11.0; the moved limit parser now has unit tests for Claude, Codex and Kimi.
+- Limits and other cached lookups are fetched once per key even when several tabs ask at the same moment, so the rate-limited Claude usage endpoint is not hit in parallel.
+- An unexpected reset-time format loses only the reset time instead of the whole quota card.
+- A thumbnail pruned by a concurrent request is rebuilt instead of failing; restoring a backup from a computer that sends no file reports that clearly.
+- Streamed uploads keep the connection open for the next file; the gateway accepts `Content-Type` in any letter case like the local panel.
+- Phones: a request that iOS parks while the app is in the background no longer blocks every later refresh (session list, questions, inbox and the connection status stayed stuck on "Connecting…"); reads now give up after 25 s and retry. Mutations keep waiting for a definite answer.
+- Automatic updates no longer retry a release that already failed on this computer (each attempt restarted the panel every 15 minutes); a newer release or a manual update still installs.
+- A second finger during the menu swipe no longer leaves the menu half open; Waiting for you cards start clean for a new question in the same session; keyboard focus stays on a computer header after expanding it; error messages are announced immediately by screen readers.
+
 ## 1.11.1 — 2026-10-05
 
 - Phones: a swipe from the left edge opens the session menu and follows the finger, also over the terminal in Term mode; a swipe left closes it. Short pulls snap back; vertical scrolling is unaffected.

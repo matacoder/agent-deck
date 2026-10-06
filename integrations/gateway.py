@@ -55,6 +55,7 @@ class Gateway:
         self.snapshot = {}    # deck id -> (asked_at, questions)
         self.sessions_at = None
         self.session_items = []
+        self.sessions_lock = threading.Lock()  # One refresh at a time; network calls stay outside self.lock.
 
     def connected(self):
         return [deck for deck in self.decks().status().get('decks', []) if deck.get('id')]
@@ -103,6 +104,10 @@ class Gateway:
 
     def sessions(self):
         """Connected computers' session lists for notification events, refreshed every 10 s."""
+        with self.sessions_lock:
+            return self.refresh_sessions()
+
+    def refresh_sessions(self):
         if self.sessions_at is None or self.clock() - self.sessions_at > SESSIONS_EVERY:
             previous = {}
             for item in self.session_items:

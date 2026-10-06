@@ -52,18 +52,24 @@ addEventListener("orientationchange",()=>requestAnimationFrame(fitViewport));
 
 // Network failures and proxy/restart answers are "offline", not bugs: they go to the connection pill.
 class OfflineError extends Error{constructor(message){super(message);this.offline=true}}
+const API_READ_TIMEOUT=25000;
 async function api(path,body,gateway=false){
   const epoch=deckEpoch;
   let r;
-  try{r=await fetch(gateway?path:activePath(path),body?{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}:{cache:"no-store"})}
-  catch(e){if(!gateway&&epoch!==deckEpoch)throw new Error(STALE);throw new OfflineError(tr("Нет связи с панелью"))}
+  // iOS can park a request while the app is in the background and never settle it; every poll
+  // guarded by "one request at a time" would then wait forever. Reads give up; mutations are not
+  // retried blindly, so they keep waiting for a definite answer.
+  const controller=body?null:new AbortController(),timer=controller&&setTimeout(()=>controller.abort(),API_READ_TIMEOUT);
+  try{r=await fetch(gateway?path:activePath(path),body?{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}:{cache:"no-store",signal:controller.signal})}
+  catch(e){clearTimeout(timer);if(!gateway&&epoch!==deckEpoch)throw new Error(STALE);throw new OfflineError(tr("Нет связи с панелью"))}
   if(r.status===401){
     try{stashDrafts();location.href="/login"}catch(e){toast(tr("Войдите в новой вкладке: здесь сохранён несохранённый текст."),true,{label:tr("Войти"),run:()=>window.open("/login","_blank","noopener")})}
     // Already handled above; a caller's toast(e.message) must not replace the login prompt.
     throw new Error(STALE);
   }
   const d=r.headers.get("Date");if(d)clockSkew=Date.now()/1000-Date.parse(d)/1000;
-  let j=null;try{j=await r.json()}catch(e){}
+  let j=null;try{j=await r.json()}catch(e){}  // An aborted body read lands here and reads as offline below.
+  clearTimeout(timer);
   // Gateway answers (other computers, inbox, update-all) do not depend on the selected computer.
   if(!gateway&&epoch!==deckEpoch)throw new Error(STALE);
   if([502,503,504].includes(r.status))throw new OfflineError(j?.error||tr("Нет связи с панелью"));
@@ -90,7 +96,7 @@ function toast(m,info,action){
   const t=$("toast"),dialogs=Array.from(document.querySelectorAll("dialog[open]"));
   (dialogs[dialogs.length-1]||document.body).append(t);t.className=info==="success"?"success":info?"info":"";t.replaceChildren(el("span","",m));
   if(action){const b=document.createElement("button");b.textContent=action.label;b.onclick=e=>{e.stopPropagation();action.run();hideToast()};t.append(b)}
-  t.setAttribute("role",info?"status":"alert");
+  t.setAttribute("role",info?"status":"alert");t.setAttribute("aria-live",info?"polite":"assertive");
   t.classList.add("on");clearTimeout(t._h);t._h=setTimeout(hideToast,action?12000:(info?2200:8000));
 }
 function hideToast(){$("toast").classList.remove("on")}
@@ -250,7 +256,8 @@ function renderTabs(){
   const q=$("q").value.trim().toLowerCase(),view=$("tabs"),box=document.createElement("div");
   // Built on every poll but swapped in only when it differs, so focus, hover tooltips and the
   // screen-reader position survive; on a swap, keyboard focus stays on the same session row.
-  const focused=view.contains(document.activeElement)?document.activeElement.dataset.session:null;
+  const was=view.contains(document.activeElement)?document.activeElement:null;
+  const focused=was?.dataset.session?'[data-session="'+CSS.escape(was.dataset.session)+'"]':was?.dataset.deck?'[data-deck="'+CSS.escape(was.dataset.deck)+'"]':null;
   const list=sessions.filter(s=>matchesSessionQuery(s,q));
   let grp=null,i=0;
   const others=otherDecks.filter(d=>d.id!==selectedDeck);
@@ -276,7 +283,7 @@ function renderTabs(){
   for(const deck of others)renderDeckSection(box,deck,q);
   if(box.innerHTML!==view.innerHTML){
     view.replaceChildren(...box.childNodes);
-    if(focused)view.querySelector(`[data-session="${CSS.escape(focused)}"]`)?.focus({preventScroll:true});
+    if(focused)view.querySelector(focused)?.focus({preventScroll:true});
   }
   const busy=sessions.filter(s=>state(s)==="busy").length;
   $("foot").textContent=tr("{0} сессий · {1} работают",[sessions.length,busy])+(attention.size?tr(" · {0} готово",[attention.size]):"");
@@ -867,7 +874,7 @@ function deckHeader(deck,current){
   // A connected computer behind the latest release shows an arrow; Settings → Network updates it.
   if(!current&&fleet.versions.get(deck.id)?.update){const mark=el("span","deck-update","↑");mark.title=tr("Доступно обновление");head.append(mark)}
   if(!current){
-    head.type="button";head.setAttribute("aria-expanded",String(open));head.append(svgIcon(open?"chevron-down":"chevron-right"));
+    head.type="button";head.dataset.deck=key;head.setAttribute("aria-expanded",String(open));head.append(svgIcon(open?"chevron-down":"chevron-right"));
     head.onclick=()=>{deckOpen[key]=!open;try{localStore.setItem("cc.deck-open",JSON.stringify(deckOpen))}catch(e){}renderTabs()};
   }
   return head;

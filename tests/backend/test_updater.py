@@ -202,6 +202,18 @@ class UpdaterTests(unittest.TestCase):
         self.assertEqual(updater.status(self.state)["phase"], "error")
         self.assertEqual(updater.status(self.state)["message"], "offline")
 
+    def test_a_failed_install_records_which_release_failed(self):
+        (self.target / "VERSION").write_text("0.1.0")
+        answers = iter([b'{"tag_name":"v0.2.0"}', OSError("tarball unavailable")])
+        def fetch(*args):
+            answer = next(answers)
+            if isinstance(answer, Exception):
+                raise answer
+            return answer
+        with patch.object(updater, "available", return_value=True), patch.object(updater, "fetch", side_effect=fetch):
+            updater.run("matacoder/agent-deck", self.target, self.state, "http://127.0.0.1:8790")
+        self.assertEqual({k: updater.status(self.state)[k] for k in ("phase", "version")}, {"phase": "error", "version": "0.2.0"})
+
     def test_existing_or_older_release_never_downgrades(self):
         (self.target / "VERSION").write_text("0.2.0")
         with patch.object(updater, "available", return_value=True), patch.object(updater, "fetch", return_value=b'{"tag_name":"v0.1.0"}') as fetch, patch.object(updater, "service") as service:

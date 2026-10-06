@@ -3,13 +3,18 @@
 Network access and credentials come from the caller, so this module stays free of side effects.
 """
 from datetime import datetime
+import json
 import math
 import time
 import urllib.error
 
 
 def epoch(iso):
-    return int(datetime.fromisoformat(iso.replace("Z", "+00:00")).timestamp()) if iso else None
+    # Python 3.10 parses only 3- or 6-digit fractions; an unexpected format loses the reset time, not the card.
+    try:
+        return int(datetime.fromisoformat(iso.replace("Z", "+00:00")).timestamp()) if iso else None
+    except (ValueError, TypeError, AttributeError):
+        return None
 
 
 def claude(credentials, http_json):

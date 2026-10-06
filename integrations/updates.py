@@ -63,6 +63,12 @@ class AutoUpdates:
                 self.phase = 'idle'
                 return
             if self.last_attempt is not None and now-self.last_attempt < self.RETRY:return
+            job = info.get('job') or {}
+            if job.get('phase') == 'error' and job.get('version') == info.get('latest'):
+                # Each attempt stops and restarts the panel; a release that failed here is retried by hand only.
+                self.phase = 'error'
+                self.error = f"Automatic update to v{info.get('latest')} failed; update from Settings to retry"
+                return
             if not self.idle():
                 self.phase = 'waiting'
                 return

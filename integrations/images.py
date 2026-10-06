@@ -76,9 +76,11 @@ def thumbnail(real, cache, kind, run=subprocess.run, which=shutil.which):
     info = real.stat()
     key = hashlib.sha256(f'{real}\0{info.st_mtime_ns}\0{info.st_size}'.encode()).hexdigest()[:32]
     cached = Path(cache) / (key + '.jpg')
-    if cached.is_file():
+    try:
         os.utime(cached)  # Recently viewed thumbnails survive pruning.
         return cached.read_bytes()
+    except OSError:
+        pass  # Not cached yet, or pruned by a concurrent request: build it again.
     Path(cache).mkdir(parents=True, exist_ok=True, mode=0o700)
     prune_cache(cache)
     fd, temporary = tempfile.mkstemp(dir=cache, suffix='.jpg')

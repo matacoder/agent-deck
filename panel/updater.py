@@ -256,6 +256,7 @@ def remove_stale_stages(target):
 
 
 def run(repo, target, state, url):
+    version = None
     try:
         if not available(target, repo):
             raise ValueError("Обновление доступно только для установленной панели без root")
@@ -282,7 +283,9 @@ def run(repo, target, state, url):
             install(stage, target, names, state, version, url)
         write_state(state, "done", version=version, message=f"Панель обновлена до v{version}")
     except Exception as error:
-        write_state(state, "error", message=str(error)[:300] or "Не удалось обновить панель")
+        # The version lets automatic updates skip a release that already failed here.
+        write_state(state, "error", message=str(error)[:300] or "Не удалось обновить панель",
+                    **({"version": version} if version else {}))
 
 
 if __name__ == "__main__":
