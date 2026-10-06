@@ -33,7 +33,34 @@ from socketserver import TCPServer
 import updater
 import session_hook as kimi_config
 
-BIND_HOST = os.environ.get("BIND_HOST", "127.0.0.1")
+TAILNET = ipaddress.ip_network("100.64.0.0/10")
+
+
+def usable_bind_host(host, run=subprocess.run):
+    """A Tailscale re-login can give the node a new 100.x address; the panel would then fail to bind and
+    restart forever, locking a remote user out. Only a Tailscale address is re-resolved, and only to the
+    node's current Tailscale address, so the panel is never exposed more widely than configured."""
+    try:
+        with socket.socket() as probe:
+            probe.bind((host, 0))
+        return host
+    except OSError:
+        pass
+    try:
+        if ipaddress.ip_address(host) not in TAILNET:
+            return host
+        found = run(["tailscale", "ip", "-4"], input="", capture_output=True, text=True, timeout=5).stdout.split()
+    except (ValueError, OSError, subprocess.SubprocessError):
+        return host
+    current = next((a for a in found if a.count(".") == 3 and ipaddress.ip_address(a) in TAILNET), None)
+    if current:
+        print(f"BIND_HOST {host} is no longer an address of this machine; using Tailscale's {current}. "
+              "Re-run the installer (sudo ./update.sh) to store it.", flush=True)
+        return current
+    return host
+
+
+BIND_HOST = usable_bind_host(os.environ.get("BIND_HOST", "127.0.0.1"))
 BIND_PORT = int(os.environ.get("BIND_PORT", "8790"))
 PANEL_USER = os.environ.get("PANEL_USER", "dev")
 PANEL_PASSWORD = os.environ["PANEL_PASSWORD"]

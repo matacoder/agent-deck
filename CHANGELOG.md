@@ -2,6 +2,11 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.11.3 — 2026-10-06
+
+- `sudo ./update.sh` / `install.sh`: the running panel code is snapshotted before the update; if the new version does not answer `/login` within 20 s, the previous version is restored and restarted, and the installer exits with the logs command. Previously the new files stayed and the panel restarted forever.
+- A changed Tailscale address (after a re-login) no longer locks you out: the panel re-resolves a stale 100.x `BIND_HOST` through `tailscale ip -4` when it starts, and the installer replaces a remembered address that is no longer on this machine in `install.conf` and the panel `env`. Only Tailscale addresses are re-resolved; an explicit `BIND_HOST` that is not local stops the installer with a clear message.
+
 ## 1.11.2 — 2026-10-06
 
 - Fix: Codex limits showed "name 'json' is not defined" since 1.11.0; the moved limit parser now has unit tests for Claude, Codex and Kimi.

@@ -40,6 +40,7 @@ CONF_KEYS="DEV_USER DEV_UID PANEL_PORT BIND_HOST MEM_MAX CPU_QUOTA WITH_DOCKER W
 if [ -e "$(dirname "$CONF")" ]; then
     require_root_checkout "$(dirname "$CONF")"
 fi
+BIND_HOST_EXPLICIT=${BIND_HOST:+1}
 if [ -f "$CONF" ]; then
     while IFS='=' read -r k v; do
         case " $CONF_KEYS " in *" $k "*) [ -n "${!k+x}" ] || export "$k=$v" ;; esac
@@ -110,6 +111,14 @@ if ! ttyd --help 2>&1 | grep -q -- '--writable'; then
     TTYD_BIN=/usr/local/bin/ttyd
 fi
 
+# A Tailscale re-login can assign a new address. A remembered one that is no longer on this host would
+# leave the panel unable to start (remote lockout), so it is resolved again; an explicit one is only checked.
+bind_is_local() { python3 -c 'import socket,sys; socket.socket().bind((sys.argv[1], 0))' "$1" 2>/dev/null; }
+if [ -n "$BIND_HOST" ] && ! bind_is_local "$BIND_HOST"; then
+    [ -z "$BIND_HOST_EXPLICIT" ] || die "BIND_HOST=$BIND_HOST is not an address of this machine"
+    say "remembered address $BIND_HOST is no longer on this machine; asking Tailscale again"
+    BIND_HOST=
+fi
 if [ -z "$BIND_HOST" ]; then
     if ! command -v tailscale >/dev/null; then
         say "Tailscale"
@@ -133,6 +142,7 @@ if [ -z "$BIND_HOST" ]; then
 fi
 [ -n "$BIND_HOST" ] || die "could not determine the Tailscale IP; set BIND_HOST explicitly"
 [ "$BIND_HOST" != "0.0.0.0" ] || die "refusing to expose a web terminal on all interfaces"
+write_conf  # Keep the address that was actually resolved.
 
 say "user $DEV_USER"
 if ! id "$DEV_USER" >/dev/null 2>&1; then
@@ -149,6 +159,14 @@ for _ in $(seq 20); do [ -S "/run/user/$UID_/bus" ] && break; sleep 0.5; done
 as_user() { sudo -u "$DEV_USER" -H env XDG_RUNTIME_DIR="/run/user/$UID_" DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$UID_/bus" "$@"; }
 
 say "panel code -> $PREFIX"
+# Snapshot of the running panel code: if the new version does not answer, it is put back, so a remote
+# user is never left with a panel that cannot start.
+ROLLBACK=""
+if [ ! -L "$PREFIX" ] && [ -f "$PREFIX/panel.py" ]; then
+    ROLLBACK=$(mktemp -d /var/tmp/agent-deck-rollback.XXXXXX)
+    trap 'rm -rf "$ROLLBACK"' EXIT
+    cp -a "$PREFIX/." "$ROLLBACK/"
+fi
 # owned by the panel user: the panel runs as that user anyway, and ./deploy.sh can update it without root
 [ ! -L "$PREFIX" ] || die "panel runtime must not be a symbolic link"
 install -d -m 755 "$PREFIX"
@@ -185,6 +203,12 @@ if [ -f "$H/.tmux.conf" ] && ! cmp -s "$H/.tmux.conf" "$SRC/config/tmux.conf"; t
     as_user cp "$H/.tmux.conf" "$H/.tmux.conf.bak.$(date +%s)"
 fi
 as_user install -m 644 "$SRC/config/tmux.conf" "$H/.tmux.conf"
+# A stale address in an existing env (see BIND_HOST above) is replaced; a working one is left as configured.
+ENV_BIND=$(as_user sed -n 's/^BIND_HOST=//p' "$ENV" | head -1)
+if [ -n "$ENV_BIND" ] && [ "$ENV_BIND" != "$BIND_HOST" ] && ! bind_is_local "$ENV_BIND"; then
+    say "panel address $ENV_BIND -> $BIND_HOST"
+    as_user sed -i "s|^BIND_HOST=.*|BIND_HOST=$BIND_HOST|" "$ENV"
+fi
 # the panel shows this path in the "update available" hint
 if as_user grep -q '^CHECKOUT=' "$ENV"; then as_user sed -i "s|^CHECKOUT=.*|CHECKOUT=$SRC|" "$ENV"; else echo "CHECKOUT=$SRC" | as_user tee -a "$ENV" >/dev/null; fi
 as_user install -d "$H/dev" "$H/.config" "$H/.config/systemd" "$H/.config/systemd/user" "$H/.claude"
@@ -259,7 +283,23 @@ as_user systemctl --user daemon-reload
 as_user systemctl --user enable -q cc-tmux.service cc-ttyd.service cc-panel.service
 as_user systemctl --user start cc-tmux.service          # never restarted: it owns the sessions
 as_user systemctl --user restart cc-ttyd.service cc-panel.service
-sleep 1
+panel_answers() {
+    for _ in $(seq 40); do
+        curl -fsS -o /dev/null --max-time 2 "http://$BIND_HOST:$PANEL_PORT/login" && return 0
+        sleep 0.5
+    done
+    return 1
+}
+PANEL_LOGS="journalctl --user -M $DEV_USER@ -u cc-panel -n 50"
+if ! panel_answers; then
+    [ -n "$ROLLBACK" ] || die "the panel does not answer at http://$BIND_HOST:$PANEL_PORT: $PANEL_LOGS"
+    say "v$NEW_VERSION did not answer; restoring the previous panel"
+    find "$PREFIX" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+    cp -a "$ROLLBACK/." "$PREFIX/"
+    as_user systemctl --user restart cc-panel.service
+    panel_answers || die "the restored panel does not answer either: $PANEL_LOGS"
+    die "v$NEW_VERSION did not start; the previous version was restored and is running. Logs: $PANEL_LOGS"
+fi
 as_user systemctl --user is-active -q cc-tmux cc-ttyd cc-panel || die "a service failed: journalctl --user -M $DEV_USER@ -n 50"
 
 if [ -n "$PUBLIC_DOMAIN" ]; then

@@ -333,6 +333,20 @@ class CacheTests(PanelCase):
         self.panel.http_json.assert_not_called()
 
 
+class BindHostTests(PanelCase):
+    def test_a_tailscale_address_that_left_this_machine_follows_tailscale(self):
+        from types import SimpleNamespace
+        run = Mock(return_value=SimpleNamespace(stdout="100.101.102.103\n"))
+        self.assertEqual(self.panel.usable_bind_host("127.0.0.1", run), "127.0.0.1")
+        run.assert_not_called()  # A working address is never second-guessed.
+        self.assertEqual(self.panel.usable_bind_host("100.64.250.250", run), "100.101.102.103")
+        self.assertEqual(run.call_args.args[0], ["tailscale", "ip", "-4"])
+        # Never re-resolved outside the tailnet range, so exposure cannot widen.
+        self.assertEqual(self.panel.usable_bind_host("203.0.113.9", run), "203.0.113.9")
+        run.return_value = SimpleNamespace(stdout="0.0.0.0\n")
+        self.assertEqual(self.panel.usable_bind_host("100.64.250.250", run), "100.64.250.250")
+
+
 class TranscriptLookupTests(PanelCase):
     def test_a_missing_transcript_is_not_searched_again_on_every_scan(self):
         self.panel.transcript_paths.clear(); self.panel.transcript_misses.clear()
