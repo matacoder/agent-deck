@@ -161,6 +161,10 @@ test('project files: browse, open .env, paste a secret and save it with the vers
   expect(doc.querySelector('.files-path code').textContent).toBe('~/projects/alpha');
   doc.querySelector('.files-row.dir').click();await settle();
   doc.querySelector('.files-row').click();await settle();
+  // Reading first: wrapped numbered lines and no editable field, so the keyboard stays down.
+  expect(doc.querySelector('.files-text')).toBeNull();
+  expect([...doc.querySelectorAll('.files-view .code')].map(n=>n.textContent)).toEqual(['TOKEN=']);
+  [...doc.querySelectorAll('#files_body button')].find(b=>b.textContent==='Изменить'||b.textContent==='Edit').click();await settle();
   const area=doc.querySelector('.files-text');
   expect(area.value).toBe('TOKEN=\n');
   area.value='TOKEN=pasted-secret\n';area.dispatchEvent(new window.Event('input'));

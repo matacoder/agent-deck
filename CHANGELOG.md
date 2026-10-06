@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.16.2 — 2026-10-06
+
+- Project files: a file opens for reading — wrapped lines with numbers, selectable with a long press without the keyboard popping up or the layout jumping; Copy takes the selection or the whole file. Edit switches to the editor, which also wraps lines; a new file starts in it. A− / A+ share the remembered code size with Change history (the editor never goes below 16 px on phones, so iOS does not zoom).
+
 ## 1.16.1 — 2026-10-06
 
 - Change history: diffs wrap long lines instead of running off the screen, all text files of a commit open expanded (binary files are marked "binary" instead of +0 −0), and A− / A+ change the code size, remembered in this browser.

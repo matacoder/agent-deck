@@ -467,7 +467,12 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 .files-row.dir svg{color:var(--acc-text)}
 .files-size{flex:none;color:var(--mut);font-size:12px;font-variant-numeric:tabular-nums}
 .files-empty{margin:0;padding:12px;color:var(--mut)}
-.files-text{width:100%;min-height:min(60vh,520px);resize:vertical;padding:12px;border:1px solid var(--bd);border-radius:10px;background:var(--bg);color:var(--fg2);font:13px/1.5 var(--mono);outline:none;white-space:pre;overflow:auto}
+.files-text{width:100%;min-height:min(60vh,520px);resize:vertical;padding:12px;border:1px solid var(--bd);border-radius:10px;background:var(--bg);color:var(--fg2);font:var(--code-font,13px)/1.5 var(--mono);outline:none;white-space:pre-wrap;overflow-wrap:anywhere}
+.files-view{padding:8px 0;border:1px solid var(--bd);border-radius:10px;background:var(--bg);font:var(--code-font,13px)/1.5 var(--mono);-webkit-user-select:text;user-select:text}
+.files-view .fl{display:flex}
+.files-view .ln{flex:none;width:40px;padding:0 8px;text-align:right;color:var(--dim);-webkit-user-select:none;user-select:none}
+.files-view .code{flex:1;min-width:0;padding-right:12px;white-space:pre-wrap;overflow-wrap:anywhere;color:var(--fg2)}
+.files-path .git-font button{min-width:36px;padding:6px 8px;border-radius:var(--r-sm);color:var(--mut);font-weight:600}
 #inbox_dlg .hub-heading{border-bottom:1px solid var(--bd)}
 #inbox_list{display:grid;gap:18px;align-content:start}
 .inbox-item{display:grid;gap:8px}
@@ -530,7 +535,8 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 /* ---------- mobile (phones, including landscape) ----------
    Keep in sync with MOBILE_QUERY in app.js. */
 @media (max-width:760px),(pointer:coarse) and (max-height:500px){
-  .q-text textarea,.files-text,.files-new input{font-size:16px} /* Below 16px iOS zooms the page on focus. */
+  .q-text textarea,.files-new input{font-size:16px} /* Below 16px iOS zooms the page on focus. */
+  .files-text{font-size:max(16px,var(--code-font,16px))}
   .files-row{min-height:var(--tap)}
   html,body{position:fixed;inset:0;width:100%;height:100%}
   body{font-size:15px}
