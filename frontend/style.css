@@ -427,7 +427,14 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 .git-tabs button.on{background:var(--sel);color:var(--fg2)}
 #git_body{display:flex;flex-direction:column;gap:10px}
 #git_body>*{flex:none}
-.git-repo{margin:0;color:var(--mut)}
+.git-bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.git-bar code{color:var(--mut);font-family:var(--mono);font-size:12.5px}
+.git-branch{min-width:0;max-width:100%;min-height:34px;padding:4px 28px 4px 10px;border:1px solid var(--bd);border-radius:var(--r-sm);background:var(--side2);color:var(--fg2);font:12.5px var(--mono)}
+.git-bar .git-branch{width:auto;flex:1 1 140px}
+.git-bar code{flex-basis:100%}
+.git-fetch{display:inline-flex;align-items:center;gap:6px;flex:none;padding:6px 10px;border:1px solid var(--bd);border-radius:var(--r-sm);color:var(--fg2)}
+.git-behind{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;border:1px solid var(--bd);border-radius:10px;background:var(--acc-soft);color:var(--fg2);font-size:12.5px}
+.git-behind button{padding:4px 10px;border:1px solid var(--bd);border-radius:var(--r-sm);color:var(--fg2)}
 .git-list{display:grid;border:1px solid var(--bd);border-radius:12px;overflow:hidden}
 .git-row,.git-group{display:grid;gap:4px;padding:10px 12px;border-bottom:1px solid var(--bd-soft);text-align:left;color:var(--fg)}
 .git-row:last-child{border-bottom:0}.git-row:hover,.git-group:hover{background:var(--side2)}
@@ -661,6 +668,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
   .acts button{flex:1;min-height:var(--tap);padding:12px;font-size:16px;border-radius:var(--r)}
   #inbox_dlg,#files_dlg,#git_dlg{width:100vw}
   #inbox_dlg .dlg,#files_dlg .dlg,#git_dlg .dlg{padding-top:var(--sat)}
+  .git-branch{font-size:16px;min-height:var(--tap)}
   .git-tabs{padding:10px 20px}.git-tabs button{min-height:var(--tap);padding:0 14px}
   .dl .ln{width:36px}
   #confirm_dlg{width:calc(100vw - 32px);height:fit-content;margin:auto;border:1px solid var(--bd-soft);border-radius:16px}

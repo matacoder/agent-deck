@@ -1667,21 +1667,26 @@ def git_payload(route, query):
     folder = session_folder(query.get("name", [""])[0])
     if route == "/api/git/log":
         skip = query.get("skip", ["0"])[0]
-        return git.history(folder, int(skip) if skip.isdigit() else -1)
+        return git.history(folder, int(skip) if skip.isdigit() else -1, ref=query.get("ref", [""])[0])
     if route == "/api/git/commit":
         return git.commit(folder, query.get("sha", [""])[0])
     if route == "/api/git/group_diff":
         return git.group_diff(folder, [s for s in query.get("shas", [""])[0].split(",") if s])
     if route == "/api/git/groups":
-        return git_grouper().status(folder)
+        return git_grouper().status(folder, query.get("ref", [""])[0])
     raise ValueError("Agent Deck route not found")
 
 
 def action_git_group(d):
-    return git_grouper().start(session_folder(d.get("name")), d.get("_language", DEFAULT_LANGUAGE))
+    return git_grouper().start(session_folder(d.get("name")), d.get("_language", DEFAULT_LANGUAGE), d.get("ref") or None)
 
 
-ACTIONS.update(file_save=action_file_save, git_group=action_git_group,
+def action_git_fetch(d):
+    from integrations import git
+    return git.fetch(session_folder(d.get("name")))
+
+
+ACTIONS.update(file_save=action_file_save, git_group=action_git_group, git_fetch=action_git_fetch,
                telegram_config=lambda d: {'telegram': telegram_service().save(d)},
                telegram_pair=lambda d: {'telegram': telegram_service().pair()},
                answer=action_answer,

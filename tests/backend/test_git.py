@@ -103,3 +103,49 @@ class PanelGitTests(PanelCase):
     def test_git_routes_need_a_real_session(self):
         with self.assertRaisesRegex(ValueError, 'сессия не найдена'):
             self.panel.git_payload('/api/git/log', {'name': ['../x']})
+
+
+class WorktreeBranchTests(unittest.TestCase):
+    def setUp(self):
+        tmp = tempfile.TemporaryDirectory(dir='/tmp')
+        self.addCleanup(tmp.cleanup)
+        root = Path(tmp.name)
+        env = ['-c', 'user.name=Dev', '-c', 'user.email=dev@example.test', '-c', 'commit.gpgsign=false']
+        def git(where, *args):
+            subprocess.run(['git', *env, '-C', str(where), *args], check=True, capture_output=True)
+        self.git = git
+        self.origin, self.clone, self.tree = root / 'origin.git', root / 'clone', root / 'tree'
+        subprocess.run(['git', 'init', '-q', '--bare', '-b', 'main', str(self.origin)], check=True, capture_output=True)
+        subprocess.run(['git', 'clone', '-q', str(self.origin), str(self.clone)], check=True, capture_output=True)
+        (self.clone / 'a.txt').write_text('a\n')
+        git(self.clone, 'add', '.'); git(self.clone, 'commit', '-q', '-m', 'Old work'); git(self.clone, 'push', '-q', 'origin', 'main')
+        git(self.clone, 'remote', 'set-head', 'origin', 'main')
+        git(self.clone, 'worktree', 'add', '-q', '-b', 'feature', str(self.tree))
+        (self.clone / 'b.txt').write_text('b\n')
+        git(self.clone, 'add', '.'); git(self.clone, 'commit', '-q', '-m', 'Shipped to prod'); git(self.clone, 'push', '-q', 'origin', 'main')
+
+    def test_a_worktree_shows_its_branch_how_far_behind_it_is_and_can_switch_to_the_remote(self):
+        own = G.history(self.tree)
+        self.assertEqual((own['branch'], own['remote'], own['behind']), ('feature', 'origin/main', 1))
+        self.assertEqual(own['branches'], ['feature', 'main', 'origin/main'])
+        self.assertEqual([c['subject'] for c in own['commits']], ['Old work'])
+        prod = G.history(self.tree, ref='origin/main')
+        self.assertEqual(prod['commits'][0]['subject'], 'Shipped to prod')
+        with self.assertRaisesRegex(ValueError, 'ветки'):
+            G.history(self.tree, ref='--all')
+
+    def test_fetch_brings_new_remote_commits_and_never_prompts(self):
+        other = Path(tempfile.mkdtemp(dir='/tmp'))
+        self.addCleanup(lambda: __import__('shutil').rmtree(other))
+        subprocess.run(['git', 'clone', '-q', str(self.origin), str(other / 'c')], check=True, capture_output=True)
+        (other / 'c/c.txt').write_text('c\n')
+        self.git(other / 'c', 'add', '.'); self.git(other / 'c', 'commit', '-q', '-m', 'Pushed elsewhere'); self.git(other / 'c', 'push', '-q')
+        self.assertNotEqual(G.history(self.tree, ref='origin/main')['commits'][0]['subject'], 'Pushed elsewhere')
+        seen = {}
+        def run(command, **kwargs):
+            if 'fetch' in command:
+                seen.update(kwargs.get('env') or {})
+            return subprocess.run(command, **kwargs)
+        G.fetch(self.tree, run=run)
+        self.assertEqual(seen.get('GIT_TERMINAL_PROMPT'), '0')
+        self.assertEqual(G.history(self.tree, ref='origin/main')['commits'][0]['subject'], 'Pushed elsewhere')

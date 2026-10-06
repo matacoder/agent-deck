@@ -24,9 +24,9 @@ GROUP_TIMEOUT = 180
 SEP, REC = '\x1f', '\x1e'
 
 
-def git(folder, *args, run=subprocess.run):
+def git(folder, *args, run=subprocess.run, timeout=20, env=None):
     result = run(['git', '-C', str(folder), '-c', 'core.quotepath=off', '--no-pager', *args],
-                 input=b'', capture_output=True, timeout=20)
+                 input=b'', capture_output=True, timeout=timeout, **({'env': env} if env else {}))
     if result.returncode:
         message = result.stderr.decode('utf-8', 'replace').strip().splitlines()
         if message and 'not a git repository' in message[0]:
@@ -41,13 +41,38 @@ def checked_sha(value):
     return value
 
 
-def history(folder, skip=0, run=subprocess.run):
+def branches(root, run=subprocess.run):
+    """The checked-out branch, the local default branch and the remote one (what GitHub has after a fetch).
+    A worktree usually sits on its own branch, which may be far behind the default one."""
+    current = git(root, 'rev-parse', '--abbrev-ref', 'HEAD', run=run).strip()
+    names = git(root, 'for-each-ref', '--format=%(refname:short)', 'refs/heads', 'refs/remotes', run=run).split()
+    try:
+        remote = git(root, 'symbolic-ref', '--quiet', '--short', 'refs/remotes/origin/HEAD', run=run).strip()
+    except ValueError:
+        remote = next((n for n in ('origin/main', 'origin/master') if n in names), '')
+    local = remote.split('/', 1)[1] if remote and remote.split('/', 1)[1] in names else \
+        next((n for n in ('main', 'master') if n in names), '')
+    options = [n for i, n in enumerate([current, local, remote]) if n and n not in [current, local, remote][:i]]
+    return {'current': current, 'remote': remote, 'names': set(names), 'options': options}
+
+
+def checked_ref(ref, known):
+    if not ref or ref == 'HEAD':
+        return 'HEAD'
+    if not isinstance(ref, str) or ref.startswith('-') or ref not in known['names'] | {known['current']}:
+        raise ValueError('Такой ветки нет в репозитории')
+    return ref
+
+
+def history(folder, skip=0, run=subprocess.run, ref=None):
     if not isinstance(skip, int) or skip < 0:
         raise ValueError('Неверная страница истории')
     root = git(folder, 'rev-parse', '--show-toplevel', run=run).strip()
-    branch = git(root, 'rev-parse', '--abbrev-ref', 'HEAD', run=run).strip()
+    known = branches(root, run=run)
+    ref = checked_ref(ref, known)
+    branch = known['current'] if ref == 'HEAD' else ref
     raw = git(root, 'log', f'--skip={skip}', f'-n{PAGE + 1}', '--shortstat',
-              f'--format={REC}%H{SEP}%h{SEP}%an{SEP}%at{SEP}%s', run=run)
+              f'--format={REC}%H{SEP}%h{SEP}%an{SEP}%at{SEP}%s', ref, '--', run=run)
     commits = []
     for record in raw.split(REC)[1:]:
         head, _, stats = record.partition('\n')
@@ -56,8 +81,25 @@ def history(folder, skip=0, run=subprocess.run):
         commits.append({'sha': sha, 'short': short, 'author': author, 'time': int(at or 0), 'subject': subject,
                         'files': numbers.get('file', 0), 'added': numbers.get('insertion', 0),
                         'removed': numbers.get('deletion', 0)})
-    return {'repo': root, 'name': os.path.basename(root), 'branch': branch,
+    ahead = behind = 0
+    if known['remote'] and branch != known['remote']:
+        counts = git(root, 'rev-list', '--left-right', '--count', f'{ref}...{known["remote"]}', '--', run=run).split()
+        ahead, behind = (int(counts[0]), int(counts[1])) if len(counts) == 2 else (0, 0)
+    return {'repo': root, 'name': os.path.basename(root), 'branch': branch, 'ref': ref, 'branches': known['options'],
+            'remote': known['remote'], 'ahead': ahead, 'behind': behind,
             'commits': commits[:PAGE], 'more': len(commits) > PAGE}
+
+
+def fetch(folder, run=subprocess.run):
+    """Updates remote branches only (never the working tree); never waits for a password prompt."""
+    root = git(folder, 'rev-parse', '--show-toplevel', run=run).strip()
+    env = {**os.environ, 'GIT_TERMINAL_PROMPT': '0', 'GIT_ASKPASS': '/bin/false',
+           'GIT_SSH_COMMAND': 'ssh -o BatchMode=yes -o ConnectTimeout=15'}
+    try:
+        git(root, 'fetch', '--prune', '--quiet', 'origin', run=run, timeout=60, env=env)
+    except subprocess.TimeoutExpired:
+        raise ValueError('GitHub не ответил за минуту; попробуйте позже') from None
+    return {'ok': True}
 
 
 def split_patch(text):
@@ -170,8 +212,8 @@ class Grouper:
     def key(self, repo, head):
         return hashlib.sha256(f'{repo}\0{head}'.encode()).hexdigest()[:24]
 
-    def status(self, folder):
-        info = history(folder, run=self.run)
+    def status(self, folder, ref=None):
+        info = history(folder, run=self.run, ref=ref)
         head = info['commits'][0]['sha'] if info['commits'] else ''
         key = self.key(info['repo'], head)
         try:
@@ -181,11 +223,11 @@ class Grouper:
         with self.lock:
             return {'phase': 'idle', 'head': head, **self.jobs.get(key, {})}
 
-    def start(self, folder, language='en'):
+    def start(self, folder, language='en', ref=None):
         repo = git(folder, 'rev-parse', '--show-toplevel', run=self.run).strip()
         commits = []
         while len(commits) < GROUP_COMMITS:
-            page = history(repo, len(commits), run=self.run)
+            page = history(repo, len(commits), run=self.run, ref=ref)
             commits += page['commits']
             if not page['more']:
                 break
@@ -206,7 +248,8 @@ class Grouper:
 
     def work(self, key, repo, commits, claude, language):
         try:
-            names = git(repo, 'log', f'-n{len(commits)}', '--name-only', f'--format={REC}%H', run=self.run)
+            names = git(repo, 'log', '--no-walk=unsorted', '--name-only', f'--format={REC}%H',
+                        *[c['sha'] for c in commits], '--', run=self.run)
             files = {}
             for record in names.split(REC)[1:]:
                 sha, _, rest = record.partition('\n')

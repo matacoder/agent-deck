@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.17.0 — 2026-10-06
+
+- Change history shows which branch it lists and lets you pick it: the checked-out one (a worktree usually has its own), the local default branch, or the remote one such as `origin/main`. A note says how many commits the branch is behind the remote, with a button to show the remote. **Fetch from GitHub** runs `git fetch --prune` (remote branches only, the working tree is untouched, never waits for a password). Feature groups follow the chosen branch.
+
 ## 1.16.3 — 2026-10-06
 
 - Switching sessions no longer leaves the previous agent's screen up: a screen already seen appears at once, otherwise a skeleton with "Loading the session screen…" stays until the new one arrives. In Term mode a new terminal shows "Connecting to the terminal…" until it has loaded.

@@ -1,7 +1,7 @@
 // Git history of the open session's repository: commits with their diffs, and feature groups that a
 // cheap model (Claude Haiku) proposes from commit subjects and file names, each with a combined diff.
 // Agent and repository text is rendered with textContent only.
-const hist={session:null,tab:"commits",log:null,commits:[],back:null,view:null,groups:null,timer:null};
+const hist={session:null,ref:"",tab:"commits",log:null,commits:[],back:null,view:null,groups:null,timer:null,fetching:false};
 
 function relativeTime(seconds){
   const diff=seconds-Date.now()/1000,units=[["year",31536000],["month",2592000],["day",86400],["hour",3600],["minute",60]];
@@ -56,12 +56,32 @@ function fileBlock(title,file,open,content){
 
 async function openHistory(){
   if(!active)return;
-  hist.session=active;hist.tab="commits";hist.view=null;hist.back=null;hist.log=null;hist.commits=[];hist.groups=null;
+  hist.session=active;hist.ref="";hist.tab="commits";hist.view=null;hist.back=null;hist.log=null;hist.commits=[];hist.groups=null;
   applyCodeFont();
   if(!$("git_dlg").open)$("git_dlg").showModal();
   renderHistory();await loadHistoryPage();
 }
-function gitPath(route,params={}){return "/api/git/"+route+"?"+new URLSearchParams({name:hist.session,...params})}
+function gitPath(route,params={}){return "/api/git/"+route+"?"+new URLSearchParams({name:hist.session,ref:hist.ref,...params})}
+// Another branch (a worktree's own, the local main, or GitHub's after a fetch) starts the list over.
+function chooseBranch(ref){hist.ref=ref;hist.log=null;hist.commits=[];hist.groups=null;hist.view=null;renderHistory();loadHistoryPage();if(hist.tab==="groups")loadGroups()}
+async function fetchRemote(){
+  if(hist.fetching)return;
+  hist.fetching=true;renderHistory();
+  try{await api("/api/git_fetch",{name:hist.session});toast(tr("Ветки обновлены с GitHub"),"success");hist.fetching=false;chooseBranch(hist.ref);return}
+  catch(e){if(e.message!==STALE)toast(e.message)}
+  hist.fetching=false;renderHistory();
+}
+function branchBar(){
+  const log=hist.log,select=el("select","git-branch");select.setAttribute("aria-label",tr("Ветка"));
+  for(const name of log.branches){const option=el("option","",name);option.value=name===log.branches[0]?"":name;select.append(option)}
+  select.value=hist.ref;select.onchange=()=>chooseBranch(select.value);
+  const fetch=fileButton(hist.fetching?tr("Получаю…"):tr("Получить с GitHub"),"git-fetch",fetchRemote,"refresh");fetch.disabled=hist.fetching;
+  const bar=el("div","git-bar",el("code","",log.name),select,fetch);
+  const notes=[];
+  if(log.behind&&log.remote)notes.push(el("div","git-behind",el("span","",tr("Эта ветка отстаёт от {0} на {1} коммитов",[log.remote,log.behind])),
+    fileButton(tr("Показать {0}",[log.remote]),"",()=>chooseBranch(log.remote))));
+  return [bar,...notes];
+}
 async function loadHistoryPage(){
   try{const page=await api(gitPath("log",{skip:hist.commits.length}));hist.log=page;hist.commits.push(...page.commits)}
   catch(e){if(e.message!==STALE)hist.error=e.message}
@@ -86,7 +106,7 @@ async function loadGroups(){
   if(hist.tab==="groups"&&!hist.view)renderHistory();
 }
 async function startGrouping(){
-  try{hist.groups=await api("/api/git_group",{name:hist.session})}catch(e){if(e.message!==STALE)toast(e.message);return}
+  try{hist.groups=await api("/api/git_group",{name:hist.session,ref:hist.ref})}catch(e){if(e.message!==STALE)toast(e.message);return}
   renderHistory();hist.timer=setTimeout(loadGroups,3000);
 }
 function historyTab(tab){hist.tab=tab;hist.view=null;if(tab==="groups"&&!hist.groups)loadGroups();renderHistory()}
@@ -103,7 +123,7 @@ function renderHistory(){
   if(hist.tab==="groups")return renderGroups(box);
   if(hist.error&&!hist.commits.length){box.append(el("p","files-empty",hist.error));return}
   if(!hist.log){box.append(el("p","files-empty",tr("Загрузка…")));return}
-  box.append(el("p","git-repo",el("code","",hist.log.name+" · "+hist.log.branch)));
+  box.append(...branchBar());
   const list=el("div","git-list");for(const c of hist.commits)list.append(commitRow(c));box.append(list);
   if(!hist.commits.length)box.append(el("p","files-empty",tr("В репозитории ещё нет коммитов")));
   if(hist.log.more){const more=el("button","git-more",tr("Показать ещё"));more.type="button";more.onclick=loadHistoryPage;box.append(more)}

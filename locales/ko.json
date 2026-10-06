@@ -607,6 +607,14 @@
     "A−": "A−",
     "A+": "A+",
     "Загружаю экран сессии…": "Loading the session screen…",
-    "Подключаюсь к терминалу…": "Connecting to the terminal…"
+    "Подключаюсь к терминалу…": "Connecting to the terminal…",
+    "Ветка": "Branch",
+    "Получаю…": "Fetching…",
+    "Получить с GitHub": "Fetch from GitHub",
+    "Ветки обновлены с GitHub": "Branches updated from GitHub",
+    "Эта ветка отстаёт от {0} на {1} коммитов": "This branch is {1} commits behind {0}",
+    "Показать {0}": "Show {0}",
+    "Такой ветки нет в репозитории": "No such branch in the repository",
+    "GitHub не ответил за минуту; попробуйте позже": "GitHub did not answer within a minute; try again later"
   }
 }
