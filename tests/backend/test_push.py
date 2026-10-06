@@ -125,6 +125,17 @@ class PushServiceTests(unittest.TestCase):
         self.assertEqual((message['deck'], message['urgency']), ('a' * 24, 'high'))
         self.assertEqual(self.push.events(now=6), [])
 
+    def test_a_renamed_session_is_announced_by_its_new_name_without_a_new_fingerprint(self):
+        from dataclasses import replace
+        self.push.events(now=0)
+        original = question('api')
+        renamed = replace(original, label='Billing API')
+        self.assertEqual(renamed.fingerprint, original.fingerprint)  # Renaming never re-announces a question.
+        self.questions = [renamed]
+        [message] = self.push.events(now=3)
+        self.assertEqual(message['title'], 'Billing API')
+        self.assertEqual(message['session'], 'api')  # Opening the notification still finds the tmux session.
+
     def test_finished_needs_real_work_then_quiet_and_skips_shells_and_pending_questions(self):
         self.push.events(now=0)
         def tick(now, activity, **extra):

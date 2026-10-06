@@ -274,7 +274,7 @@ body.is-codex .question-key{display:inline-flex!important;align-items:center;jus
 dialog{background:var(--side);color:var(--fg);border:1px solid var(--bd-soft);border-radius:16px;padding:0;width:min(480px,calc(100vw - 32px));max-height:calc(100dvh - 40px);box-shadow:0 24px 80px #0006}
 dialog::backdrop{background:rgba(0,0,0,.55)}
 .dlg{display:flex;flex-direction:column;max-height:calc(100dvh - 40px)}
-.dlg-body{padding:22px;overflow-y:auto}
+.dlg-body{padding:22px;overflow-y:auto;min-height:0;overscroll-behavior:contain} /* min-height:0 lets a flex child scroll instead of growing past the screen. */
 .dlg h3{margin:0 0 18px;font-size:18px;font-weight:600;color:var(--fg2)}
 .dlg p{font-size:12.5px;line-height:1.5}
 .dlg label{display:block;font-size:12px;color:var(--mut);margin:16px 0 6px}
@@ -420,7 +420,10 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 #inbox_dlg{width:min(560px,calc(100vw - 32px))}
 #files_dlg{width:min(720px,calc(100vw - 32px))}
 #files_dlg .hub-heading{border-bottom:1px solid var(--bd)}
-#files_body{display:grid;gap:10px;align-content:start}
+/* A column, not a grid: in a grid the clipped list (overflow:hidden for its corners) shrank to the dialog
+   and cut off rows instead of letting the dialog scroll. */
+#files_body{display:flex;flex-direction:column;gap:10px}
+#files_body>*{flex:none}
 .files-path{display:flex;align-items:center;gap:8px;min-width:0}
 .files-path code{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--fg2);font-family:var(--mono);font-size:12.5px}
 .files-up{display:inline-flex;align-items:center;gap:6px;flex:none;padding:6px 10px;border:1px solid var(--bd);border-radius:var(--r-sm);color:var(--fg2)}
@@ -1504,10 +1507,17 @@ function renderInbox(){
   for(const key of inbox.cards.keys())if(!live.has(key))inbox.cards.delete(key);
   list.replaceChildren(...(items.length?items.map(renderInboxItem):[el("p","inbox-empty",tr("Сейчас никто не ждёт ответа"))]));
 }
+// The name the user gave the session, not its technical tmux name.
+function inboxLabel(item,deck,session){
+  if(item.kind==="question"&&item.question.label)return item.question.label;
+  const list=deck===selectedDeck?sessions:(otherDecks.find(d=>d.id===deck)||{}).sessions||[];
+  const found=list.find(s=>s.name===session);
+  return found?sessionTitle(found):session;
+}
 function renderInboxItem(item){
   const machine=item.kind==="question"?(item.question.origin||(item.question.deck?"":deckDirectory.name)):item.machine;
   const deck=item.kind==="question"?item.question.deck||"":item.deck,session=item.kind==="question"?item.question.session:item.session;
-  const head=el("button","inbox-head",agentIcon({agent:item.kind==="question"?item.question.agent:"claude"}),el("span","inbox-session",session),
+  const head=el("button","inbox-head",agentIcon({agent:item.kind==="question"?item.question.agent:"claude"}),el("span","inbox-session",inboxLabel(item,deck,session)),
     el("span","inbox-machine",machine||""));
   head.type="button";head.onclick=()=>openInboxSession(deck,session);
   const box=el("div","inbox-item",head);

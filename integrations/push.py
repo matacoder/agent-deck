@@ -158,7 +158,7 @@ class Push:
             for q in self.questions():
                 pending.add((q.deck, q.session))
                 if q.fingerprint not in self.seen and self.config['events'].get('questions'):
-                    out.append({'title': q.session, 'body': [self.status_line('{0} ждёт ответа', q.agent, q.origin), q.title[:240]],
+                    out.append({'title': q.label or q.session, 'body': [self.status_line('{0} ждёт ответа', q.agent, q.origin), q.title[:240]],
                                 'tag': f'q-{q.deck}-{q.session}', 'deck': q.deck,
                                 'session': q.session, 'urgency': 'high'})
                 self.seen[q.fingerprint] = now

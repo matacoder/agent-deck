@@ -8,6 +8,7 @@
 """
 import base64
 import binascii
+import dataclasses
 import hashlib
 import hmac
 import ipaddress
@@ -1246,13 +1247,15 @@ def scan_questions():
         with input_locks_lock:
             lock = input_locks.setdefault(session['name'], threading.Lock())
         with lock:
+            # Notifications, Telegram and the inbox show the name the user gave the session.
+            label = session.get('title') or session['name']
             structured = pending_questions(session['name'])
             if structured:
-                result.extend(structured)
+                result.extend(dataclasses.replace(q, label=label) for q in structured)
                 continue
             question = current_question(session['name'])
             if question:
-                result.append(question)
+                result.append(dataclasses.replace(question, label=label))
     return result
 
 
@@ -1344,7 +1347,7 @@ def question_payload(question):
 
 
 def questions_payload():
-    return {'questions': [{**question_payload(q), 'session': q.session, 'agent': q.agent} for q in scan_questions()]}
+    return {'questions': [{**question_payload(q), 'session': q.session, 'label': q.label, 'agent': q.agent} for q in scan_questions()]}
 
 
 def remote_questions():
@@ -1386,7 +1389,7 @@ def inbox_payload():
     for q in shared_questions():
         # A connected computer checks its own fingerprint, which travels as `instance`.
         items.append({**question_payload(q), 'id': q.instance if q.deck else q.fingerprint,
-                      'session': q.session, 'agent': q.agent, 'deck': q.deck, 'origin': q.origin})
+                      'session': q.session, 'label': q.label or q.session, 'agent': q.agent, 'deck': q.deck, 'origin': q.origin})
     return {'questions': items}
 
 

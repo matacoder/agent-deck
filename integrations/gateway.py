@@ -67,7 +67,8 @@ class Gateway:
         # The remote fingerprint travels as `instance`: it is what the remote checks on answer.
         return [Question(item['session'], item['agent'], item['id'], item['title'],
                          tuple(o['label'] for o in item['options']), item['selected'],
-                         item.get('progress', ''), deck=deck['id'], origin=deck.get('name', ''))
+                         item.get('progress', ''), deck=deck['id'], origin=deck.get('name', ''),
+                         label=str(item.get('label') or ''))
                 for item in data.get('questions', [])]
 
     def questions(self):

@@ -38,10 +38,17 @@ function renderInbox(){
   for(const key of inbox.cards.keys())if(!live.has(key))inbox.cards.delete(key);
   list.replaceChildren(...(items.length?items.map(renderInboxItem):[el("p","inbox-empty",tr("Сейчас никто не ждёт ответа"))]));
 }
+// The name the user gave the session, not its technical tmux name.
+function inboxLabel(item,deck,session){
+  if(item.kind==="question"&&item.question.label)return item.question.label;
+  const list=deck===selectedDeck?sessions:(otherDecks.find(d=>d.id===deck)||{}).sessions||[];
+  const found=list.find(s=>s.name===session);
+  return found?sessionTitle(found):session;
+}
 function renderInboxItem(item){
   const machine=item.kind==="question"?(item.question.origin||(item.question.deck?"":deckDirectory.name)):item.machine;
   const deck=item.kind==="question"?item.question.deck||"":item.deck,session=item.kind==="question"?item.question.session:item.session;
-  const head=el("button","inbox-head",agentIcon({agent:item.kind==="question"?item.question.agent:"claude"}),el("span","inbox-session",session),
+  const head=el("button","inbox-head",agentIcon({agent:item.kind==="question"?item.question.agent:"claude"}),el("span","inbox-session",inboxLabel(item,deck,session)),
     el("span","inbox-machine",machine||""));
   head.type="button";head.onclick=()=>openInboxSession(deck,session);
   const box=el("div","inbox-item",head);

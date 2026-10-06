@@ -265,7 +265,7 @@ class Telegram:
                 hint = ('\n\n' + self.translate('Свой ответ: ответьте на это сообщение текстом')
                         if any(FREE_TEXT.match(label) for label in q.options) else '')
                 result = self.api.call(self.config['token'], 'sendMessage', chat_id=self.config['chat_id'],
-                    text=' · '.join(filter(None, (q.origin, q.agent, q.session))) + f'\n\n{q.title}\n\n' + '\n'.join(options) + hint,
+                    text=' · '.join(filter(None, (q.origin, q.agent, q.label or q.session))) + f'\n\n{q.title}\n\n' + '\n'.join(options) + hint,
                     reply_markup={'inline_keyboard': keyboard})
                 db.set_status(row['id'], 'sent', result['message_id'])
 

@@ -84,3 +84,9 @@ test('typed answers are kept per question until they are sent',()=>{
   sessionStorage.setItem('cc.answer-drafts','not json');
   expect(answerDraft('/api/q1')).toBeNull();
 });
+
+test('dialog bodies can scroll: flex children shrink and the file list is not a clipping grid',()=>{
+  const css=fs.readFileSync(path.resolve(__dirname,'../../frontend/style.css'),'utf8');
+  expect(css).toMatch(/\.dlg-body\{[^}]*overflow-y:auto[^}]*min-height:0/);
+  expect(css).toMatch(/#files_body\{display:flex;flex-direction:column/);
+});

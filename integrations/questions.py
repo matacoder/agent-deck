@@ -19,6 +19,8 @@ class Question:
     # Set for questions relayed from a connected Agent Deck: its identity and display name.
     deck: str = ""
     origin: str = ""
+    # The session's display name (renamed title); shown to people, never part of the fingerprint.
+    label: str = ""
 
     @property
     def fingerprint(self):

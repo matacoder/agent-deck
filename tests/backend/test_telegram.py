@@ -220,6 +220,13 @@ class TelegramTests(unittest.TestCase):
         self.assertFalse(worker.is_alive())
         self.assertEqual(self.service.database().get(row['id'])['status'], 'answered')
 
+    def test_message_names_the_session_by_its_title(self):
+        from dataclasses import replace
+        self.questions = [replace(question(), label='Billing API')]
+        self.pair(); self.service.deliver()
+        text = [d for m, d in self.api.calls if m == 'sendMessage' and 'reply_markup' in d][0]['text']
+        self.assertTrue(text.startswith('codex · Billing API\n'), text)
+
     def test_local_fingerprints_are_unchanged_and_machines_never_collide(self):
         import hashlib
         from dataclasses import replace
