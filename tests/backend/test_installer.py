@@ -129,3 +129,14 @@ class RootOwnershipTests(unittest.TestCase):
             self.assertNotEqual(result.returncode, 0)
             self.assertEqual(protected.read_text(), "protected")
             self.assertEqual(protected.stat().st_mode & 0o777, 0o600)
+
+
+class CodexInstallTests(unittest.TestCase):
+    def test_codex_is_installed_without_its_start_now_question_everywhere(self):
+        # The question waits for a key and stopped the Windows (WSL) installation halfway.
+        for name in ('install.sh', 'panel/panel.py', 'docker/entrypoint.sh'):
+            text = (ROOT / name).read_text()
+            calls = [line for line in text.splitlines() if 'codex/install.sh' in line]
+            self.assertTrue(calls, name)
+            for line in calls:
+                self.assertIn('CODEX_NON_INTERACTIVE=1 sh', line, name)

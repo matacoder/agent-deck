@@ -454,7 +454,7 @@ AGENTS = {
 SHELLS = {"bash", "zsh", "sh", "fish", "dash"}
 INSTALLERS = {
     "claude": "curl -fsSL https://claude.ai/install.sh | bash",
-    "codex": "curl -fsSL https://chatgpt.com/codex/install.sh | sh",
+    "codex": "curl -fsSL https://chatgpt.com/codex/install.sh | CODEX_NON_INTERACTIVE=1 sh",
 }
 INSTALLERS["kimi"] = "curl -fsSL https://code.kimi.com/kimi-code/install.sh | bash"
 INSTALLERS["pi"] = 'npm install --global --prefix "$HOME/.local" @earendil-works/pi-coding-agent@1.0.2 --no-audit --no-fund'

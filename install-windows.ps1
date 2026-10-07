@@ -42,6 +42,11 @@ function Merge-WslConfig([string]$Text) {
             if (-not $done) { $out.Add('networkingMode=mirrored'); $done = $true }
             continue
         }
+        # Mirrored networking ignores this key and WSL warns about it on every start.
+        if ($inWsl2 -and $line -match '^\s*localhostForwarding\s*=') {
+            $out.Add('# ' + $line.Trim() + '  (ignored with networkingMode=mirrored)')
+            continue
+        }
         $out.Add($line)
     }
     if ($inWsl2 -and -not $done) { $out.Add('networkingMode=mirrored'); $done = $true }
@@ -50,7 +55,40 @@ function Merge-WslConfig([string]$Text) {
         $out.Add('[wsl2]')
         $out.Add('networkingMode=mirrored')
     }
-    return (($out -join "`r`n").TrimEnd()) + "`r`n"
+    return (Add-HostLoopback (($out -join "`r`n").TrimEnd())) + "`r`n"
+}
+
+function Add-HostLoopback([string]$Text) {
+    # With mirrored networking Windows itself reaches a WSL server on the host's own address (the
+    # Tailscale IP the panel listens on) only with [experimental] hostAddressLoopback=true.
+    $out = New-Object System.Collections.Generic.List[string]
+    $inSection = $false; $seen = $false; $done = $false
+    foreach ($line in ($Text -split "`r?`n")) {
+        if ($line -match '^\s*\[(.+)\]\s*$') {
+            if ($inSection -and -not $done) {
+                # At the end of the section's own lines, before the blank line that separates sections.
+                $at = $out.Count
+                while ($at -gt 0 -and $out[$at - 1].Trim() -eq '') { $at-- }
+                $out.Insert($at, 'hostAddressLoopback=true'); $done = $true
+            }
+            $inSection = $Matches[1].Trim().ToLower() -eq 'experimental'
+            if ($inSection) { $seen = $true }
+            $out.Add($line)
+            continue
+        }
+        if ($inSection -and $line -match '^\s*hostAddressLoopback\s*=') {
+            if (-not $done) { $out.Add('hostAddressLoopback=true'); $done = $true }
+            continue
+        }
+        $out.Add($line)
+    }
+    if ($inSection -and -not $done) { $out.Add('hostAddressLoopback=true'); $done = $true }
+    if (-not $seen) {
+        if ($out.Count -gt 0 -and $out[$out.Count - 1].Trim() -ne '') { $out.Add('') }
+        $out.Add('[experimental]')
+        $out.Add('hostAddressLoopback=true')
+    }
+    return ($out -join "`r`n").TrimEnd()
 }
 
 function Select-TailscaleIPv4([string[]]$Lines) {
@@ -217,6 +255,13 @@ function Install-AgentDeck($Options) {
 }
 
 if (-not $env:AGENT_DECK_NO_MAIN) {
-    try { Install-AgentDeck $AgentDeck }
+    # wsl.exe and Ubuntu print UTF-8; the console's legacy code page would turn it into garbage.
+    $consoleEncoding = [Console]::OutputEncoding
+    try {
+        [Console]::OutputEncoding = [Text.Encoding]::UTF8
+        $env:WSL_UTF8 = '1'
+        Install-AgentDeck $AgentDeck
+    }
     catch { Write-Host "xx $($_.Exception.Message)" -ForegroundColor Red }
+    finally { [Console]::OutputEncoding = $consoleEncoding }
 }

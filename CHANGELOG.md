@@ -2,6 +2,13 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.22.7 — 2026-10-07
+
+- Windows: the panel opens on the PC itself. Mirrored WSL networking does not let Windows reach a WSL server on the PC's own (Tailscale) address unless `[experimental] hostAddressLoopback=true` is set; the installer now adds it to `.wslconfig` (other settings kept, a backup saved) and restarts WSL once. A `localhostForwarding` line, which mirrored mode ignores and warns about, is commented out.
+- Windows: WSL and Ubuntu output is shown in UTF-8 instead of garbled characters.
+- Codex CLI installs without asking "Start Codex now?" (Linux, Windows/WSL, Docker and the in-panel installer), which stopped the Windows installation until a key was pressed.
+- The installer no longer prints a connection error while the panel is still starting; it reports only if the panel never answers.
+
 ## 1.22.6 — 2026-10-07
 
 - A connected computer without sessions shows a "New session" button in its sidebar section: it switches to that computer and opens the new-session dialog.

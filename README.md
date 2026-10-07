@@ -150,8 +150,8 @@ irm https://raw.githubusercontent.com/matacoder/agent-deck/main/install-windows.
 ```
 
 The script installs WSL (on a fresh PC it asks you to restart Windows once and run the command
-again), installs and signs in to Tailscale, switches WSL to mirrored networking (other settings in
-`%UserProfile%\.wslconfig` are kept, the old file is saved as `.wslconfig.agent-deck-backup`), installs
+again), installs and signs in to Tailscale, switches WSL to mirrored networking with host loopback, so this PC opens the panel at its Tailscale
+address too (other settings in `%UserProfile%\.wslconfig` are kept, the old file is saved as `.wslconfig.agent-deck-backup`), installs
 Ubuntu 24.04 and Agent Deck in it, allows the panel port in the firewall for the Tailscale range only,
 adds **Agent Deck** to the Start menu and keeps WSL running while you are signed in. The panel login and
 password are printed at the end. If WSL settings had to change, WSL restarts once, which stops other

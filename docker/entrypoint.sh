@@ -44,7 +44,7 @@ if [ "${WITH_CLAUDE:-1}" = 1 ] && ! command -v claude >/dev/null; then
     curl -fsSL https://claude.ai/install.sh | bash || echo "Claude Code could not be installed now; it is retried on the next start"
 fi
 if [ "${WITH_CODEX:-1}" = 1 ] && ! command -v codex >/dev/null; then
-    curl -fsSL https://chatgpt.com/codex/install.sh | sh || echo "Codex CLI could not be installed now; it is retried on the next start"
+    curl -fsSL https://chatgpt.com/codex/install.sh | CODEX_NON_INTERACTIVE=1 sh || echo "Codex CLI could not be installed now; it is retried on the next start"
 fi
 
 # The same three services as the systemd units: tmux owns the sessions, ttyd and the panel restart on exit.

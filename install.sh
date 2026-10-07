@@ -281,7 +281,8 @@ fi
 
 if [ "$WITH_CODEX" = 1 ] && ! as_user bash -lc 'command -v codex' >/dev/null 2>&1; then
     say "Codex CLI"
-    as_user bash -c 'curl -fsSL https://chatgpt.com/codex/install.sh | sh'
+    # Non-interactive: its "Start Codex now?" question would stop the whole installation.
+    as_user bash -c 'curl -fsSL https://chatgpt.com/codex/install.sh | CODEX_NON_INTERACTIVE=1 sh'
 fi
 
 if [ "$WITH_DOCKER" = 1 ]; then
@@ -342,7 +343,8 @@ as_user systemctl --user restart cc-ttyd.service cc-panel.service
 PROBE="$(as_user sed -n 's/^BIND_HOST=//p' "$ENV" | head -1):$(as_user sed -n 's/^BIND_PORT=//p' "$ENV" | head -1)"
 panel_answers() {
     for _ in $(seq 40); do
-        curl -fsS -o /dev/null --max-time 2 "http://$PROBE/login" && return 0
+        # Quiet while the panel is still starting; a real failure is reported below.
+        curl -fs -o /dev/null --max-time 2 "http://$PROBE/login" && return 0
         sleep 0.5
     done
     return 1
