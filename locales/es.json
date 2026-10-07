@@ -802,6 +802,8 @@
     "Сначала откройте сессию": "Abre primero una sesión",
     "До 4 файлов, до 200 МБ каждый": "Hasta 4 archivos, 200 MB cada uno",
     "Ждут ответа: {0}": "Esperan tu respuesta: {0}",
-    "Новая сессия на «{0}»": "Nueva sesión en “{0}”"
+    "Новая сессия на «{0}»": "Nueva sesión en “{0}”",
+    "Подключено": "Conectado",
+    "Подключено как «{0}»": "Conectado como “{0}”"
   }
 }

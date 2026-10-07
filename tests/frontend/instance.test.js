@@ -441,6 +441,22 @@ test('a connected computer with no sessions offers to start one there',async()=>
   }finally{window.close()}
 });
 
+test('a found computer that is already connected says so instead of offering to connect',async()=>{
+  const state={local:()=>({sessions:[session('alpha')]})};
+  const routes=settingsRoutes(state,{claude:{installed:true,logged_in:true}});
+  routes['/api/decks']=()=>({decks:[{id:DECK,name:'Mac Studio',url:'http://100.64.0.2:8790',username:'demo'}],
+    discovery:{phase:'done',results:[{name:'MacBook Pro',url:'http://100.64.0.2:8790'},{name:'RED',url:'http://100.64.0.9:8790'}]}});
+  const window=boot(routes);
+  try{
+  await settle();await settle();
+  await window.eval('openSettings("computers")');await settle();
+  const rows=[...window.document.querySelectorAll('#deck_discovery_results .hub-row')];
+  expect(rows[0].querySelector('.card-status').textContent).toBe('Подключено как «Mac Studio»');
+  expect(rows[0].querySelector('button').getAttribute('aria-label')).toBe('Открыть: Mac Studio');
+  expect(rows[1].querySelector('button').getAttribute('aria-label')).toBe('Подключить: RED');
+  }finally{window.close()}
+});
+
 test('a folder that cannot be listed offers a retry instead of loading forever',async()=>{
   const state={local:()=>({sessions:[session('alpha')]})};
   const routes=routesFor(state);let fail=true;

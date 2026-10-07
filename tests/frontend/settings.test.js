@@ -143,3 +143,10 @@ test('local model measurements read as words, not jargon, and an empty sample sa
  expect(lmMetrics({source:'benchmark',model_load_time_seconds:4.7})).toBe('Тест скорости: загрузка 4.70 с');
  expect(lmMetrics({})).toBe('');
 });
+
+test('a found computer is matched to a connected one by address, not by name',()=>{
+ const {deckAddress}=require('../../frontend/hub-models');
+ expect(deckAddress('http://100.66.158.47:8790')).toBe(deckAddress('http://100.66.158.47:8790/'));
+ expect(deckAddress('http://100.66.158.47:8790')).not.toBe(deckAddress('http://100.66.158.47:8791'));
+ expect(deckAddress('http://100.64.0.2')).toBe('100.64.0.2:80');
+});

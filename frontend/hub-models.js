@@ -136,10 +136,18 @@ async function removeDeck(deck){
 function renderDeckDiscovery(discovery){
   $("deck_discover").disabled=discovery.phase==="running";
   $("deck_discovery_status").textContent=discovery.error||tr(discovery.phase==="running"?"Поиск…":discovery.phase==="done"?"Поиск завершён":"");
-  $("deck_discovery_results").replaceChildren(...(discovery.results||[]).map(deck=>hubRow({title:deck.name,meta:deck.url,actions:[labelledButton(tr("Подключить"),"",()=>editDeck(deck),deck.name)]})));
+  $("deck_discovery_results").replaceChildren(...(discovery.results||[]).map(found=>{
+    // The same machine may be connected under another name; the address tells them apart.
+    const known=deckDirectory.decks.find(d=>deckAddress(d.url)===deckAddress(found.url));
+    if(!known)return hubRow({title:found.name,meta:found.url,actions:[labelledButton(tr("Подключить"),"",()=>editDeck(found),found.name)]});
+    const status=known.name===found.name?tr("Подключено"):tr("Подключено как «{0}»",[known.name]);
+    return hubRow({title:found.name,meta:found.url,status,tone:"ok",
+      actions:[known.id===selectedDeck?el("span","card-meta",tr("открыт")):labelledButton(tr("Открыть"),"",()=>switchDeck(known.id),known.name)]});
+  }));
   clearInterval(deckTimer);
   if(discovery.phase==="running")deckTimer=setInterval(async()=>{if(document.hidden||!$("settings_dlg").open)return;try{const data=await gatewayApi("/api/decks");renderDeckDiscovery(data.discovery)}catch(e){toast(e.message);clearInterval(deckTimer)}},2000);
 }
+function deckAddress(url){try{const u=new URL(url);return u.hostname+":"+(u.port||"80")}catch(e){return String(url)}}
 async function discoverDecks(){
   try{const result=await gatewayApi("/api/decks_discover",{port:Number($("deck_port").value)});renderDeckDiscovery(result.discovery)}catch(e){toast(e.message)}
 }
@@ -161,4 +169,4 @@ async function saveIsolation(){
   try{await saveNetworkSettings(input.checked,{name:stored.name||deckDirectory.name,public_url:stored.public_url||""});toast(tr("Настройки сохранены"),"success")}catch(e){input.checked=!input.checked;toast(e.message)}finally{input.disabled=false}
 }
 
-if(typeof module!=="undefined")module.exports={lmMetrics};
+if(typeof module!=="undefined")module.exports={lmMetrics,deckAddress};

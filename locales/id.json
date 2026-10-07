@@ -802,6 +802,8 @@
     "Сначала откройте сессию": "Buka sesi terlebih dahulu",
     "До 4 файлов, до 200 МБ каждый": "Hingga 4 file, masing-masing 200 MB",
     "Ждут ответа: {0}": "Menunggu Anda: {0}",
-    "Новая сессия на «{0}»": "Sesi baru di “{0}”"
+    "Новая сессия на «{0}»": "Sesi baru di “{0}”",
+    "Подключено": "Terhubung",
+    "Подключено как «{0}»": "Terhubung sebagai “{0}”"
   }
 }

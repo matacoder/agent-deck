@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.22.8 — 2026-10-07
+
+- Computers: a machine found on Tailscale that is already connected shows "Connected" (or "Connected as …" when it was added under another name) with an Open button, instead of offering to connect it again. Machines are matched by address, not name.
+
 ## 1.22.7 — 2026-10-07
 
 - Windows: the panel opens on the PC itself. Mirrored WSL networking does not let Windows reach a WSL server on the PC's own (Tailscale) address unless `[experimental] hostAddressLoopback=true` is set; the installer now adds it to `.wslconfig` (other settings kept, a backup saved) and restarts WSL once. A `localhostForwarding` line, which mirrored mode ignores and warns about, is commented out.
