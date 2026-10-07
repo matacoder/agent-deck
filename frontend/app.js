@@ -31,6 +31,12 @@ const UI_REVISION="__PANEL_REVISION__";
 // Phone landscape (932×430 on a Pro Max) keeps the phone layout; keep in sync with the mobile block in style.css.
 const MOBILE_QUERY="(max-width:760px),(pointer:coarse) and (max-height:500px)";
 const isMobile=()=>matchMedia(MOBILE_QUERY).matches;
+// Layout follows the width; touch handling follows the pointer, so an iPad or an unfolded iPhone in the
+// wide layout still gets finger-sized controls, keyboard handling and the Screen view by default.
+const isTouch=()=>matchMedia("(pointer:coarse)").matches;
+const modKey=()=>/Mac|iPhone|iPad/.test(navigator.platform||navigator.userAgent)?"⌥":"Alt+";
+let lastPointer="mouse";
+addEventListener("pointerdown",e=>{lastPointer=e.pointerType},true);
 let sessions=[],active=null,mode=null,clockSkew=0;
 const frames=new Map(),wasBusy=new Map(),attention=new Set();
 
@@ -39,7 +45,7 @@ function fitViewport(){
   const vv=window.visualViewport;if(!vv)return;
   if(Math.abs(vv.scale-1)>0.01)return; // Pinch zoom must not resize the document layout.
   const root=document.documentElement;
-  const keyboard=isMobile()&&Math.abs(vv.scale-1)<0.01&&root.clientHeight-vv.height>150;
+  const keyboard=(isMobile()||isTouch())&&Math.abs(vv.scale-1)<0.01&&root.clientHeight-vv.height>150;
   // Keep controls inside the web view: the OS-owned strip below an installed
   // app is outside its drawable viewport, even when screen.height is larger.
   root.style.setProperty("--app-h",vv.height+"px");
@@ -159,7 +165,7 @@ function stateText(s){
 }
 function el(tag,cls,...kids){const e=document.createElement(tag);if(cls)e.className=cls;e.append(...kids);return e}
 const shortPath=p=>p.replace(/^.*\/(?:projects|dev)\//,"~/").replace(/\.worktrees\//,"⎇ ");
-const curMode=()=>mode||(isMobile()?"screen":"term");
+const curMode=()=>mode||(isMobile()||isTouch()?"screen":"term");
 
 function drawer(on){document.body.classList.toggle("drawer",on);if(on)$("q").blur()}
 const drawerSwipe={panel:document.querySelector("aside"),isOpen:()=>document.body.classList.contains("drawer"),setOpen:on=>drawer(on),
@@ -170,7 +176,7 @@ function sheet(on){
     const s=cur(),groups=$("sheet").querySelectorAll(".sheet-group");
     $("sheetCap").textContent=s?sessionTitle(s):"Agent Deck";
     groups[0].hidden=groups[1].hidden=groups[3].hidden=!s;
-    $("s_mode_label").textContent=curMode()==="term"?tr("Показать экран"):tr("Открыть терминал");
+    $("s_mode_label").textContent=curMode()==="term"?tr("Показать экран"):tr("Показать терминал");
     $("s_mode").querySelector("use").setAttribute("href",curMode()==="term"?"#i-file":"#i-terminal");
     $("s_link").style.display=lastUrl(s)?"":"none";
   }
@@ -178,7 +184,7 @@ function sheet(on){
   $("sheet").classList.toggle("on",on);
   $("b_actions").setAttribute("aria-expanded",String(on));
   // Keyboard users land in the menu and return to its button; taps keep focus where it was.
-  if(on&&!wasOpen&&!isMobile())[...$("sheet").querySelectorAll(".panel button")].find(b=>b.offsetParent)?.focus();
+  if(on&&!wasOpen&&lastPointer!=="touch"&&!isMobile())[...$("sheet").querySelectorAll(".panel button")].find(b=>b.offsetParent)?.focus();
   if(!on&&wasOpen&&$("sheet").contains(document.activeElement))$("b_actions").focus();
 }
 for(const item of $("sheet").querySelectorAll(".panel button"))item.setAttribute("role","menuitem");
@@ -260,6 +266,11 @@ function onLongPress(node,run){
   node.addEventListener("contextmenu",e=>e.preventDefault());
 }
 
+// A pending question is the state that needs you most, so the list says so, not only the inbox count.
+function waitingFor(deck,name){
+  if((deck||"")===selectedDeck&&name===active&&question.data)return true;
+  return inbox.questions.some(q=>(q.deck||"")===(deck||"")&&q.session===name);
+}
 function renderTabs(){
   renderQuickTabs();
   const q=$("q").value.trim().toLowerCase(),view=$("tabs"),box=document.createElement("div");
@@ -277,12 +288,12 @@ function renderTabs(){
     const t=el("div","tab"+(s.name===active?" on":""));
     const dot=el("span","dot "+st);dot.title=stateText(s);
     // State is spelled out next to the path so it does not depend on the dot colour alone.
-    const word=attention.has(s.name)?["ready",tr("готово")]:st==="busy"?["busy",tr("работает")]:st==="off"?["off",tr("остановлен")]:null;
+    const word=waitingFor(selectedDeck,s.name)?["ask",tr("ждёт ответа")]:attention.has(s.name)?["ready",tr("готово")]:st==="busy"?["busy",tr("работает")]:st==="off"?["off",tr("остановлен")]:null;
     const sub=el("div","s",...(word?[el("span","state "+word[0],word[1])," · "]:[]),shortPath(s.path));
     t.append(dot,agentIcon(s),el("div","t",el("div","n",sessionTitle(s)),...(isLocal(s)?[el("div","s session-source",agentLabel(s))]:[]),sub));
     t.title=isLocal(s)?s.source.model+" · "+localComputer(s):s.name;
     if(attention.has(s.name))t.append(el("span","bell"));
-    else if(i<10)t.append(el("span","k","⌥"+i));
+    else if(i<10)t.append(el("span","k",modKey()+i));
     t.dataset.session=s.name;t.onclick=()=>select(s.name);
     t.tabIndex=0;t.setAttribute("role","button");if(s.name===active)t.setAttribute("aria-current","true");
     t.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();select(s.name)}};
@@ -336,7 +347,7 @@ function show(){
   placeSessionKeys({row:$("session_keys"),composer:$("session_composer"),screen:$("screen"),terminal:$("terminal_keys"),wrap:$("b_wrap"),reconnect:$("b_reconnect"),mode:m,active:!!s});
   $("screen").classList.toggle("on",!!s&&m==="screen");
   $("term_loading").hidden=!(s&&m==="term"&&frameFor(active).dataset.loading);
-  if(s&&m==="term"){const f=frameFor(active);f.classList.add("on");f.inert=isLocal(s)&&!s.running;if(!isMobile()&&!f.inert)setTimeout(()=>{try{f.contentWindow.focus();f.contentWindow.term&&f.contentWindow.term.focus()}catch(e){}},30)}
+  if(s&&m==="term"){const f=frameFor(active);f.classList.add("on");f.inert=isLocal(s)&&!s.running;if(!isMobile()&&!isTouch()&&!f.inert&&document.activeElement!==$("msg"))setTimeout(()=>{try{f.contentWindow.focus();f.contentWindow.term&&f.contentWindow.term.focus()}catch(e){}},30)}
   if(s&&m==="screen")updateScreen(s,true);
   updateLink();fitKeys();
 }
@@ -467,6 +478,8 @@ function saveQuestionDraft(){
 }
 function renderQuestion(){
   const data=question.name===active?question.data:null;
+  // The card's own buttons answer; the 1/2/3 keys would only repeat them on a short screen.
+  document.body.classList.toggle("has-question",Boolean(data));
   // Typing an answer must not be wiped by the 2.5 s refresh, so an open text field pauses re-rendering.
   if($("question").querySelector(".q-text textarea:focus"))return;
   renderQuestionCard({box:$("question"),question:data,expanded:question.expanded,busyIndex:question.busy,textIndex:question.textIndex,textDraft:question.textDraft||"",translate:tr,
@@ -679,7 +692,7 @@ function fitKeys(){
   const box=$("keys"),more=$("b_keymore"),keys=[...box.children].filter(k=>k!==more);
   for(const k of keys)k.classList.remove("key-overflow");
   more.classList.remove("all-fit");
-  if(!isMobile()||box.classList.contains("expanded")||!box.clientWidth)return;
+  if(!(isMobile()||isTouch())||box.classList.contains("expanded")||!box.clientWidth)return;
   if(box.scrollWidth<=box.clientWidth){more.classList.add("all-fit");return}
   // Hide from the end so the answer keys (↑ ↓ ⏎) stay reachable on the narrowest screens.
   for(const k of keys.reverse()){if(box.scrollWidth<=box.clientWidth)break;if(k.offsetParent)k.classList.add("key-overflow")}
@@ -860,11 +873,11 @@ async function loadDeckSettings(){
 let deckDirectory={decks:[],name:"",network:{}},otherDecks=[],loadingOthers=false,deckOpen={};
 const otherBusy=new Map(),otherAttention=new Set();
 try{deckOpen=JSON.parse(localStore.getItem("cc.deck-open")||"{}")||{}}catch(e){}
-const currentDeckName=()=>selectedDeck?deckDirectory.decks.find(d=>d.id===selectedDeck)?.name||"Agent Deck":deckDirectory.name||tr("Этот Agent Deck");
+const currentDeckName=()=>selectedDeck?deckDirectory.decks.find(d=>d.id===selectedDeck)?.name||"Agent Deck":deckDirectory.name||tr("Этот компьютер");
 async function loadOtherDecks(){
   if(document.hidden||loadingOthers||!deckDirectory.decks.length){if(!deckDirectory.decks.length&&otherDecks.length){otherDecks=[];renderTabs()}return}
   loadingOthers=true;const epoch=deckEpoch;
-  const targets=[{id:"",name:deckDirectory.name||tr("Этот Agent Deck")},...deckDirectory.decks.map(d=>({id:d.id,name:d.name}))].filter(d=>d.id!==selectedDeck);
+  const targets=[{id:"",name:deckDirectory.name||tr("Этот компьютер")},...deckDirectory.decks.map(d=>({id:d.id,name:d.name}))].filter(d=>d.id!==selectedDeck);
   try{
     const loaded=await Promise.all(targets.map(async d=>{
       // Lists come without previews: only names and states travel through the gateway.
@@ -901,7 +914,7 @@ function renderDeckSection(box,deck,q){
   box.append(deckHeader({...deck,count:list.length},false));
   if(deckOpen[deck.id||"local"]===false)return;
   for(const s of list){
-    const st=state(s),word=st==="busy"?["busy",tr("работает")]:st==="off"?["off",tr("остановлен")]:null;
+    const st=state(s),word=waitingFor(deck.id,s.name)?["ask",tr("ждёт ответа")]:st==="busy"?["busy",tr("работает")]:st==="off"?["off",tr("остановлен")]:null;
     const t=el("div","tab remote",el("span","dot "+st),agentIcon(s),el("div","t",el("div","n",sessionTitle(s)),
       el("div","s",...(word?[el("span","state "+word[0],word[1])," · "]:[]),shortPath(s.path))));
     if(otherAttention.has(deck.id+"/"+s.name))t.append(el("span","bell"));
@@ -1253,10 +1266,11 @@ $("n_git").addEventListener("input",renderAdvanced);
 
 /* ⌥1..9 — табы, ⌥↑/⌥↓ — пред./след., ⌥T — новая (работает и внутри терминала) */
 function hotkeys(e){
+  if(!e.altKey&&!e.ctrlKey&&!e.metaKey&&answerByDigit(e))return;
   if(!e.altKey||e.ctrlKey||e.metaKey)return;
   const vis=[...$("tabs").querySelectorAll(".tab:not(.remote)")].map(t=>t.dataset.session);
   let target=null;
-  if(/^Digit[1-9]$/.test(e.code)){
+  if(/^Digit[1-9]$/.test(e.code)&&!e.shiftKey){
     // Non-US Mac layouts type [ ] { } | etc. with Option+digit; keep those characters.
     if(/^[!-\/:-@\[-`{-~]$/.test(e.key))return;
     target=vis[+e.code.slice(5)-1];
@@ -1266,14 +1280,39 @@ function hotkeys(e){
   else return;
   e.preventDefault();e.stopPropagation();if(target)select(target);
 }
+// The numbers on a question card's options answer it, as they would in the terminal, unless you are typing.
+function answerByDigit(e){
+  const data=question.name===active?question.data:null,target=e.target;
+  if(!data||!/^Digit[1-9]$/.test(e.code)||question.busy!==null||document.querySelector("dialog[open]"))return false;
+  if(target&&(target.closest?.("input,textarea,select,[contenteditable]")||target.tagName==="IFRAME"))return false;
+  const index=+e.code.slice(5)-1,option=data.options[index];
+  if(!option||option.text)return false;
+  e.preventDefault();e.stopPropagation();answerQuestion(index);return true;
+}
 addEventListener("keydown",hotkeys,true);
+// Wide layouts can fold the sidebar away for more room; remembered in this browser.
+function toggleSidebar(){
+  const on=!document.body.classList.contains("side-collapsed");
+  document.body.classList.toggle("side-collapsed",on);
+  try{localStore.setItem("cc.side-collapsed",on?"1":"")}catch(e){}
+}
+try{if(localStore.getItem("cc.side-collapsed"))document.body.classList.add("side-collapsed")}catch(e){}
 // A notification fallback (or a pasted link) can change only the #session part of the address.
 addEventListener("hashchange",()=>{
   let name="";try{name=decodeURIComponent(location.hash.slice(1))}catch(e){}
   if(name&&name!==active)select(name);
 });
 let lastMobile=isMobile();
-addEventListener("resize",()=>{if(isMobile()!==lastMobile){lastMobile=isMobile();try{mode=deckLocalStorage.getItem("cc.mode."+(lastMobile?"m":"d"))}catch(e){mode=null}show()}});
+addEventListener("resize",()=>{
+  if(isMobile()!==lastMobile){
+    lastMobile=isMobile();
+    // Folding, unfolding or rotating switches layouts: an open drawer or menu would be left behind.
+    drawer(false);sheet(false);
+    try{mode=deckLocalStorage.getItem("cc.mode."+(lastMobile?"m":"d"))}catch(e){mode=null}
+    show();
+  }
+  fitViewport();fitKeys();
+});
 
 /* Update installed home-screen pages too, without interrupting input. */
 let checkingVersion=false;

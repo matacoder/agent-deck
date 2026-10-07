@@ -51,7 +51,7 @@ aside{width:248px;flex:none;background:var(--side);border-right:1px solid var(--
 .deck-switch label{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 .deck-switch select{min-width:0;min-height:32px;background:var(--side2);color:var(--fg);border:1px solid var(--bd);border-radius:var(--r-sm);padding:6px 8px}
 .deck-switch button{display:grid;place-items:center;height:32px;border-radius:var(--r-sm);color:var(--mut)}
-.deck-switch button:hover{background:var(--side2);color:var(--fg)}
+@media (hover:hover){.deck-switch button:hover{background:var(--side2);color:var(--fg)}}
 #srv{display:flex;align-items:center;gap:6px;padding:10px 12px 0;font-size:12px;color:var(--mut);white-space:nowrap;overflow:hidden;cursor:default}
 #srv .fl{font-size:14px;line-height:1}#srv .ip{font-family:var(--mono);color:var(--fg)}#srv .hn{overflow:hidden;text-overflow:ellipsis}
 /* With computers connected the selector already names this one; the host name would be a third label. */
@@ -60,20 +60,20 @@ aside{width:248px;flex:none;background:var(--side);border-right:1px solid var(--
 .search{flex:1;min-width:0;background:var(--bg);border:1px solid var(--bd);border-radius:var(--r-sm);color:var(--fg);padding:6px 9px;outline:none}
 .search:focus{border-color:var(--acc)}
 .iconbtn{min-width:30px;height:30px;border-radius:var(--r-sm);display:inline-grid;place-items:center;color:var(--mut);flex:none}
-.iconbtn:hover{background:var(--side2);color:var(--fg)}
+@media (hover:hover){.iconbtn:hover{background:var(--side2);color:var(--fg)}}
 .iconbtn svg{width:var(--icon-lg);height:var(--icon-lg)}
 .iconbtn.accent{color:var(--acc-text)}
 #tabs{flex:1;overflow-y:auto;padding:0 6px 12px;-webkit-overflow-scrolling:touch}
 .grp{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--dim);padding:12px 8px 4px}
 .tab{display:flex;align-items:center;gap:9px;padding:6px 8px;border-radius:var(--r-sm);cursor:pointer;position:relative;user-select:none}
-.tab:hover{background:var(--side2)}
+@media (hover:hover){.tab:hover{background:var(--side2)}}
 .tab.on{background:var(--sel)}
 .tab.on::before{content:"";position:absolute;left:-6px;top:7px;bottom:7px;width:3px;border-radius:2px;background:var(--acc)}
 .tab:focus-visible{outline:2px solid var(--acc);outline-offset:-2px}
 .tab .t{flex:1;min-width:0}
 .tab .n{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--fg2)}
 .tab .s{font-size:11.5px;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.tab .s .state{color:var(--fg)}.tab .s .state.ready{color:var(--acc-text)}.tab .s .state.off{color:var(--dim)}
+.tab .s .state{color:var(--fg)}.tab .s .state.ready{color:var(--acc-text)}.tab .s .state.off{color:var(--dim)}.tab .s .state.ask{color:var(--warn)}
 .tab .k{font:11px var(--mono);color:var(--dim)}
 .session-source{color:var(--acc-text)!important}
 .dot{width:8px;height:8px;border-radius:50%;flex:none;background:var(--dim)}
@@ -87,7 +87,7 @@ aside{width:248px;flex:none;background:var(--side);border-right:1px solid var(--
 /* Other connected machines: compact sections under the current instance. */
 .deck-head{display:flex;align-items:center;gap:7px;width:100%;margin-top:10px;padding:8px;border-radius:var(--r-sm);font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--mut);text-align:left}
 .deck-head.current{margin-top:2px;color:var(--fg)}
-button.deck-head:hover{background:var(--side2);color:var(--fg)}
+@media (hover:hover){button.deck-head:hover{background:var(--side2);color:var(--fg)}}
 .deck-head svg{width:var(--icon-sm);height:var(--icon-sm)}
 .deck-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .deck-count{margin-left:auto;font-weight:500;letter-spacing:0;text-transform:none;color:var(--dim)}
@@ -98,7 +98,7 @@ button.deck-head:hover{background:var(--side2);color:var(--fg)}
 .quota-heading{display:block;font-size:11px;color:var(--mut)}
 .quota-heading summary{display:grid;grid-template-columns:22px 64px 48px 1fr;gap:8px;align-items:center;padding:6px;list-style:none;cursor:pointer;border-radius:var(--r-sm)}
 .quota-heading summary::-webkit-details-marker{display:none}
-.quota-heading summary:hover{background:var(--side2)}
+@media (hover:hover){.quota-heading summary:hover{background:var(--side2)}}
 .quota-heading summary>span:first-child{grid-column:2}
 .quota-heading-plan{text-align:right}
 .quota-github{display:flex;align-items:center;justify-content:flex-end;gap:4px}
@@ -130,7 +130,7 @@ button.deck-head:hover{background:var(--side2);color:var(--fg)}
 #ver{min-width:0;font:11px var(--mono);color:var(--dim);text-align:right}
 #ver button{display:block;max-width:100%;margin-top:3px;color:var(--acc-text);text-align:right;overflow-wrap:anywhere;font:inherit}
 .side-foot>button{grid-column:1/-1;display:flex;align-items:center;gap:8px;min-height:40px;padding:8px 12px;border-radius:9px;background:var(--side2);color:var(--fg);font-size:12px;text-align:left;white-space:normal}
-.side-foot>button:hover{background:var(--sel)}
+@media (hover:hover){.side-foot>button:hover{background:var(--sel)}}
 .side-foot>button svg{width:var(--icon-md);height:var(--icon-md)}
 
 /* ---------- main ---------- */
@@ -144,10 +144,10 @@ main{flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;backgrou
 .bar-tools[hidden]{display:none}
 .seg{display:flex;flex:none;background:var(--bg);border:1px solid var(--bd);border-radius:9px;padding:2px}
 .seg button{padding:4px 12px;border-radius:7px;color:var(--mut);font-size:12.5px}
-.seg button:hover{color:var(--fg)}
+@media (hover:hover){.seg button:hover{color:var(--fg)}}
 .seg button.on{background:var(--sel);color:var(--fg2)}
 .bar .act{height:30px;padding:0 10px;border-radius:var(--r-sm);color:var(--mut);font-size:12.5px;white-space:nowrap;display:inline-flex;align-items:center;gap:6px}
-.bar .act:hover{background:var(--side2);color:var(--fg)}
+@media (hover:hover){.bar .act:hover{background:var(--side2);color:var(--fg)}}
 #menuBadge{position:absolute;top:6px;right:6px;min-width:16px;height:16px;border-radius:8px;background:var(--acc-strong);color:#fff;font-size:10.5px;font-weight:700;display:none;place-items:center;padding:0 4px}
 #menuBadge.on{display:grid}
 #stage{flex:1;position:relative;min-height:0}
@@ -181,7 +181,7 @@ iframe[inert]{pointer-events:none}
 .img-strip{display:flex;gap:8px;overflow-x:auto;padding:6px 0 10px;white-space:normal;scrollbar-width:thin}
 .img-thumb{flex:none;display:block;height:120px;max-width:240px;padding:0;border:1px solid var(--bd);border-radius:8px;overflow:hidden;background:var(--side2);cursor:zoom-in}
 .img-thumb img{display:block;height:100%;width:auto;max-width:240px;object-fit:cover}
-.img-thumb:hover{border-color:var(--bd-hover)}
+@media (hover:hover){.img-thumb:hover{border-color:var(--bd-hover)}}
 .viewer{position:fixed;inset:0;z-index:70;display:grid;place-items:center;background:rgba(10,10,12,.94);padding:calc(var(--sat) + 56px) 12px calc(var(--sab) + 64px)}
 .viewer[hidden]{display:none}
 .viewer img{max-width:100%;max-height:100%;object-fit:contain;border-radius:6px;box-shadow:0 10px 40px #000a;touch-action:pinch-zoom;background:#fff1}
@@ -202,10 +202,10 @@ iframe[inert]{pointer-events:none}
 .keys{flex:1;min-width:0;display:flex;flex-wrap:wrap;gap:6px;padding-bottom:8px}
 .keys::-webkit-scrollbar{display:none}
 .key{flex:none;background:var(--side2);border:1px solid var(--bd);border-radius:8px;min-width:38px;height:32px;padding:0 10px;font:12.5px var(--mono);color:var(--fg)}
-.key:hover{border-color:var(--bd-strong)}
+@media (hover:hover){.key:hover{border-color:var(--bd-strong)}}
 .key:active{background:var(--sel)}
 .key.num{color:var(--orange)}
-.key[aria-pressed="true"]{border-color:var(--acc);color:var(--acc-text)}
+.key[aria-pressed="true"]{background:var(--sel);border-color:var(--bd);color:var(--fg2)} /* A toggle that is on, not a focused key. */
 .question-key{display:none!important}
 body.is-codex .question-key{display:inline-flex!important;align-items:center;justify-content:center}
 #b_reconnect{white-space:nowrap;font-family:inherit}
@@ -222,7 +222,7 @@ body.is-codex .question-key{display:inline-flex!important;align-items:center;jus
 .q-title.open{display:block;-webkit-line-clamp:unset;max-height:40vh;overflow:auto}
 .q-options{display:grid;gap:6px;margin-top:10px}
 .q-opt{display:flex;align-items:center;gap:10px;min-height:var(--tap);padding:8px 12px;border:1px solid var(--bd);border-radius:var(--r);background:var(--side2);color:var(--fg2);text-align:left;line-height:1.35}
-.q-opt:hover:not(:disabled){border-color:var(--bd-strong);background:var(--sel)}
+@media (hover:hover){.q-opt:hover:not(:disabled){border-color:var(--bd-strong);background:var(--sel)}}
 .q-opt:active:not(:disabled){transform:scale(.99)}
 .q-opt.selected{border-color:var(--bd-hover)}
 .q-opt:disabled{opacity:.55}
@@ -236,7 +236,7 @@ body.is-codex .question-key{display:inline-flex!important;align-items:center;jus
 .attachment img{width:44px;height:44px;object-fit:cover;border-radius:5px}
 .attachment span{font-size:12px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .attachment button{flex:none;display:grid;place-items:center;width:36px;height:36px;border-radius:8px;color:var(--mut)}
-.attachment button:hover{color:var(--fg2);background:var(--side2)}
+@media (hover:hover){.attachment button:hover{color:var(--fg2);background:var(--side2)}}
 .inrow{display:flex;gap:8px;align-items:flex-end}
 #msg{flex:1;min-width:0;min-height:40px;max-height:160px;resize:none;background:var(--bg);border:1px solid var(--bd);border-radius:20px;color:var(--fg2);font-size:15px;line-height:1.35;padding:9px 14px;outline:none}
 #msg:focus{border-color:var(--acc)}
@@ -277,7 +277,7 @@ body.is-codex .question-key{display:inline-flex!important;align-items:center;jus
 .sheet-group{display:flex;flex-direction:column}
 .sheet-group+.sheet-group{margin-top:6px;padding-top:6px;border-top:1px solid var(--bd-soft)}
 #sheet .panel button{display:flex;width:100%;align-items:center;gap:10px;min-height:34px;padding:6px 10px;border-radius:var(--r-sm);color:var(--fg2);text-align:left}
-#sheet .panel button:hover{background:var(--sel)}
+@media (hover:hover){#sheet .panel button:hover{background:var(--sel)}}
 #sheet .panel button .ui-icon{color:var(--mut)}
 #sheet .panel button.dng,#sheet .panel button.dng .ui-icon{color:var(--bad-text)}
 #sheet .sheet-cancel{display:none}
@@ -297,7 +297,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 .dlg input:focus,.dlg select:focus{border-color:var(--acc)}
 .acts{display:flex;justify-content:flex-end;gap:8px;padding:16px 22px;border-top:1px solid var(--bd)}
 .acts button{min-height:42px;padding:10px 16px;border-radius:9px;background:var(--side2)}
-.acts button:hover:not(:disabled){filter:brightness(1.15)}
+@media (hover:hover){.acts button:hover:not(:disabled){filter:brightness(1.15)}}
 .acts button.pri,.pri{background:var(--acc-strong);color:#fff;font-weight:600}
 .acts button.danger-pri{background:var(--danger-bg);color:#fff;font-weight:600}
 .acts button:disabled{opacity:.5}
@@ -307,7 +307,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 .chk input{appearance:none;-webkit-appearance:none;flex:none;width:20px;height:20px;margin:0;border:1.5px solid var(--ctl-bd);border-radius:6px;background:var(--bg);cursor:pointer}
 .chk input:checked{border-color:var(--acc);background:var(--acc) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 12 5 5 9-10'/%3E%3C/svg%3E") center/14px no-repeat}
 .chk input:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
-.chk.warn span{color:var(--fg)}.chk.warn code{font:11.5px var(--mono);color:var(--orange)}
+.chk.warn span{color:var(--fg)}.chk.warn code{font:11.5px var(--mono);color:var(--orange);white-space:nowrap}
 .toggle,.integration-toggle{display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:var(--tap);color:var(--fg2)}
 .toggle>span,.integration-toggle>span{flex:1;min-width:0;line-height:1.5}
 .toggle input,.integration-toggle input{appearance:none;-webkit-appearance:none;flex:0 0 36px;width:36px;height:21px;margin:0;border-radius:12px;background:var(--ctl);position:relative;cursor:pointer}
@@ -320,7 +320,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 /* new-session dialog */
 .agsel{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px;padding:4px;margin-bottom:6px;background:var(--bg);border:1px solid var(--bd);border-radius:12px}
 .agsel button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;min-height:58px;padding:6px 2px;border-radius:9px;color:var(--mut);font-size:12px;line-height:1.2;text-align:center;overflow-wrap:anywhere}
-.agsel button:hover{color:var(--fg)}
+@media (hover:hover){.agsel button:hover{color:var(--fg)}}
 .agsel button.on{background:var(--sel);color:var(--fg2);box-shadow:inset 0 0 0 1px #ffffff14}
 .agsel .ag{width:22px;height:22px;font-size:20px}
 #source_row{min-width:0}
@@ -342,11 +342,11 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 .gh .search{width:100%;margin-top:8px;padding:8px 10px}
 #gh_list{max-height:220px;overflow-y:auto;margin-top:6px}
 .repo{display:flex;gap:8px;align-items:baseline;width:100%;padding:7px 8px;border-radius:var(--r-sm);text-align:left}
-.repo:hover{background:var(--side2)}.repo.sel{background:var(--sel);box-shadow:inset 3px 0 0 var(--acc)}
+@media (hover:hover){.repo:hover{background:var(--side2)}}.repo.sel{background:var(--sel);box-shadow:inset 3px 0 0 var(--acc)}
 .repo .rn{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0;color:var(--fg2)}
 .repo .rm{font-size:11px;color:var(--dim);white-space:nowrap}
 .lock{display:inline-flex;color:var(--mut)}.lock svg{width:12px;height:12px}
-.ghbtn{margin-top:8px;padding:8px 12px;border-radius:var(--r-sm);background:var(--acc-strong);color:#fff;font-weight:600}
+.ghbtn{margin-top:8px;padding:8px 12px;border:1px solid var(--bd);border-radius:var(--r-sm);background:var(--side2);color:var(--acc-text);font-weight:600} /* Secondary: "Create" stays the one strong action. */
 
 /* confirm dialog */
 #confirm_dlg{width:min(400px,calc(100vw - 32px))}
@@ -365,11 +365,11 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 .hub-heading{grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;padding:12px 14px 12px 22px;border-bottom:1px solid var(--bd)}
 .hub-heading h3{margin:0;font-size:17px}
 .hub-heading button{display:grid;place-items:center;width:var(--tap);height:var(--tap);border-radius:var(--r);color:var(--mut)}
-.hub-heading button:hover{background:var(--side2);color:var(--fg2)}
+@media (hover:hover){.hub-heading button:hover{background:var(--side2);color:var(--fg2)}}
 .hub-heading button svg{width:var(--icon-lg);height:var(--icon-lg)}
 .hub-nav{display:flex;flex-direction:column;gap:4px;padding:14px 10px;border-right:1px solid var(--bd);background:#0000000a}
 .hub-nav button{min-height:40px;text-align:left;padding:8px 12px;border-radius:9px;color:var(--mut);font-size:13px;overflow-wrap:anywhere}
-.hub-nav button:hover{background:var(--side2);color:var(--fg)}
+@media (hover:hover){.hub-nav button:hover{background:var(--side2);color:var(--fg)}}
 .hub-nav button.on{background:var(--acc-soft);color:var(--acc-text);font-weight:600}
 .hub-content{padding:20px;overflow-y:auto;min-width:0}
 .hub-section-title{margin:0 0 4px;font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--dim)}
@@ -388,7 +388,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 .card-main{min-width:0;flex:1}
 .card-main p{margin:5px 0 0}
 .card-top>.pri{flex-shrink:0;max-width:48%;padding:9px 14px;border-radius:9px;background:var(--acc-soft);color:var(--acc-text);font-size:12.5px;font-weight:600;white-space:normal}
-.card-top>.pri:hover{background:#0a84ff30}
+@media (hover:hover){.card-top>.pri:hover{background:#0a84ff30}}
 .settings-hub button,.settings-hub select,.settings-hub summary{min-height:40px}
 .settings-hub .acts button.pri{padding:10px 14px}
 .hub-card.editor{border-color:var(--bd-strong)}
@@ -412,7 +412,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 .integration-link{background:var(--acc-strong);color:#fff;text-decoration:none;font-weight:600}
 .integration-pair{border:1px solid var(--bd);color:var(--fg2);background:var(--side2)}
 .acts .integration-remove{background:transparent;color:var(--mut);padding-left:0;margin-right:auto}
-.acts .integration-remove:hover{color:var(--bad-text)}
+@media (hover:hover){.acts .integration-remove:hover{color:var(--bad-text)}}
 #lm_editor{margin:0 0 12px}
 #lm_editor summary{font-size:13px;color:var(--fg);cursor:pointer;padding:0}
 #lm_editor form{padding-top:4px}
@@ -450,14 +450,14 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 .git-behind button{padding:4px 10px;border:1px solid var(--bd);border-radius:var(--r-sm);color:var(--fg2)}
 .git-list{display:grid;border:1px solid var(--bd);border-radius:12px;overflow:hidden}
 .git-row,.git-group{display:grid;gap:4px;padding:10px 12px;border-bottom:1px solid var(--bd-soft);text-align:left;color:var(--fg)}
-.git-row:last-child{border-bottom:0}.git-row:hover,.git-group:hover{background:var(--side2)}
+.git-row:last-child{border-bottom:0}@media (hover:hover){.git-row:hover,.git-group:hover{background:var(--side2)}}
 .git-group{border:1px solid var(--bd);border-radius:12px}
 .git-subject{color:var(--fg2);font-weight:600;overflow-wrap:anywhere}
 .git-meta{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0;color:var(--mut);font-size:12px}
 .git-summary{margin:0;color:var(--fg);font-size:13px;line-height:1.5}
 .git-title{margin:4px 0 0;color:var(--fg2);font-size:16px;overflow-wrap:anywhere}
 .git-section{margin:8px 0 0;color:var(--mut);font-size:12px;text-transform:uppercase;letter-spacing:.04em}
-.git-message{margin:0;padding:10px 12px;border-radius:10px;background:var(--bg);color:var(--fg);font:var(--code-font,12px)/1.5 var(--mono);white-space:pre-wrap;overflow-wrap:anywhere}
+.git-message{margin:0;padding:10px 12px;border-radius:10px;background:var(--bg);color:var(--fg);font:13px/1.55 -apple-system,BlinkMacSystemFont,system-ui,sans-serif;white-space:pre-wrap;overflow-wrap:anywhere}
 .git-more{align-self:center;padding:8px 14px;border:1px solid var(--bd);border-radius:var(--r-sm);color:var(--fg2)}
 .diff-count{display:inline-flex;gap:6px;font-variant-numeric:tabular-nums}.diff-count b{font-weight:600}
 .diff-count .plus{color:var(--ok)}.diff-count .minus{color:var(--bad-text)}
@@ -490,7 +490,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 .files-new button{display:inline-flex;align-items:center;gap:6px;padding:0 12px;border:1px solid var(--bd);border-radius:9px;color:var(--fg2)}
 .files-list{display:grid;border:1px solid var(--bd);border-radius:12px;overflow:hidden}
 .files-row{display:flex;align-items:center;gap:10px;min-height:40px;padding:6px 12px;border-bottom:1px solid var(--bd-soft);color:var(--fg);text-align:left}
-.files-row:last-child{border-bottom:0}.files-row:hover{background:var(--side2)}
+.files-row:last-child{border-bottom:0}@media (hover:hover){.files-row:hover{background:var(--side2)}}
 .files-row span:first-of-type{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--mono);font-size:13px}
 .files-row.dir svg{color:var(--acc-text)}
 .files-size{flex:none;color:var(--mut);font-size:12px;font-variant-numeric:tabular-nums}
@@ -543,7 +543,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 .deck-actions button{min-height:40px;padding:8px 14px;border:1px solid var(--bd);border-radius:9px;background:var(--side2);font-size:12.5px;line-height:1.4;white-space:normal}
 .deck-actions button.pri{border-color:transparent;background:var(--acc-strong);color:#fff}
 .deck-actions button.danger{color:var(--bad-text)}
-.deck-actions button:hover:not(:disabled){filter:brightness(1.15)}
+@media (hover:hover){.deck-actions button:hover:not(:disabled){filter:brightness(1.15)}}
 .deck-actions button:disabled{opacity:.5}
 .deck-toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:12px;margin-top:12px}
 .deck-port{display:flex;align-items:center;gap:8px}
@@ -716,6 +716,59 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
   .deck-toolbar .deck-actions button{flex:1}
   .deck-result{align-items:flex-start;flex-direction:column;gap:12px}
 }
+
+/* ---------- polish across devices (iPhone, iPhone Duo, iPad, Split View, desktop) ----------
+   Layout follows the width (MOBILE_QUERY); finger-sized controls and keyboard handling follow the
+   pointer; hover effects and shortcut hints follow hover, so each device gets what fits it. */
+.hub-heading h3:focus{outline:none} /* Dialogs focus their title on open, never the close button. */
+#dlg .hub-heading{border-bottom:1px solid var(--bd)}
+.git-font button{border:1px solid var(--bd);border-radius:var(--r-sm);background:var(--side2)}
+.q-options{max-width:720px}
+#quick_tabs{scroll-padding-inline:8px}
+@media (hover:none){.tab .k{display:none}}
+@media (pointer:coarse){
+  html,body{position:fixed;inset:0;width:100%;height:100%}
+  #app{position:fixed;top:var(--app-top);left:0;right:0}
+  .iconbtn,.bar .act,.deck-switch button{min-width:var(--tap);height:var(--tap)}
+  .key{min-height:40px;min-width:44px}
+  .tab{padding-top:9px;padding-bottom:9px}
+  #sheet .panel button{min-height:var(--tap)}
+  .files-up,.git-more,.git-behind button,.git-fetch,.git-tabs button,.git-font button{min-height:var(--tap)}
+  .keys:not(.expanded){flex-wrap:nowrap;overflow:hidden}
+  .keys:not(.expanded) .key-overflow{display:none!important}
+  #b_keymore.m-only{display:inline-grid!important}
+  .keys #b_keymore.all-fit{display:none!important}
+}
+@media (min-width:761px){
+  #git_dlg{width:min(1200px,calc(100vw - 64px));height:min(860px,85dvh)}
+  #files_dlg{height:min(640px,80dvh)}
+  #git_dlg>.dlg,#files_dlg>.dlg{height:100%;max-height:none}
+  #git_dlg .dlg-body,#files_dlg .dlg-body{flex:1}
+  .settings-hub .hub-card{max-width:760px}
+  body.side-collapsed aside{display:none}
+}
+@media (max-width:760px){
+  .hub-heading{padding:8px 12px 8px 20px}
+  .chk.warn code{display:block;margin-top:2px}
+}
+/* A short phone screen (a folded iPhone Duo, a pending question): the terminal keeps the room. */
+@media (max-width:760px) and (max-height:720px){
+  body.has-question .keys .key.num{display:none!important}
+  #send_state .session-status{display:none}
+  #question{padding:8px 10px}
+  .quick-tab{min-height:38px}
+}
+@media (max-width:520px){.quick-inbox .label{display:none}}
+/* 600–760 px (an unfolded iPhone Duo upright, half an iPad): phone layout, but dialogs and the menu as
+   centred cards instead of stretched edge to edge. */
+@media (min-width:600px) and (max-width:760px){
+  dialog,#inbox_dlg,#files_dlg,#git_dlg{width:min(600px,calc(100vw - 48px));height:min(calc(var(--app-h) - 48px),860px);margin:auto;border-radius:16px;border:1px solid var(--bd-soft)}
+  #confirm_dlg,#rename_dlg,#draft_dlg{height:auto}
+  dialog .dlg,#inbox_dlg .dlg,#files_dlg .dlg,#git_dlg .dlg{padding-top:0}
+  #sheet .panel,#sheet .sheet-cancel{left:auto;right:12px;width:420px}
+}
+@keyframes dlg-in{from{opacity:0;transform:translateY(4px)}}
+@media (prefers-reduced-motion:no-preference){dialog[open]{animation:dlg-in .14s ease-out}}
 </style></head><body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
   <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
@@ -732,6 +785,8 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
   <symbol id="i-pencil" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16v4zM13 7l4 4"/></symbol>
   <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></symbol>
   <symbol id="i-history" viewBox="0 0 24 24"><circle cx="6" cy="5" r="2"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="7" r="2"/><path d="M6 7v10M18 9c0 5-5 5-11 8"/></symbol>
+  <symbol id="i-arrow-left" viewBox="0 0 24 24"><path d="M19 12H5M11 6l-6 6 6 6"/></symbol>
+  <symbol id="i-sidebar" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></symbol>
   <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
   <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></symbol>
   <symbol id="i-arrow-down" viewBox="0 0 24 24"><path d="M12 5v14M6 13l6 6 6-6"/></symbol>
@@ -750,7 +805,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 </svg>
 <div id="app">
   <aside>
-    <div class="deck-switch" id="deck_switch" hidden><label for="deck_select">Agent Deck</label><select id="deck_select" onchange="switchDeck(this.value)"><option value="">Этот Agent Deck</option></select><button type="button" onclick="openSettings('network')" aria-label="Подключить Agent Deck" title="Подключить Agent Deck"><svg class="ui-icon"><use href="#i-monitor"/></svg></button></div>
+    <div class="deck-switch" id="deck_switch" hidden><label for="deck_select">Agent Deck</label><select id="deck_select" onchange="switchDeck(this.value)"><option value="">Этот компьютер</option></select><button type="button" onclick="openSettings('network')" aria-label="Подключить Agent Deck" title="Подключить Agent Deck"><svg class="ui-icon"><use href="#i-monitor"/></svg></button></div>
     <div id="srv"></div>
     <div class="side-top">
       <input id="q" class="search" placeholder="Поиск…" aria-label="Поиск…" autocomplete="off" autocapitalize="off" spellcheck="false">
@@ -765,6 +820,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
   <main>
     <div class="bar">
       <button class="iconbtn m-only" style="position:relative" onclick="drawer(true)" aria-label="Сессии"><svg class="ui-icon"><use href="#i-menu"/></svg><span id="menuBadge"></span></button>
+      <button class="iconbtn d-only" id="b_side" onclick="toggleSidebar()" aria-label="Скрыть или показать список сессий" title="Скрыть или показать список сессий"><svg class="ui-icon"><use href="#i-sidebar"/></svg></button>
       <div id="title">—</div>
       <span class="bar-tools" id="bar_tools"><button class="iconbtn" id="b_files" onclick="openFiles()" aria-label="Файлы проекта" title="Файлы проекта"><svg class="ui-icon"><use href="#i-folder"/></svg></button><button class="iconbtn" id="b_history" onclick="openHistory()" aria-label="История изменений" title="История изменений"><svg class="ui-icon"><use href="#i-history"/></svg></button></span>
       <button class="act d-only" id="b_link" title="Открыть последнюю ссылку из терминала" onclick="openLink()" style="display:none"><svg class="ui-icon"><use href="#i-link"/></svg><span>Ссылка</span></button>
@@ -785,11 +841,11 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
             <button class="key key-primary" onclick="key('Up')" aria-label="Вариант выше">↑</button><button class="key key-primary" onclick="key('Down')" aria-label="Вариант ниже">↓</button>
             <button class="key key-primary" onclick="key('Enter')" aria-label="Подтвердить выбор" title="Enter — подтвердить выбранный ответ">⏎</button>
             <button class="key key-primary m-only" id="b_keymore" onclick="toggleKeys()" aria-expanded="false" aria-label="Другие клавиши">…</button>
-            <button class="key key-extra num" onclick="key('1')">1</button><button class="key key-extra num" onclick="key('2')">2</button><button class="key key-extra num" onclick="key('3')">3</button>
+            <button class="key key-extra num" onclick="key('1')" aria-label="Вариант 1">1</button><button class="key key-extra num" onclick="key('2')" aria-label="Вариант 2">2</button><button class="key key-extra num" onclick="key('3')" aria-label="Вариант 3">3</button>
             <button class="key key-extra" onclick="key('Left')" aria-label="Влево">←</button><button class="key key-extra" onclick="key('Right')" aria-label="Вправо">→</button>
-            <button class="key key-extra" onclick="key('Escape')">Esc</button>
-            <button class="key key-extra" onclick="key('BTab')">⇧Tab</button><button class="key key-extra" onclick="key('Tab')">Tab</button>
-            <button class="key key-extra" onclick="key('C-c')">^C</button>
+            <button class="key key-extra" onclick="key('Escape')" aria-label="Отмена (Esc)" title="Отмена (Esc)">Esc</button>
+            <button class="key key-extra" onclick="key('BTab')" aria-label="Назад по полям (Shift+Tab)" title="Назад по полям (Shift+Tab)">⇧Tab</button><button class="key key-extra" onclick="key('Tab')" aria-label="Дальше по полям (Tab)" title="Дальше по полям (Tab)">Tab</button>
+            <button class="key key-extra" onclick="key('C-c')" aria-label="Прервать (Ctrl+C)" title="Прервать (Ctrl+C)">^C</button>
             <button class="key" id="b_reconnect" onclick="reconnectTerminal()" hidden>Переподключить терминал</button>
             <button class="key key-extra" id="b_wrap" onclick="toggleWrap()" aria-pressed="true">Перенос</button>
           </div>
@@ -801,7 +857,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
           <div class="inrow">
             <button class="attachbtn agent-only" id="b_attach" onclick="chooseImages()" aria-label="Приложить файл" title="Приложить файл до 200 МБ · хранится 7 дней"><svg class="ui-icon"><use href="#i-paperclip"/></svg></button>
             <textarea id="msg" rows="1" aria-label="Сообщение агенту…" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" placeholder="Сообщение агенту…" enterkeyhint="enter"></textarea>
-            <button class="sendbtn" id="b_send" onclick="send()" aria-label="Отправить"><svg class="ui-icon" style="stroke-width:2.6"><use href="#i-arrow-up"/></svg></button>
+            <button class="sendbtn" id="b_send" onclick="send()" aria-label="Отправить" title="Enter — отправить, Shift+Enter — новая строка"><svg class="ui-icon" style="stroke-width:2.6"><use href="#i-arrow-up"/></svg></button>
           </div>
           <div class="composer-status">
           <div id="send_state" class="send-state" role="status" aria-live="polite">Enter ↵ · ↑ отправить</div>
@@ -821,15 +877,15 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 <div id="sheet"><div class="scrim" onclick="sheet(false)"></div><div class="panel" role="menu" aria-labelledby="sheetCap">
   <div class="cap" id="sheetCap"></div>
   <div class="sheet-group" id="s_mode_group">
-    <button id="s_mode" onclick="sheet(false);toggleMode()"><svg class="ui-icon"><use href="#i-terminal"/></svg><span id="s_mode_label">Открыть терминал</span></button>
+    <button id="s_mode" onclick="sheet(false);toggleMode()"><svg class="ui-icon"><use href="#i-terminal"/></svg><span id="s_mode_label">Показать терминал</span></button>
+    <button onclick="sheet(false);popout()"><svg class="ui-icon"><use href="#i-external"/></svg><span>Терминал в новой вкладке</span></button>
+    <button onclick="sheet(false);termHere()"><svg class="ui-icon"><use href="#i-plus"/></svg><span>Новый терминал в этой папке</span></button>
   </div>
   <div class="sheet-group">
     <button onclick="sheet(false);openRename()"><svg class="ui-icon"><use href="#i-pencil"/></svg><span>Переименовать</span></button>
     <button id="s_link" onclick="sheet(false);openLink()"><svg class="ui-icon"><use href="#i-link"/></svg><span>Открыть ссылку из терминала</span></button>
-    <button onclick="sheet(false);termHere()"><svg class="ui-icon"><use href="#i-terminal"/></svg><span>Новый терминал в этой папке</span></button>
     <button class="agent-only" onclick="sheet(false);restart('continue')"><svg class="ui-icon"><use href="#i-restart"/></svg><span>Перезапустить, продолжив разговор</span></button>
     <button class="agent-only" onclick="sheet(false);restart('new')"><svg class="ui-icon"><use href="#i-chat-plus"/></svg><span>Перезапустить с новым разговором</span></button>
-    <button onclick="sheet(false);popout()"><svg class="ui-icon"><use href="#i-external"/></svg><span>Терминал в новой вкладке</span></button>
   </div>
   <div class="sheet-group">
     <button onclick="sheet(false);openNew()"><svg class="ui-icon"><use href="#i-plus"/></svg><span>Новая сессия</span></button>
@@ -851,14 +907,14 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
   <div class="viewer-bar"><span id="viewer_caption"></span><a id="viewer_open" target="_blank" rel="noopener">Открыть оригинал</a></div>
 </div>
 <dialog id="confirm_dlg"><form class="dlg" method="dialog"><div class="dlg-body"><h3 id="confirm_title"></h3><p id="confirm_text"></p></div><div class="acts"><button value="cancel">Отмена</button><button value="ok" class="pri" id="confirm_ok">OK</button></div></form></dialog>
-<dialog id="git_dlg"><div class="dlg"><div class="hub-heading"><h3>История изменений</h3><button type="button" onclick="clearTimeout(hist.timer);$('git_dlg').close()" aria-label="Закрыть"><svg class="ui-icon"><use href="#i-x"/></svg></button></div><div class="git-tabs" id="git_tabs" role="tablist"><button type="button" role="tab" data-tab="commits" onclick="historyTab('commits')">Коммиты</button><button type="button" role="tab" data-tab="groups" onclick="historyTab('groups')">Группы фич</button><span class="git-font"><button type="button" onclick="codeFont(-1)" aria-label="Уменьшить шрифт">A−</button><button type="button" onclick="codeFont(1)" aria-label="Увеличить шрифт">A+</button></span></div><div class="dlg-body" id="git_body"></div></div></dialog>
-<dialog id="files_dlg"><div class="dlg"><div class="hub-heading"><h3>Файлы проекта</h3><button type="button" onclick="closeFiles()" aria-label="Закрыть"><svg class="ui-icon"><use href="#i-x"/></svg></button></div><div class="dlg-body" id="files_body"></div></div></dialog>
-<dialog id="inbox_dlg"><div class="dlg"><div class="hub-heading"><h3>Ждут ответа</h3><button type="button" onclick="$('inbox_dlg').close()" aria-label="Закрыть"><svg class="ui-icon"><use href="#i-x"/></svg></button></div><div class="dlg-body" id="inbox_list"></div></div></dialog>
+<dialog id="git_dlg"><div class="dlg"><div class="hub-heading"><h3 tabindex="-1" autofocus>История изменений</h3><button type="button" onclick="clearTimeout(hist.timer);$('git_dlg').close()" aria-label="Закрыть"><svg class="ui-icon"><use href="#i-x"/></svg></button></div><div class="git-tabs" id="git_tabs" role="tablist"><button type="button" role="tab" data-tab="commits" onclick="historyTab('commits')">Коммиты</button><button type="button" role="tab" data-tab="groups" onclick="historyTab('groups')">Группы фич</button><span class="git-font"><button type="button" onclick="codeFont(-1)" aria-label="Уменьшить шрифт">A−</button><button type="button" onclick="codeFont(1)" aria-label="Увеличить шрифт">A+</button></span></div><div class="dlg-body" id="git_body"></div></div></dialog>
+<dialog id="files_dlg"><div class="dlg"><div class="hub-heading"><h3 tabindex="-1" autofocus>Файлы проекта</h3><button type="button" onclick="closeFiles()" aria-label="Закрыть"><svg class="ui-icon"><use href="#i-x"/></svg></button></div><div class="dlg-body" id="files_body"></div></div></dialog>
+<dialog id="inbox_dlg"><div class="dlg"><div class="hub-heading"><h3 tabindex="-1" autofocus>Ждут ответа</h3><button type="button" onclick="$('inbox_dlg').close()" aria-label="Закрыть"><svg class="ui-icon"><use href="#i-x"/></svg></button></div><div class="dlg-body" id="inbox_list"></div></div></dialog>
 <dialog id="draft_dlg"><div class="dlg"><div class="dlg-body"><h3>Черновики закрытых сессий</h3><div id="closed_drafts"></div></div><div class="acts"><button type="button" onclick="$('draft_dlg').close()">Закрыть</button></div></div></dialog>
 
 <dialog id="dlg"><form class="dlg" method="dialog" onsubmit="event.preventDefault();createSession()">
+  <div class="hub-heading"><h3 tabindex="-1" autofocus>Новая сессия</h3><button type="button" onclick="$('dlg').close()" aria-label="Закрыть"><svg class="ui-icon"><use href="#i-x"/></svg></button></div>
   <div class="dlg-body">
-    <h3>Новая сессия</h3>
     <div class="agsel" id="agsel" role="group" aria-label="Агент">
       <button type="button" data-a="claude" class="on" onclick="pickAgent('claude')"><span class="ag claude">✻</span><span>Claude</span></button>
       <button type="button" data-a="codex" onclick="pickAgent('codex')"><span class="ag codex">◎</span><span>Codex</span></button>
@@ -869,7 +925,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
     <div id="source_row"><label for="n_source">Источник модели</label><select id="n_source"></select><button type="button" onclick="configureSource()">Настроить модели</button></div>
     <div class="two">
       <div><label for="n_name">Имя сессии</label><input type="text" id="n_name" placeholder="myapp-auth" autocapitalize="off" autocorrect="off" spellcheck="false" required></div>
-      <div><label for="n_proj">Проект (~/projects)</label><input type="text" id="n_proj" list="projlist" placeholder="= имя" autocapitalize="off" autocorrect="off" spellcheck="false"><datalist id="projlist"></datalist></div>
+      <div><label for="n_proj">Папка проекта</label><input type="text" id="n_proj" list="projlist" placeholder="как имя сессии" autocapitalize="off" autocorrect="off" spellcheck="false"><datalist id="projlist"></datalist></div>
     </div>
     <div class="gh" id="gh">
       <div class="gh-head"><span id="gh_state">GitHub…</span><button type="button" id="gh_refresh" onclick="loadRepos(true)" style="display:none">обновить</button></div>
@@ -889,7 +945,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 
 <dialog id="rename_dlg"><form class="dlg" onsubmit="event.preventDefault();saveSessionTitle()"><div class="dlg-body"><h3>Переименовать сессию</h3><label for="session_title">Название</label><input type="text" id="session_title" required maxlength="100"></div><div class="acts"><button type="button" onclick="$('rename_dlg').close()">Отмена</button><button class="pri" id="rename_save">Сохранить</button></div></form></dialog>
 <dialog id="settings_dlg"><div class="dlg settings-hub">
-  <div class="hub-heading"><h3>Настройки</h3><button type="button" onclick="$('settings_dlg').close()" aria-label="Закрыть"><svg class="ui-icon"><use href="#i-x"/></svg></button></div>
+  <div class="hub-heading"><h3 tabindex="-1" autofocus>Настройки</h3><button type="button" onclick="$('settings_dlg').close()" aria-label="Закрыть"><svg class="ui-icon"><use href="#i-x"/></svg></button></div>
   <nav class="hub-nav" aria-label="Настройки">
     <button type="button" data-section="agents" onclick="settingsSection('agents')">Агенты</button>
     <button type="button" data-section="models" onclick="settingsSection('models')">Модели</button>
@@ -946,8 +1002,8 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
     </form></div>
     </section>
     <section id="hub_network">
-      <form class="hub-card" onsubmit="event.preventDefault();saveNetwork()"><h4>Сеть и адрес панели</h4><p><span>Адрес в браузере</span>: <span id="network_browser"></span></p><p><span>Панель слушает</span>: <span id="network_bind"></span></p><label for="network_name">Название этого Agent Deck</label><input type="text" id="network_name" required maxlength="100"><label for="network_public_url">Публичный адрес</label><input type="url" id="network_public_url" placeholder="https://agents.example.com"><p>Для доступа по этому адресу домен и HTTPS должны быть настроены на сервере.</p><label class="chk"><input type="checkbox" id="network_isolate"><span>Изолировать терминалы других компьютеров</span></label><p>Страница терминала подключённого компьютера открывается в песочнице и не получает доступа к этой панели. В таких терминалах не работают ⌥1…9, копирование выделения и свайп меню.</p><div class="acts"><button class="pri" id="network_save">Сохранить</button></div></form>
-      <div class="hub-card"><h4>Другие Agent Deck</h4><p>Управляйте другими компьютерами через этот сервер.</p><div id="fleet_bar" class="fleet-bar"></div><div id="deck_connections"></div>
+      <form class="hub-card" onsubmit="event.preventDefault();saveNetwork()"><h4>Сеть и адрес панели</h4><p><span>Адрес в браузере</span>: <span id="network_browser"></span></p><p><span>Панель слушает</span>: <span id="network_bind"></span></p><label for="network_name">Название этого компьютера</label><input type="text" id="network_name" required maxlength="100"><label for="network_public_url">Публичный адрес</label><input type="url" id="network_public_url" placeholder="https://agents.example.com"><p>Для доступа по этому адресу домен и HTTPS должны быть настроены на сервере.</p><label class="chk"><input type="checkbox" id="network_isolate"><span>Изолировать терминалы других компьютеров</span></label><p>Страница терминала подключённого компьютера открывается в песочнице и не получает доступа к этой панели. В таких терминалах не работают ⌥1…9, копирование выделения и свайп меню.</p><div class="acts"><button class="pri" id="network_save">Сохранить</button></div></form>
+      <div class="hub-card"><h4>Другие компьютеры</h4><p>Управляйте другими компьютерами через этот сервер.</p><div id="fleet_bar" class="fleet-bar"></div><div id="deck_connections"></div>
         <div class="deck-toolbar"><div class="deck-port"><label for="deck_port">Порт</label><input type="number" id="deck_port" min="1" max="65535" value="8790"></div><div class="deck-actions"><button type="button" id="deck_discover" onclick="discoverDecks()">Обнаружить</button><button type="button" onclick="editDeck()">Подключить</button></div></div><p id="deck_discovery_status"></p><div id="deck_discovery_results"></div>
         <details id="deck_editor"><summary>Подключение Agent Deck</summary><form onsubmit="event.preventDefault();saveDeck()"><input type="hidden" id="deck_id"><label for="deck_name">Название</label><input type="text" id="deck_name" required maxlength="100"><label for="deck_url">Адрес Tailscale</label><input type="url" id="deck_url" required placeholder="http://100.68.39.62:8790"><label for="deck_username">Логин</label><input type="text" id="deck_username" required autocomplete="off"><label for="deck_password">Пароль</label><input type="password" id="deck_password" autocomplete="new-password"><p>Пароль хранится на основном сервере. Пустое поле сохраняет пароль существующего подключения.</p><button class="pri" id="deck_save">Подключить</button></form></details>
       </div>
@@ -1849,7 +1905,7 @@ function filesDirty(){return Boolean(files.file&&files.file.content!==files.file
 
 async function openFiles(){
   if(!active)return;
-  files.session=active;files.file=null;files.listing=null;
+  files.session=active;files.file=null;files.listing=null;files.creating=false;
   if(!$("files_dlg").open)$("files_dlg").showModal();
   await loadFolder("");
 }
@@ -1893,7 +1949,7 @@ function newFile(name){
   name=name.trim();
   if(!name||name.includes("/")||name==="."||name===".."){toast(tr("Введите имя файла без папок"));return}
   const folder=files.listing.path;
-  files.file={path:folder+"/"+name,content:"",saved:"",hash:null,isNew:true};renderFiles();
+  files.creating=false;files.file={path:folder+"/"+name,content:"",saved:"",hash:null,isNew:true};renderFiles();
 }
 async function closeFiles(){if(!files.file||await leaveFile())$("files_dlg").close()}
 function fontButton(label,name,step){const b=fileButton(label,"",()=>codeFont(step));b.setAttribute("aria-label",name);return b}
@@ -1908,11 +1964,16 @@ function renderFiles(){
   if(files.file)return renderEditor(box,listing);
   const crumbs=el("div","files-path",el("code","",homeRelative(listing.path,listing.home)));
   if(listing.parent)crumbs.prepend(fileButton(tr("Вверх"),"files-up",()=>loadFolder(listing.parent),"arrow-up"));
-  const create=el("form","files-new");
-  const input=el("input","");input.type="text";input.placeholder=tr("Имя нового файла, например .env");
-  input.setAttribute("autocapitalize","none");input.setAttribute("autocorrect","off");input.spellcheck=false;
-  create.append(input,fileButton(tr("Создать"),"",()=>newFile(input.value),"plus"));
-  create.onsubmit=e=>{e.preventDefault();newFile(input.value)};
+  // Creating a file is occasional: a small button in the path row, the name field only once asked for.
+  let create;
+  if(files.creating){
+    create=el("form","files-new");
+    const input=el("input","");input.type="text";input.placeholder=tr("Новый файл");
+    input.setAttribute("autocapitalize","none");input.setAttribute("autocorrect","off");input.spellcheck=false;input.setAttribute("aria-label",tr("Новый файл"));
+    create.append(input,fileButton(tr("Создать"),"",()=>newFile(input.value),"plus"));
+    create.onsubmit=e=>{e.preventDefault();newFile(input.value)};
+    setTimeout(()=>input.focus(),0);
+  }else crumbs.append(fileButton(tr("Файл"),"files-up files-add",()=>{files.creating=true;renderFiles()},"plus"));
   const list=el("div","files-list");
   for(const entry of listing.entries){
     const path=listing.path+"/"+entry.name;
@@ -1922,7 +1983,7 @@ function renderFiles(){
   }
   if(!listing.entries.length)list.append(el("p","files-empty",tr("Папка пуста")));
   if(listing.truncated)list.append(el("p","files-empty",tr("Показаны первые 2000 элементов")));
-  box.append(crumbs,create,list);
+  box.append(...[crumbs,create,list].filter(Boolean));
 }
 // Files open for reading: wrapped lines with numbers, selectable without the keyboard popping up and the
 // layout jumping. Editing is a separate step, and a new file starts in it.
@@ -2110,7 +2171,8 @@ function errorWithRetry(message,retry){
   const again=fileButton(tr("Повторить"),"",retry,"refresh");
   return el("div","git-error",el("p","diff-note",message||tr("Не удалось загрузить")),again);
 }
-function backButton(label,run){const b=fileButton(label,"files-up",run,"arrow-up");return el("div","files-path",b)}
+// Back to the previous view points left; "Up" (a parent folder) keeps its up arrow.
+function backButton(label,run){const b=fileButton(label,"files-up",run,"arrow-left");return el("div","files-path",b)}
 function renderHistoryView(box){
   const view=hist.view;
   const leave=()=>{if(view.back)showGroup(view.back);else{hist.view=null;renderHistory()}};
@@ -2196,6 +2258,12 @@ const UI_REVISION="__PANEL_REVISION__";
 // Phone landscape (932×430 on a Pro Max) keeps the phone layout; keep in sync with the mobile block in style.css.
 const MOBILE_QUERY="(max-width:760px),(pointer:coarse) and (max-height:500px)";
 const isMobile=()=>matchMedia(MOBILE_QUERY).matches;
+// Layout follows the width; touch handling follows the pointer, so an iPad or an unfolded iPhone in the
+// wide layout still gets finger-sized controls, keyboard handling and the Screen view by default.
+const isTouch=()=>matchMedia("(pointer:coarse)").matches;
+const modKey=()=>/Mac|iPhone|iPad/.test(navigator.platform||navigator.userAgent)?"⌥":"Alt+";
+let lastPointer="mouse";
+addEventListener("pointerdown",e=>{lastPointer=e.pointerType},true);
 let sessions=[],active=null,mode=null,clockSkew=0;
 const frames=new Map(),wasBusy=new Map(),attention=new Set();
 
@@ -2204,7 +2272,7 @@ function fitViewport(){
   const vv=window.visualViewport;if(!vv)return;
   if(Math.abs(vv.scale-1)>0.01)return; // Pinch zoom must not resize the document layout.
   const root=document.documentElement;
-  const keyboard=isMobile()&&Math.abs(vv.scale-1)<0.01&&root.clientHeight-vv.height>150;
+  const keyboard=(isMobile()||isTouch())&&Math.abs(vv.scale-1)<0.01&&root.clientHeight-vv.height>150;
   // Keep controls inside the web view: the OS-owned strip below an installed
   // app is outside its drawable viewport, even when screen.height is larger.
   root.style.setProperty("--app-h",vv.height+"px");
@@ -2324,7 +2392,7 @@ function stateText(s){
 }
 function el(tag,cls,...kids){const e=document.createElement(tag);if(cls)e.className=cls;e.append(...kids);return e}
 const shortPath=p=>p.replace(/^.*\/(?:projects|dev)\//,"~/").replace(/\.worktrees\//,"⎇ ");
-const curMode=()=>mode||(isMobile()?"screen":"term");
+const curMode=()=>mode||(isMobile()||isTouch()?"screen":"term");
 
 function drawer(on){document.body.classList.toggle("drawer",on);if(on)$("q").blur()}
 const drawerSwipe={panel:document.querySelector("aside"),isOpen:()=>document.body.classList.contains("drawer"),setOpen:on=>drawer(on),
@@ -2335,7 +2403,7 @@ function sheet(on){
     const s=cur(),groups=$("sheet").querySelectorAll(".sheet-group");
     $("sheetCap").textContent=s?sessionTitle(s):"Agent Deck";
     groups[0].hidden=groups[1].hidden=groups[3].hidden=!s;
-    $("s_mode_label").textContent=curMode()==="term"?tr("Показать экран"):tr("Открыть терминал");
+    $("s_mode_label").textContent=curMode()==="term"?tr("Показать экран"):tr("Показать терминал");
     $("s_mode").querySelector("use").setAttribute("href",curMode()==="term"?"#i-file":"#i-terminal");
     $("s_link").style.display=lastUrl(s)?"":"none";
   }
@@ -2343,7 +2411,7 @@ function sheet(on){
   $("sheet").classList.toggle("on",on);
   $("b_actions").setAttribute("aria-expanded",String(on));
   // Keyboard users land in the menu and return to its button; taps keep focus where it was.
-  if(on&&!wasOpen&&!isMobile())[...$("sheet").querySelectorAll(".panel button")].find(b=>b.offsetParent)?.focus();
+  if(on&&!wasOpen&&lastPointer!=="touch"&&!isMobile())[...$("sheet").querySelectorAll(".panel button")].find(b=>b.offsetParent)?.focus();
   if(!on&&wasOpen&&$("sheet").contains(document.activeElement))$("b_actions").focus();
 }
 for(const item of $("sheet").querySelectorAll(".panel button"))item.setAttribute("role","menuitem");
@@ -2425,6 +2493,11 @@ function onLongPress(node,run){
   node.addEventListener("contextmenu",e=>e.preventDefault());
 }
 
+// A pending question is the state that needs you most, so the list says so, not only the inbox count.
+function waitingFor(deck,name){
+  if((deck||"")===selectedDeck&&name===active&&question.data)return true;
+  return inbox.questions.some(q=>(q.deck||"")===(deck||"")&&q.session===name);
+}
 function renderTabs(){
   renderQuickTabs();
   const q=$("q").value.trim().toLowerCase(),view=$("tabs"),box=document.createElement("div");
@@ -2442,12 +2515,12 @@ function renderTabs(){
     const t=el("div","tab"+(s.name===active?" on":""));
     const dot=el("span","dot "+st);dot.title=stateText(s);
     // State is spelled out next to the path so it does not depend on the dot colour alone.
-    const word=attention.has(s.name)?["ready",tr("готово")]:st==="busy"?["busy",tr("работает")]:st==="off"?["off",tr("остановлен")]:null;
+    const word=waitingFor(selectedDeck,s.name)?["ask",tr("ждёт ответа")]:attention.has(s.name)?["ready",tr("готово")]:st==="busy"?["busy",tr("работает")]:st==="off"?["off",tr("остановлен")]:null;
     const sub=el("div","s",...(word?[el("span","state "+word[0],word[1])," · "]:[]),shortPath(s.path));
     t.append(dot,agentIcon(s),el("div","t",el("div","n",sessionTitle(s)),...(isLocal(s)?[el("div","s session-source",agentLabel(s))]:[]),sub));
     t.title=isLocal(s)?s.source.model+" · "+localComputer(s):s.name;
     if(attention.has(s.name))t.append(el("span","bell"));
-    else if(i<10)t.append(el("span","k","⌥"+i));
+    else if(i<10)t.append(el("span","k",modKey()+i));
     t.dataset.session=s.name;t.onclick=()=>select(s.name);
     t.tabIndex=0;t.setAttribute("role","button");if(s.name===active)t.setAttribute("aria-current","true");
     t.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();select(s.name)}};
@@ -2501,7 +2574,7 @@ function show(){
   placeSessionKeys({row:$("session_keys"),composer:$("session_composer"),screen:$("screen"),terminal:$("terminal_keys"),wrap:$("b_wrap"),reconnect:$("b_reconnect"),mode:m,active:!!s});
   $("screen").classList.toggle("on",!!s&&m==="screen");
   $("term_loading").hidden=!(s&&m==="term"&&frameFor(active).dataset.loading);
-  if(s&&m==="term"){const f=frameFor(active);f.classList.add("on");f.inert=isLocal(s)&&!s.running;if(!isMobile()&&!f.inert)setTimeout(()=>{try{f.contentWindow.focus();f.contentWindow.term&&f.contentWindow.term.focus()}catch(e){}},30)}
+  if(s&&m==="term"){const f=frameFor(active);f.classList.add("on");f.inert=isLocal(s)&&!s.running;if(!isMobile()&&!isTouch()&&!f.inert&&document.activeElement!==$("msg"))setTimeout(()=>{try{f.contentWindow.focus();f.contentWindow.term&&f.contentWindow.term.focus()}catch(e){}},30)}
   if(s&&m==="screen")updateScreen(s,true);
   updateLink();fitKeys();
 }
@@ -2632,6 +2705,8 @@ function saveQuestionDraft(){
 }
 function renderQuestion(){
   const data=question.name===active?question.data:null;
+  // The card's own buttons answer; the 1/2/3 keys would only repeat them on a short screen.
+  document.body.classList.toggle("has-question",Boolean(data));
   // Typing an answer must not be wiped by the 2.5 s refresh, so an open text field pauses re-rendering.
   if($("question").querySelector(".q-text textarea:focus"))return;
   renderQuestionCard({box:$("question"),question:data,expanded:question.expanded,busyIndex:question.busy,textIndex:question.textIndex,textDraft:question.textDraft||"",translate:tr,
@@ -2844,7 +2919,7 @@ function fitKeys(){
   const box=$("keys"),more=$("b_keymore"),keys=[...box.children].filter(k=>k!==more);
   for(const k of keys)k.classList.remove("key-overflow");
   more.classList.remove("all-fit");
-  if(!isMobile()||box.classList.contains("expanded")||!box.clientWidth)return;
+  if(!(isMobile()||isTouch())||box.classList.contains("expanded")||!box.clientWidth)return;
   if(box.scrollWidth<=box.clientWidth){more.classList.add("all-fit");return}
   // Hide from the end so the answer keys (↑ ↓ ⏎) stay reachable on the narrowest screens.
   for(const k of keys.reverse()){if(box.scrollWidth<=box.clientWidth)break;if(k.offsetParent)k.classList.add("key-overflow")}
@@ -3025,11 +3100,11 @@ async function loadDeckSettings(){
 let deckDirectory={decks:[],name:"",network:{}},otherDecks=[],loadingOthers=false,deckOpen={};
 const otherBusy=new Map(),otherAttention=new Set();
 try{deckOpen=JSON.parse(localStore.getItem("cc.deck-open")||"{}")||{}}catch(e){}
-const currentDeckName=()=>selectedDeck?deckDirectory.decks.find(d=>d.id===selectedDeck)?.name||"Agent Deck":deckDirectory.name||tr("Этот Agent Deck");
+const currentDeckName=()=>selectedDeck?deckDirectory.decks.find(d=>d.id===selectedDeck)?.name||"Agent Deck":deckDirectory.name||tr("Этот компьютер");
 async function loadOtherDecks(){
   if(document.hidden||loadingOthers||!deckDirectory.decks.length){if(!deckDirectory.decks.length&&otherDecks.length){otherDecks=[];renderTabs()}return}
   loadingOthers=true;const epoch=deckEpoch;
-  const targets=[{id:"",name:deckDirectory.name||tr("Этот Agent Deck")},...deckDirectory.decks.map(d=>({id:d.id,name:d.name}))].filter(d=>d.id!==selectedDeck);
+  const targets=[{id:"",name:deckDirectory.name||tr("Этот компьютер")},...deckDirectory.decks.map(d=>({id:d.id,name:d.name}))].filter(d=>d.id!==selectedDeck);
   try{
     const loaded=await Promise.all(targets.map(async d=>{
       // Lists come without previews: only names and states travel through the gateway.
@@ -3066,7 +3141,7 @@ function renderDeckSection(box,deck,q){
   box.append(deckHeader({...deck,count:list.length},false));
   if(deckOpen[deck.id||"local"]===false)return;
   for(const s of list){
-    const st=state(s),word=st==="busy"?["busy",tr("работает")]:st==="off"?["off",tr("остановлен")]:null;
+    const st=state(s),word=waitingFor(deck.id,s.name)?["ask",tr("ждёт ответа")]:st==="busy"?["busy",tr("работает")]:st==="off"?["off",tr("остановлен")]:null;
     const t=el("div","tab remote",el("span","dot "+st),agentIcon(s),el("div","t",el("div","n",sessionTitle(s)),
       el("div","s",...(word?[el("span","state "+word[0],word[1])," · "]:[]),shortPath(s.path))));
     if(otherAttention.has(deck.id+"/"+s.name))t.append(el("span","bell"));
@@ -3418,10 +3493,11 @@ $("n_git").addEventListener("input",renderAdvanced);
 
 /* ⌥1..9 — табы, ⌥↑/⌥↓ — пред./след., ⌥T — новая (работает и внутри терминала) */
 function hotkeys(e){
+  if(!e.altKey&&!e.ctrlKey&&!e.metaKey&&answerByDigit(e))return;
   if(!e.altKey||e.ctrlKey||e.metaKey)return;
   const vis=[...$("tabs").querySelectorAll(".tab:not(.remote)")].map(t=>t.dataset.session);
   let target=null;
-  if(/^Digit[1-9]$/.test(e.code)){
+  if(/^Digit[1-9]$/.test(e.code)&&!e.shiftKey){
     // Non-US Mac layouts type [ ] { } | etc. with Option+digit; keep those characters.
     if(/^[!-\/:-@\[-`{-~]$/.test(e.key))return;
     target=vis[+e.code.slice(5)-1];
@@ -3431,14 +3507,39 @@ function hotkeys(e){
   else return;
   e.preventDefault();e.stopPropagation();if(target)select(target);
 }
+// The numbers on a question card's options answer it, as they would in the terminal, unless you are typing.
+function answerByDigit(e){
+  const data=question.name===active?question.data:null,target=e.target;
+  if(!data||!/^Digit[1-9]$/.test(e.code)||question.busy!==null||document.querySelector("dialog[open]"))return false;
+  if(target&&(target.closest?.("input,textarea,select,[contenteditable]")||target.tagName==="IFRAME"))return false;
+  const index=+e.code.slice(5)-1,option=data.options[index];
+  if(!option||option.text)return false;
+  e.preventDefault();e.stopPropagation();answerQuestion(index);return true;
+}
 addEventListener("keydown",hotkeys,true);
+// Wide layouts can fold the sidebar away for more room; remembered in this browser.
+function toggleSidebar(){
+  const on=!document.body.classList.contains("side-collapsed");
+  document.body.classList.toggle("side-collapsed",on);
+  try{localStore.setItem("cc.side-collapsed",on?"1":"")}catch(e){}
+}
+try{if(localStore.getItem("cc.side-collapsed"))document.body.classList.add("side-collapsed")}catch(e){}
 // A notification fallback (or a pasted link) can change only the #session part of the address.
 addEventListener("hashchange",()=>{
   let name="";try{name=decodeURIComponent(location.hash.slice(1))}catch(e){}
   if(name&&name!==active)select(name);
 });
 let lastMobile=isMobile();
-addEventListener("resize",()=>{if(isMobile()!==lastMobile){lastMobile=isMobile();try{mode=deckLocalStorage.getItem("cc.mode."+(lastMobile?"m":"d"))}catch(e){mode=null}show()}});
+addEventListener("resize",()=>{
+  if(isMobile()!==lastMobile){
+    lastMobile=isMobile();
+    // Folding, unfolding or rotating switches layouts: an open drawer or menu would be left behind.
+    drawer(false);sheet(false);
+    try{mode=deckLocalStorage.getItem("cc.mode."+(lastMobile?"m":"d"))}catch(e){mode=null}
+    show();
+  }
+  fitViewport();fitKeys();
+});
 
 /* Update installed home-screen pages too, without interrupting input. */
 let checkingVersion=false;

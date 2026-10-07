@@ -621,6 +621,22 @@
     "Панель не ответила за {0} с": "The panel did not answer within {0} s",
     "Повторить": "Retry",
     "Не удалось загрузить": "Could not load",
-    "В tmux пока нет текста. Терминал открывается в меню ⋯.": "No text in tmux yet. The terminal opens from the ⋯ menu."
+    "В tmux пока нет текста. Терминал открывается в меню ⋯.": "No text in tmux yet. The terminal opens from the ⋯ menu.",
+    "Показать терминал": "Show the terminal",
+    "Папка проекта": "Project folder",
+    "как имя сессии": "same as the session name",
+    "Название этого компьютера": "Name of this computer",
+    "Другие компьютеры": "Other computers",
+    "Вариант 1": "Option 1",
+    "Вариант 2": "Option 2",
+    "Вариант 3": "Option 3",
+    "Отмена (Esc)": "Cancel (Esc)",
+    "Назад по полям (Shift+Tab)": "Previous field (Shift+Tab)",
+    "Дальше по полям (Tab)": "Next field (Tab)",
+    "Прервать (Ctrl+C)": "Interrupt (Ctrl+C)",
+    "Enter — отправить, Shift+Enter — новая строка": "Enter sends, Shift+Enter adds a line",
+    "ждёт ответа": "waiting for an answer",
+    "Скрыть или показать список сессий": "Hide or show the session list",
+    "Новый файл": "New file"
   }
 }

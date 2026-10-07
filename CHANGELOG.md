@@ -2,6 +2,19 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.19.0 — 2026-10-07
+
+Design polish from a review on iPhone, iPhone Duo (folded and unfolded), iPad (portrait, landscape, Split View) and desktop.
+
+- **Touch follows the screen, not the width:** iPad and an unfolded iPhone Duo keep the wide layout but now get finger-sized controls, iOS keyboard handling, the Screen view by default, a key row that never wraps, and no sticky hover highlights or ⌥ hints without a keyboard. Dialogs and the menu no longer open with a focus ring after a tap.
+- **Short screens** (a folded iPhone Duo): with a question pending the 1/2/3 keys hide (the card answers), the quota line steps aside for the terminal, and the Waiting for you tab is just its icon and count on narrow phones.
+- **600–760 px** (an unfolded iPhone Duo upright, half an iPad): dialogs and the ⋯ menu are centred cards instead of stretched edge to edge.
+- **Large screens:** question options no longer stretch across the whole screen, Change history is wider with a fixed height, Project files keeps its height between folders, settings cards have a readable width, and the session list can be hidden with the new sidebar button (remembered).
+- **Sessions waiting for an answer** are marked "waiting for an answer" in the sidebar, also for other computers; on desktop the digits 1–9 answer the visible question card unless you are typing.
+- Dialogs: New session has the same header with ✕ as the others; going back in Change history points left; A− / A+ look like buttons; dialogs open with a subtle fade (off with reduced motion).
+- ⋯ menu: everything about the terminal (show it, open in a new tab, new terminal here) is in one group.
+- Copy and small fixes: one word "computer" in Network ("Name of this computer", "Other computers"); "Project folder" in New session; the skip-permissions flag no longer breaks mid-word; "Connect GitHub" is secondary to "Create"; quick keys have labels for screen readers; shortcuts show Alt+ outside Apple devices; commit messages read in the regular font; Project files creates a file from a small "+ File" button.
+
 ## 1.18.1 — 2026-10-06
 
 Fixes from a review of today's changes.

@@ -12,7 +12,7 @@ function filesDirty(){return Boolean(files.file&&files.file.content!==files.file
 
 async function openFiles(){
   if(!active)return;
-  files.session=active;files.file=null;files.listing=null;
+  files.session=active;files.file=null;files.listing=null;files.creating=false;
   if(!$("files_dlg").open)$("files_dlg").showModal();
   await loadFolder("");
 }
@@ -56,7 +56,7 @@ function newFile(name){
   name=name.trim();
   if(!name||name.includes("/")||name==="."||name===".."){toast(tr("Введите имя файла без папок"));return}
   const folder=files.listing.path;
-  files.file={path:folder+"/"+name,content:"",saved:"",hash:null,isNew:true};renderFiles();
+  files.creating=false;files.file={path:folder+"/"+name,content:"",saved:"",hash:null,isNew:true};renderFiles();
 }
 async function closeFiles(){if(!files.file||await leaveFile())$("files_dlg").close()}
 function fontButton(label,name,step){const b=fileButton(label,"",()=>codeFont(step));b.setAttribute("aria-label",name);return b}
@@ -71,11 +71,16 @@ function renderFiles(){
   if(files.file)return renderEditor(box,listing);
   const crumbs=el("div","files-path",el("code","",homeRelative(listing.path,listing.home)));
   if(listing.parent)crumbs.prepend(fileButton(tr("Вверх"),"files-up",()=>loadFolder(listing.parent),"arrow-up"));
-  const create=el("form","files-new");
-  const input=el("input","");input.type="text";input.placeholder=tr("Имя нового файла, например .env");
-  input.setAttribute("autocapitalize","none");input.setAttribute("autocorrect","off");input.spellcheck=false;
-  create.append(input,fileButton(tr("Создать"),"",()=>newFile(input.value),"plus"));
-  create.onsubmit=e=>{e.preventDefault();newFile(input.value)};
+  // Creating a file is occasional: a small button in the path row, the name field only once asked for.
+  let create;
+  if(files.creating){
+    create=el("form","files-new");
+    const input=el("input","");input.type="text";input.placeholder=tr("Новый файл");
+    input.setAttribute("autocapitalize","none");input.setAttribute("autocorrect","off");input.spellcheck=false;input.setAttribute("aria-label",tr("Новый файл"));
+    create.append(input,fileButton(tr("Создать"),"",()=>newFile(input.value),"plus"));
+    create.onsubmit=e=>{e.preventDefault();newFile(input.value)};
+    setTimeout(()=>input.focus(),0);
+  }else crumbs.append(fileButton(tr("Файл"),"files-up files-add",()=>{files.creating=true;renderFiles()},"plus"));
   const list=el("div","files-list");
   for(const entry of listing.entries){
     const path=listing.path+"/"+entry.name;
@@ -85,7 +90,7 @@ function renderFiles(){
   }
   if(!listing.entries.length)list.append(el("p","files-empty",tr("Папка пуста")));
   if(listing.truncated)list.append(el("p","files-empty",tr("Показаны первые 2000 элементов")));
-  box.append(crumbs,create,list);
+  box.append(...[crumbs,create,list].filter(Boolean));
 }
 // Files open for reading: wrapped lines with numbers, selectable without the keyboard popping up and the
 // layout jumping. Editing is a separate step, and a new file starts in it.

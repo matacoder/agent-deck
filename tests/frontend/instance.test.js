@@ -257,6 +257,28 @@ test('a folder that cannot be listed offers a retry instead of loading forever',
   }finally{window.close()}
 });
 
+test('a pending question marks its session in the list and the digits answer it',async()=>{
+  const state={local:()=>({sessions:[session('alpha'),session('beta')]})};
+  const routes=routesFor(state),answers=[];
+  routes['/api/question']=url=>url.searchParams.get('name')==='alpha'?{question:{id:'q1',title:'Deploy?',progress:'',selected:0,options:[{label:'Yes',text:false},{label:'No',text:false},{label:'Type something',text:true}]}}:{question:null};
+  routes['/api/answer']=(url,options)=>{answers.push(JSON.parse(options.body));return {ok:true}};
+  const window=boot(routes);
+  try{
+  await settle();await settle();
+  window.eval('select("alpha");loadQuestion()');
+  for(let i=0;i<20&&!window.document.querySelector('#question .q-opt');i++)await settle();
+  window.eval('renderTabs()');
+  const state=name=>window.document.querySelector(`#tabs [data-session="${name}"] .state`)?.className||'';
+  expect(state('alpha')).toContain('ask');
+  expect(state('beta')).not.toContain('ask');
+  const press=code=>window.dispatchEvent(new window.KeyboardEvent('keydown',{code,key:code.slice(-1),bubbles:true}));
+  press('Digit3');await settle();  // A free-text option is never answered blindly.
+  expect(answers).toEqual([]);
+  press('Digit2');await settle();
+  expect(answers).toEqual([{name:'alpha',id:'q1',index:1}]);
+  }finally{window.close()}
+});
+
 test('tapping a notification opens its session on cold start and when the app resumes',async()=>{
   const state={local:()=>({sessions:[session('alpha',{activity:9}),session('api')]})};
   const window=boot(routesFor(state),{deck:'',session:'api'});

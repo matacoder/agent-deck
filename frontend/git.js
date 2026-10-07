@@ -147,7 +147,8 @@ function errorWithRetry(message,retry){
   const again=fileButton(tr("Повторить"),"",retry,"refresh");
   return el("div","git-error",el("p","diff-note",message||tr("Не удалось загрузить")),again);
 }
-function backButton(label,run){const b=fileButton(label,"files-up",run,"arrow-up");return el("div","files-path",b)}
+// Back to the previous view points left; "Up" (a parent folder) keeps its up arrow.
+function backButton(label,run){const b=fileButton(label,"files-up",run,"arrow-left");return el("div","files-path",b)}
 function renderHistoryView(box){
   const view=hist.view;
   const leave=()=>{if(view.back)showGroup(view.back);else{hist.view=null;renderHistory()}};
