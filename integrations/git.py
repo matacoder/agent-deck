@@ -1,4 +1,4 @@
-"""Read-only git history of a session's repository, and feature groups suggested by a cheap model.
+"""Read-only git history and uncommitted changes of a session's repository, and feature groups suggested by a cheap model.
 
 git runs without a shell and with explicit arguments; patches are size-limited. Grouping sends only commit
 subjects and file names (never code) to Claude Haiku through the installed `claude` CLI, with no tools and
@@ -10,6 +10,7 @@ import os
 from pathlib import Path
 import re
 import shutil
+import stat
 import subprocess
 import tempfile
 import threading
@@ -183,6 +184,63 @@ def group_diff(folder, shas, run=subprocess.run):
                                      'binary': item['binary'], 'truncated': item['truncated'] or size > MAX_PATCH,
                                      'patch': item['patch'] if size <= MAX_PATCH else ''})
     return {'files': sorted(by_path.values(), key=lambda f: f['path'])}
+
+
+EMPTY_TREE = '4b825dc642cb6eb9a060e54bf8d69288fbee4904'
+MAX_UNTRACKED = 50
+
+
+def untracked_patch(root, path, run=subprocess.run):
+    """A new file as a diff against nothing. `diff --no-index` exits 1 when files differ, which is the point."""
+    try:
+        info = os.lstat(os.path.join(root, path))
+    except OSError:
+        return None
+    if not stat.S_ISREG(info.st_mode):
+        return None  # A new symlink could point at the panel's own secrets; git would read through it.
+    if info.st_size > MAX_FILE_PATCH:
+        return {'path': path, 'old_path': path, 'status': 'added', 'added': 0, 'removed': 0, 'binary': False,
+                'truncated': True, 'patch': ''}
+    result = run(['git', '-C', str(root), '-c', 'core.quotepath=off', '--no-pager', 'diff', '--no-index', '--no-color',
+                  '--no-ext-diff', '--no-textconv', '--', '/dev/null', path], input=b'', capture_output=True, timeout=20)
+    if result.returncode not in (0, 1):
+        return None
+    files = split_patch(result.stdout.decode('utf-8', 'replace'))
+    return files[0] if files else None
+
+
+def changes(folder, run=subprocess.run):
+    """What the agent changed and has not committed yet: tracked files against HEAD (staged and not), and new
+    files git does not ignore. Read-only: the index is never touched."""
+    root = git(folder, 'rev-parse', '--show-toplevel', run=run).strip()
+    try:
+        branch = git(root, 'symbolic-ref', '--quiet', '--short', 'HEAD', run=run).strip()
+    except ValueError:
+        branch = 'HEAD'  # Detached, e.g. during a rebase.
+    try:
+        base = git(root, 'rev-parse', '--verify', '--quiet', 'HEAD^{commit}', run=run).strip()
+    except ValueError:
+        base = EMPTY_TREE  # No commits yet: everything staged is new.
+    args = ['diff', base, '--patch', '--find-renames', '--no-color', '--no-ext-diff', '--no-textconv', '--']
+    patch = capped(root, args, MAX_PATCH * 2) if run is subprocess.run else git(root, *args, run=run)
+    files, size = [], 0
+    for item in split_patch(patch):
+        size += len(item['patch'])
+        if size > MAX_PATCH:
+            item.update(patch='', truncated=True)
+        files.append(item)
+    status = git(root, 'status', '--porcelain=v1', '-z', '--untracked-files=all', run=run)
+    untracked = [entry[3:] for entry in status.split('\0') if entry.startswith('?? ')]
+    for path in untracked[:MAX_UNTRACKED]:
+        item = untracked_patch(root, path, run=run)
+        if not item:
+            continue
+        size += len(item['patch'])
+        if size > MAX_PATCH:
+            item.update(patch='', truncated=True)
+        files.append(item)
+    return {'repo': root, 'name': os.path.basename(root), 'branch': branch,
+            'files': sorted(files, key=lambda f: f['path']), 'skipped': max(0, len(untracked) - MAX_UNTRACKED)}
 
 
 def group_prompt(commits, files, language):

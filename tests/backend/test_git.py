@@ -99,6 +99,49 @@ class GroupingTests(unittest.TestCase):
         self.assertEqual((status['phase'], status['groups'][0]['title'], len(status['groups'][0]['commits'])), ('done', 'Демо', 2))
 
 
+class ChangesTests(unittest.TestCase):
+    def test_uncommitted_changes_include_staged_unstaged_and_new_files_without_touching_the_index(self):
+        path = repo(self)
+        (path / 'app.py').write_text('a = 1\nb = 5\nc = 4\n')
+        (path / 'README.md').write_text('# Demo\n\nMore.\n')
+        subprocess.run(['git', '-C', str(path), 'add', 'README.md'], check=True)
+        (path / 'notes.txt').write_text('todo\n')
+        (path / '.gitignore').write_text('build/\n')
+        (path / 'build').mkdir()
+        (path / 'build' / 'out.js').write_text('x\n')
+        index = (path / '.git' / 'index').read_bytes()
+        data = G.changes(path)
+        files = {f['path']: f for f in data['files']}
+        self.assertEqual(set(files), {'app.py', 'README.md', 'notes.txt', '.gitignore'})
+        self.assertIn('+b = 5', files['app.py']['patch'])
+        self.assertIn('+More.', files['README.md']['patch'])
+        self.assertEqual((files['notes.txt']['status'], files['notes.txt']['added']), ('added', 1))
+        self.assertEqual((path / '.git' / 'index').read_bytes(), index)
+
+    def test_a_clean_tree_has_no_changes_and_a_repository_without_commits_still_works(self):
+        self.assertEqual(G.changes(repo(self))['files'], [])
+        tmp = tempfile.TemporaryDirectory(dir='/tmp')
+        self.addCleanup(tmp.cleanup)
+        fresh = Path(tmp.name)
+        subprocess.run(['git', 'init', '-q', str(fresh)], check=True)
+        (fresh / 'a.txt').write_text('a\n')
+        subprocess.run(['git', '-C', str(fresh), 'add', 'a.txt'], check=True)
+        (fresh / 'b.txt').write_text('b\n')
+        self.assertEqual([f['path'] for f in G.changes(fresh)['files']], ['a.txt', 'b.txt'])
+
+    def test_new_symlinks_are_not_read_and_big_new_files_have_no_patch(self):
+        path = repo(self)
+        secret = path.parent / (path.name + '-secret')
+        secret.write_text('PANEL_PASSWORD=x\n')
+        self.addCleanup(secret.unlink)
+        (path / 'link').symlink_to(secret)
+        (path / 'big.log').write_bytes(b'x' * (G.MAX_FILE_PATCH + 1))
+        files = {f['path']: f for f in G.changes(path)['files']}
+        self.assertNotIn('link', files)
+        self.assertEqual((files['big.log']['patch'], files['big.log']['truncated']), ('', True))
+        self.assertNotIn('PANEL_PASSWORD', json.dumps(files))
+
+
 class PanelGitTests(PanelCase):
     def test_git_routes_need_a_real_session(self):
         with self.assertRaisesRegex(ValueError, 'сессия не найдена'):

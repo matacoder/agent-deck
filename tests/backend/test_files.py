@@ -46,6 +46,22 @@ class FileBrowserTests(unittest.TestCase):
             with self.subTest(name=name), self.assertRaises(ValueError):
                 F.read_text(self.home, str(self.project / name))
 
+    def test_images_and_pdf_are_previewed_by_content_never_html_or_svg(self):
+        import base64
+        (self.project / 'shot.png').write_bytes(b'\x89PNG\r\n\x1a\n' + b'0' * 20)
+        (self.project / 'doc.pdf').write_bytes(b'%PDF-1.7\n...')
+        (self.project / 'fake.png').write_text('<svg onload=alert(1)></svg>')
+        png = F.read_preview(self.home, str(self.project / 'shot.png'))
+        self.assertEqual((png['type'], base64.b64decode(png['data'])[:4]), ('image/png', b'\x89PNG'))
+        self.assertEqual(F.read_preview(self.home, str(self.project / 'doc.pdf'))['type'], 'application/pdf')
+        with self.assertRaisesRegex(ValueError, 'PNG, JPEG'):
+            F.read_preview(self.home, str(self.project / 'fake.png'))
+        with self.assertRaises(ValueError):
+            F.read_preview(self.home, str(self.home / '.config/cc-panel/env'))
+        (self.project / 'huge.pdf').write_bytes(b'%PDF-' + b'0' * F.MAX_PREVIEW)
+        with self.assertRaisesRegex(ValueError, '10 МБ'):
+            F.read_preview(self.home, str(self.project / 'huge.pdf'))
+
     def test_save_keeps_mode_and_refuses_to_overwrite_a_file_that_changed(self):
         env = self.project / '.env'
         env.chmod(0o640)

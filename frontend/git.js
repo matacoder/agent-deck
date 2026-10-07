@@ -1,7 +1,8 @@
-// Git history of the open session's repository: commits with their diffs, and feature groups that a
-// cheap model (Claude Haiku) proposes from commit subjects and file names, each with a combined diff.
+// Git history of the open session's repository: uncommitted changes (a tapped line becomes a comment in the
+// message draft), commits with their diffs, and feature groups that a model proposes from commit subjects
+// and file names, each with a combined diff.
 // Agent and repository text is rendered with textContent only.
-const hist={session:null,ref:"",tab:"commits",log:null,commits:[],back:null,view:null,groups:null,timer:null,fetching:false,
+const hist={session:null,ref:"",tab:"changes",changes:null,changesError:"",changesSeq:0,log:null,commits:[],back:null,view:null,groups:null,timer:null,fetching:false,
   seq:0,loadingPage:false,error:""};
 // Every list (session, branch) gets a new number; an answer for an older one is dropped instead of being
 // mixed into the list that is on screen now.
@@ -27,13 +28,21 @@ function diffRows(patch){
   while(rows.length&&rows[rows.length-1].kind==="ctx"&&!rows[rows.length-1].text)rows.pop();
   return rows;
 }
-function renderDiff(patch,file){
+// onLine: given for uncommitted changes, where a tapped line opens a comment for the agent.
+function renderDiff(patch,file,onLine){
   const box=el("div","diff");
   if(file.binary){box.append(el("p","diff-note",tr("Двоичный файл")));return box}
   if(!patch){box.append(el("p","diff-note",tr("Дифф слишком большой для просмотра; откройте его в терминале")));return box}
   for(const row of diffRows(patch)){
     if(row.kind==="hunk"){box.append(el("div","dl hunk",row.text));continue}
-    box.append(el("div","dl "+row.kind,el("span","ln",String(row.old)),el("span","ln",String(row.new)),el("span","code",row.text||" ")));
+    const line=el("div","dl "+row.kind,el("span","ln",String(row.old)),el("span","ln",String(row.new)),el("span","code",row.text||" "));
+    if(onLine){
+      line.classList.add("commentable");line.tabIndex=0;line.setAttribute("role","button");
+      // Selecting text to copy is not a request to comment.
+      line.onclick=()=>{if(!String(getSelection()||""))onLine(row,line)};
+      line.onkeydown=e=>{if(e.key==="Enter"){e.preventDefault();onLine(row,line)}};
+    }
+    box.append(line);
   }
   if(file.truncated)box.append(el("p","diff-note",tr("Показана только часть изменений")));
   return box;
@@ -60,10 +69,17 @@ function fileBlock(title,file,open,content){
 
 async function openHistory(){
   if(!active)return;
-  hist.session=active;hist.ref="";hist.tab="commits";hist.back=null;hist.models=null;freshList();
+  hist.session=active;hist.ref="";hist.tab="changes";hist.back=null;hist.models=null;freshList();
   applyCodeFont();
   if(!$("git_dlg").open)$("git_dlg").showModal();
-  renderHistory();await loadHistoryPage();
+  renderHistory();loadChanges();await loadHistoryPage();
+}
+async function loadChanges(){
+  const seq=++hist.changesSeq;hist.changes=null;hist.changesError="";
+  if(hist.tab==="changes"&&!hist.view)renderHistory();
+  try{const data=await api(gitPath("changes"),null,false,{timeout:60000});if(seq!==hist.changesSeq)return;hist.changes=data}
+  catch(e){if(seq!==hist.changesSeq)return;hist.changesError=e.message===STALE?"":e.message||tr("Не удалось загрузить")}
+  if(hist.tab==="changes"&&!hist.view)renderHistory();
 }
 function gitPath(route,params={}){return "/api/git/"+route+"?"+new URLSearchParams({name:hist.session,ref:hist.ref,...params})}
 // Another branch (a worktree's own, the local main, or GitHub's after a fetch) starts the list over.
@@ -88,13 +104,14 @@ function branchBar(){
 }
 async function loadHistoryPage(){
   if(hist.loadingPage)return;  // A double tap on "Show more" would ask for the same page twice.
-  const seq=hist.seq;hist.loadingPage=true;hist.error="";renderHistory();
+  // Commits load in the background while Changes is open; redrawing it would close a comment being typed.
+  const seq=hist.seq;hist.loadingPage=true;hist.error="";if(hist.tab!=="changes")renderHistory();
   try{
     const page=await api(gitPath("log",{skip:hist.commits.length}),null,false,{timeout:60000});
     if(seq!==hist.seq)return;
     hist.log=page;hist.commits.push(...page.commits);
   }catch(e){if(seq===hist.seq&&e.message!==STALE)hist.error=e.message}
-  finally{if(seq===hist.seq){hist.loadingPage=false;renderHistory()}}
+  finally{if(seq===hist.seq){hist.loadingPage=false;if(hist.tab!=="changes")renderHistory()}}
 }
 async function showCommit(sha,back){
   const view={kind:"loading",back:back||null};hist.view=view;hist.back=back||null;renderHistory();
@@ -141,7 +158,12 @@ async function startGrouping(){
   try{hist.groups=await api("/api/git_group",{name:hist.session,ref:hist.ref,model:groupModel()})}catch(e){if(e.message!==STALE)toast(e.message);return}
   renderHistory();hist.timer=setTimeout(loadGroups,3000);
 }
-function historyTab(tab){hist.tab=tab;hist.view=null;if(tab==="groups"){if(!hist.groups)loadGroups();if(!hist.models)loadGroupModels()}renderHistory()}
+function historyTab(tab){
+  hist.tab=tab;hist.view=null;
+  if(tab==="groups"){if(!hist.groups)loadGroups();if(!hist.models)loadGroupModels()}
+  if(tab==="changes")return loadChanges();  // The agent keeps working: always the current state.
+  renderHistory();
+}
 
 function commitRow(c,back){
   const row=el("button","git-row",el("span","git-subject",c.subject),
@@ -153,6 +175,7 @@ function renderHistory(){
   for(const b of $("git_tabs").querySelectorAll("[data-tab]")){b.classList.toggle("on",b.dataset.tab===hist.tab);b.setAttribute("aria-selected",String(b.dataset.tab===hist.tab))}
   if(hist.view)return renderHistoryView(box);
   if(hist.tab==="groups")return renderGroups(box);
+  if(hist.tab==="changes")return renderChanges(box);
   if(hist.error&&!hist.log){box.append(errorWithRetry(hist.error,loadHistoryPage));return}
   if(!hist.log){box.append(el("p","files-empty",tr("Загрузка…")));return}
   box.append(...branchBar());
@@ -201,6 +224,46 @@ function renderHistoryView(box){
     }));
   }
 }
+// A comment names the file, the line and quotes it, so the agent finds the place without the diff.
+function lineComment(path,row,text){
+  const where=row.new!==""?path+":"+row.new:path+":"+row.old+" ("+tr("удалённая строка")+")";
+  const code=row.text.trim();
+  return where+(code?" `"+(code.length>120?code.slice(0,120)+"…":code).replace(/`/g,"'")+"`":"")+" — "+text.trim();
+}
+function appendToMessage(text){
+  const box=$("msg"),current=box.value.replace(/\s+$/,"");
+  box.value=(current?current+"\n":"")+text;
+  box.dispatchEvent(new Event("input"));  // Saves the draft for this session and resizes the field.
+}
+function commentForm(path,row,line){
+  const open=line.nextElementSibling;
+  if(open?.classList.contains("diff-comment")){open.querySelector("textarea").focus();return}
+  const area=el("textarea","");area.rows=2;area.placeholder=tr("Комментарий для агента");area.setAttribute("aria-label",tr("Комментарий для агента"));
+  const form=el("form","diff-comment",area);
+  const cancel=fileButton(tr("Отмена"),"",()=>form.remove()),add=fileButton(tr("Добавить в сообщение"),"pri",null);
+  add.type="submit";form.append(el("div","acts",cancel,add));
+  form.onsubmit=e=>{
+    e.preventDefault();
+    if(!area.value.trim()){area.focus();return}
+    appendToMessage(lineComment(path,row,area.value));form.remove();
+    toast(tr("Комментарий добавлен в сообщение"),"success",{label:tr("К сообщению"),run:()=>{clearTimeout(hist.timer);$("git_dlg").close();$("msg").focus()}});
+  };
+  area.onkeydown=e=>{if(e.key==="Enter"&&(e.metaKey||e.ctrlKey)){e.preventDefault();form.requestSubmit()}};
+  line.after(form);area.focus();
+}
+function renderChanges(box){
+  const data=hist.changes;
+  if(hist.changesError){box.append(errorWithRetry(hist.changesError,loadChanges));return}
+  if(!data){box.append(el("p","files-empty",tr("Загрузка…")));return}
+  const refresh=fileButton(tr("Обновить"),"git-fetch",loadChanges,"refresh");
+  box.append(el("div","git-bar",el("code","",data.name),el("span","git-meta",data.branch),refresh));
+  if(!data.files.length){box.append(el("p","files-empty",tr("Незакоммиченных изменений нет")));return}
+  box.append(el("p","git-meta",tr("Нажмите на строку, чтобы добавить комментарий в сообщение агенту")));
+  // Many files stay folded: each diff renders only when opened, which keeps a phone responsive.
+  const open=data.files.length<=5;
+  for(const f of data.files)box.append(fileBlock(f.path,f,open,()=>renderDiff(f.patch,f,(row,line)=>commentForm(f.path,row,line))));
+  if(data.skipped)box.append(el("p","diff-note",tr("Ещё новых файлов: {0}; они не показаны",[data.skipped])));
+}
 function renderGroups(box){
   const state=hist.groups;
   if(!state){box.append(el("p","files-empty",tr("Загрузка…")));return}
@@ -221,4 +284,4 @@ function renderGroups(box){
   const start=fileButton(tr("Сгруппировать коммиты"),"pri",startGrouping);box.append(...[modelPicker(),el("div","acts",start)].filter(Boolean));
 }
 
-if(typeof module!=="undefined")module.exports={diffRows};
+if(typeof module!=="undefined")module.exports={diffRows,lineComment};

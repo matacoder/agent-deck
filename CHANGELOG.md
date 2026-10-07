@@ -2,6 +2,13 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.21.0 — 2026-10-07
+
+- **Uncommitted changes with comments for the agent:** Change history opens on a new Changes tab — what the agent changed since the last commit (staged, unstaged and new files git does not ignore), read-only. Tap a line, write a comment, and it is added to the session's message as `file:line`, the quoted line and your note; send it when ready.
+- **Search in session output:** a search button in the session bar finds text in the whole terminal output including scrollback, newest first, with two lines of context and a copy button.
+- **Quick switcher:** Alt+K (anywhere, also inside the terminal), Ctrl+K or ⌘K opens one field for the sessions of this and every connected computer and for common actions.
+- **Project files:** Markdown opens rendered (switch to text to read or edit the source); PNG, JPEG, WebP, GIF and PDF up to 10 MB open as previews, checked by content, with Download and, for PDF, Open in a new tab.
+
 ## 1.20.0 — 2026-10-07
 
 - **Feature groups on any model:** Change history lets you pick who groups the commits — a model from your LM Studio profiles (marked "local, free"; runs with reasoning off, so 80 commits take about a minute and a half on a 27B model), Kimi (with a saved key) or Claude Haiku. The choice is remembered per computer, and each result says which model made it. Codex is not offered because it can run commands.

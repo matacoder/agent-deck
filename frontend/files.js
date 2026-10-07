@@ -24,7 +24,7 @@ function filesDirty(){return Boolean(files.file&&files.file.content!==files.file
 
 async function openFiles(){
   if(!active)return;
-  files.session=active;files.file=null;files.listing=null;files.creating=false;
+  dropPreview();files.session=active;files.file=null;files.listing=null;files.creating=false;
   if(!$("files_dlg").open)$("files_dlg").showModal();
   await loadFolder("");
 }
@@ -38,18 +38,26 @@ async function loadFolder(path){
   }catch(e){if(seq!==files.seq)return;if(e.message!==STALE){files.error=e.message;if(files.listing)toast(e.message)}}
   renderFiles();
 }
+const PREVIEW_FILE=/\.(png|jpe?g|gif|webp|pdf)$/i;
 async function openFile(path){
-  const seq=++files.seq;
+  const seq=++files.seq,preview=PREVIEW_FILE.test(path);
   try{
-    const data=await api("/api/file?path="+encodeURIComponent(path),null,false,{timeout:60000});
+    const data=await api((preview?"/api/file_preview?path=":"/api/file?path=")+encodeURIComponent(path),null,false,{timeout:60000});
     if(seq!==files.seq)return;
-    files.file={...data,saved:data.content,isNew:false};
+    files.file=preview?{path:data.path,preview:previewBlob(data)}:{...data,saved:data.content,isNew:false,rendered:isMarkdown(data.path)};
   }catch(e){if(seq===files.seq&&e.message!==STALE)toast(e.message);return}
   renderFiles();
 }
+// The server checked the content; the Blob gets that type and nothing else (never HTML or SVG).
+function previewBlob(data){
+  const type=["application/pdf","image/png","image/jpeg","image/gif","image/webp"].includes(data.type)?data.type:"application/octet-stream";
+  const bytes=Uint8Array.from(atob(data.data),c=>c.charCodeAt(0));
+  return {type,size:data.size,url:URL.createObjectURL(new Blob([bytes],{type}))};
+}
+function dropPreview(){if(files.file?.preview)URL.revokeObjectURL(files.file.preview.url)}
 async function leaveFile(){
   if(filesDirty()&&!await confirmAction(tr("Изменения не сохранены. Закрыть без сохранения?"),{confirm:tr("Закрыть без сохранения"),danger:true}))return false;
-  files.file=null;
+  dropPreview();files.file=null;
   // The folder may have changed (a new file was just saved): show it as it is now.
   if(files.listing){loadFolder(files.listing.path);return true}
   renderFiles();return true;
@@ -111,6 +119,7 @@ function renderEditor(box,listing){
   const head=el("div","files-path",fileButton(tr("К папке"),"files-up",leaveFile,"arrow-up"),el("code","",homeRelative(file.path,listing.home)),
     el("span","git-font",fontButton("A−",tr("Уменьшить шрифт"),-1),fontButton("A+",tr("Увеличить шрифт"),1)));
   applyCodeFont();
+  if(file.preview)return renderPreview(box,head,file);
   if(!file.isNew&&!file.editing)return renderReader(box,head,file);
   const area=el("textarea","files-text");area.value=file.content;area.spellcheck=false;
   area.setAttribute("autocapitalize","none");area.setAttribute("autocorrect","off");area.setAttribute("aria-label",name);
@@ -123,17 +132,28 @@ function renderEditor(box,listing){
   box.append(head,area,el("div","acts",copy,save));
 }
 function renderReader(box,head,file){
-  const view=el("div","files-view");
-  file.content.split("\n").forEach((line,i,lines)=>{
+  let view=el("div","files-view");
+  if(file.rendered)view=renderMarkdown(file.content);
+  else file.content.split("\n").forEach((line,i,lines)=>{
     if(i===lines.length-1&&!line&&lines.length>1)return;  // The newline that ends the file is not a line.
     view.append(el("div","fl",el("span","ln",String(i+1)),el("span","code",line||" ")));
   });
+  if(isMarkdown(file.path))head.append(fileButton(file.rendered?tr("Текст"):tr("Просмотр"),"files-up",()=>{file.rendered=!file.rendered;renderFiles()}));
   const copy=fileButton(tr("Копировать"),"",()=>{
     const selected=String(getSelection()||"");
     copyText(selected&&view.contains(getSelection().anchorNode)?selected:file.content);
   });
   const change=fileButton(tr("Изменить"),"pri",()=>{file.editing=true;renderFiles()});
   box.append(head,view,el("div","acts",copy,change));
+}
+// Images show here; a PDF opens from a link, a direct tap, so no popup blocker stands in the way.
+function renderPreview(box,head,file){
+  const name=file.path.split("/").pop(),{type,url,size}=file.preview;
+  box.append(head);
+  if(type.startsWith("image/")){const img=el("img","files-image");img.src=url;img.alt=name;box.append(el("div","files-view files-picture",img))}
+  else box.append(el("p","files-empty",tr("PDF-документ · {0}",[formatSize(size)])));
+  const link=(label,cls,download)=>{const a=el("a","btn "+cls,label);a.href=url;if(download)a.download=name;else{a.target="_blank";a.rel="noopener"}return a};
+  box.append(el("div","acts",link(tr("Скачать"),"",true),...(type==="application/pdf"?[link(tr("Открыть"),"pri",false)]:[])));
 }
 async function copyText(text){
   try{if(navigator.clipboard&&window.isSecureContext){await navigator.clipboard.writeText(text);toast(tr("Скопировано: {0} симв.",[text.length]),"success");return}}catch(e){}

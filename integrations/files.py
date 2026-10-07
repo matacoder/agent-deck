@@ -1,9 +1,11 @@
-"""Small file browser for project folders: list, read and save text files (e.g. moving a secret into .env).
+"""Small file browser for project folders: list, read and save text files (e.g. moving a secret into .env),
+and preview images and PDF documents.
 
 Everything stays inside the user's home. The panel's own folder (~/.config/cc-panel: password, keys,
 integration tokens) is never listed, read or written. Saves are atomic, keep the file's mode, create new
 files as 0600 and refuse to overwrite a file that changed since it was opened.
 """
+import base64
 import hashlib
 import os
 from pathlib import Path
@@ -12,6 +14,7 @@ import tempfile
 
 MAX_TEXT = 1024 * 1024
 MAX_ENTRIES = 2000
+MAX_PREVIEW = 10 * 1024 * 1024
 PRIVATE = ('.config/cc-panel',)
 
 
@@ -79,6 +82,27 @@ def read_text(home, path):
     except UnicodeDecodeError:
         raise ValueError('Файл не в кодировке UTF-8; откройте его в терминале') from None
     return {'path': str(real), 'content': content, 'hash': digest(data), 'size': len(data)}
+
+
+def preview_type(data):
+    """Only formats a browser shows without running anything from them; never SVG or HTML."""
+    from integrations.images import image_type
+    return 'application/pdf' if data.startswith(b'%PDF-') else image_type(data)
+
+
+def read_preview(home, path):
+    """An image or PDF as base64 inside JSON: the gateway relays it like any other answer, and the browser
+    builds a Blob of exactly the checked type."""
+    _, real = _resolve(home, path)
+    if not real.is_file():
+        raise FileNotFoundError('Файл не найден')
+    if real.stat().st_size > MAX_PREVIEW:
+        raise ValueError('Файл больше 10 МБ; откройте его в терминале')
+    data = real.read_bytes()
+    kind = preview_type(data)
+    if not kind:
+        raise ValueError('Просмотр доступен для PNG, JPEG, WebP, GIF и PDF')
+    return {'path': str(real), 'type': kind, 'size': len(data), 'data': base64.b64encode(data).decode('ascii')}
 
 
 def save_text(home, path, content, expected):

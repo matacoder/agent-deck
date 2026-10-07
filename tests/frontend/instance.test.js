@@ -228,10 +228,12 @@ test('history drops an answer for a branch that is no longer selected and never 
   routes['/api/git/log']=url=>{calls.push(url.searchParams.get('ref')+':'+url.searchParams.get('skip'));
     if(url.searchParams.get('ref')==='')return new Promise(resolve=>{pending.feature=()=>resolve(page('','old-branch',true))});
     return url.searchParams.get('skip')==='0'?page('origin/main','prod',true):new Promise(resolve=>{pending.more=()=>resolve(page('origin/main','prod-older',false))})};
+  routes['/api/git/changes']=()=>({repo:'/r',name:'r',branch:'feature',files:[],skipped:0});
   const window=boot(routes);
   try{
   await settle();await settle();
   window.eval('openHistory()');await settle();
+  window.eval('historyTab("commits")');
   window.eval('chooseBranch("origin/main")');await settle();
   pending.feature();await settle();
   const subjects=()=>[...window.document.querySelectorAll('.git-subject')].map(n=>n.textContent);
@@ -240,6 +242,72 @@ test('history drops an answer for a branch that is no longer selected and never 
   pending.more();await settle();await settle();
   expect(subjects()).toEqual(['prod','prod-older']);
   expect(calls.filter(c=>c==='origin/main:1')).toHaveLength(1);
+  }finally{window.close()}
+});
+
+test('a tapped line of an uncommitted change becomes a comment in the session draft',async()=>{
+  const state={local:()=>({sessions:[session('alpha')]})};
+  const routes=routesFor(state);
+  routes['/api/git/log']=()=>({repo:'/r',name:'r',branch:'main',ref:'HEAD',branches:['main'],remote:'',ahead:0,behind:0,commits:[],more:false});
+  routes['/api/git/changes']=()=>({repo:'/r',name:'r',branch:'main',skipped:0,files:[{path:'app.py',old_path:'app.py',status:'modified',added:1,removed:1,binary:false,truncated:false,
+    patch:'diff --git a/app.py b/app.py\n--- a/app.py\n+++ b/app.py\n@@ -1,2 +1,2 @@\n a = 1\n-b = 2\n+b = 3\n'}]});
+  const window=boot(routes);
+  try{
+  await settle();await settle();
+  const doc=window.document,message=doc.getElementById('msg');
+  message.value='Please check:';message.dispatchEvent(new window.Event('input'));
+  window.eval('openHistory()');await settle();await settle();
+  const added=doc.querySelector('#git_body .dl.add');
+  added.click();
+  doc.querySelector('.diff-comment textarea').value='use a constant';
+  doc.querySelector('.diff-comment').requestSubmit();
+  expect(message.value).toBe('Please check:\napp.py:2 `b = 3` — use a constant');
+  expect(doc.querySelector('.diff-comment')).toBeNull();
+  // The commits page answered meanwhile; the open Changes tab was not redrawn under the user.
+  expect(doc.querySelector('#git_tabs .on').dataset.tab).toBe('changes');
+  }finally{window.close()}
+});
+
+test('Alt+K opens the switcher, words filter it and Enter opens the session',async()=>{
+  const state={local:()=>({sessions:[session('alpha'),session('beta')]})};
+  const window=boot(routesFor(state));
+  try{
+  await settle();await settle();
+  const doc=window.document;
+  doc.body.dispatchEvent(new window.KeyboardEvent('keydown',{code:'KeyK',key:'k',altKey:true,bubbles:true}));
+  expect(doc.getElementById('palette_dlg').open).toBe(true);
+  const input=doc.getElementById('palette_q');
+  input.value='bet';input.dispatchEvent(new window.Event('input'));
+  // This computer's session first, then the same name on the connected Mac.
+  expect([...doc.querySelectorAll('.palette-row .palette-label')].map(n=>n.textContent)).toEqual(['beta','beta']);
+  expect(doc.querySelectorAll('.palette-row .palette-hint')[1].textContent).toMatch(/^Mac Studio/);
+  input.dispatchEvent(new window.KeyboardEvent('keydown',{key:'Enter',bubbles:true}));await settle();
+  expect(doc.getElementById('palette_dlg').open).toBe(false);
+  expect(doc.querySelector('#title b').textContent).toBe('beta');
+  }finally{window.close()}
+});
+
+test('Markdown opens rendered with a switch to text, and images preview from checked content',async()=>{
+  const state={local:()=>({sessions:[session('alpha')]})};
+  const routes=routesFor(state),previews=[];
+  routes['/api/files']=()=>({path:'/home/demo/p',home:'/home/demo',parent:'/home/demo',entries:[{name:'README.md',dir:false,size:9},{name:'shot.png',dir:false,size:4}]});
+  routes['/api/file']=()=>({path:'/home/demo/p/README.md',content:'# Title\n',hash:'h',size:9});
+  routes['/api/file_preview']=url=>{previews.push(url.searchParams.get('path'));return {path:'/home/demo/p/shot.png',type:'image/png',size:4,data:'iVBORw=='}};
+  const window=boot(routes);
+  window.URL.createObjectURL=()=>'blob:https://panel.test/1';window.URL.revokeObjectURL=()=>{};
+  try{
+  await settle();await settle();
+  const doc=window.document,rows=()=>[...doc.querySelectorAll('.files-row')];
+  await window.eval('openFiles()');await settle();
+  rows()[0].click();await settle();
+  expect(doc.querySelector('#files_body .md h1').textContent).toBe('Title');
+  [...doc.querySelectorAll('#files_body button')].find(b=>/Текст|Text/.test(b.textContent)).click();
+  expect(doc.querySelector('#files_body .md')).toBeNull();
+  expect(doc.querySelector('#files_body .files-view .code').textContent).toBe('# Title');
+  [...doc.querySelectorAll('#files_body button')].find(b=>/К папке|folder/i.test(b.textContent)).click();await settle();
+  rows()[1].click();await settle();
+  expect(previews).toEqual(['/home/demo/p/shot.png']);
+  expect(doc.querySelector('#files_body img.files-image').getAttribute('src')).toBe('blob:https://panel.test/1');
   }finally{window.close()}
 });
 

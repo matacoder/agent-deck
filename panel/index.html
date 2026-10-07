@@ -433,6 +433,21 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 #inbox_dlg{width:min(560px,calc(100vw - 32px))}
 #files_dlg{width:min(720px,calc(100vw - 32px))}
 #git_dlg{width:min(900px,calc(100vw - 32px))}
+#search_dlg{width:min(820px,calc(100vw - 32px))}
+.search-form{display:flex;gap:8px;padding:12px 22px;border-bottom:1px solid var(--bd)}
+.search-form input{flex:1;min-width:0;padding:9px 12px;border:1px solid var(--bd);border-radius:9px;background:var(--bg);color:var(--fg);font:inherit;font-size:14px;outline:none}
+.search-form button{padding:0 16px;border-radius:9px}
+.search-result{margin-bottom:12px}.search-result>.git-meta{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:4px}
+.search-copy{padding:4px 10px;border-radius:var(--r-sm);color:var(--mut)}@media (hover:hover){.search-copy:hover{background:var(--side2)}}
+.search-lines{padding:6px 10px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);font:var(--code-font,12px)/1.45 var(--mono);white-space:pre-wrap;overflow-wrap:anywhere;-webkit-user-select:text;user-select:text}
+.search-lines .ctx{color:var(--dim)}.search-lines .hit{color:var(--fg)}.search-lines mark{background:var(--acc-soft);color:var(--acc-text);border-radius:3px}
+.palette{width:min(560px,calc(100vw - 32px));margin-top:12vh}
+.palette input{width:100%;padding:14px 18px;border:0;border-bottom:1px solid var(--bd);background:transparent;color:var(--fg);font:inherit;font-size:15px;outline:none}
+.palette-list{overflow-y:auto;max-height:min(420px,60dvh);padding:6px}
+.palette-row{display:flex;align-items:center;gap:10px;width:100%;padding:9px 12px;border-radius:var(--r-sm);color:var(--fg);text-align:left}
+.palette-row.on{background:var(--sel)}@media (hover:hover){.palette-row:hover{background:var(--side2)}}
+.palette-label{flex:none;max-width:60%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.palette-hint{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--mut);font-size:12px;text-align:right}
 .git-tabs{display:flex;align-items:center;gap:6px;padding:10px 22px;border-bottom:1px solid var(--bd)}
 .git-font{display:flex;gap:4px;margin-left:auto}
 .git-tabs button{white-space:nowrap}
@@ -479,6 +494,10 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 .dl.hunk{padding:4px 10px;color:var(--acc-text);background:var(--acc-soft);white-space:pre-wrap;overflow-wrap:anywhere}
 .diff-binary{flex:none;color:var(--mut);font-size:12px}
 .diff-note{margin:0;padding:8px 10px;color:var(--mut);font-size:12px}
+.dl.commentable{cursor:pointer}@media (hover:hover){.dl.commentable:hover .ln{color:var(--acc-text)}}
+.diff-comment{padding:8px 10px;background:var(--side);border-block:1px solid var(--bd)}
+.diff-comment textarea{width:100%;padding:8px 10px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--fg);font:14px/1.45 -apple-system,BlinkMacSystemFont,system-ui,sans-serif;resize:vertical}
+.diff-comment .acts{padding:8px 0 0;border:0}
 .diff-commit{padding:6px 10px;border-top:1px solid var(--bd);color:var(--mut);font:12px var(--mono);background:var(--side)}
 #files_dlg .hub-heading{border-bottom:1px solid var(--bd)}
 /* A column, not a grid: in a grid the clipped list (overflow:hidden for its corners) shrank to the dialog
@@ -504,6 +523,17 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 .files-view .ln{flex:none;width:40px;padding:0 8px;text-align:right;color:var(--dim);-webkit-user-select:none;user-select:none}
 .files-view .code{flex:1;min-width:0;padding-right:12px;white-space:pre-wrap;overflow-wrap:anywhere;color:var(--fg2)}
 .files-path .git-font button{min-width:36px;padding:6px 8px;border-radius:var(--r-sm);color:var(--mut);font-weight:600}
+.acts a.btn{display:inline-flex;align-items:center;min-height:42px;padding:10px 16px;border-radius:9px;background:var(--side2);color:var(--fg);text-decoration:none}
+.acts a.btn.pri{background:var(--acc-strong);color:#fff;font-weight:600}
+.files-picture{display:flex;justify-content:center;padding:8px}.files-image{max-width:100%;max-height:70vh;object-fit:contain}
+.md{padding:4px 16px;border:1px solid var(--bd);border-radius:10px;background:var(--bg);color:var(--fg2);line-height:1.55;overflow-wrap:anywhere;-webkit-user-select:text;user-select:text}
+.md h1,.md h2,.md h3,.md h4,.md h5,.md h6{margin:18px 0 8px;color:var(--fg);line-height:1.3}.md h1{font-size:1.5em}.md h2{font-size:1.3em}.md h3{font-size:1.12em}
+.md p,.md ul,.md ol,.md pre,.md blockquote,.md table{margin:8px 0}.md ul,.md ol{padding-left:22px}
+.md code{font:.92em var(--mono);padding:1px 4px;border-radius:4px;background:var(--side2)}
+.md pre{padding:10px 12px;border-radius:8px;background:var(--side2);overflow-x:auto}.md pre code{padding:0;background:none;font-size:var(--code-font,13px)}
+.md blockquote{padding-left:12px;border-left:3px solid var(--bd);color:var(--mut)}
+.md-table{overflow-x:auto}.md table{border-collapse:collapse}.md th,.md td{padding:5px 10px;border:1px solid var(--bd);text-align:left}
+.md a{color:var(--acc-text)}.md hr{border:0;border-top:1px solid var(--bd);margin:16px 0}
 #inbox_dlg .hub-heading{border-bottom:1px solid var(--bd)}
 #inbox_list{display:grid;gap:18px;align-content:start}
 .inbox-item{display:grid;gap:8px}
@@ -564,7 +594,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 
 /* Any touch screen (an iPad too): iOS zooms the page when an input below 16px gets focus. */
-@media (pointer:coarse){.q-text textarea,.files-new input,.git-branch{font-size:16px}.files-text{font-size:max(16px,var(--code-font,16px))}}
+@media (pointer:coarse){.q-text textarea,.files-new input,.git-branch,.diff-comment textarea,.palette input,.search-form input{font-size:16px}.files-text{font-size:max(16px,var(--code-font,16px))}}
 /* ---------- mobile (phones, including landscape) ----------
    Keep in sync with MOBILE_QUERY in app.js. */
 @media (max-width:760px),(pointer:coarse) and (max-height:500px){
@@ -684,8 +714,9 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
   .chk,.dlg label.chk{font-size:15px}
   .acts{padding:12px 16px calc(12px + var(--sab))}
   .acts button{flex:1;min-height:var(--tap);padding:12px;font-size:16px;border-radius:var(--r)}
-  #inbox_dlg,#files_dlg,#git_dlg{width:100vw}
-  #inbox_dlg .dlg,#files_dlg .dlg,#git_dlg .dlg{padding-top:var(--sat)}
+  #inbox_dlg,#files_dlg,#git_dlg,#search_dlg,.palette{width:100vw}
+  #inbox_dlg .dlg,#files_dlg .dlg,#git_dlg .dlg,#search_dlg .dlg,.palette .dlg{padding-top:var(--sat)}
+  .palette{margin-top:0}.palette-list{max-height:none;flex:1}.search-form{padding:10px 16px}
   .git-branch{font-size:16px;min-height:var(--tap)}
   .git-tabs{padding:10px 20px}.git-tabs button{min-height:var(--tap);padding:0 14px}
   .dl .ln{width:36px}
@@ -796,6 +827,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
   <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14.9-3.9L4 8"/><path d="M4 4v4h4M4 13a8 8 0 0 0 14.9 3.9L20 16"/><path d="M20 20v-4h-4"/></symbol>
   <symbol id="i-pencil" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16v4zM13 7l4 4"/></symbol>
   <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
   <symbol id="i-history" viewBox="0 0 24 24"><circle cx="6" cy="5" r="2"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="7" r="2"/><path d="M6 7v10M18 9c0 5-5 5-11 8"/></symbol>
   <symbol id="i-arrow-left" viewBox="0 0 24 24"><path d="M19 12H5M11 6l-6 6 6 6"/></symbol>
   <symbol id="i-sidebar" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></symbol>
@@ -820,7 +852,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
     <div class="deck-switch" id="deck_switch" hidden><label for="deck_select">Agent Deck</label><select id="deck_select" onchange="switchDeck(this.value)"><option value="">Этот компьютер</option></select><button type="button" onclick="openSettings('network')" aria-label="Подключить Agent Deck" title="Подключить Agent Deck"><svg class="ui-icon"><use href="#i-monitor"/></svg></button></div>
     <div id="srv"></div>
     <div class="side-top">
-      <input id="q" class="search" placeholder="Поиск…" aria-label="Поиск…" autocomplete="off" autocapitalize="off" spellcheck="false">
+      <input id="q" class="search" placeholder="Поиск…" aria-label="Поиск…" title="Быстрый переход: ⌥K, Ctrl+K или ⌘K" autocomplete="off" autocapitalize="off" spellcheck="false">
       <button class="iconbtn accent" title="Новая сессия (⌥T)" aria-label="Новая сессия" onclick="openNew()"><svg class="ui-icon"><use href="#i-plus"/></svg></button>
     </div>
     <button type="button" id="inbox_btn" class="inbox-btn" onclick="openInbox()" hidden><svg class="ui-icon"><use href="#i-inbox"/></svg><span>Ждут ответа</span><b id="inbox_count"></b></button>
@@ -834,7 +866,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
       <button class="iconbtn m-only" style="position:relative" onclick="drawer(true)" aria-label="Сессии"><svg class="ui-icon"><use href="#i-menu"/></svg><span id="menuBadge"></span></button>
       <button class="iconbtn d-only" id="b_side" onclick="toggleSidebar()" aria-label="Скрыть или показать список сессий" title="Скрыть или показать список сессий"><svg class="ui-icon"><use href="#i-sidebar"/></svg></button>
       <div id="title">—</div>
-      <span class="bar-tools" id="bar_tools"><button class="iconbtn" id="b_files" onclick="openFiles()" aria-label="Файлы проекта" title="Файлы проекта"><svg class="ui-icon"><use href="#i-folder"/></svg></button><button class="iconbtn" id="b_history" onclick="openHistory()" aria-label="История изменений" title="История изменений"><svg class="ui-icon"><use href="#i-history"/></svg></button></span>
+      <span class="bar-tools" id="bar_tools"><button class="iconbtn" id="b_files" onclick="openFiles()" aria-label="Файлы проекта" title="Файлы проекта"><svg class="ui-icon"><use href="#i-folder"/></svg></button><button class="iconbtn" id="b_search" onclick="openOutputSearch()" aria-label="Поиск в выводе" title="Поиск в выводе"><svg class="ui-icon"><use href="#i-search"/></svg></button><button class="iconbtn" id="b_history" onclick="openHistory()" aria-label="История изменений" title="История изменений"><svg class="ui-icon"><use href="#i-history"/></svg></button></span>
       <button class="act d-only" id="b_link" title="Открыть последнюю ссылку из терминала" onclick="openLink()" style="display:none"><svg class="ui-icon"><use href="#i-link"/></svg><span>Ссылка</span></button>
       <button class="iconbtn" id="b_actions" onclick="sheet(true)" aria-label="Действия" title="Действия" aria-haspopup="menu"><svg class="ui-icon"><use href="#i-more"/></svg></button>
     </div>
@@ -919,7 +951,9 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
   <div class="viewer-bar"><span id="viewer_caption"></span><a id="viewer_open" target="_blank" rel="noopener">Открыть оригинал</a></div>
 </div>
 <dialog id="confirm_dlg"><form class="dlg" method="dialog"><div class="dlg-body"><h3 id="confirm_title"></h3><p id="confirm_text"></p></div><div class="acts"><button value="cancel">Отмена</button><button value="ok" class="pri" id="confirm_ok">OK</button></div></form></dialog>
-<dialog id="git_dlg"><div class="dlg"><div class="hub-heading"><h3 tabindex="-1" autofocus>История изменений</h3><button type="button" onclick="clearTimeout(hist.timer);$('git_dlg').close()" aria-label="Закрыть"><svg class="ui-icon"><use href="#i-x"/></svg></button></div><div class="git-tabs" id="git_tabs" role="tablist"><button type="button" role="tab" data-tab="commits" onclick="historyTab('commits')">Коммиты</button><button type="button" role="tab" data-tab="groups" onclick="historyTab('groups')">Группы фич</button><span class="git-font"><button type="button" onclick="codeFont(-1)" aria-label="Уменьшить шрифт">A−</button><button type="button" onclick="codeFont(1)" aria-label="Увеличить шрифт">A+</button></span></div><div class="dlg-body" id="git_body"></div></div></dialog>
+<dialog id="git_dlg"><div class="dlg"><div class="hub-heading"><h3 tabindex="-1" autofocus>История изменений</h3><button type="button" onclick="clearTimeout(hist.timer);$('git_dlg').close()" aria-label="Закрыть"><svg class="ui-icon"><use href="#i-x"/></svg></button></div><div class="git-tabs" id="git_tabs" role="tablist"><button type="button" role="tab" data-tab="changes" onclick="historyTab('changes')">Изменения</button><button type="button" role="tab" data-tab="commits" onclick="historyTab('commits')">Коммиты</button><button type="button" role="tab" data-tab="groups" onclick="historyTab('groups')">Группы фич</button><span class="git-font"><button type="button" onclick="codeFont(-1)" aria-label="Уменьшить шрифт">A−</button><button type="button" onclick="codeFont(1)" aria-label="Увеличить шрифт">A+</button></span></div><div class="dlg-body" id="git_body"></div></div></dialog>
+<dialog id="search_dlg"><div class="dlg"><div class="hub-heading"><h3>Поиск в выводе</h3><button type="button" onclick="$('search_dlg').close()" aria-label="Закрыть"><svg class="ui-icon"><use href="#i-x"/></svg></button></div><form class="search-form" id="search_form"><input id="search_q" type="search" maxlength="200" placeholder="Текст из вывода" aria-label="Текст из вывода" autocomplete="off" autocapitalize="off" spellcheck="false"><button type="submit" class="pri">Найти</button></form><div class="dlg-body" id="search_body"></div></div></dialog>
+<dialog id="palette_dlg" class="palette"><div class="dlg"><input id="palette_q" type="text" placeholder="Сессия или действие" aria-label="Сессия или действие" autocomplete="off" autocapitalize="off" spellcheck="false" role="combobox" aria-controls="palette_list"><div class="palette-list" id="palette_list" role="listbox"></div></div></dialog>
 <dialog id="files_dlg"><div class="dlg"><div class="hub-heading"><h3 tabindex="-1" autofocus>Файлы проекта</h3><button type="button" onclick="closeFiles()" aria-label="Закрыть"><svg class="ui-icon"><use href="#i-x"/></svg></button></div><div class="dlg-body" id="files_body"></div></div></dialog>
 <dialog id="inbox_dlg"><div class="dlg"><div class="hub-heading"><h3 tabindex="-1" autofocus>Ждут ответа</h3><button type="button" onclick="$('inbox_dlg').close()" aria-label="Закрыть"><svg class="ui-icon"><use href="#i-x"/></svg></button></div><div class="dlg-body" id="inbox_list"></div></div></dialog>
 <dialog id="draft_dlg"><div class="dlg"><div class="dlg-body"><h3>Черновики закрытых сессий</h3><div id="closed_drafts"></div></div><div class="acts"><button type="button" onclick="$('draft_dlg').close()">Закрыть</button></div></div></dialog>
@@ -1931,7 +1965,7 @@ function filesDirty(){return Boolean(files.file&&files.file.content!==files.file
 
 async function openFiles(){
   if(!active)return;
-  files.session=active;files.file=null;files.listing=null;files.creating=false;
+  dropPreview();files.session=active;files.file=null;files.listing=null;files.creating=false;
   if(!$("files_dlg").open)$("files_dlg").showModal();
   await loadFolder("");
 }
@@ -1945,18 +1979,26 @@ async function loadFolder(path){
   }catch(e){if(seq!==files.seq)return;if(e.message!==STALE){files.error=e.message;if(files.listing)toast(e.message)}}
   renderFiles();
 }
+const PREVIEW_FILE=/\.(png|jpe?g|gif|webp|pdf)$/i;
 async function openFile(path){
-  const seq=++files.seq;
+  const seq=++files.seq,preview=PREVIEW_FILE.test(path);
   try{
-    const data=await api("/api/file?path="+encodeURIComponent(path),null,false,{timeout:60000});
+    const data=await api((preview?"/api/file_preview?path=":"/api/file?path=")+encodeURIComponent(path),null,false,{timeout:60000});
     if(seq!==files.seq)return;
-    files.file={...data,saved:data.content,isNew:false};
+    files.file=preview?{path:data.path,preview:previewBlob(data)}:{...data,saved:data.content,isNew:false,rendered:isMarkdown(data.path)};
   }catch(e){if(seq===files.seq&&e.message!==STALE)toast(e.message);return}
   renderFiles();
 }
+// The server checked the content; the Blob gets that type and nothing else (never HTML or SVG).
+function previewBlob(data){
+  const type=["application/pdf","image/png","image/jpeg","image/gif","image/webp"].includes(data.type)?data.type:"application/octet-stream";
+  const bytes=Uint8Array.from(atob(data.data),c=>c.charCodeAt(0));
+  return {type,size:data.size,url:URL.createObjectURL(new Blob([bytes],{type}))};
+}
+function dropPreview(){if(files.file?.preview)URL.revokeObjectURL(files.file.preview.url)}
 async function leaveFile(){
   if(filesDirty()&&!await confirmAction(tr("Изменения не сохранены. Закрыть без сохранения?"),{confirm:tr("Закрыть без сохранения"),danger:true}))return false;
-  files.file=null;
+  dropPreview();files.file=null;
   // The folder may have changed (a new file was just saved): show it as it is now.
   if(files.listing){loadFolder(files.listing.path);return true}
   renderFiles();return true;
@@ -2018,6 +2060,7 @@ function renderEditor(box,listing){
   const head=el("div","files-path",fileButton(tr("К папке"),"files-up",leaveFile,"arrow-up"),el("code","",homeRelative(file.path,listing.home)),
     el("span","git-font",fontButton("A−",tr("Уменьшить шрифт"),-1),fontButton("A+",tr("Увеличить шрифт"),1)));
   applyCodeFont();
+  if(file.preview)return renderPreview(box,head,file);
   if(!file.isNew&&!file.editing)return renderReader(box,head,file);
   const area=el("textarea","files-text");area.value=file.content;area.spellcheck=false;
   area.setAttribute("autocapitalize","none");area.setAttribute("autocorrect","off");area.setAttribute("aria-label",name);
@@ -2030,11 +2073,13 @@ function renderEditor(box,listing){
   box.append(head,area,el("div","acts",copy,save));
 }
 function renderReader(box,head,file){
-  const view=el("div","files-view");
-  file.content.split("\n").forEach((line,i,lines)=>{
+  let view=el("div","files-view");
+  if(file.rendered)view=renderMarkdown(file.content);
+  else file.content.split("\n").forEach((line,i,lines)=>{
     if(i===lines.length-1&&!line&&lines.length>1)return;  // The newline that ends the file is not a line.
     view.append(el("div","fl",el("span","ln",String(i+1)),el("span","code",line||" ")));
   });
+  if(isMarkdown(file.path))head.append(fileButton(file.rendered?tr("Текст"):tr("Просмотр"),"files-up",()=>{file.rendered=!file.rendered;renderFiles()}));
   const copy=fileButton(tr("Копировать"),"",()=>{
     const selected=String(getSelection()||"");
     copyText(selected&&view.contains(getSelection().anchorNode)?selected:file.content);
@@ -2042,16 +2087,26 @@ function renderReader(box,head,file){
   const change=fileButton(tr("Изменить"),"pri",()=>{file.editing=true;renderFiles()});
   box.append(head,view,el("div","acts",copy,change));
 }
+// Images show here; a PDF opens from a link, a direct tap, so no popup blocker stands in the way.
+function renderPreview(box,head,file){
+  const name=file.path.split("/").pop(),{type,url,size}=file.preview;
+  box.append(head);
+  if(type.startsWith("image/")){const img=el("img","files-image");img.src=url;img.alt=name;box.append(el("div","files-view files-picture",img))}
+  else box.append(el("p","files-empty",tr("PDF-документ · {0}",[formatSize(size)])));
+  const link=(label,cls,download)=>{const a=el("a","btn "+cls,label);a.href=url;if(download)a.download=name;else{a.target="_blank";a.rel="noopener"}return a};
+  box.append(el("div","acts",link(tr("Скачать"),"",true),...(type==="application/pdf"?[link(tr("Открыть"),"pri",false)]:[])));
+}
 async function copyText(text){
   try{if(navigator.clipboard&&window.isSecureContext){await navigator.clipboard.writeText(text);toast(tr("Скопировано: {0} симв.",[text.length]),"success");return}}catch(e){}
   if(execCopy(text,document))toast(tr("Скопировано: {0} симв.",[text.length]),"success");else toast(tr("Браузер запретил копирование"));
 }
 
 if(typeof module!=="undefined")module.exports={formatSize,homeRelative};
-// Git history of the open session's repository: commits with their diffs, and feature groups that a
-// cheap model (Claude Haiku) proposes from commit subjects and file names, each with a combined diff.
+// Git history of the open session's repository: uncommitted changes (a tapped line becomes a comment in the
+// message draft), commits with their diffs, and feature groups that a model proposes from commit subjects
+// and file names, each with a combined diff.
 // Agent and repository text is rendered with textContent only.
-const hist={session:null,ref:"",tab:"commits",log:null,commits:[],back:null,view:null,groups:null,timer:null,fetching:false,
+const hist={session:null,ref:"",tab:"changes",changes:null,changesError:"",changesSeq:0,log:null,commits:[],back:null,view:null,groups:null,timer:null,fetching:false,
   seq:0,loadingPage:false,error:""};
 // Every list (session, branch) gets a new number; an answer for an older one is dropped instead of being
 // mixed into the list that is on screen now.
@@ -2077,13 +2132,21 @@ function diffRows(patch){
   while(rows.length&&rows[rows.length-1].kind==="ctx"&&!rows[rows.length-1].text)rows.pop();
   return rows;
 }
-function renderDiff(patch,file){
+// onLine: given for uncommitted changes, where a tapped line opens a comment for the agent.
+function renderDiff(patch,file,onLine){
   const box=el("div","diff");
   if(file.binary){box.append(el("p","diff-note",tr("Двоичный файл")));return box}
   if(!patch){box.append(el("p","diff-note",tr("Дифф слишком большой для просмотра; откройте его в терминале")));return box}
   for(const row of diffRows(patch)){
     if(row.kind==="hunk"){box.append(el("div","dl hunk",row.text));continue}
-    box.append(el("div","dl "+row.kind,el("span","ln",String(row.old)),el("span","ln",String(row.new)),el("span","code",row.text||" ")));
+    const line=el("div","dl "+row.kind,el("span","ln",String(row.old)),el("span","ln",String(row.new)),el("span","code",row.text||" "));
+    if(onLine){
+      line.classList.add("commentable");line.tabIndex=0;line.setAttribute("role","button");
+      // Selecting text to copy is not a request to comment.
+      line.onclick=()=>{if(!String(getSelection()||""))onLine(row,line)};
+      line.onkeydown=e=>{if(e.key==="Enter"){e.preventDefault();onLine(row,line)}};
+    }
+    box.append(line);
   }
   if(file.truncated)box.append(el("p","diff-note",tr("Показана только часть изменений")));
   return box;
@@ -2110,10 +2173,17 @@ function fileBlock(title,file,open,content){
 
 async function openHistory(){
   if(!active)return;
-  hist.session=active;hist.ref="";hist.tab="commits";hist.back=null;hist.models=null;freshList();
+  hist.session=active;hist.ref="";hist.tab="changes";hist.back=null;hist.models=null;freshList();
   applyCodeFont();
   if(!$("git_dlg").open)$("git_dlg").showModal();
-  renderHistory();await loadHistoryPage();
+  renderHistory();loadChanges();await loadHistoryPage();
+}
+async function loadChanges(){
+  const seq=++hist.changesSeq;hist.changes=null;hist.changesError="";
+  if(hist.tab==="changes"&&!hist.view)renderHistory();
+  try{const data=await api(gitPath("changes"),null,false,{timeout:60000});if(seq!==hist.changesSeq)return;hist.changes=data}
+  catch(e){if(seq!==hist.changesSeq)return;hist.changesError=e.message===STALE?"":e.message||tr("Не удалось загрузить")}
+  if(hist.tab==="changes"&&!hist.view)renderHistory();
 }
 function gitPath(route,params={}){return "/api/git/"+route+"?"+new URLSearchParams({name:hist.session,ref:hist.ref,...params})}
 // Another branch (a worktree's own, the local main, or GitHub's after a fetch) starts the list over.
@@ -2138,13 +2208,14 @@ function branchBar(){
 }
 async function loadHistoryPage(){
   if(hist.loadingPage)return;  // A double tap on "Show more" would ask for the same page twice.
-  const seq=hist.seq;hist.loadingPage=true;hist.error="";renderHistory();
+  // Commits load in the background while Changes is open; redrawing it would close a comment being typed.
+  const seq=hist.seq;hist.loadingPage=true;hist.error="";if(hist.tab!=="changes")renderHistory();
   try{
     const page=await api(gitPath("log",{skip:hist.commits.length}),null,false,{timeout:60000});
     if(seq!==hist.seq)return;
     hist.log=page;hist.commits.push(...page.commits);
   }catch(e){if(seq===hist.seq&&e.message!==STALE)hist.error=e.message}
-  finally{if(seq===hist.seq){hist.loadingPage=false;renderHistory()}}
+  finally{if(seq===hist.seq){hist.loadingPage=false;if(hist.tab!=="changes")renderHistory()}}
 }
 async function showCommit(sha,back){
   const view={kind:"loading",back:back||null};hist.view=view;hist.back=back||null;renderHistory();
@@ -2191,7 +2262,12 @@ async function startGrouping(){
   try{hist.groups=await api("/api/git_group",{name:hist.session,ref:hist.ref,model:groupModel()})}catch(e){if(e.message!==STALE)toast(e.message);return}
   renderHistory();hist.timer=setTimeout(loadGroups,3000);
 }
-function historyTab(tab){hist.tab=tab;hist.view=null;if(tab==="groups"){if(!hist.groups)loadGroups();if(!hist.models)loadGroupModels()}renderHistory()}
+function historyTab(tab){
+  hist.tab=tab;hist.view=null;
+  if(tab==="groups"){if(!hist.groups)loadGroups();if(!hist.models)loadGroupModels()}
+  if(tab==="changes")return loadChanges();  // The agent keeps working: always the current state.
+  renderHistory();
+}
 
 function commitRow(c,back){
   const row=el("button","git-row",el("span","git-subject",c.subject),
@@ -2203,6 +2279,7 @@ function renderHistory(){
   for(const b of $("git_tabs").querySelectorAll("[data-tab]")){b.classList.toggle("on",b.dataset.tab===hist.tab);b.setAttribute("aria-selected",String(b.dataset.tab===hist.tab))}
   if(hist.view)return renderHistoryView(box);
   if(hist.tab==="groups")return renderGroups(box);
+  if(hist.tab==="changes")return renderChanges(box);
   if(hist.error&&!hist.log){box.append(errorWithRetry(hist.error,loadHistoryPage));return}
   if(!hist.log){box.append(el("p","files-empty",tr("Загрузка…")));return}
   box.append(...branchBar());
@@ -2251,6 +2328,46 @@ function renderHistoryView(box){
     }));
   }
 }
+// A comment names the file, the line and quotes it, so the agent finds the place without the diff.
+function lineComment(path,row,text){
+  const where=row.new!==""?path+":"+row.new:path+":"+row.old+" ("+tr("удалённая строка")+")";
+  const code=row.text.trim();
+  return where+(code?" `"+(code.length>120?code.slice(0,120)+"…":code).replace(/`/g,"'")+"`":"")+" — "+text.trim();
+}
+function appendToMessage(text){
+  const box=$("msg"),current=box.value.replace(/\s+$/,"");
+  box.value=(current?current+"\n":"")+text;
+  box.dispatchEvent(new Event("input"));  // Saves the draft for this session and resizes the field.
+}
+function commentForm(path,row,line){
+  const open=line.nextElementSibling;
+  if(open?.classList.contains("diff-comment")){open.querySelector("textarea").focus();return}
+  const area=el("textarea","");area.rows=2;area.placeholder=tr("Комментарий для агента");area.setAttribute("aria-label",tr("Комментарий для агента"));
+  const form=el("form","diff-comment",area);
+  const cancel=fileButton(tr("Отмена"),"",()=>form.remove()),add=fileButton(tr("Добавить в сообщение"),"pri",null);
+  add.type="submit";form.append(el("div","acts",cancel,add));
+  form.onsubmit=e=>{
+    e.preventDefault();
+    if(!area.value.trim()){area.focus();return}
+    appendToMessage(lineComment(path,row,area.value));form.remove();
+    toast(tr("Комментарий добавлен в сообщение"),"success",{label:tr("К сообщению"),run:()=>{clearTimeout(hist.timer);$("git_dlg").close();$("msg").focus()}});
+  };
+  area.onkeydown=e=>{if(e.key==="Enter"&&(e.metaKey||e.ctrlKey)){e.preventDefault();form.requestSubmit()}};
+  line.after(form);area.focus();
+}
+function renderChanges(box){
+  const data=hist.changes;
+  if(hist.changesError){box.append(errorWithRetry(hist.changesError,loadChanges));return}
+  if(!data){box.append(el("p","files-empty",tr("Загрузка…")));return}
+  const refresh=fileButton(tr("Обновить"),"git-fetch",loadChanges,"refresh");
+  box.append(el("div","git-bar",el("code","",data.name),el("span","git-meta",data.branch),refresh));
+  if(!data.files.length){box.append(el("p","files-empty",tr("Незакоммиченных изменений нет")));return}
+  box.append(el("p","git-meta",tr("Нажмите на строку, чтобы добавить комментарий в сообщение агенту")));
+  // Many files stay folded: each diff renders only when opened, which keeps a phone responsive.
+  const open=data.files.length<=5;
+  for(const f of data.files)box.append(fileBlock(f.path,f,open,()=>renderDiff(f.patch,f,(row,line)=>commentForm(f.path,row,line))));
+  if(data.skipped)box.append(el("p","diff-note",tr("Ещё новых файлов: {0}; они не показаны",[data.skipped])));
+}
 function renderGroups(box){
   const state=hist.groups;
   if(!state){box.append(el("p","files-empty",tr("Загрузка…")));return}
@@ -2271,7 +2388,173 @@ function renderGroups(box){
   const start=fileButton(tr("Сгруппировать коммиты"),"pri",startGrouping);box.append(...[modelPicker(),el("div","acts",start)].filter(Boolean));
 }
 
-if(typeof module!=="undefined")module.exports={diffRows};
+if(typeof module!=="undefined")module.exports={diffRows,lineComment};
+// Small Markdown reader for project files (plans, READMEs): headings, lists, quotes, code, tables, links.
+// Built from DOM nodes with textContent only; links open just http(s) and mailto, raw HTML stays text.
+// Bundled before app.js; nothing here runs at load time.
+const MD_LINK=/^(https?:|mailto:)/i;
+function mdNode(doc,tag,...kids){const node=doc.createElement(tag);node.append(...kids);return node}
+// **bold**, *italic*, `code`, [text](url) and bare URLs; anything else is plain text.
+function mdInline(doc,text){
+  const out=[],re=/(`+)([^`]|[^`].*?[^`])\1|\*\*(.+?)\*\*|__(.+?)__|\*(\S(?:.*?\S)?)\*|\[([^\]]+)\]\(([^)\s]+)\)|(https?:\/\/[^\s<>()]+)/g;
+  let last=0,m;
+  while((m=re.exec(text))){
+    if(m.index>last)out.push(text.slice(last,m.index));
+    if(m[2]!==undefined)out.push(mdNode(doc,"code",m[2]));
+    else if(m[3]!==undefined||m[4]!==undefined)out.push(mdNode(doc,"strong",...mdInline(doc,m[3]??m[4])));
+    else if(m[5]!==undefined)out.push(mdNode(doc,"em",...mdInline(doc,m[5])));
+    else out.push(mdLink(doc,m[6]??m[8],m[7]??m[8]));
+    last=re.lastIndex;
+  }
+  if(last<text.length)out.push(text.slice(last));
+  return out;
+}
+function mdLink(doc,label,url){
+  if(!MD_LINK.test(url))return mdNode(doc,"span",label);  // Relative links point into the repository, not the panel.
+  const a=mdNode(doc,"a",label);a.href=url;a.target="_blank";a.rel="noopener noreferrer";return a;
+}
+function mdCells(line){return line.trim().replace(/^\||\|$/g,"").split("|").map(cell=>cell.trim())}
+function mdTable(doc,lines){
+  const table=mdNode(doc,"table"),head=mdNode(doc,"tr",...mdCells(lines[0]).map(c=>mdNode(doc,"th",...mdInline(doc,c))));
+  table.append(mdNode(doc,"thead",head));
+  const body=mdNode(doc,"tbody");
+  for(const line of lines.slice(2))body.append(mdNode(doc,"tr",...mdCells(line).map(c=>mdNode(doc,"td",...mdInline(doc,c)))));
+  table.append(body);const wrap=mdNode(doc,"div",table);wrap.className="md-table";return wrap;
+}
+const MD_BREAK=/^(#{1,6}\s|```|~~~|>|\s*([-*+]|\d+[.)])\s|\s*([-*_]\s*){3,}$)/;
+function renderMarkdown(text,doc=document){
+  const root=doc.createElement("div"),lines=text.replace(/\r\n?/g,"\n").split("\n");
+  root.className="md";
+  for(let i=0;i<lines.length;){
+    const line=lines[i];
+    if(!line.trim()){i++;continue}
+    const fence=line.match(/^\s*(```|~~~)/);
+    if(fence){
+      const code=[];i++;
+      while(i<lines.length&&!lines[i].trim().startsWith(fence[1]))code.push(lines[i++]);
+      i++;root.append(mdNode(doc,"pre",mdNode(doc,"code",code.join("\n"))));continue;
+    }
+    const heading=line.match(/^(#{1,6})\s+(.*?)\s*#*\s*$/);
+    if(heading){root.append(mdNode(doc,"h"+heading[1].length,...mdInline(doc,heading[2])));i++;continue}
+    if(/^\s*([-*_]\s*){3,}$/.test(line)){root.append(doc.createElement("hr"));i++;continue}
+    if(line.includes("|")&&/^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?\s*$/.test(lines[i+1]||"")){
+      const rows=[line,lines[i+1]];i+=2;
+      while(i<lines.length&&lines[i].includes("|")&&lines[i].trim())rows.push(lines[i++]);
+      root.append(mdTable(doc,rows));continue;
+    }
+    if(line.startsWith(">")){
+      const quote=[];
+      while(i<lines.length&&lines[i].startsWith(">"))quote.push(lines[i++].replace(/^>\s?/,""));
+      root.append(mdNode(doc,"blockquote",...renderMarkdown(quote.join("\n"),doc).childNodes));continue;
+    }
+    const item=line.match(/^\s*([-*+]|\d+[.)])\s+(.*)$/);
+    if(item){
+      const list=doc.createElement(/\d/.test(item[1])?"ol":"ul");
+      while(i<lines.length){
+        const next=lines[i].match(/^\s*([-*+]|\d+[.)])\s+(.*)$/);
+        if(next){
+          const task=next[2].match(/^\[([ xX])\]\s+(.*)$/),li=mdNode(doc,"li",...mdInline(doc,task?task[2]:next[2]));
+          if(task)li.prepend(task[1]===" "?"☐ ":"☑ ");
+          list.append(li);i++;
+        }else if(lines[i].trim()&&/^\s{2,}/.test(lines[i])&&list.lastChild){list.lastChild.append(" ",...mdInline(doc,lines[i].trim()));i++}
+        else break;
+      }
+      root.append(list);continue;
+    }
+    const para=[line.trim()];i++;
+    while(i<lines.length&&lines[i].trim()&&!MD_BREAK.test(lines[i]))para.push(lines[i++].trim());
+    root.append(mdNode(doc,"p",...mdInline(doc,para.join(" "))));
+  }
+  return root;
+}
+function isMarkdown(path){return /\.(md|markdown|mdx)$/i.test(path)}
+
+if(typeof module!=="undefined")module.exports={renderMarkdown,isMarkdown};
+// Search in the open session's whole output (tmux scrollback) and the quick switcher (Alt+K, Ctrl/Cmd+K).
+// Output is shown with textContent only; the server matches plain text, newest first.
+// Bundled before app.js; nothing here runs at load time.
+const outputSearch={session:null,query:"",seq:0,result:null,error:"",busy:false};
+
+function openOutputSearch(){
+  if(!active)return;
+  if(outputSearch.session!==active)Object.assign(outputSearch,{session:active,query:"",result:null,error:""});
+  if(!$("search_dlg").open)$("search_dlg").showModal();
+  const input=$("search_q");input.value=outputSearch.query;renderOutputSearch();
+  setTimeout(()=>{input.focus();input.select()},0);
+}
+async function runOutputSearch(){
+  const query=$("search_q").value.trim();
+  if(!query)return;
+  const seq=++outputSearch.seq;Object.assign(outputSearch,{query,busy:true,error:""});renderOutputSearch();
+  try{
+    const result=await api("/api/scrollback?"+new URLSearchParams({name:outputSearch.session,q:query}),null,false,{timeout:60000});
+    if(seq===outputSearch.seq)outputSearch.result=result;
+  }catch(e){if(seq===outputSearch.seq&&e.message!==STALE)outputSearch.error=e.message}
+  if(seq===outputSearch.seq){outputSearch.busy=false;renderOutputSearch()}
+}
+// The matched part in a <mark>; when case folding changes the length, the line stays plain.
+function markMatch(text,query){
+  const lower=text.toLowerCase(),needle=query.toLowerCase(),at=lower.indexOf(needle);
+  if(!needle||at<0||lower.length!==text.length)return [text||" "];
+  return [text.slice(0,at),el("mark","",text.slice(at,at+needle.length)),text.slice(at+needle.length)];
+}
+function renderOutputSearch(){
+  const box=$("search_body"),state=outputSearch,result=state.result;box.replaceChildren();
+  if(state.busy){box.append(el("p","files-empty",tr("Ищу…")));return}
+  if(state.error){box.append(errorWithRetry(state.error,runOutputSearch));return}
+  if(!result){box.append(el("p","files-empty",tr("Ищет по всему выводу сессии, включая прокрутку, начиная с последних строк")));return}
+  if(!result.total){box.append(el("p","files-empty",tr("Ничего не найдено")));return}
+  box.append(el("p","git-meta",result.total>result.matches.length?tr("Найдено: {0}, показаны последние {1}",[result.total,result.matches.length]):tr("Найдено: {0}",[result.total])));
+  for(const hit of result.matches){
+    const lines=el("div","search-lines",...hit.before.map(t=>el("div","ctx",t||" ")),el("div","hit",...markMatch(hit.text,result.query)),...hit.after.map(t=>el("div","ctx",t||" ")));
+    const copy=fileButton(tr("Копировать"),"search-copy",()=>copyText(hit.text));
+    box.append(el("div","search-result",el("div","git-meta",tr("Строка {0} из {1}",[hit.line,result.lines]),copy),lines));
+  }
+}
+
+// Every word must appear in the title or the hint, in any order.
+function matchPalette(items,query){
+  const words=query.toLowerCase().split(/\s+/).filter(Boolean);
+  return items.filter(item=>{const text=(item.label+" "+(item.hint||"")).toLowerCase();return words.every(w=>text.includes(w))});
+}
+const palette={items:[],shown:[],index:0};
+function paletteItems(){
+  const items=[];
+  for(const s of sessions)items.push({label:sessionTitle(s),hint:currentDeckName()+" · "+shortPath(s.path||""),icon:"terminal",run:()=>select(s.name)});
+  for(const deck of otherDecks)if(!deck.error)for(const s of deck.sessions)
+    items.push({label:sessionTitle(s),hint:deck.name+" · "+shortPath(s.path||""),icon:"monitor",run:()=>openDeckSession(deck.id,s.name)});
+  const actions=[[tr("Новая сессия"),"plus",openNew,true],[tr("Файлы проекта"),"folder",openFiles,active],[tr("История изменений"),"history",openHistory,active],
+    [tr("Поиск в выводе"),"search",openOutputSearch,active],[tr("Настройки"),"gear",()=>openSettings(),true]];
+  for(const [label,icon,run,on] of actions)if(on)items.push({label,hint:tr("Действие"),icon,run});
+  return items;
+}
+function openPalette(){
+  if($("palette_dlg").open){$("palette_dlg").close();return}
+  if(document.querySelector("dialog[open]"))return;  // A switch from inside another dialog would leave it behind.
+  palette.items=paletteItems();
+  const input=$("palette_q");input.value="";filterPalette();
+  $("palette_dlg").showModal();setTimeout(()=>input.focus(),0);
+}
+function filterPalette(){palette.shown=matchPalette(palette.items,$("palette_q").value).slice(0,50);palette.index=0;renderPalette()}
+function renderPalette(){
+  const list=$("palette_list");list.replaceChildren();
+  palette.shown.forEach((item,i)=>{
+    const row=el("button","palette-row"+(i===palette.index?" on":""),svgIcon(item.icon),el("span","palette-label",item.label),el("span","palette-hint",item.hint));
+    row.type="button";row.setAttribute("role","option");row.setAttribute("aria-selected",String(i===palette.index));
+    row.onclick=()=>runPalette(i);list.append(row);
+  });
+  if(!palette.shown.length)list.append(el("p","files-empty",tr("Ничего не найдено")));
+  list.querySelector(".on")?.scrollIntoView?.({block:"nearest"});
+}
+function runPalette(i){const item=palette.shown[i];if(!item)return;$("palette_dlg").close();item.run()}
+function paletteKey(e){
+  if(e.key==="ArrowDown"||e.key==="ArrowUp"){
+    e.preventDefault();const n=palette.shown.length;if(!n)return;
+    palette.index=(palette.index+(e.key==="ArrowDown"?1:-1)+n)%n;renderPalette();
+  }else if(e.key==="Enter"&&!e.isComposing){e.preventDefault();runPalette(palette.index)}
+}
+
+if(typeof module!=="undefined")module.exports={matchPalette,markMatch};
 const I18N=__PANEL_I18N__;
 const DATE_LOCALE=(()=>{try{return Intl.getCanonicalLocales(I18N.language)[0]}catch(e){return "en"}})();
 const $=id=>document.getElementById(id);
@@ -2990,6 +3273,11 @@ $("msg").addEventListener("keydown",e=>{
   else if(e.key==="Enter"&&(e.metaKey||e.ctrlKey)){e.preventDefault();send()}
 });
 $("q").addEventListener("input",renderTabs);
+$("search_form").addEventListener("submit",e=>{e.preventDefault();runOutputSearch()});
+$("palette_q").addEventListener("input",filterPalette);
+$("palette_q").addEventListener("keydown",paletteKey);
+// A click on the backdrop (outside the box) closes the switcher, as Escape does.
+$("palette_dlg").addEventListener("click",e=>{if(e.target===$("palette_dlg"))$("palette_dlg").close()});
 
 /* ---------- GitHub ---------- */
 const GH_ICON='<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>';
@@ -3543,9 +3831,13 @@ function renderAdvanced(){
 }
 $("n_git").addEventListener("input",renderAdvanced);
 
-/* ⌥1..9 — табы, ⌥↑/⌥↓ — пред./след., ⌥T — новая (работает и внутри терминала) */
+/* ⌥1..9 — табы, ⌥↑/⌥↓ — пред./след., ⌥T — новая, ⌥K — быстрый переход (работает и внутри терминала) */
 function hotkeys(e){
   if(!e.altKey&&!e.ctrlKey&&!e.metaKey&&answerByDigit(e))return;
+  // Ctrl+K is kill-line in a shell (and in Mac text fields), so inside the terminal only Alt+K opens the
+  // switcher, and a Mac uses Cmd+K.
+  const commandKey=/Mac|iPhone|iPad/.test(navigator.platform||"")?e.metaKey&&!e.ctrlKey:e.ctrlKey&&!e.metaKey;
+  if(commandKey&&!e.altKey&&!e.shiftKey&&e.code==="KeyK"&&e.target?.ownerDocument===document){e.preventDefault();e.stopPropagation();openPalette();return}
   if(!e.altKey||e.ctrlKey||e.metaKey)return;
   const vis=[...$("tabs").querySelectorAll(".tab:not(.remote)")].map(t=>t.dataset.session);
   let target=null;
@@ -3556,6 +3848,7 @@ function hotkeys(e){
   }
   else if(e.code==="ArrowUp"||e.code==="ArrowDown"){const i=vis.indexOf(active);target=vis[(i+(e.code==="ArrowUp"?-1:1)+vis.length)%vis.length]}
   else if(e.code==="KeyT"){e.preventDefault();e.stopPropagation();openNew();return}
+  else if(e.code==="KeyK"){e.preventDefault();e.stopPropagation();openPalette();return}
   else return;
   e.preventDefault();e.stopPropagation();if(target)select(target);
 }

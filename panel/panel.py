@@ -1671,6 +1671,20 @@ def file_payload(query):
     return file_errors(lambda: files.read_text(os.path.expanduser("~"), query.get("path", [""])[0]))
 
 
+def file_preview_payload(query):
+    from integrations import files
+    return file_errors(lambda: files.read_preview(os.path.expanduser("~"), query.get("path", [""])[0]))
+
+
+def scrollback_payload(query):
+    from integrations import scrollback
+    name = query.get("name", [""])[0]
+    if not NAME_RE.fullmatch(name) or not session_exists(name):
+        raise ValueError("сессия не найдена")
+    text = tmux("capture-pane", "-p", "-J", "-t", f"={PREFIX}{name}:", "-S", "-", "-E", "-", check=False)
+    return scrollback.search(text, query.get("q", [""])[0])
+
+
 def action_file_save(d):
     from integrations import files
     expected = d.get("hash")
@@ -1700,6 +1714,8 @@ def git_payload(route, query):
         return git.history(folder, int(skip) if skip.isdigit() else -1, ref=query.get("ref", [""])[0])
     if route == "/api/git/commit":
         return git.commit(folder, query.get("sha", [""])[0])
+    if route == "/api/git/changes":
+        return git.changes(folder)
     if route == "/api/git/group_diff":
         return git.group_diff(folder, [s for s in query.get("shas", [""])[0].split(",") if s])
     if route == "/api/git/groups":
@@ -2099,9 +2115,10 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send_json(200, git_payload(parsed.path, parse_qs(parsed.query)))
             except (ValueError, OSError, subprocess.TimeoutExpired) as error:
                 return self.send_json(400, {"error": str(error) if isinstance(error, ValueError) else "git не ответил"})
-        if parsed.path in ("/api/files", "/api/file"):
+        if parsed.path in ("/api/files", "/api/file", "/api/file_preview", "/api/scrollback"):
             try:
-                load = files_payload if parsed.path == "/api/files" else file_payload
+                load = {"/api/files": files_payload, "/api/file": file_payload, "/api/file_preview": file_preview_payload,
+                        "/api/scrollback": scrollback_payload}[parsed.path]
                 return self.send_json(200, load(parse_qs(parsed.query)))
             except ValueError as error:
                 return self.send_json(400, {"error": str(error)})
