@@ -2,7 +2,7 @@
 // message draft), commits with their diffs, and feature groups that a model proposes from commit subjects
 // and file names, each with a combined diff.
 // Agent and repository text is rendered with textContent only.
-const hist={session:null,ref:"",tab:"changes",changes:null,changesError:"",changesSeq:0,log:null,commits:[],back:null,view:null,groups:null,timer:null,fetching:false,
+const hist={session:null,ref:"",tab:"changes",authors:null,changes:null,changesError:"",changesSeq:0,log:null,commits:[],back:null,view:null,groups:null,timer:null,fetching:false,
   seq:0,loadingPage:false,error:""};
 // Every list (session, branch) gets a new number; an answer for an older one is dropped instead of being
 // mixed into the list that is on screen now.
@@ -69,7 +69,7 @@ function fileBlock(title,file,open,content){
 
 async function openHistory(){
   if(!active)return;
-  hist.session=active;hist.ref="";hist.tab="changes";hist.back=null;hist.models=null;freshList();
+  hist.session=active;hist.ref="";hist.tab="changes";hist.back=null;hist.models=null;hist.authors=savedAuthorColors();freshList();
   applyCodeFont();
   if(!$("git_dlg").open)$("git_dlg").showModal();
   renderHistory();loadChanges();await loadHistoryPage();
@@ -165,9 +165,29 @@ function historyTab(tab){
   renderHistory();
 }
 
+// Authors get colours in this order, chosen so the first few are as far apart as possible; green and
+// red are left out because they already mean added and removed lines. An author keeps the colour
+// first given (remembered in this browser), so the same person looks the same everywhere.
+const AUTHOR_COLORS=["#64d2ff","#ff9f0a","#bf5af2","#ffd60a","#f472b6","#66d4cf","#7d7aff","#c69c6d"];
+function authorColor(name,taken){
+  if(!taken.has(name)){
+    const used=new Set(taken.values());
+    const free=AUTHOR_COLORS.findIndex((_,index)=>!used.has(index));
+    taken.set(name,free>=0?free:taken.size%AUTHOR_COLORS.length);
+    try{localStore.setItem("cc.author-colors",JSON.stringify([...taken]))}catch(e){}
+  }
+  return AUTHOR_COLORS[taken.get(name)];
+}
+function savedAuthorColors(){
+  try{return new Map(JSON.parse(localStore.getItem("cc.author-colors")||"[]").filter(([name,index])=>typeof name==="string"&&Number.isInteger(index)&&index>=0&&index<AUTHOR_COLORS.length))}
+  catch(e){return new Map()}
+}
+function authorLabel(name){const label=el("span","git-author",name);label.style.setProperty("--author",authorColor(name||"?",hist.authors));return label}
 function commitRow(c,back){
+  const color=authorColor(c.author||"?",hist.authors);
   const row=el("button","git-row",el("span","git-subject",c.subject),
-    el("span","git-meta",[c.short,c.author,relativeTime(c.time)].join(" · "),el("span","diff-count",el("b","plus","+"+c.added),el("b","minus","−"+c.removed))));
+    el("span","git-meta",c.short,el("span","sep","·"),el("span","git-author",c.author),el("span","sep","·"),relativeTime(c.time),el("span","diff-count",el("b","plus","+"+c.added),el("b","minus","−"+c.removed))));
+  row.style.setProperty("--author",color);
   row.type="button";row.onclick=()=>showCommit(c.sha,back);return row;
 }
 function renderHistory(){
@@ -203,7 +223,7 @@ function renderHistoryView(box){
     const c=view.data,[subject,...rest]=c.message.split("\n");
     const back=hist.back;
     box.append(backButton(back?tr("К группе"):tr("К коммитам"),()=>{hist.view=back?{kind:"group",group:back,diff:null}:null;if(back)showGroup(back);else renderHistory()}),
-      el("h4","git-title",subject),el("p","git-meta",[c.short,c.author,new Date(c.time*1000).toLocaleString(DATE_LOCALE)].join(" · ")));
+      el("h4","git-title",subject),el("p","git-meta",c.short,el("span","sep","·"),authorLabel(c.author),el("span","sep","·"),new Date(c.time*1000).toLocaleString(DATE_LOCALE)));
     const body=rest.join("\n").trim();if(body)box.append(el("pre","git-message",body));
     for(const f of c.files)box.append(fileBlock(f.path,f,true,()=>renderDiff(f.patch,f)));
     return;
@@ -284,4 +304,4 @@ function renderGroups(box){
   const start=fileButton(tr("Сгруппировать коммиты"),"pri",startGrouping);box.append(...[modelPicker(),el("div","acts",start)].filter(Boolean));
 }
 
-if(typeof module!=="undefined")module.exports={diffRows,lineComment};
+if(typeof module!=="undefined")module.exports={diffRows,lineComment,authorColor,AUTHOR_COLORS};

@@ -15,3 +15,12 @@ test('text that looks like markup stays text',()=>{
   const rows=diffRows('@@ -0,0 +1 @@\n+<img src=x onerror=alert(1)>');
   expect(rows[1]).toEqual({kind:'add',old:'',new:1,text:'<img src=x onerror=alert(1)>'});
 });
+
+test('authors get far-apart colours in turn and keep them',()=>{
+  const store=new Map();global.localStore={getItem:k=>store.get(k)??null,setItem:(k,v)=>store.set(k,v)};
+  const {authorColor,AUTHOR_COLORS}=require('../../frontend/git');
+  const taken=new Map();
+  expect(['Denis','Pavel','Anna'].map(n=>authorColor(n,taken))).toEqual(AUTHOR_COLORS.slice(0,3));
+  expect(authorColor('Denis',taken)).toBe(AUTHOR_COLORS[0]);
+  expect(JSON.parse(store.get('cc.author-colors'))).toEqual([['Denis',0],['Pavel',1],['Anna',2]]);
+});

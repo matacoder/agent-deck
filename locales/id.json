@@ -800,6 +800,7 @@
     "требует внимания": "perlu perhatian",
     "Отпустите, чтобы приложить к «{0}»": "Lepas untuk melampirkan ke “{0}”",
     "Сначала откройте сессию": "Buka sesi terlebih dahulu",
-    "До 4 файлов, до 200 МБ каждый": "Hingga 4 file, masing-masing 200 MB"
+    "До 4 файлов, до 200 МБ каждый": "Hingga 4 file, masing-masing 200 MB",
+    "Ждут ответа: {0}": "Menunggu Anda: {0}"
   }
 }

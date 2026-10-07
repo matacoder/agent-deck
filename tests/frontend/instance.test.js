@@ -390,7 +390,12 @@ test('switching computers keeps the computers in one order in the sidebar',async
   const heads=()=>[...window.document.querySelectorAll('#tabs .deck-head .deck-name')].map(n=>n.textContent);
   const before=heads();
   expect(before.length).toBe(2);
-  window.openDeckSession(DECK,'beta');await settle();await settle();
+  const inbox=window.document.getElementById('inbox_btn'),srv=window.document.getElementById('srv');
+  window.openDeckSession(DECK,'beta');
+  // Right after the switch, before the new computer answers, nothing collapses or disappears.
+  expect(inbox.hidden).toBe(false);
+  expect(srv.classList.contains('stale')||srv.childElementCount>0).toBe(true);
+  await settle();await settle();
   expect(heads()).toEqual(before);
   window.openDeckSession('','alpha');await settle();await settle();
   expect(heads()).toEqual(before);

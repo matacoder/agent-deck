@@ -800,6 +800,7 @@
     "требует внимания": "dikkat gerektiriyor",
     "Отпустите, чтобы приложить к «{0}»": "“{0}” oturumuna eklemek için bırak",
     "Сначала откройте сессию": "Önce bir oturum aç",
-    "До 4 файлов, до 200 МБ каждый": "En fazla 4 dosya, her biri 200 MB"
+    "До 4 файлов, до 200 МБ каждый": "En fazla 4 dosya, her biri 200 MB",
+    "Ждут ответа: {0}": "Sizi bekliyor: {0}"
   }
 }

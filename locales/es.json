@@ -800,6 +800,7 @@
     "требует внимания": "requiere atención",
     "Отпустите, чтобы приложить к «{0}»": "Suelta para adjuntar a “{0}”",
     "Сначала откройте сессию": "Abre primero una sesión",
-    "До 4 файлов, до 200 МБ каждый": "Hasta 4 archivos, 200 MB cada uno"
+    "До 4 файлов, до 200 МБ каждый": "Hasta 4 archivos, 200 MB cada uno",
+    "Ждут ответа: {0}": "Esperan tu respuesta: {0}"
   }
 }

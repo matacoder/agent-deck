@@ -953,7 +953,9 @@ function resetInstanceState(known){
   lastAg={};usageData={};ghLogin=null;lastGh=0;repos=[];
   lmData={profiles:[],discovery:{}};lmRefreshPending=null;openLocalModels.clear();
   telegramConfig={};panelVersion=null;UI_PANEL_VERSION=null;panelUpdating=false;hubSignature="";
-  $("pre").dataset.raw="";$("pre").replaceChildren();$("srv").replaceChildren();$("ver").replaceChildren();
+  $("pre").dataset.raw="";$("pre").replaceChildren();$("ver").replaceChildren();
+  // The address line keeps its place and the previous text, dimmed, until the new computer answers.
+  $("srv").classList.add("stale");
   $("metric_cpu").textContent=$("metric_ram").textContent="—";
 }
 function renderSources(){
@@ -1004,12 +1006,15 @@ function updatePanel(){
 }
 async function loadServer(){
   try{
-    const s=await api("/api/server"),box=$("srv");box.replaceChildren();
+    const s=await api("/api/server"),box=$("srv");box.replaceChildren();box.classList.remove("stale");
     const cc=(s.country||"").toUpperCase();
     if(/^[A-Z]{2}$/.test(cc))box.append(el("span","fl",String.fromCodePoint(...[...cc].map(c=>0x1F1A5+c.charCodeAt(0)))));
     box.append(el("span","ip",s.ip||s.tailscale_ip||"?"),el("span","hn","· "+s.hostname));
     box.title=[s.city&&`${s.city}, ${cc}`,s.org,`Tailscale: ${s.tailscale_ip}`].filter(Boolean).join("\n");
-  }catch(e){}
+  }catch(e){
+    // A dimmed address of the computer we left must not stay as if it were this one's.
+    if(e.message!==STALE&&$("srv").classList.contains("stale")){$("srv").replaceChildren(el("span","ip","—"));$("srv").classList.remove("stale");$("srv").title=""}
+  }
 }
 async function loadGithub(){
   const body=$("gh_body");body.replaceChildren();$("gh_refresh").style.display="none";$("gh_state").textContent=tr("GitHub: проверяю…");

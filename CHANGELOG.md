@@ -2,6 +2,12 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.22.1 — 2026-10-07
+
+- Sidebar stays still when switching computers: the address line keeps its place (dimmed until the new computer answers) instead of collapsing and reappearing.
+- "Waiting for you" is a fixed icon with a count in the search row instead of a bar that appeared above the session list and pushed it down.
+- Change history colours each commit row by its author (blue, orange, purple first, so the first few people never look alike); a person keeps their colour in this browser, also on the commit page.
+
 ## 1.22.0 — 2026-10-07
 
 Settings redesigned after a five-way review (structure, copy, visual design, phone and accessibility).

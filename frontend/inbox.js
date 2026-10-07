@@ -22,7 +22,9 @@ async function loadInbox(){
 function inboxCount(){return inboxItems(inbox.questions,finishedSessions()).length}
 function renderInboxBadge(){
   const count=inboxCount();
-  $("inbox_btn").hidden=!count;$("inbox_count").textContent=count;
+  // Always in place: a count appears or goes, the layout around it never moves.
+  const button=$("inbox_btn");button.classList.toggle("on",count>0);$("inbox_count").textContent=count||"";
+  button.setAttribute("aria-label",count?tr("Ждут ответа: {0}",[count]):tr("Ждут ответа"));
   return count;
 }
 function openInboxSession(deck,session){

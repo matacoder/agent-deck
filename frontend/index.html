@@ -51,9 +51,9 @@ __PANEL_STYLE__</style></head><body>
     <div id="srv"></div>
     <div class="side-top">
       <input id="q" class="search" placeholder="Поиск…" aria-label="Поиск…" title="Быстрый переход: ⌥K, Ctrl+K или ⌘K" autocomplete="off" autocapitalize="off" spellcheck="false">
+      <button type="button" id="inbox_btn" class="iconbtn inbox-btn" onclick="openInbox()" title="Ждут ответа" aria-label="Ждут ответа"><svg class="ui-icon"><use href="#i-inbox"/></svg><b id="inbox_count"></b></button>
       <button class="iconbtn accent" title="Новая сессия (⌥T)" aria-label="Новая сессия" onclick="openNew()"><svg class="ui-icon"><use href="#i-plus"/></svg></button>
     </div>
-    <button type="button" id="inbox_btn" class="inbox-btn" onclick="openInbox()" hidden><svg class="ui-icon"><use href="#i-inbox"/></svg><span>Ждут ответа</span><b id="inbox_count"></b></button>
     <div id="tabs"></div>
     <div id="integ"></div>
     <div class="side-foot"><span id="foot"></span><span id="ver"></span><button id="b_drafts" onclick="showClosedDrafts()" style="display:none"><svg class="ui-icon"><use href="#i-file"/></svg><span>Черновики закрытых сессий</span></button><button class="settingsbtn" onclick="openSettings()"><svg class="ui-icon"><use href="#i-gear"/></svg><span>Настройки</span></button></div>

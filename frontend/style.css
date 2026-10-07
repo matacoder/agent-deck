@@ -41,7 +41,8 @@ aside{width:248px;flex:none;background:var(--side);border-right:1px solid var(--
 .deck-switch select{min-width:0;min-height:32px;background:var(--side2);color:var(--fg);border:1px solid var(--bd);border-radius:var(--r-sm);padding:6px 8px}
 .deck-switch button{display:grid;place-items:center;height:32px;border-radius:var(--r-sm);color:var(--mut)}
 @media (hover:hover){.deck-switch button:hover{background:var(--side2);color:var(--fg)}}
-#srv{display:flex;align-items:center;gap:6px;padding:10px 12px 0;font-size:12px;color:var(--mut);white-space:nowrap;overflow:hidden;cursor:default}
+#srv{display:flex;align-items:center;gap:6px;min-height:28px;padding:10px 12px 0;font-size:12px;color:var(--mut);white-space:nowrap;overflow:hidden;cursor:default}
+#srv.stale{opacity:.45}
 #srv .fl{font-size:14px;line-height:1}#srv .ip{font-family:var(--mono);color:var(--fg)}#srv .hn{overflow:hidden;text-overflow:ellipsis}
 /* With computers connected the selector already names this one; the host name would be a third label. */
 .deck-switch:not([hidden])+#srv .hn{display:none}
@@ -468,10 +469,11 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 .fleet-bar .pri{flex:none;padding:8px 14px;border-radius:9px}
 .deck-version.outdated{color:var(--acc-text)}
 .deck-update{flex:none;color:var(--acc-text);font-weight:700}
-.inbox-btn{display:flex;align-items:center;gap:8px;margin:0 8px 6px;padding:8px 10px;border:1px solid #0a84ff55;border-radius:9px;background:var(--acc-soft);color:var(--fg2);text-align:left}
-.inbox-btn[hidden]{display:none}
-.inbox-btn span{flex:1}.inbox-btn b{min-width:20px;padding:1px 7px;border-radius:10px;background:var(--acc-strong);color:#fff;font-size:11.5px;text-align:center}
-.inbox-btn svg{color:var(--acc-text)}
+/* Fixed slot in the search row: a waiting count shows as a badge, nothing around it moves. */
+.inbox-btn{position:relative;flex:none;color:var(--dim)}
+.inbox-btn.on{color:var(--acc-text)}
+.inbox-btn b{position:absolute;top:1px;right:0;min-width:16px;padding:0 4px;border-radius:8px;background:var(--acc-strong);color:#fff;font:600 10.5px/16px -apple-system,BlinkMacSystemFont,system-ui,sans-serif;text-align:center}
+.inbox-btn b:empty{display:none}
 #inbox_dlg{width:min(560px,calc(100vw - 32px))}
 #files_dlg{width:min(720px,calc(100vw - 32px))}
 #git_dlg{width:min(900px,calc(100vw - 32px))}
@@ -510,10 +512,15 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 .git-behind button{padding:4px 10px;border:1px solid var(--bd);border-radius:var(--r-sm);color:var(--fg2)}
 .git-list{display:grid;border:1px solid var(--bd);border-radius:12px;overflow:hidden}
 .git-row,.git-group{display:grid;gap:4px;padding:10px 12px;border-bottom:1px solid var(--bd-soft);text-align:left;color:var(--fg)}
-.git-row:last-child{border-bottom:0}@media (hover:hover){.git-row:hover,.git-group:hover{background:var(--side2)}}
+/* The whole row carries its author's colour, so who did what reads at a glance. */
+.git-row{box-shadow:inset 4px 0 0 var(--author,transparent);background:color-mix(in srgb,var(--author,transparent) 16%,transparent)}
+@media (hover:hover){.git-row:hover{background:color-mix(in srgb,var(--author,var(--side2)) 26%,transparent)}}
+.git-author{color:var(--author,inherit);font-weight:600}
+.git-row:last-child{border-bottom:0}@media (hover:hover){.git-group:hover{background:var(--side2)}}
 .git-group{border:1px solid var(--bd);border-radius:12px}
 .git-subject{color:var(--fg2);font-weight:600;overflow-wrap:anywhere}
 .git-meta{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0;color:var(--mut);font-size:12px}
+.git-meta .sep{margin:0 -3px;color:var(--dim)}
 .git-summary{margin:0;color:var(--fg);font-size:13px;line-height:1.5}
 .git-title{margin:4px 0 0;color:var(--fg2);font-size:16px;overflow-wrap:anywhere}
 .git-section{margin:8px 0 0;color:var(--mut);font-size:12px;text-transform:uppercase;letter-spacing:.04em}

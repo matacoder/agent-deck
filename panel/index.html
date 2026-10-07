@@ -52,7 +52,8 @@ aside{width:248px;flex:none;background:var(--side);border-right:1px solid var(--
 .deck-switch select{min-width:0;min-height:32px;background:var(--side2);color:var(--fg);border:1px solid var(--bd);border-radius:var(--r-sm);padding:6px 8px}
 .deck-switch button{display:grid;place-items:center;height:32px;border-radius:var(--r-sm);color:var(--mut)}
 @media (hover:hover){.deck-switch button:hover{background:var(--side2);color:var(--fg)}}
-#srv{display:flex;align-items:center;gap:6px;padding:10px 12px 0;font-size:12px;color:var(--mut);white-space:nowrap;overflow:hidden;cursor:default}
+#srv{display:flex;align-items:center;gap:6px;min-height:28px;padding:10px 12px 0;font-size:12px;color:var(--mut);white-space:nowrap;overflow:hidden;cursor:default}
+#srv.stale{opacity:.45}
 #srv .fl{font-size:14px;line-height:1}#srv .ip{font-family:var(--mono);color:var(--fg)}#srv .hn{overflow:hidden;text-overflow:ellipsis}
 /* With computers connected the selector already names this one; the host name would be a third label. */
 .deck-switch:not([hidden])+#srv .hn{display:none}
@@ -479,10 +480,11 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 .fleet-bar .pri{flex:none;padding:8px 14px;border-radius:9px}
 .deck-version.outdated{color:var(--acc-text)}
 .deck-update{flex:none;color:var(--acc-text);font-weight:700}
-.inbox-btn{display:flex;align-items:center;gap:8px;margin:0 8px 6px;padding:8px 10px;border:1px solid #0a84ff55;border-radius:9px;background:var(--acc-soft);color:var(--fg2);text-align:left}
-.inbox-btn[hidden]{display:none}
-.inbox-btn span{flex:1}.inbox-btn b{min-width:20px;padding:1px 7px;border-radius:10px;background:var(--acc-strong);color:#fff;font-size:11.5px;text-align:center}
-.inbox-btn svg{color:var(--acc-text)}
+/* Fixed slot in the search row: a waiting count shows as a badge, nothing around it moves. */
+.inbox-btn{position:relative;flex:none;color:var(--dim)}
+.inbox-btn.on{color:var(--acc-text)}
+.inbox-btn b{position:absolute;top:1px;right:0;min-width:16px;padding:0 4px;border-radius:8px;background:var(--acc-strong);color:#fff;font:600 10.5px/16px -apple-system,BlinkMacSystemFont,system-ui,sans-serif;text-align:center}
+.inbox-btn b:empty{display:none}
 #inbox_dlg{width:min(560px,calc(100vw - 32px))}
 #files_dlg{width:min(720px,calc(100vw - 32px))}
 #git_dlg{width:min(900px,calc(100vw - 32px))}
@@ -521,10 +523,15 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 .git-behind button{padding:4px 10px;border:1px solid var(--bd);border-radius:var(--r-sm);color:var(--fg2)}
 .git-list{display:grid;border:1px solid var(--bd);border-radius:12px;overflow:hidden}
 .git-row,.git-group{display:grid;gap:4px;padding:10px 12px;border-bottom:1px solid var(--bd-soft);text-align:left;color:var(--fg)}
-.git-row:last-child{border-bottom:0}@media (hover:hover){.git-row:hover,.git-group:hover{background:var(--side2)}}
+/* The whole row carries its author's colour, so who did what reads at a glance. */
+.git-row{box-shadow:inset 4px 0 0 var(--author,transparent);background:color-mix(in srgb,var(--author,transparent) 16%,transparent)}
+@media (hover:hover){.git-row:hover{background:color-mix(in srgb,var(--author,var(--side2)) 26%,transparent)}}
+.git-author{color:var(--author,inherit);font-weight:600}
+.git-row:last-child{border-bottom:0}@media (hover:hover){.git-group:hover{background:var(--side2)}}
 .git-group{border:1px solid var(--bd);border-radius:12px}
 .git-subject{color:var(--fg2);font-weight:600;overflow-wrap:anywhere}
 .git-meta{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0;color:var(--mut);font-size:12px}
+.git-meta .sep{margin:0 -3px;color:var(--dim)}
 .git-summary{margin:0;color:var(--fg);font-size:13px;line-height:1.5}
 .git-title{margin:4px 0 0;color:var(--fg2);font-size:16px;overflow-wrap:anywhere}
 .git-section{margin:8px 0 0;color:var(--mut);font-size:12px;text-transform:uppercase;letter-spacing:.04em}
@@ -927,9 +934,9 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
     <div id="srv"></div>
     <div class="side-top">
       <input id="q" class="search" placeholder="Поиск…" aria-label="Поиск…" title="Быстрый переход: ⌥K, Ctrl+K или ⌘K" autocomplete="off" autocapitalize="off" spellcheck="false">
+      <button type="button" id="inbox_btn" class="iconbtn inbox-btn" onclick="openInbox()" title="Ждут ответа" aria-label="Ждут ответа"><svg class="ui-icon"><use href="#i-inbox"/></svg><b id="inbox_count"></b></button>
       <button class="iconbtn accent" title="Новая сессия (⌥T)" aria-label="Новая сессия" onclick="openNew()"><svg class="ui-icon"><use href="#i-plus"/></svg></button>
     </div>
-    <button type="button" id="inbox_btn" class="inbox-btn" onclick="openInbox()" hidden><svg class="ui-icon"><use href="#i-inbox"/></svg><span>Ждут ответа</span><b id="inbox_count"></b></button>
     <div id="tabs"></div>
     <div id="integ"></div>
     <div class="side-foot"><span id="foot"></span><span id="ver"></span><button id="b_drafts" onclick="showClosedDrafts()" style="display:none"><svg class="ui-icon"><use href="#i-file"/></svg><span>Черновики закрытых сессий</span></button><button class="settingsbtn" onclick="openSettings()"><svg class="ui-icon"><use href="#i-gear"/></svg><span>Настройки</span></button></div>
@@ -1835,7 +1842,9 @@ async function loadInbox(){
 function inboxCount(){return inboxItems(inbox.questions,finishedSessions()).length}
 function renderInboxBadge(){
   const count=inboxCount();
-  $("inbox_btn").hidden=!count;$("inbox_count").textContent=count;
+  // Always in place: a count appears or goes, the layout around it never moves.
+  const button=$("inbox_btn");button.classList.toggle("on",count>0);$("inbox_count").textContent=count||"";
+  button.setAttribute("aria-label",count?tr("Ждут ответа: {0}",[count]):tr("Ждут ответа"));
   return count;
 }
 function openInboxSession(deck,session){
@@ -2272,7 +2281,7 @@ if(typeof module!=="undefined")module.exports={formatSize,homeRelative};
 // message draft), commits with their diffs, and feature groups that a model proposes from commit subjects
 // and file names, each with a combined diff.
 // Agent and repository text is rendered with textContent only.
-const hist={session:null,ref:"",tab:"changes",changes:null,changesError:"",changesSeq:0,log:null,commits:[],back:null,view:null,groups:null,timer:null,fetching:false,
+const hist={session:null,ref:"",tab:"changes",authors:null,changes:null,changesError:"",changesSeq:0,log:null,commits:[],back:null,view:null,groups:null,timer:null,fetching:false,
   seq:0,loadingPage:false,error:""};
 // Every list (session, branch) gets a new number; an answer for an older one is dropped instead of being
 // mixed into the list that is on screen now.
@@ -2339,7 +2348,7 @@ function fileBlock(title,file,open,content){
 
 async function openHistory(){
   if(!active)return;
-  hist.session=active;hist.ref="";hist.tab="changes";hist.back=null;hist.models=null;freshList();
+  hist.session=active;hist.ref="";hist.tab="changes";hist.back=null;hist.models=null;hist.authors=savedAuthorColors();freshList();
   applyCodeFont();
   if(!$("git_dlg").open)$("git_dlg").showModal();
   renderHistory();loadChanges();await loadHistoryPage();
@@ -2435,9 +2444,29 @@ function historyTab(tab){
   renderHistory();
 }
 
+// Authors get colours in this order, chosen so the first few are as far apart as possible; green and
+// red are left out because they already mean added and removed lines. An author keeps the colour
+// first given (remembered in this browser), so the same person looks the same everywhere.
+const AUTHOR_COLORS=["#64d2ff","#ff9f0a","#bf5af2","#ffd60a","#f472b6","#66d4cf","#7d7aff","#c69c6d"];
+function authorColor(name,taken){
+  if(!taken.has(name)){
+    const used=new Set(taken.values());
+    const free=AUTHOR_COLORS.findIndex((_,index)=>!used.has(index));
+    taken.set(name,free>=0?free:taken.size%AUTHOR_COLORS.length);
+    try{localStore.setItem("cc.author-colors",JSON.stringify([...taken]))}catch(e){}
+  }
+  return AUTHOR_COLORS[taken.get(name)];
+}
+function savedAuthorColors(){
+  try{return new Map(JSON.parse(localStore.getItem("cc.author-colors")||"[]").filter(([name,index])=>typeof name==="string"&&Number.isInteger(index)&&index>=0&&index<AUTHOR_COLORS.length))}
+  catch(e){return new Map()}
+}
+function authorLabel(name){const label=el("span","git-author",name);label.style.setProperty("--author",authorColor(name||"?",hist.authors));return label}
 function commitRow(c,back){
+  const color=authorColor(c.author||"?",hist.authors);
   const row=el("button","git-row",el("span","git-subject",c.subject),
-    el("span","git-meta",[c.short,c.author,relativeTime(c.time)].join(" · "),el("span","diff-count",el("b","plus","+"+c.added),el("b","minus","−"+c.removed))));
+    el("span","git-meta",c.short,el("span","sep","·"),el("span","git-author",c.author),el("span","sep","·"),relativeTime(c.time),el("span","diff-count",el("b","plus","+"+c.added),el("b","minus","−"+c.removed))));
+  row.style.setProperty("--author",color);
   row.type="button";row.onclick=()=>showCommit(c.sha,back);return row;
 }
 function renderHistory(){
@@ -2473,7 +2502,7 @@ function renderHistoryView(box){
     const c=view.data,[subject,...rest]=c.message.split("\n");
     const back=hist.back;
     box.append(backButton(back?tr("К группе"):tr("К коммитам"),()=>{hist.view=back?{kind:"group",group:back,diff:null}:null;if(back)showGroup(back);else renderHistory()}),
-      el("h4","git-title",subject),el("p","git-meta",[c.short,c.author,new Date(c.time*1000).toLocaleString(DATE_LOCALE)].join(" · ")));
+      el("h4","git-title",subject),el("p","git-meta",c.short,el("span","sep","·"),authorLabel(c.author),el("span","sep","·"),new Date(c.time*1000).toLocaleString(DATE_LOCALE)));
     const body=rest.join("\n").trim();if(body)box.append(el("pre","git-message",body));
     for(const f of c.files)box.append(fileBlock(f.path,f,true,()=>renderDiff(f.patch,f)));
     return;
@@ -2554,7 +2583,7 @@ function renderGroups(box){
   const start=fileButton(tr("Сгруппировать коммиты"),"pri",startGrouping);box.append(...[modelPicker(),el("div","acts",start)].filter(Boolean));
 }
 
-if(typeof module!=="undefined")module.exports={diffRows,lineComment};
+if(typeof module!=="undefined")module.exports={diffRows,lineComment,authorColor,AUTHOR_COLORS};
 // Small Markdown reader for project files (plans, READMEs): headings, lists, quotes, code, tables, links.
 // Built from DOM nodes with textContent only; links open just http(s) and mailto, raw HTML stays text.
 // Bundled before app.js; nothing here runs at load time.
@@ -4241,7 +4270,9 @@ function resetInstanceState(known){
   lastAg={};usageData={};ghLogin=null;lastGh=0;repos=[];
   lmData={profiles:[],discovery:{}};lmRefreshPending=null;openLocalModels.clear();
   telegramConfig={};panelVersion=null;UI_PANEL_VERSION=null;panelUpdating=false;hubSignature="";
-  $("pre").dataset.raw="";$("pre").replaceChildren();$("srv").replaceChildren();$("ver").replaceChildren();
+  $("pre").dataset.raw="";$("pre").replaceChildren();$("ver").replaceChildren();
+  // The address line keeps its place and the previous text, dimmed, until the new computer answers.
+  $("srv").classList.add("stale");
   $("metric_cpu").textContent=$("metric_ram").textContent="—";
 }
 function renderSources(){
@@ -4292,12 +4323,15 @@ function updatePanel(){
 }
 async function loadServer(){
   try{
-    const s=await api("/api/server"),box=$("srv");box.replaceChildren();
+    const s=await api("/api/server"),box=$("srv");box.replaceChildren();box.classList.remove("stale");
     const cc=(s.country||"").toUpperCase();
     if(/^[A-Z]{2}$/.test(cc))box.append(el("span","fl",String.fromCodePoint(...[...cc].map(c=>0x1F1A5+c.charCodeAt(0)))));
     box.append(el("span","ip",s.ip||s.tailscale_ip||"?"),el("span","hn","· "+s.hostname));
     box.title=[s.city&&`${s.city}, ${cc}`,s.org,`Tailscale: ${s.tailscale_ip}`].filter(Boolean).join("\n");
-  }catch(e){}
+  }catch(e){
+    // A dimmed address of the computer we left must not stay as if it were this one's.
+    if(e.message!==STALE&&$("srv").classList.contains("stale")){$("srv").replaceChildren(el("span","ip","—"));$("srv").classList.remove("stale");$("srv").title=""}
+  }
 }
 async function loadGithub(){
   const body=$("gh_body");body.replaceChildren();$("gh_refresh").style.display="none";$("gh_state").textContent=tr("GitHub: проверяю…");
