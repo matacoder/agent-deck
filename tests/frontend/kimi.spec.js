@@ -3,7 +3,7 @@ const { test, expect } = require('./fixtures');
 test('Kimi settings save a key without displaying or retaining it in the dialog', async ({ app, page }) => {
   await app.open();
   await page.evaluate(() => openKimi());
-  await expect(page.locator('#kimi_state')).toHaveText('Ключ ещё не настроен');
+  await expect(page.locator('#kimi_state')).toHaveText('Ключ ещё не указан');
   await expect(page.locator('#kimi_key')).toHaveAttribute('type', 'password');
   await page.locator('#kimi_key').fill('sk-private-test-123456789');
   await page.locator('#kimi_model').selectOption('kimi-for-coding');
@@ -11,8 +11,10 @@ test('Kimi settings save a key without displaying or retaining it in the dialog'
   await expect(page.locator('#kimi_dlg')).not.toBeVisible();
   await expect(page.locator('#toast')).toHaveClass('success');
   expect(app.kimiSaves[0]).toEqual({key:'sk-private-test-123456789',model:'kimi-for-coding',clear:false});
-  await expect(page.locator('#model_cards')).toContainText('Ключ сохранён на сервере');
-  await page.locator('#model_cards .hub-card').filter({hasText:'Kimi'}).getByRole('button',{name:'Настроить',exact:true}).click();
+  const card=page.locator('#agent_cards [data-card="kimi"]');
+  await expect(card).toContainText('Ключ сохранён · kimi-for-coding');
+  await card.locator('.card-more summary').click();
+  await card.getByRole('button',{name:'Изменить ключ и модель',exact:true}).click();
   await expect(page.locator('#kimi_key')).toHaveValue('');
   await expect(page.locator('#kimi_state')).toHaveText('Ключ сохранён на сервере');
   expect(await page.evaluate(() => canAutoRefresh())).toBe(false);

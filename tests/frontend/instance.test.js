@@ -311,6 +311,92 @@ test('Markdown opens rendered with a switch to text, and images preview from che
   }finally{window.close()}
 });
 
+function settingsRoutes(state,agents){
+  const routes=routesFor(state);
+  routes['/api/agents']=()=>agents;
+  routes['/api/push']=()=>({available:true,error:'',public_key:'x',devices:[],events:{questions:true,finished:true}});
+  routes['/api/backups']=()=>({configured:false,stored:[],report:null});
+  routes['/api/lmstudio']=()=>({profiles:[{id:'p1',name:'Studio',url:'http://100.64.0.2:1234',status:'offline',models:[]}],discovery:{}});
+  routes['/api/agent_login']=()=>({ok:true});
+  return routes;
+}
+
+test('settings open on new sections, accept old names and mark what needs attention',async()=>{
+  const state={local:()=>({sessions:[session('alpha')]})};
+  const window=boot(settingsRoutes(state,{claude:{installed:true,logged_in:false,version:'2.1'},codex:{installed:false}}));
+  try{
+  await settle();await settle();
+  const doc=window.document;
+  await window.eval('openSettings("connections")');await settle();
+  expect(doc.getElementById('hub_notifications').hidden).toBe(false);
+  expect(doc.getElementById('tab_notifications').getAttribute('aria-selected')).toBe('true');
+  await window.eval('openSettings("agents")');await settle();
+  const claude=doc.querySelector('#agent_cards [data-card="claude"]');
+  expect(claude.querySelector('.card-status').textContent).toBe('Вход не выполнен');
+  expect(claude.querySelector('.card-status').classList.contains('warn')).toBe(true);
+  expect([...doc.querySelectorAll('.hub-nav .attn')].map(b=>b.dataset.section).sort()).toEqual(['agents','backups','models']);  // No push support here, so notifications cannot be asked for.
+  expect(doc.querySelector('#setup_card').textContent).toContain('Войдите в Claude или Codex');
+  // Signing in runs in its own session: Settings closes so that session is visible.
+  claude.querySelector('.card-tools .pri').click();await settle();await settle();
+  expect(doc.getElementById('settings_dlg').open).toBe(false);
+  }finally{window.close()}
+});
+
+test('Escape closes an open settings editor first and asks before dropping a typed key',async()=>{
+  const state={local:()=>({sessions:[session('alpha')]})};
+  const window=boot(settingsRoutes(state,{claude:{installed:true,logged_in:true},kimi:{installed:true},kimi_config:{configured:false}}));
+  try{
+  await settle();await settle();
+  const doc=window.document,dialog=doc.getElementById('settings_dlg');
+  await window.eval('openSettings("agents")');await settle();
+  window.eval('openKimi()');
+  expect(doc.getElementById('kimi_dlg').hidden).toBe(false);
+  expect(doc.querySelector('#agent_cards [data-card="kimi"]').hidden).toBe(true);  // The editor takes the card's place.
+  dialog.dispatchEvent(new window.Event('cancel',{cancelable:true}));await settle();
+  expect(dialog.open).toBe(true);
+  expect(doc.getElementById('kimi_dlg').hidden).toBe(true);
+  window.eval('openKimi()');doc.getElementById('kimi_key').value='sk-typed';
+  dialog.dispatchEvent(new window.Event('cancel',{cancelable:true}));await settle();
+  expect(doc.getElementById('confirm_dlg').open).toBe(true);
+  expect(doc.getElementById('kimi_dlg').hidden).toBe(false);
+  }finally{window.close()}
+});
+
+test('files dropped on the window are uploaded to the open session',async()=>{
+  const state={local:()=>({sessions:[session('alpha')]})};
+  const window=boot(routesFor(state)),uploads=[];
+  try{
+  await settle();await settle();
+  // The upload itself (XHR with progress) is covered by the paperclip; here the drop must reach it.
+  window.uploadImages=files=>uploads.push(...files.map(f=>f.name));
+  const drag=type=>{const e=new window.Event(type,{bubbles:true,cancelable:true});
+    Object.defineProperty(e,'dataTransfer',{value:{types:['Files'],files:[new window.File(['png'],'shot.png',{type:'image/png'})],dropEffect:''}});return e};
+  window.document.body.dispatchEvent(drag('dragover'));
+  expect(window.document.getElementById('drop_zone').hidden).toBe(false);
+  expect(window.document.getElementById('drop_title').textContent).toBe('Отпустите, чтобы приложить к «alpha»');
+  const drop=drag('drop');window.document.body.dispatchEvent(drop);
+  expect(drop.defaultPrevented).toBe(true);
+  expect(window.document.getElementById('drop_zone').hidden).toBe(true);
+  await settle();await settle();
+  expect(uploads).toEqual(['shot.png']);
+  }finally{window.close()}
+});
+
+test('switching computers keeps the computers in one order in the sidebar',async()=>{
+  const state={local:()=>({sessions:[session('alpha')]})};
+  const window=boot(routesFor(state));
+  try{
+  await settle();await settle();
+  const heads=()=>[...window.document.querySelectorAll('#tabs .deck-head .deck-name')].map(n=>n.textContent);
+  const before=heads();
+  expect(before.length).toBe(2);
+  window.openDeckSession(DECK,'beta');await settle();await settle();
+  expect(heads()).toEqual(before);
+  window.openDeckSession('','alpha');await settle();await settle();
+  expect(heads()).toEqual(before);
+  }finally{window.close()}
+});
+
 test('a folder that cannot be listed offers a retry instead of loading forever',async()=>{
   const state={local:()=>({sessions:[session('alpha')]})};
   const routes=routesFor(state);let fail=true;

@@ -50,7 +50,7 @@ test('failed update permits retry and leaves unsent text intact', async ({ app, 
   app.updateError = 'GitHub is unavailable';
   await page.evaluate(()=>openSettings('app'));
   await page.locator('#b_update').click();
-  await expect(page.locator('#b_update')).toHaveText('Обновление не удалось · повторить');
+  await expect(page.locator('#b_update')).toHaveText('Повторить обновление');
   await expect(page.locator('#toast')).toContainText('GitHub is unavailable');
   await expect(page.locator('#msg')).toHaveValue('Keep this');
   await expect(page.locator('#b_send')).toBeEnabled();
@@ -101,8 +101,8 @@ test('a previous completed update does not turn the next release button into rel
 test('older completed update does not show a permanent reload status',async({app,page})=>{
  app.version.version='1.0.4';app.version.job={phase:'done',version:'1.0.3'};
  await app.open({width:1000});await page.evaluate(()=>openSettings('app'));
- await expect(page.locator('#hub_version')).toContainText('v1.0.4');
- await expect(page.locator('#hub_version')).not.toContainText('Обновлено');
+ await expect(page.locator('#version_meta')).toContainText('v1.0.4');
+ await expect(page.locator('#version_status')).not.toContainText('Обновлено');
  await expect(page.locator('#b_update')).toHaveCount(0);
  await expect(page.locator('#b_refresh_interface')).toBeVisible();
 });

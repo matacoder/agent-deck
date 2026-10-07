@@ -7,15 +7,16 @@ test('desktop settings has one labelled entry and separates runtime, sources and
   await page.locator('.settingsbtn').click();
   await expect(page.locator('#hub_agents')).toBeVisible();
   await expect(page.locator('#hub_agents')).toContainText('Codex');
-  await page.locator('.hub-nav').getByRole('button',{name:'Модели',exact:true}).click();
+  await page.locator('.hub-nav').getByRole('tab',{name:'Локальные модели'}).click();
   await expect(page.locator('#model_cards')).toContainText('Workstation');
   await expect(page.locator('#model_cards')).toContainText('39.5 tok/s');
-  await expect(page.locator('#model_cards')).toContainText('Context: 32768');
+  await expect(page.locator('#model_cards')).toContainText('Контекст: 32768');
   await expect(page.locator('#model_cards')).not.toContainText('%');
   await page.locator('#model_cards').getByRole('button',{name:'Проверить инструменты'}).click();
-  await expect.poll(()=>app.lmActions.length).toBe(1);
-  expect(app.lmActions[0].data).toEqual({id:localProfile().id,model:'qwen-coder'});
-  await page.locator('.hub-nav').getByRole('button',{name:'Приложение',exact:true}).click();
+  const tests=()=>app.lmActions.filter(a=>a.path==='/api/lm_test');
+  await expect.poll(()=>tests().length).toBe(1);
+  expect(tests()[0].data).toEqual({id:localProfile().id,model:'qwen-coder'});
+  await page.locator('.hub-nav').getByRole('tab',{name:'Общие'}).click();
   await expect(page.getByRole('button',{name:'Выйти',exact:true})).toBeVisible();
   await expect(page.locator('#ui_language')).toBeVisible();
 });
@@ -41,14 +42,17 @@ test('discovery adds an explicit editable profile and cancels without changing s
   app.lmstudio.discovery={phase:'running',checked:1,total:3,results:[{name:'Found Mac',url:'http://100.64.2.3:1234',status:'needs_key',models:[]}]};
   await app.open({width:320});await page.evaluate(()=>openSettings('models'));
   await expect(page.locator('#lm_progress')).toContainText('1 / 3');
-  await page.locator('#lm_results').getByRole('button',{name:'Добавить',exact:true}).click();
+  await page.locator('#lm_results').getByRole('button',{name:'Добавить: Found Mac',exact:true}).click();
   await expect(page.locator('#lm_url')).toHaveValue('http://100.64.2.3:1234');
   await page.locator('#lm_key').fill('draft-only-secret');
   await page.locator('#lm_cancel').click();
   await expect.poll(()=>app.lmActions.length).toBe(1);
   expect(app.lmActions[0]).toMatchObject({path:'/api/lm_discover',data:{cancel:true}});
   expect(await page.locator('#settings_dlg').evaluate(e=>e.scrollWidth<=e.clientWidth)).toBe(true);
+  // A typed key is never dropped silently: closing asks first.
   await page.locator('.hub-heading').getByRole('button',{name:'Закрыть',exact:true}).click();
+  await page.getByRole('button',{name:'Закрыть без сохранения',exact:true}).click();
+  await expect(page.locator('#settings_dlg')).not.toBeVisible();
   await expect(page.locator('#lm_key')).toHaveValue('');
 });
 
@@ -59,8 +63,9 @@ test('refresh preserves the chosen local model for tool tests and benchmarks',as
  await page.evaluate(()=>loadLM());
  await expect(page.locator('#model_cards select')).toHaveValue('second-model');
  await page.locator('#model_cards').getByRole('button',{name:'Измерить скорость',exact:true}).click();
- await expect.poll(()=>app.lmActions.length).toBe(1);
- expect(app.lmActions[0]).toMatchObject({path:'/api/lm_benchmark',data:{model:'second-model'}});
+ const benchmarks=()=>app.lmActions.filter(a=>a.path==='/api/lm_benchmark');
+ await expect.poll(()=>benchmarks().length).toBe(1);
+ expect(benchmarks()[0]).toMatchObject({data:{model:'second-model'}});
 });
 
 test('native Kimi source defaults to the saved model instead of always K3',async({app,page})=>{
@@ -83,10 +88,10 @@ test('drawer keeps a long local model compact and lets the user reveal its full 
 test('phone settings scroll content inside a fixed header and short navigation bar',async({app,page})=>{
  app.lmstudio.profiles=[localProfile()];await app.open({width:320});await page.evaluate(()=>openSettings('models'));
  const nav=await page.locator('.hub-nav').boundingBox();expect(nav.height).toBeLessThan(90);
- const heading=await page.locator('.hub-heading').boundingBox();
+ const heading=await page.locator('#settings_dlg .hub-heading').boundingBox();
  await page.locator('.hub-content').evaluate(e=>e.scrollTop=e.scrollHeight);
  await expect(page.locator('#lm_ports')).toBeInViewport();
- expect((await page.locator('.hub-heading').boundingBox()).y).toBe(heading.y);
+ expect((await page.locator('#settings_dlg .hub-heading').boundingBox()).y).toBe(heading.y);
  expect(await page.locator('.hub-content').evaluate(e=>e.scrollWidth<=e.clientWidth)).toBe(true);
 });
 

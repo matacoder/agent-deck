@@ -26,19 +26,37 @@ async function loadPush(){
   try{pushState=await gatewayApi("/api/push")}catch(e){if(e.message!==STALE)toast(e.message);return}
   renderPush();
 }
+// Encryption parts download in the background; if that never finishes, say so instead of waiting forever.
+let pushUnavailableSince=0;
+function pushStatus(s,blocker,subscribed){
+  if(blocker)return [tr(blocker[0],blocker[1]),"warn"];
+  if(!s.available){
+    pushUnavailableSince=pushUnavailableSince||Date.now();
+    if(s.error)return [s.error,"bad"];
+    return Date.now()-pushUnavailableSince>60000?[tr("Не удалось загрузить компоненты шифрования — обновите Agent Deck"),"bad"]:[tr("Панель скачивает компоненты шифрования…"),"idle"];
+  }
+  pushUnavailableSince=0;
+  return subscribed?[tr("Включены на этом устройстве"),"ok"]:[tr("Выключены на этом устройстве"),"idle"];
+}
 function renderPush(){
   const s=pushState;if(!s)return;
   const blocker=pushBlocker(pushEnvironment()),mine=localStore.getItem("cc.push-id"),subscribed=s.devices.some(d=>d.id===mine);
-  const state=blocker?tr(blocker[0],blocker[1]):!s.available?(s.error||tr("Панель скачивает компоненты шифрования…")):
-    subscribed?tr("Включены на этом устройстве."):tr("Выключены на этом устройстве.");
-  $("push_state").textContent=state;
+  const [status,tone]=pushStatus(s,blocker,subscribed);
+  $("push_state").textContent=status;$("push_state").className="card-status "+tone;
+  // Without HTTPS the fix lives in another section: point there instead of leaving a dead end.
+  $("push_fix").replaceChildren(...(blocker&&!pushEnvironment().secure?[el("p","hint",tr("Откройте панель по HTTPS-адресу или укажите его в разделе «Компьютеры» → «Публичный адрес».")),
+    el("div","acts",btn(tr("Указать публичный адрес"),"",()=>{settingsSection("computers");$("network_public_url").focus()}))]:[]));
   const actions=[];
-  if(!blocker&&s.available)actions.push(...(subscribed?[btn(tr("Отключить на этом устройстве"),"",disablePush),btn(tr("Отправить тест"),"pri",()=>testPush(mine))]:[btn(tr("Включить уведомления"),"pri",enablePush)]));
+  if(!blocker&&s.available)actions.push(...(subscribed?[btn(tr("Выключить"),"",disablePush),btn(tr("Отправить тест"),"pri",()=>testPush(mine))]:[btn(tr("Включить уведомления"),"pri",enablePush)]));
   $("push_actions").replaceChildren(...(actions.length?[el("div","acts",...actions)]:[]));
   $("push_questions").checked=s.events.questions;$("push_finished").checked=s.events.finished;
-  $("push_devices").replaceChildren(...s.devices.map(d=>el("div","push-device",
-    el("div","push-device-info",el("strong","",d.label+(d.id===mine?" · "+tr("это устройство"):"")),el("span","",formatBackupTime(d.created,DATE_LOCALE))),
-    btn(tr("Удалить"),"danger",()=>removePushDevice(d.id)))));
+  $("push_questions").disabled=$("push_finished").disabled=Boolean(blocker)||!s.available;
+  $("push_devices_title").hidden=!s.devices.length;
+  $("push_devices").replaceChildren(...s.devices.map(d=>{
+    const name=d.label+(d.id===mine?" · "+tr("это устройство"):"");
+    return hubRow({title:name,meta:formatBackupTime(d.created,DATE_LOCALE),actions:[labelledButton(tr("Удалить"),"danger",()=>removePushDevice(d),name)]});
+  }));
+  if($("settings_dlg").open){updateHubDots();renderSetupCard()}
 }
 async function enablePush(){
   // iOS only allows the permission prompt from a tap, which is why this runs from the button.
@@ -64,8 +82,10 @@ async function disablePush(){
   }catch(e){if(e.message!==STALE)toast(e.message)}
   localStore.removeItem("cc.push-id");await loadPush();
 }
-async function removePushDevice(id){
+async function removePushDevice(device){
+  const id=device.id;
   if(id===localStore.getItem("cc.push-id"))return disablePush();
+  if(!await confirmAction(tr("Удалить устройство «{0}»?",[device.label]),{text:tr("Уведомления туда перестанут приходить, пока их не включат на нём снова."),confirm:tr("Удалить"),danger:true}))return;
   try{await gatewayApi("/api/push_unsubscribe",{id});await loadPush()}catch(e){if(e.message!==STALE)toast(e.message)}
 }
 async function savePushEvents(){

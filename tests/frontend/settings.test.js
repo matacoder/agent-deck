@@ -30,7 +30,7 @@ test('saving disables the control until the request completes',async()=>{
 });
 test('project settings form is accessible and available in application settings',()=>{
  document.body.innerHTML=fs.readFileSync(path.resolve(__dirname,'../../frontend/index.html'),'utf8');
- const field=document.querySelector('#hub_app #project_directory');
+ const field=document.querySelector('#hub_general #project_directory');
  expect(field.required).toBe(true);
  expect(document.querySelector('label[for="project_directory"]')).not.toBeNull();
  expect(field.closest('form').getAttribute('onsubmit')).toContain('saveProjectDirectory');
@@ -129,9 +129,17 @@ test('automatic update toggle keeps its compact width beside readable text',()=>
  const style=document.createElement('style');style.textContent=fs.readFileSync(path.resolve(__dirname,'../../frontend/style.css'),'utf8');document.head.append(style);
  try{
   const checkbox=document.querySelector('#auto_update_enabled');
-  expect(checkbox.type).toBe('checkbox');expect(checkbox.closest('label').textContent).toContain('Автоматически обновлять Agent Deck');
+  expect(checkbox.type).toBe('checkbox');expect(checkbox.closest('label').textContent).toContain('Обновлять автоматически');
   expect(getComputedStyle(checkbox).width).toBe('36px');expect(getComputedStyle(checkbox).height).toBe('21px');
   expect(getComputedStyle(checkbox.closest('label')).display).toBe('flex');
   expect(getComputedStyle(document.querySelector('#project_directory')).width).toBe('100%');
  }finally{style.remove()}
+});
+
+test('local model measurements read as words, not jargon, and an empty sample says nothing',()=>{
+ global.tr=(text,args=[])=>text.replace(/\{(\d)\}/g,(_,i)=>args[i]);
+ const {lmMetrics}=require('../../frontend/hub-models');
+ expect(lmMetrics({source:'session',tokens_per_second:52.44,time_to_first_token_seconds:0.381})).toBe('Последний ответ: 52.4 tok/s · первый токен 0.38 с');
+ expect(lmMetrics({source:'benchmark',model_load_time_seconds:4.7})).toBe('Тест скорости: загрузка 4.70 с');
+ expect(lmMetrics({})).toBe('');
 });

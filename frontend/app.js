@@ -278,10 +278,29 @@ function renderTabs(){
   // screen-reader position survive; on a swap, keyboard focus stays on the same session row.
   const was=view.contains(document.activeElement)?document.activeElement:null;
   const focused=was?.dataset.session?'[data-session="'+CSS.escape(was.dataset.session)+'"]':was?.dataset.deck?'[data-deck="'+CSS.escape(was.dataset.deck)+'"]':null;
-  const list=sessions.filter(s=>matchesSessionQuery(s,q));
+  const list=sessions.filter(s=>matchesSessionQuery(s,q)),others=otherDecks.filter(d=>d.id!==selectedDeck);
+  // Computers keep one order whichever is selected: switching only moves the highlight, never the rows.
+  const order=deckOrder();
+  if(order.length<2&&!others.length){renderCurrentSessions(box,list);finishTabs(view,box,focused);return}
+  for(const id of order){
+    if(id===selectedDeck){box.append(deckHeader({id,name:currentDeckName(),count:list.length},true));renderCurrentSessions(box,list);continue}
+    const deck=others.find(d=>d.id===id);
+    if(deck)renderDeckSection(box,deck,q);
+    else if(!q)box.append(deckHeader({id,name:deckName(id),count:"…"},false));  // Its list has not arrived yet.
+  }
+  finishTabs(view,box,focused);
+}
+// This computer first, then connected ones in the order they were added; any list we know but the
+// directory does not (yet) goes last.
+function deckOrder(){
+  const ids=["",...deckDirectory.decks.map(d=>d.id)];
+  for(const d of otherDecks)if(!ids.includes(d.id))ids.push(d.id);
+  if(!ids.includes(selectedDeck))ids.push(selectedDeck);
+  return ids;
+}
+function deckName(id){return id?deckDirectory.decks.find(d=>d.id===id)?.name||"Agent Deck":deckDirectory.name||tr("Этот компьютер")}
+function renderCurrentSessions(box,list){
   let grp=null,i=0;
-  const others=otherDecks.filter(d=>d.id!==selectedDeck);
-  if(others.length)box.append(deckHeader({id:selectedDeck,name:currentDeckName(),count:list.length},true));
   for(const s of list){
     if(s.group!==grp){grp=s.group;box.append(el("div","grp",grp))}
     i++;const st=state(s);
@@ -303,7 +322,8 @@ function renderTabs(){
     const start=el("button","empty-new",svgIcon("plus"),el("span","",tr("Новая сессия")));start.type="button";start.onclick=openNew;
     box.append(el("div","empty-list",el("span","",tr("Сессий пока нет")),start));
   }
-  for(const deck of others)renderDeckSection(box,deck,q);
+}
+function finishTabs(view,box,focused){
   if(box.innerHTML!==view.innerHTML){
     view.replaceChildren(...box.childNodes);
     if(focused)view.querySelector(focused)?.focus({preventScroll:true});
@@ -333,7 +353,7 @@ function frameFor(name){
     f=document.createElement("iframe");f.src=activePath("/t/?arg="+encodeURIComponent("=cc-"+name));
     // Only the overlay reacts: a full show() would scroll the Screen view or move focus into the terminal.
     f.dataset.loading="1";f.addEventListener("load",()=>{delete f.dataset.loading;if(frames.get(active)===f&&curMode()==="term")$("term_loading").hidden=true},{once:true});
-    f.onload=()=>{try{f.contentWindow.addEventListener("keydown",hotkeys,true);hookClipboard(f.contentWindow);attachDrawerSwipe(f.contentDocument,drawerSwipe)}catch(e){}};
+    f.onload=()=>{try{f.contentWindow.addEventListener("keydown",hotkeys,true);watchFileDrops(f.contentWindow);hookClipboard(f.contentWindow);attachDrawerSwipe(f.contentDocument,drawerSwipe)}catch(e){}};
     $("stage").append(f);frames.set(name,f);
   }
   return f;
@@ -635,6 +655,7 @@ function settleImageChoice(){if(choosingImages)setTimeout(()=>{choosingImages=fa
 addEventListener("focus",settleImageChoice);
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)settleImageChoice()});
 $("image_files").addEventListener("change",e=>{choosingImages=false;const files=Array.from(e.target.files||[]);e.target.value="";uploadImages(files)});
+watchFileDrops(window);
 $("msg").addEventListener("paste",e=>{
   const files=Array.from(e.clipboardData&&e.clipboardData.files||[]);
   if(files.length){e.preventDefault();uploadImages(files)}
@@ -727,10 +748,6 @@ const GH_ICON='<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColo
 let repos=[],ghLogin=null;
 async function ghStatus(){try{const st=await api("/api/github/status");ghLogin=st.connected?st.login:null}catch(e){ghLogin=null}return ghLogin}
 async function ghConnect(){if(await post("/api/github_login",{})){if($("dlg").open)$("dlg").close();select("github-login");setMode("screen")}}
-async function agentAction(kind,agent){
-  const name=kind==="install"?"install-"+agent:agent+"-login";
-  if(await post("/api/agent_"+kind,{agent})){select(name);if(isMobile())setMode("screen")}
-}
 function btn(label,cls,fn,title){const b=el("button",cls||"",label);b.onclick=fn;if(title)b.title=title;return b}
 let lastGh=0,lastAg={},usageData={};
 async function checkGithubFoot(force){
@@ -812,11 +829,11 @@ function localUsage(profile){
   summary.title=model+" · "+profile.name;summary.setAttribute("aria-label",summary.title);
   details.open=openLocalModels.has(profile.id);
   details.addEventListener("toggle",()=>{if(details.open)openLocalModels.add(profile.id);else openLocalModels.delete(profile.id)});
-  const full=el("div","",model);details.append(summary,full,el("p","",profile.name+" · "+performanceText(sample,false)));box.append(details);
+  const full=el("div","",model);details.append(summary,full,el("p","",profile.name+" · "+(lmMetrics(sample)||tr("Нет замеров"))));box.append(details);
   const line=el("div","local-live-line");
   const seconds=Math.floor(live?.request_time_seconds||0),elapsed=Math.floor(seconds/60)+":"+String(seconds%60).padStart(2,"0");
   const state=el("span","local-state",live?(live.phase==="waiting"?"◌ TTFT "+elapsed:(live.phase==="tool"?"⚙ ":"✦ ")+elapsed+(live.chunks?" · "+live.chunks+" Δ":"")):"✓ "+(Number.isFinite(sample.output_tokens)?sample.output_tokens+" tok":"—"));
-  state.title=live?tr(labels[live.phase]||labels.waiting):performanceText(sample,false);
+  state.title=live?tr(labels[live.phase]||labels.waiting):(lmMetrics(sample)||tr("Нет замеров"));
   if(live){box.setAttribute("aria-busy","true");state.classList.add("local-active")}
   line.append(state);
   const m=Number.isFinite(live?.tokens_per_second)?live:sample;
@@ -827,35 +844,10 @@ function localUsage(profile){
   line.append(speed);box.append(line);
   return box;
 }
-let hubSection="agents",lmData={profiles:[],discovery:{}},lmTimer=null,returnToNew=false,lmRefreshPending=null,lmModelsChecked=0;
-function settingsSection(section){
-  hubSection=section;for(const name of ["agents","models","connections","network","backups","app"])$("hub_"+name).hidden=name!==section;
-  if(section==="backups"&&$("settings_dlg").open)loadBackups();
-  if(section==="connections"&&$("settings_dlg").open)loadPush();
-  if(section==="network"&&$("settings_dlg").open)loadFleet(true);
-  for(const b of document.querySelectorAll(".hub-nav button")){
-    b.classList.toggle("on",b.dataset.section===section);b.setAttribute("aria-current",String(b.dataset.section===section));
-    if(b.dataset.section===section&&isMobile())requestAnimationFrame(()=>b.scrollIntoView({inline:"nearest",block:"nearest"}));
-  }
-  updateHubNavFade();
-  if(section==="models"&&$("settings_dlg").open)refreshLMModels();
-}
-function updateHubNavFade(){const nav=document.querySelector(".hub-nav");nav.classList.toggle("more-right",nav.scrollLeft+nav.clientWidth<nav.scrollWidth-4)}
-document.querySelector(".hub-nav").addEventListener("scroll",updateHubNavFade,{passive:true});
-async function openSettings(section="agents"){
-  drawer(false);sheet(false);settingsSection(section);
-  if(!$("settings_dlg").open)$("settings_dlg").showModal();updateHubNavFade();
-  if(section==="backups")loadBackups();
-  if(section==="connections")loadPush();
-  renderHub();
-  await Promise.allSettled([loadDeckSettings(),(async()=>{const data=await api("/api/project_directory");$("project_directory").value=data.directory})(),refreshLMModels(),loadIntegrations(),checkGithubFoot(),(async()=>{const data=await api("/api/locales");$("ui_language").replaceChildren(...data.languages.map(x=>{const o=el("option","",x.name);o.value=x.code;return o}));$("ui_language").value=I18N.language})()]);
-  clearInterval(lmTimer);lmTimer=setInterval(()=>{if(!document.hidden&&$("settings_dlg").open){if(lmData.discovery?.phase==="running")loadLM(false);if(hubSection==="models"&&Date.now()-lmModelsChecked>30000)refreshLMModels()}},2000);
-}
-$("settings_dlg").addEventListener("close",()=>{if($("settings_dlg").open)return;clearInterval(lmTimer);clearInterval(deckTimer);closeKimi();closeIntegrations();$("lm_key").value="";if(returnToNew){returnToNew=false;$("dlg").showModal();renderSources()}});
+hubInit();
 async function saveProjectDirectory(){
   await saveDirectorySetting({request:api,input:$("project_directory"),button:$("project_directory_save"),notify:toast,translate:tr});
 }
-let deckTimer=null;
 async function loadDeckSettings(){
   const [data,network]=await Promise.all([gatewayApi("/api/decks"),gatewayApi("/api/network")]);
   const current=data.decks.find(deck=>deck.id===selectedDeck);
@@ -866,16 +858,7 @@ async function loadDeckSettings(){
   $("deck_switch").hidden=!data.decks.length&&!selectedDeck;
   deckDirectory={decks:data.decks,name:network.name,network};loadOtherDecks();
   if(Date.now()-fleet.loadedAt>10*60*1000||$("settings_dlg").open)loadFleet();else renderFleet();
-  $("network_name").value=network.name;$("network_public_url").value=network.public_url;$("network_isolate").checked=network.isolate_terminals===true;
-  $("network_bind").textContent="http://"+network.bind_host+":"+network.bind_port;
-  $("network_browser").textContent=location.origin;
-  const box=$("deck_connections");box.replaceChildren();
-  for(const deck of data.decks){
-    const version=el("span","deck-version");version.dataset.deckVersion=deck.id;
-    const card=el("div","deck-connection",el("strong","",deck.name),el("p","",deck.url," · ",version));
-    card.append(el("div","deck-actions",btn(tr("Переключиться"),"pri",()=>switchDeck(deck.id)),btn(tr("Изменить"),"",()=>editDeck(deck)),btn(tr("Удалить"),"danger",()=>removeDeck(deck.id))));box.append(card);
-  }
-  renderDeckDiscovery(data.discovery);
+  renderComputers(data,network);
   if(selectedDeck&&!data.decks.some(d=>d.id===selectedDeck))switchDeck("");
 }
 // Sessions of every connected machine, so switching environments is one tap from the sidebar.
@@ -973,91 +956,6 @@ function resetInstanceState(known){
   $("pre").dataset.raw="";$("pre").replaceChildren();$("srv").replaceChildren();$("ver").replaceChildren();
   $("metric_cpu").textContent=$("metric_ram").textContent="—";
 }
-function editDeck(deck={}){
-  $("deck_id").value=deck.id||"";$("deck_name").value=deck.name||"";$("deck_url").value=deck.url||"";$("deck_username").value=deck.username||"";$("deck_password").value="";
-  $("deck_editor").open=true;$("deck_editor").scrollIntoView({block:"nearest"});
-}
-async function saveDeck(){
-  const button=$("deck_save");button.disabled=true;
-  try{await gatewayApi("/api/decks_save",{id:$("deck_id").value||undefined,name:$("deck_name").value.trim(),url:$("deck_url").value.trim(),username:$("deck_username").value.trim(),password:$("deck_password").value});$("deck_password").value="";$("deck_editor").open=false;await loadDeckSettings();toast(tr("Agent Deck подключён"),"success")}
-  catch(e){$("deck_password").value="";toast(e.message)}finally{button.disabled=false}
-}
-async function removeDeck(identity){
-  if(!await confirmAction(tr("Отключить этот Agent Deck?"),{confirm:tr("Удалить"),danger:true}))return;
-  try{await gatewayApi("/api/decks_remove",{id:identity});if(identity===selectedDeck)switchDeck("");else await loadDeckSettings()}catch(e){toast(e.message)}
-}
-function renderDeckDiscovery(discovery){
-  $("deck_discover").disabled=discovery.phase==="running";
-  $("deck_discovery_status").textContent=discovery.error||tr(discovery.phase==="running"?"Поиск…":discovery.phase==="done"?"Поиск завершён":"");
-  $("deck_discovery_results").replaceChildren(...(discovery.results||[]).map(deck=>el("div","deck-connection deck-result",el("div","deck-info",el("strong","",deck.name),el("p","",deck.url)),el("div","deck-actions",btn(tr("Подключить"),"",()=>editDeck(deck))))));
-  clearInterval(deckTimer);
-  if(discovery.phase==="running")deckTimer=setInterval(async()=>{if(document.hidden||!$("settings_dlg").open)return;try{const data=await gatewayApi("/api/decks");renderDeckDiscovery(data.discovery)}catch(e){toast(e.message);clearInterval(deckTimer)}},2000);
-}
-async function discoverDecks(){
-  try{const result=await gatewayApi("/api/decks_discover",{port:Number($("deck_port").value)});renderDeckDiscovery(result.discovery)}catch(e){toast(e.message)}
-}
-async function saveNetwork(){
-  const button=$("network_save");button.disabled=true;
-  const isolate=$("network_isolate").checked,changed=isolate!==(deckDirectory.network?.isolate_terminals===true);
-  try{await gatewayApi("/api/network_save",{name:$("network_name").value.trim(),public_url:$("network_public_url").value.trim(),isolate_terminals:isolate});
-    // Open terminal frames were loaded under the previous mode; reopen them under the new one.
-    if(changed&&selectedDeck)for(const frame of frames.values())frame.src=frame.src;await loadDeckSettings();toast(tr("Настройки сохранены"),"success")}
-  catch(e){toast(e.message)}finally{button.disabled=false}
-}
-// quiet: a routine action (updating something that works) need not shout like a missing setup step.
-function card(name,status,label,action,secondary=[],hidden=false,quiet=false){const c=el("div","hub-card",el("div","card-top",el("div","card-main",el("h4","",name),el("p","",status)),btn(label,quiet?"pri quiet":"pri",action)));if(secondary.length){const d=el("details","",el("summary","",tr("Другие действия")));for(const [text,fn] of secondary)d.append(btn(text,"",fn));c.append(d)}c.hidden=hidden;return c}
-function openCardDetails(box){return new Set([...box.querySelectorAll(".hub-card")].filter(c=>c.querySelector("details[open]")).map(c=>c.querySelector("h4").textContent))}
-function restoreCardDetails(box,open){for(const c of box.querySelectorAll(".hub-card")){const d=c.querySelector("details");if(d&&open.has(c.querySelector("h4").textContent))d.open=true}}
-function renderHub(){
-  const openAgents=openCardDetails($("hub_agents")),openModels=openCardDetails($("model_cards"));
-  const selections=new Map([...$("model_cards").querySelectorAll("select")].map(x=>[x.dataset.profile,x.value]));
-  $("hub_agents").replaceChildren(...["claude","codex","kimi","pi"].map(a=>{const st=lastAg[a]||{};if(a==="pi")return card("Pi",st.version||tr("Не установлен"),st.installed?tr("Обновить"):tr("Установить"),()=>agentAction("install",a),[],false,st.installed);if(a==="kimi")return card(AGENTS[a].label,st.version||tr("Не установлен"),st.installed?(lastAg.kimi_config?.configured?tr("Обновить"):tr("Указать ключ")):tr("Установить"),()=>st.installed&&!lastAg.kimi_config?.configured?openKimi():agentAction("install",a),[],false,st.installed&&lastAg.kimi_config?.configured);return card(AGENTS[a].label,[st.version,st.installed?(st.logged_in?tr("подключён"):tr("Войти")):tr("Не установлен")].filter(Boolean).join(" · "),st.installed?(st.logged_in?tr("Обновить"):tr("Войти")):tr("Установить"),()=>agentAction(st.installed&&!st.logged_in?"login":"install",a),st.installed&&!st.logged_in?[[tr("Обновить"),()=>agentAction("install",a)]]:[],false,st.installed&&st.logged_in)}));
-  restoreCardDetails($("hub_agents"),openAgents);
-  // Rebuilding during a running test/benchmark would re-enable its buttons and allow a duplicate run.
-  if($("model_cards").getAttribute("aria-busy")!=="true")renderModelCards(selections,openModels);
-  $("connection_cards").replaceChildren(card("GitHub",ghLogin||tr("Не подключён"),ghLogin?tr("Репозитории"):tr("Подключить"),()=>{returnToNew=false;$("settings_dlg").close();ghLogin?openNew():ghConnect()}),card("Telegram",telegramConfig.paired?tr("подключён"):tr("Не подключён"),tr("Настроить"),()=>openEditor("telegram"),[],!$("integrations_dlg").hidden));
-  if(panelVersion)renderVersion(panelVersion);
-}
-function renderModelCards(selections,open){
-  const cards=[card("Kimi",lastAg.kimi_config?.configured?tr("Ключ сохранён на сервере"):tr("Ключ ещё не настроен"),tr("Настроить"),()=>openEditor("kimi"),[],!$("kimi_dlg").hidden)];
-  for(const p of lmData.profiles||[]){
-    const c=card(p.name+" · LM Studio",p.url+" · "+tr(p.status==="online"?"подключён":p.status==="needs_key"?"Нужен ключ":p.status==="offline"?"Недоступен":"Не проверен"),tr("Обновить модели"),()=>lmAction("probe",{id:p.id}),[[tr("Изменить"),()=>editLM(p)],[tr("Удалить"),()=>lmAction("remove",{id:p.id})]]);
-    const samples=p.measurements?Object.values(p.measurements).flatMap(group=>Object.values(group)):[p.performance||{}];for(const sample of samples)c.append(el("p","",performanceText(sample,false)));
-    if(p.models?.length){const select=el("select","");select.dataset.profile=p.id;select.setAttribute("aria-label",tr("Модель"));for(const m of p.models){const o=el("option","",m.name+(m.loaded?" · "+tr("Загружена"):"")+(m.tool_tested?" · ✓ tools":""));o.value=m.id;select.append(o)}if(selections.has(p.id))select.value=selections.get(p.id);if(!select.value&&select.options.length)select.selectedIndex=0;c.append(select);const detail=el("p","");const describe=()=>{const m=p.models.find(x=>x.id===select.value);detail.textContent=[m.context_length||m.max_context_length?tr("Контекст: {0}",[m.context_length||m.max_context_length]):"",m.quantization||"",m.tool_tested?tr("Инструменты: ✓"):tr("Инструменты: ?")].filter(Boolean).join(" · ")};select.onchange=describe;describe();c.append(detail);const actions=el("div","acts",btn(tr("Проверить инструменты"),"",()=>lmAction("test",{id:p.id,model:select.value})),btn(tr("Измерить скорость"),"",()=>lmAction("benchmark",{id:p.id,model:select.value})));c.append(actions)}cards.push(c);
-  }
-  $("model_cards").replaceChildren(...cards);restoreCardDetails($("model_cards"),open);
-}
-function performanceText(m,includeModel=true){
-  const parts=[m.source==="session"?tr("Последний ответ"):m.source==="benchmark"?tr("Тест скорости"):tr("Без лимитов")];
-  if(Number.isFinite(m.tokens_per_second))parts.push(m.tokens_per_second.toFixed(1)+" tok/s");
-  if(Number.isFinite(m.time_to_first_token_seconds))parts.push("TTFT "+m.time_to_first_token_seconds.toFixed(2)+" s");
-  if(Number.isFinite(m.model_load_time_seconds))parts.push(tr("Загрузка")+" "+m.model_load_time_seconds.toFixed(2)+" s");
-  if(includeModel&&m.model)parts.push(m.model);return parts.join(" · ");
-}
-async function refreshLMModels(){
-  if(document.hidden)return;
-  if(lmRefreshPending)return lmRefreshPending;
-  lmModelsChecked=Date.now();
-  lmRefreshPending=(async()=>{try{lmData=await refreshModelCatalog(api);if($("settings_dlg").open)renderHub();renderDiscovery();renderSources()}catch(e){if(!e.offline)toast(e.message)}finally{lmRefreshPending=null}})();
-  return lmRefreshPending;
-}
-async function loadLM(refresh=true){try{lmData=await api("/api/lmstudio");if($("settings_dlg").open&&refresh)renderHub();renderDiscovery()}catch(e){if(e.message!==STALE)$("lm_progress").textContent=e.message}}
-function editLM(p){$("lm_editor").open=true;$("lm_id").value=p.id||"";$("lm_name").value=p.name||"";$("lm_url").value=p.url||"";$("lm_key").value="";$("lm_clear_key").checked=false;$("lm_editor").scrollIntoView({block:"nearest"})}
-function resetLM(){editLM({});$("lm_editor").open=false}
-async function saveLM(){try{const saved=await api("/api/lm_save",{id:$("lm_id").value||undefined,name:$("lm_name").value.trim(),url:$("lm_url").value.trim(),key:$("lm_key").value,clear_key:$("lm_clear_key").checked});$("lm_key").value="";await api("/api/lm_probe",{id:saved.profile.id});resetLM();await loadLM();renderSources()}catch(e){toast(e.message)}}
-async function lmAction(action,data){
-  if($("model_cards").getAttribute("aria-busy")==="true")return;
-  const buttons=[...$("model_cards").querySelectorAll("button")];buttons.forEach(b=>b.disabled=true);$("model_cards").setAttribute("aria-busy","true");toast(tr("Загружаю…"));
-  let r=null;
-  try{r=await api("/api/lm_"+action,data);if(r.result)toast(r.result.ok?tr("Проверка завершена"):r.result.error,r.result.ok?"success":"error")}catch(e){toast(e.message)}
-  finally{buttons.forEach(b=>b.disabled=false);$("model_cards").removeAttribute("aria-busy")}
-  // Reload after clearing aria-busy, otherwise renderHub would skip the refreshed model cards.
-  if(r){await loadLM();renderSources()}
-}
-async function discoverLM(cancel=false){try{const ports=$("lm_ports").value.split(",").map(x=>Number(x.trim()));await api("/api/lm_discover",cancel?{cancel:true}:{ports});await loadLM()}catch(e){toast(e.message)}}
-function renderDiscovery(){const d=lmData.discovery||{};$("lm_progress").textContent=d.error||[tr(d.phase==="running"?"Поиск…":d.phase==="done"?"Поиск завершён":d.phase==="cancelled"?"Остановлено":""),d.total?d.checked+" / "+d.total:""].filter(Boolean).join(" · ");$("lm_cancel").hidden=d.phase!=="running";$("lm_results").replaceChildren(...(d.results||[]).map(p=>card(p.name,p.url+(p.status==="needs_key"?" · "+tr("Нужен ключ"):""),tr("Добавить"),()=>editLM(p))))}
-function openEditor(kind){kind==="kimi"?openKimi():openIntegrations()}
-function configureSource(){returnToNew=true;$("dlg").close();openSettings("models")}
 function renderSources(){
   const old=$("n_source").value;$("source_row").hidden=!["claude","kimi","pi"].includes(newAgent);
   const values=[];if(newAgent==="claude")values.push([{kind:"default"},"Claude"]);
@@ -1079,106 +977,6 @@ function applyAutocorrect(){
 }
 function saveAutocorrect(){try{localStore.setItem("cc.autocorrect",$("autocorrect_enabled").checked?"1":"0")}catch(e){}applyAutocorrect()}
 applyAutocorrect();
-function closeKimi(){$("kimi_key").value="";$("kimi_dlg").hidden=true;if($("settings_dlg").open)renderHub()}
-function openKimi(){
-  const config=lastAg.kimi_config||{};
-  $("kimi_key").value="";$("kimi_model").value=config.model||"k3";
-  $("kimi_state").textContent=config.configured?tr("Ключ сохранён на сервере"):tr("Ключ ещё не настроен");
-  $("kimi_dlg").hidden=false;openSettings("models");$("kimi_dlg").scrollIntoView({block:"nearest"});$("kimi_key").focus({preventScroll:true});
-}
-
-async function saveKimi(clear=false){
-  $("kimi_save").disabled=true;
-  try{
-    await api("/api/kimi_config",{key:$("kimi_key").value.trim(),model:$("kimi_model").value,clear});
-    closeKimi();await checkGithubFoot();await loadUsage();renderHub();renderSources();toast(clear?tr("Ключ Kimi удалён"):tr("Настройки Kimi сохранены"),"success");
-  }catch(e){toast(e.message)}finally{$("kimi_save").disabled=false}
-}
-async function clearKimi(){if(await confirmAction(tr("Удалить ключ Kimi из панели?"),{confirm:tr("Удалить ключ"),danger:true}))saveKimi(true)}
-let telegramConfig={},integrationTimer=null,telegramDirty=false;
-for(const id of ["telegram_token","telegram_enabled"])$(id).addEventListener("input",()=>{telegramDirty=true});
-function renderTelegram(config){
-  const wasConfigured=telegramConfig.configured;
-  telegramConfig=config||{};
-  const c=telegramConfig;
-  if(wasConfigured!==c.configured)$("telegram_credentials").open=!c.configured;
-  $("telegram_credentials").querySelector("summary").textContent=c.configured?tr("Изменить токен бота"):tr("Токен бота");
-  $("telegram_state").classList.toggle("connected",!!c.paired&&!!c.enabled&&!c.error);
-  $("telegram_state").classList.toggle("error",!!c.error);
-  $("telegram_state").textContent=c.available===false?tr("Обновите панель: установите интеграции из меню обновлений"):c.error||
-    (c.paired?`@${c.bot} · ${c.account||tr("аккаунт привязан")} · ${c.enabled?tr("включён"):tr("пауза")}`:c.configured?tr("@{0} · привяжите свой Telegram",[c.bot]):tr("Бот ещё не подключён"));
-  $("telegram_duplicates").hidden=!c.duplicates?.length;
-  if(c.duplicates?.length)$("telegram_duplicates").textContent=tr("Этот бот также включён на: {0}. Вопросы будут приходить дважды; отключите Telegram там.",[c.duplicates.join(", ")]);
-  $("telegram_enabled").checked=c.enabled!==false;
-  $("telegram_pair").style.display=c.configured&&!c.pair_url?"flex":"none";
-  $("telegram_pair").textContent=c.paired?tr("Привязать другой аккаунт"):tr("Получить ссылку привязки");
-  $("telegram_pairing").style.display=c.pair_url?"block":"none";
-  if(typeof c.pair_url==="string"&&c.pair_url.startsWith("https://t.me/"))$("telegram_link").href=c.pair_url;else $("telegram_link").removeAttribute("href");
-  renderInteg();
-}
-async function loadIntegrations(){
-  try{const data=await api("/api/integrations");renderTelegram(data.telegram)}catch(e){if(!$("integrations_dlg").hidden&&e.message!==STALE)$("telegram_state").textContent=e.message}
-}
-function openIntegrations(){
-  telegramDirty=false;$("telegram_token").value="";$("telegram_credentials").open=!telegramConfig.configured;$("integrations_dlg").hidden=false;openSettings("connections");loadIntegrations();
-  clearInterval(integrationTimer);integrationTimer=setInterval(()=>{if(!document.hidden&&!telegramDirty)loadIntegrations()},3000);
-}
-function closeIntegrations(){$("telegram_token").value="";clearInterval(integrationTimer);$("integrations_dlg").hidden=true;if($("settings_dlg").open)renderHub()}
-async function saveTelegram(clear=false){
-  $("telegram_save").disabled=true;
-  try{
-    const data=await api("/api/telegram_config",{token:$("telegram_token").value.trim(),enabled:$("telegram_enabled").checked,language:I18N.language,clear});
-    telegramDirty=false;$("telegram_token").value="";renderTelegram(data.telegram);renderHub();
-    if(!clear&&!data.telegram.paired)await pairTelegram();
-    toast(clear?tr("Telegram отключён"):tr("Настройки Telegram сохранены"),"success");
-  }catch(e){toast(e.message)}finally{$("telegram_save").disabled=false}
-}
-async function pairTelegram(){
-  try{const data=await api("/api/telegram_pair",{});renderTelegram(data.telegram)}catch(e){toast(e.message)}
-}
-async function clearTelegram(){if(await confirmAction(tr("Отключить Telegram и удалить сохранённый токен?"),{confirm:tr("Отключить"),danger:true}))saveTelegram(true)}
-let panelUpdating=false,panelVersion=null,versionTimer=null,versionLoading=null;
-const UPDATE_PHASES=new Set(["checking","downloading","installing","restarting"]);
-function versionInfo(v){
-  const revision=el("span","version-build","UI "+UI_REVISION.slice(0,7));revision.title=UI_REVISION;
-  return el("div","version-info",el("span","version-number","v"+v.version),revision);
-}
-function renderVersion(v){
-  panelVersion=v;const job=v.job||{},box=$("ver"),mobile=$("s_update");
-  panelUpdating=UPDATE_PHASES.has(job.phase);
-  box.replaceChildren("v"+v.version);box.title=v.latest?tr("последний релиз: v{0}",[v.latest]):"";
-  mobile.style.display="none";
-  let label,action;
-  if(panelUpdating){label=job.message||tr("Обновляю панель…");action=()=>{}}
-  else if(job.phase==="done"&&job.version===v.version&&UI_PANEL_VERSION!==null&&job.version!==UI_PANEL_VERSION){label=tr("Обновлено · перезагрузить интерфейс");action=refreshInterface}
-  else if(job.phase==="error"){label=tr("Обновление не удалось · повторить");action=startPanelUpdate;box.title=job.message||label}
-  else if(v.update){label=v.incomplete?tr("Доустановить компоненты"):tr("Обновить до v")+v.latest;action=startPanelUpdate}
-  if(label){
-    const b=btn(label,"pri",action);b.id="b_update";b.disabled=panelUpdating;
-    if(!v.can_update&&!panelUpdating&&job.phase!=="done"){
-      b.disabled=true;box.title=v.container?tr("Контейнер: обновите образ и пересоздайте контейнер: {0}",[v.update_command||"docker compose up -d --build"]):tr("Разработка: обновляйте чекаут через git. Кнопка доступна после установки панели.");
-    }
-    $("hub_version").replaceChildren(versionInfo(v),b);box.append(btn(tr("Обновить"),"",()=>openSettings("app")));$("s_update_label").textContent=label;mobile.style.display="flex";mobile.disabled=b.disabled;
-  }
-  if(!label)$("hub_version").replaceChildren(versionInfo(v));
-  if(action!==refreshInterface){const refresh=btn(tr("Обновить интерфейс"),"",refreshInterface);refresh.id="b_refresh_interface";refresh.disabled=panelUpdating;$("hub_version").append(refresh)}
-  // The action people open this card for is primary; with an update pending, that is the update itself.
-  const check=btn(tr("Проверить обновления"),label?"":"pri",checkPanelUpdates);check.id="b_check_updates";check.disabled=panelUpdating;$("hub_version").append(check);
-  $("auto_update_enabled").checked=v.auto_update?.enabled!==false;
-  $("auto_update_enabled").disabled=!v.can_update||!v.auto_update||panelUpdating;
-  $("auto_update_status").textContent=v.release_error?tr("Не удалось проверить обновления. Повторите проверку."):v.auto_update?.phase==="waiting"?tr("Обновление ждёт завершения локальной генерации"):"";
-  renderAttachments();
-}
-async function checkPanelUpdates(){
-  const button=$("b_check_updates");if(button)button.disabled=true;
-  try{renderVersion(await api("/api/check_update",{}));toast(tr("Проверка завершена"),"success")}
-  catch(e){toast(e.message)}finally{if(button)button.disabled=false}
-}
-async function saveAutoUpdates(){
-  const input=$("auto_update_enabled"),enabled=input.checked;input.disabled=true;
-  try{const data=await api("/api/auto_update",{enabled});renderVersion({...panelVersion,auto_update:data.auto_update})}
-  catch(e){input.checked=!enabled;toast(e.message)}finally{input.disabled=!panelVersion?.can_update}
-}
 let UI_PANEL_VERSION=null;
 async function loadVersion(){
   if(versionLoading===deckEpoch)return;clearTimeout(versionTimer);

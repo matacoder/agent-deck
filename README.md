@@ -23,11 +23,12 @@ after a reboot.
 - Change history with uncommitted changes: tap a line of the agent's diff to add a `file:line` comment to your message.
 - Search the whole output of a session (including scrollback); quick switcher for sessions and actions with Alt+K, Ctrl+K or ⌘K.
 - Project files: browse, edit text, read Markdown rendered, preview images and PDF.
+- Drop screenshots and files onto the window (desktop, iPad Split View) to attach them to the open session.
 - Claude / Codex subscription limits with a pace forecast; Kimi usage windows and reset times.
 - Under the message field: the running agent and model (including after `/model`), remaining quota and today's plan, so limits stay visible on phones.
 - Server CPU/RAM indicators beside the message composer.
 - Phone friendly (tuned for large iPhones, portrait and landscape): home-screen app, one-tap answers to agent questions, quick session tabs with long-press actions, and file attachments up to 200 MB with upload progress.
-- One Settings hub for agents, model sources, GitHub/Telegram connections, network and application preferences.
+- One Settings hub: agents, notifications (devices and Telegram), local models, other computers, backups and general preferences, with a getting-started checklist.
 - LM Studio profiles: discover known Tailscale nodes or add a custom address, port and API key.
 - Local models in Claude Code, with session speed/TTFT measurements and a separate benchmark; no subscription quotas.
 - UI in 16 languages, switchable in Settings → Application; extensible file-based locales.

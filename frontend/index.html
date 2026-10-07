@@ -24,6 +24,7 @@ __PANEL_STYLE__</style></head><body>
   <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14.9-3.9L4 8"/><path d="M4 4v4h4M4 13a8 8 0 0 0 14.9 3.9L20 16"/><path d="M20 20v-4h-4"/></symbol>
   <symbol id="i-pencil" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16v4zM13 7l4 4"/></symbol>
   <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.94 1.94 0 0 0 3.4 0"/></symbol>
   <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
   <symbol id="i-history" viewBox="0 0 24 24"><circle cx="6" cy="5" r="2"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="7" r="2"/><path d="M6 7v10M18 9c0 5-5 5-11 8"/></symbol>
   <symbol id="i-arrow-left" viewBox="0 0 24 24"><path d="M19 12H5M11 6l-6 6 6 6"/></symbol>
@@ -69,6 +70,7 @@ __PANEL_STYLE__</style></head><body>
     </div>
     <div id="stage">
       <div id="conn" class="conn" role="status" aria-live="polite" hidden></div>
+      <div id="drop_zone" class="drop-zone" hidden><div class="drop-card"><svg class="ui-icon"><use href="#i-paperclip"/></svg><b id="drop_title"></b><span>До 4 файлов, до 200 МБ каждый</span></div></div>
       <div id="term_loading" class="term-loading" role="status" hidden><span class="spinner" aria-hidden="true"></span><span>Подключаюсь к терминалу…</span></div>
       <div id="empty"><span id="empty_text">Загружаю сессии…</span><button type="button" class="pri" id="empty_new" onclick="openNew()" hidden><svg class="ui-icon"><use href="#i-plus"/></svg><span>Новая сессия</span></button></div>
       <div id="screen">
@@ -188,84 +190,134 @@ __PANEL_STYLE__</style></head><body>
 
 <dialog id="rename_dlg"><form class="dlg" onsubmit="event.preventDefault();saveSessionTitle()"><div class="dlg-body"><h3>Переименовать сессию</h3><label for="session_title">Название</label><input type="text" id="session_title" required maxlength="100"></div><div class="acts"><button type="button" onclick="$('rename_dlg').close()">Отмена</button><button class="pri" id="rename_save">Сохранить</button></div></form></dialog>
 <dialog id="settings_dlg"><div class="dlg settings-hub">
-  <div class="hub-heading"><h3 tabindex="-1" autofocus>Настройки</h3><button type="button" onclick="$('settings_dlg').close()" aria-label="Закрыть"><svg class="ui-icon"><use href="#i-x"/></svg></button></div>
-  <nav class="hub-nav" aria-label="Настройки">
-    <button type="button" data-section="agents" onclick="settingsSection('agents')">Агенты</button>
-    <button type="button" data-section="models" onclick="settingsSection('models')">Модели</button>
-    <button type="button" data-section="connections" onclick="settingsSection('connections')">Подключения</button>
-    <button type="button" data-section="network" onclick="settingsSection('network')">Сеть</button>
-    <button type="button" data-section="backups" onclick="settingsSection('backups')">Бэкапы</button>
-    <button type="button" data-section="app" onclick="settingsSection('app')">Приложение</button>
+  <div class="hub-heading"><h3 tabindex="-1" autofocus id="hub_title">Настройки</h3><button type="button" onclick="closeSettings()" aria-label="Закрыть"><svg class="ui-icon"><use href="#i-x"/></svg></button></div>
+  <nav class="hub-nav" aria-label="Разделы настроек" role="tablist">
+    <button type="button" role="tab" id="tab_agents" aria-controls="hub_agents" data-section="agents" onclick="settingsSection('agents')"><svg class="ui-icon"><use href="#i-terminal"/></svg><span>Агенты</span></button>
+    <button type="button" role="tab" id="tab_notifications" aria-controls="hub_notifications" data-section="notifications" onclick="settingsSection('notifications')"><svg class="ui-icon"><use href="#i-bell"/></svg><span>Уведомления</span></button>
+    <button type="button" role="tab" id="tab_models" aria-controls="hub_models" data-section="models" onclick="settingsSection('models')"><svg class="ui-icon"><use href="#i-cpu"/></svg><span>Локальные модели</span></button>
+    <button type="button" role="tab" id="tab_computers" aria-controls="hub_computers" data-section="computers" onclick="settingsSection('computers')"><svg class="ui-icon"><use href="#i-monitor"/></svg><span>Компьютеры</span></button>
+    <button type="button" role="tab" id="tab_backups" aria-controls="hub_backups" data-section="backups" onclick="settingsSection('backups')"><svg class="ui-icon"><use href="#i-lock"/></svg><span>Бэкапы</span></button>
+    <button type="button" role="tab" id="tab_general" aria-controls="hub_general" data-section="general" onclick="settingsSection('general')"><svg class="ui-icon"><use href="#i-gear"/></svg><span>Общие</span></button>
   </nav>
   <div class="dlg-body hub-content">
-    <section id="hub_agents"></section>
-    <section id="hub_models"><div id="kimi_dlg" class="hub-card editor" hidden><form onsubmit="event.preventDefault();saveKimi()">
-      <h3>Настройки Kimi</h3>
-      <p id="kimi_state"></p>
-      <label for="kimi_key">API-ключ Kimi Code</label>
-      <input id="kimi_key" type="password" autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Вставьте ключ; пустое поле сохраняет текущий">
-      <label for="kimi_model">Модель для новых запусков</label>
-      <select id="kimi_model"><option value="k3">K3</option><option value="kimi-for-coding">Kimi for coding</option><option value="kimi-for-coding-highspeed">Kimi for coding · highspeed</option></select>
-      <p>Один ключ для Claude · Kimi и Kimi Code. Изменения применятся при следующем запуске агента.</p>
-      <div class="acts"><button type="button" class="integration-remove" onclick="clearKimi()">Удалить ключ</button><button type="button" onclick="closeKimi()">Отмена</button><button class="pri" id="kimi_save">Сохранить</button></div>
-    </form></div>
+    <section id="hub_agents" role="tabpanel" aria-labelledby="tab_agents">
+      <header class="hub-section-head"><h3>Агенты</h3><p>Программы, которые работают в сессиях, и аккаунты для них.</p></header>
+      <div id="setup_card"></div>
+      <div id="agent_cards"></div>
+      <form id="kimi_dlg" class="hub-card editor" hidden onsubmit="event.preventDefault();saveKimi()">
+        <h4>Ключ и модель Kimi</h4>
+        <p id="kimi_state" class="card-status" role="status"></p>
+        <label for="kimi_key">API-ключ Kimi Code</label>
+        <input id="kimi_key" type="password" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="done" placeholder="Вставьте ключ">
+        <p class="hint">Пустое поле сохраняет текущий ключ.</p>
+        <label for="kimi_model">Модель для новых запусков</label>
+        <select id="kimi_model"><option value="k3">K3</option><option value="kimi-for-coding">Kimi for coding</option><option value="kimi-for-coding-highspeed">Kimi for coding · highspeed</option></select>
+        <p class="hint">Этот ключ используют Claude на моделях Kimi и Kimi Code. Изменения применятся при следующем запуске агента.</p>
+        <div class="acts"><button type="button" class="danger" id="kimi_clear" onclick="clearKimi()">Удалить ключ</button><button type="button" onclick="closeKimi()">Отмена</button><button class="pri" id="kimi_save">Сохранить</button></div>
+      </form>
+    </section>
+    <section id="hub_notifications" role="tabpanel" aria-labelledby="tab_notifications" hidden>
+      <header class="hub-section-head"><h3>Уведомления</h3><p>Вопросы агентов и завершение работы со всех подключённых компьютеров — на это устройство или в Telegram.</p></header>
+      <div class="hub-card" id="push_card" data-card="push">
+        <div class="card-top"><span class="card-icon" aria-hidden="true"><svg class="ui-icon"><use href="#i-bell"/></svg></span><div class="card-main"><h4>Уведомления на устройствах</h4><p id="push_state" class="card-status" role="status"></p></div></div>
+        <div id="push_fix"></div>
+        <label class="integration-toggle"><span>Вопросы агентов</span><input type="checkbox" role="switch" id="push_questions" onchange="savePushEvents()"></label>
+        <label class="integration-toggle"><span>Агент закончил работу</span><input type="checkbox" role="switch" id="push_finished" onchange="savePushEvents()"></label>
+        <p class="hub-section-title" id="push_devices_title" hidden>Устройства</p><div id="push_devices"></div>
+        <div id="push_actions"></div>
+      </div>
+      <div id="telegram_cards"></div>
+      <form id="integrations_dlg" class="hub-card editor integration-dialog" hidden onsubmit="event.preventDefault();saveTelegram()">
+        <div class="card-top"><span class="card-icon telegram-mark" aria-hidden="true"><svg class="ui-icon"><use href="#i-telegram"/></svg></span><div class="card-main"><h4>Telegram</h4><p id="telegram_state" class="card-status" role="status"></p></div></div>
+        <p id="telegram_duplicates" class="integration-note danger" hidden></p>
+        <p class="hint">Вопросы со всех подключённых компьютеров приходят в этот бот, настраивать Telegram на них не нужно.</p>
+        <details id="telegram_credentials" open><summary>Токен бота</summary>
+        <label for="telegram_token">Токен бота из @BotFather</label>
+        <input id="telegram_token" type="password" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="done" placeholder="Вставьте токен">
+        <p class="hint">Пустое поле сохраняет текущий токен.</p>
+        </details>
+        <label class="integration-toggle"><span>Отправлять вопросы</span><input type="checkbox" role="switch" id="telegram_enabled" checked></label>
+        <div id="telegram_pairing" hidden>
+          <p class="hint">Откройте бота и нажмите Start. Ответы доступны только вашему аккаунту.</p>
+          <a class="integration-link" id="telegram_link" target="_blank" rel="noopener noreferrer">Привязать мой Telegram ↗</a>
+          <p class="hint">Ссылка действует 10 минут.</p>
+        </div>
+        <button type="button" class="integration-pair" id="telegram_pair" onclick="pairTelegram()" hidden>Привязать Telegram</button>
+        <div class="acts"><button type="button" class="danger" id="telegram_clear" onclick="clearTelegram()">Отключить</button><button type="button" onclick="closeIntegrations()">Закрыть</button><button class="pri" id="telegram_save">Сохранить</button></div>
+      </form>
+    </section>
+    <section id="hub_models" role="tabpanel" aria-labelledby="tab_models" hidden>
+      <header class="hub-section-head"><h3>Локальные модели</h3><p>Серверы LM Studio на ваших компьютерах. Claude и Pi работают на этих моделях без квот подписки.</p><button type="button" class="pri" onclick="editLM()">Добавить сервер</button></header>
       <div id="model_cards"></div>
-      <details id="lm_editor" class="hub-card"><summary>Добавить компьютер</summary><form onsubmit="event.preventDefault();saveLM()">
-        <input type="hidden" id="lm_id"><label for="lm_name">Название</label><input type="text" id="lm_name" required maxlength="100">
-        <label for="lm_url">Адрес компьютера</label><input id="lm_url" type="url" required placeholder="http://100.64.0.1:1234">
-        <label for="lm_key">API-ключ</label><input id="lm_key" type="password" autocomplete="new-password" placeholder="Вставьте ключ; пустое поле сохраняет текущий">
-        <label class="chk"><input type="checkbox" id="lm_clear_key"><span>Удалить ключ</span></label>
-        <div class="acts"><button type="button" onclick="resetLM()">Отмена</button><button class="pri">Сохранить</button></div>
-      </form></details>
-      <div class="hub-card"><h4>Tailscale</h4><p>Поиск компьютеров на известных узлах</p><label for="lm_ports">Порты</label><input id="lm_ports" type="text" value="1234" inputmode="numeric">
-      <div class="acts"><button type="button" onclick="discoverLM()">Найти компьютеры</button><button type="button" id="lm_cancel" onclick="discoverLM(true)" hidden>Остановить</button></div>
-      <p id="lm_progress" role="status"></p><div id="lm_results"></div></div>
+      <form id="lm_editor" class="hub-card editor" hidden onsubmit="event.preventDefault();saveLM()">
+        <h4 id="lm_editor_title">Новый сервер LM Studio</h4>
+        <input type="hidden" id="lm_id"><label for="lm_name">Название</label><input type="text" id="lm_name" required maxlength="100" autocomplete="off">
+        <label for="lm_url">Адрес сервера LM Studio</label><input id="lm_url" type="url" required autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="http://100.64.0.1:1234">
+        <label for="lm_key">API-ключ</label><input id="lm_key" type="password" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="done" placeholder="Если в LM Studio включена авторизация">
+        <label class="chk" id="lm_clear_row"><input type="checkbox" id="lm_clear_key"><span>Удалить сохранённый ключ</span></label>
+        <div class="acts"><button type="button" onclick="resetLM()">Отмена</button><button class="pri" id="lm_save">Сохранить</button></div>
+      </form>
+      <div class="hub-card" data-card="lm-discovery"><h4>Найти LM Studio в Tailscale</h4><p class="hint">Проверяет ваши устройства Tailscale на этих портах (LM Studio по умолчанию: 1234).</p>
+        <label for="lm_ports">Порты</label><input id="lm_ports" type="text" value="1234" inputmode="text" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="search" placeholder="1234, 8080">
+        <div class="acts"><button type="button" id="lm_cancel" onclick="discoverLM(true)" hidden>Остановить</button><button type="button" id="lm_find" onclick="discoverLM()">Найти в Tailscale</button></div>
+        <p id="lm_progress" class="hint" role="status"></p><div id="lm_results"></div></div>
     </section>
-    <section id="hub_connections"><div class="hub-card" id="push_card"><h4>Уведомления</h4><p>Вопросы агентов и завершение работы на всех подключённых Agent Deck приходят на телефон или компьютер, даже когда панель закрыта.</p><p id="push_state" role="status"></p><div id="push_actions"></div>
-      <label class="integration-toggle"><span>Вопросы агентов</span><input type="checkbox" role="switch" id="push_questions" onchange="savePushEvents()"></label>
-      <label class="integration-toggle"><span>Агент закончил работу</span><input type="checkbox" role="switch" id="push_finished" onchange="savePushEvents()"></label>
-      <div id="push_devices"></div></div><div id="connection_cards"></div><div id="integrations_dlg" class="hub-card editor" hidden><form class="integration-dialog" onsubmit="event.preventDefault();saveTelegram()">
-      <div class="integration-heading"><span class="telegram-mark" aria-hidden="true"><svg class="ui-icon"><use href="#i-telegram"/></svg></span><div><h4>Telegram</h4><p>Вопросы и ответы в чате с ботом</p></div></div>
-      <p id="telegram_state" class="integration-status" role="status"></p>
-      <p id="telegram_duplicates" class="integration-note danger" hidden></p>
-      <p class="integration-note">Вопросы подключённых Agent Deck тоже приходят в этот бот. На них Telegram настраивать не нужно.</p>
-      <details id="telegram_credentials" open><summary>Токен бота</summary>
-      <label for="telegram_token">Токен бота из @BotFather</label>
-      <input id="telegram_token" type="password" autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Вставить или заменить токен">
-      <p class="integration-note">Пустое поле сохраняет текущий токен.</p>
-      </details>
-      <label class="integration-toggle"><span>Отправлять вопросы</span><input type="checkbox" role="switch" id="telegram_enabled" checked></label>
-      <div id="telegram_pairing" style="display:none">
-        <p class="integration-note">Откройте бота и нажмите Start. Ответы доступны только вашему аккаунту.</p>
-        <a class="integration-link" id="telegram_link" target="_blank" rel="noopener noreferrer">Привязать мой Telegram ↗</a>
-        <p class="integration-note">Ссылка действует 10 минут.</p>
+    <section id="hub_computers" role="tabpanel" aria-labelledby="tab_computers" hidden>
+      <header class="hub-section-head"><h3>Компьютеры</h3><p>Другие компьютеры с Agent Deck: их сессии видны в списке, а уведомления и бэкапы работают для всех.</p></header>
+      <div class="hub-card" data-card="decks">
+        <div class="card-top"><span class="card-icon" aria-hidden="true"><svg class="ui-icon"><use href="#i-monitor"/></svg></span><div class="card-main"><h4>Другие компьютеры</h4><p id="deck_summary" class="card-status"></p></div></div>
+        <div id="fleet_bar" class="fleet-bar"></div><div id="deck_connections"></div>
+        <label class="integration-toggle" id="network_isolate_row" hidden><span>Изолировать терминалы других компьютеров</span><input type="checkbox" role="switch" id="network_isolate" onchange="saveIsolation()"></label>
+        <p class="hint" id="network_isolate_hint" hidden>Терминалы других компьютеров открываются в песочнице без доступа к этой панели. Там не работают горячие клавиши, копирование выделением и свайп меню.</p>
+        <p class="hub-section-title">Найти и подключить</p>
+        <div class="deck-toolbar"><div class="deck-port"><label for="deck_port">Порт</label><input type="text" id="deck_port" inputmode="numeric" pattern="[0-9]*" maxlength="5" value="8790"></div><div class="deck-actions"><button type="button" id="deck_discover" onclick="discoverDecks()">Найти в Tailscale</button><button type="button" onclick="editDeck()">Добавить вручную</button></div></div>
+        <p id="deck_discovery_status" class="hint" role="status"></p><div id="deck_discovery_results"></div>
       </div>
-      <button type="button" class="integration-pair" id="telegram_pair" onclick="pairTelegram()" style="display:none">Привязать Telegram</button>
-      <div class="acts"><button type="button" class="integration-remove" onclick="clearTelegram()">Отключить</button><button type="button" onclick="closeIntegrations()">Закрыть</button><button class="pri" id="telegram_save">Сохранить</button></div>
-    </form></div>
+      <form id="deck_editor" class="hub-card editor" hidden onsubmit="event.preventDefault();saveDeck()">
+        <h4 id="deck_editor_title">Подключить другой Agent Deck</h4>
+        <input type="hidden" id="deck_id"><label for="deck_name">Название</label><input type="text" id="deck_name" required maxlength="100" autocomplete="off">
+        <label for="deck_url">Адрес Tailscale</label><input type="url" id="deck_url" required autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="http://100.68.39.62:8790">
+        <label for="deck_username">Логин панели на том компьютере</label><input type="text" id="deck_username" required autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false">
+        <label for="deck_password">Пароль</label><input type="password" id="deck_password" autocomplete="current-password" enterkeyhint="done">
+        <p class="hint">Пароль хранится на этом сервере. Пустое поле сохраняет пароль существующего подключения.</p>
+        <div class="acts"><button type="button" onclick="closeDeckEditor()">Отмена</button><button class="pri" id="deck_save">Подключить</button></div>
+      </form>
+      <form class="hub-card" data-card="network" onsubmit="event.preventDefault();saveNetwork()"><h4>Этот компьютер</h4>
+        <p class="card-meta"><span>Адрес в браузере</span>: <span id="network_browser"></span></p><p class="card-meta"><span>Адрес на сервере</span>: <span id="network_bind"></span></p>
+        <label for="network_name">Название</label><input type="text" id="network_name" required maxlength="100" autocomplete="off">
+        <label for="network_public_url">Публичный адрес</label><input type="url" id="network_public_url" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="done" placeholder="https://agents.example.com">
+        <p class="hint">HTTPS-адрес панели, если он настроен на сервере (домен или tailscale serve). Нужен для уведомлений на телефоне.</p>
+        <div class="acts"><button class="pri" id="network_save">Сохранить</button></div></form>
     </section>
-    <section id="hub_network">
-      <form class="hub-card" onsubmit="event.preventDefault();saveNetwork()"><h4>Сеть и адрес панели</h4><p><span>Адрес в браузере</span>: <span id="network_browser"></span></p><p><span>Панель слушает</span>: <span id="network_bind"></span></p><label for="network_name">Название этого компьютера</label><input type="text" id="network_name" required maxlength="100"><label for="network_public_url">Публичный адрес</label><input type="url" id="network_public_url" placeholder="https://agents.example.com"><p>Для доступа по этому адресу домен и HTTPS должны быть настроены на сервере.</p><label class="chk"><input type="checkbox" id="network_isolate"><span>Изолировать терминалы других компьютеров</span></label><p>Страница терминала подключённого компьютера открывается в песочнице и не получает доступа к этой панели. В таких терминалах не работают ⌥1…9, копирование выделения и свайп меню.</p><div class="acts"><button class="pri" id="network_save">Сохранить</button></div></form>
-      <div class="hub-card"><h4>Другие компьютеры</h4><p>Управляйте другими компьютерами через этот сервер.</p><div id="fleet_bar" class="fleet-bar"></div><div id="deck_connections"></div>
-        <div class="deck-toolbar"><div class="deck-port"><label for="deck_port">Порт</label><input type="number" id="deck_port" min="1" max="65535" value="8790"></div><div class="deck-actions"><button type="button" id="deck_discover" onclick="discoverDecks()">Обнаружить</button><button type="button" onclick="editDeck()">Подключить</button></div></div><p id="deck_discovery_status"></p><div id="deck_discovery_results"></div>
-        <details id="deck_editor"><summary>Подключение Agent Deck</summary><form onsubmit="event.preventDefault();saveDeck()"><input type="hidden" id="deck_id"><label for="deck_name">Название</label><input type="text" id="deck_name" required maxlength="100"><label for="deck_url">Адрес Tailscale</label><input type="url" id="deck_url" required placeholder="http://100.68.39.62:8790"><label for="deck_username">Логин</label><input type="text" id="deck_username" required autocomplete="off"><label for="deck_password">Пароль</label><input type="password" id="deck_password" autocomplete="new-password"><p>Пароль хранится на основном сервере. Пустое поле сохраняет пароль существующего подключения.</p><button class="pri" id="deck_save">Подключить</button></form></details>
+    <section id="hub_backups" role="tabpanel" aria-labelledby="tab_backups" hidden>
+      <header class="hub-section-head"><h3>Бэкапы</h3><p>Настройки Agent Deck, ключи интеграций и логины агентов. Копии шифруются кодом восстановления и хранятся на всех подключённых компьютерах. Логин и пароль панели в бэкап не входят.</p></header>
+      <div class="hub-card" data-card="backups">
+        <div class="card-top"><span class="card-icon" aria-hidden="true"><svg class="ui-icon"><use href="#i-lock"/></svg></span><div class="card-main"><h4>Бэкап этого компьютера</h4><p id="backup_status" class="card-status" role="status"></p><p id="backup_meta" class="card-meta"></p></div></div>
+        <div id="backup_state"></div>
       </div>
-    </section>
-    <section id="hub_backups">
-      <div class="hub-card"><h4>Бэкапы настроек и ключей</h4><p>Настройки Agent Deck, ключи интеграций и логины агентов. Копии шифруются кодом восстановления и хранятся на всех подключённых Agent Deck. Логин и пароль панели задаются при установке и в бэкап не входят.</p><div id="backup_state"></div></div>
-      <div class="hub-card editor" id="backup_code_card" hidden><h4>Код восстановления</h4><p>Сохраните код в менеджере паролей. Без него бэкап на новом компьютере не расшифровать. Больше он показан не будет.</p><code id="backup_code" class="recovery-code"></code><div class="acts"><button type="button" onclick="copyBackupCode()">Скопировать</button><button type="button" class="pri" onclick="finishBackupCode()">Я сохранил код</button></div></div>
-      <form class="hub-card editor" id="backup_join_card" hidden onsubmit="event.preventDefault();joinBackups()"><label for="backup_join_code">Код восстановления</label><input type="text" id="backup_join_code" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="AD1-…" required><div class="acts"><button type="button" onclick="$('backup_join_card').hidden=true">Отмена</button><button class="pri">Подключить</button></div></form>
-      <div class="hub-card"><h4>Восстановление</h4><p>Заменяет настройки, ключи и логины агентов. Текущее состояние сначала сохраняется в бэкап, затем панель перезапускается; сессии tmux продолжают работать.</p>
+      <div class="hub-card editor" id="backup_code_card" hidden><h4>Код восстановления</h4><p class="hint">Сохраните код в менеджере паролей. Без него бэкап на новом компьютере не расшифровать. Больше он показан не будет.</p><code id="backup_code" class="recovery-code"></code><div class="acts"><button type="button" onclick="copyBackupCode()">Скопировать</button><button type="button" class="pri" onclick="finishBackupCode()">Я сохранил код</button></div></div>
+      <form class="hub-card editor" id="backup_join_card" hidden onsubmit="event.preventDefault();joinBackups()"><h4>Бэкапы уже включены на другом компьютере</h4><label for="backup_join_code">Код восстановления оттуда</label><input type="text" id="backup_join_code" autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false" enterkeyhint="done" placeholder="AD1-…" required><div class="acts"><button type="button" onclick="closeBackupJoin()">Отмена</button><button class="pri">Присоединиться</button></div></form>
+      <div class="hub-card" data-card="restore"><h4>Восстановление</h4>
+        <button type="button" class="hub-expand" id="backup_restore_open" onclick="openBackupRestore()" hidden>Восстановить из файла или с другого компьютера</button>
+        <div id="backup_restore_body">
+        <p class="hint">Заменяет настройки, ключи и логины агентов. Текущее состояние сначала сохраняется в бэкап, затем панель перезапускается; сессии tmux продолжают работать.</p>
         <div class="two"><div><label for="backup_source">Где взять копию</label><select id="backup_source" onchange="renderBackupList()"></select></div><div><label for="backup_target">Куда восстановить</label><select id="backup_target"></select></div></div>
-        <div id="backup_restore_code_row" hidden><label for="backup_restore_code">Код восстановления</label><input type="text" id="backup_restore_code" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="AD1-…"></div>
+        <div id="backup_restore_code_row" hidden><label for="backup_restore_code">Код восстановления</label><input type="text" id="backup_restore_code" autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false" placeholder="AD1-…"></div>
         <div id="backup_list"></div>
-        <div class="acts"><button type="button" onclick="$('backup_file').click()">Восстановить из файла</button></div><input type="file" id="backup_file" accept=".adbk" hidden onchange="restoreBackupFile(this)"></div>
+        <div class="acts"><button type="button" onclick="$('backup_file').click()">Восстановить из файла</button></div><input type="file" id="backup_file" accept=".adbk" hidden onchange="restoreBackupFile(this)"></div></div>
     </section>
-    <section id="hub_app">
-      <div class="hub-card"><label for="ui_language">Язык интерфейса</label><select id="ui_language" onchange="saveLanguage()"></select><p>Язык сохраняется в этом браузере. Сообщения и вывод агентов не переводятся.</p>
-        <label class="toggle"><span>Автокоррекция в поле сообщения</span><input type="checkbox" role="switch" id="autocorrect_enabled" onchange="saveAutocorrect()"></label><p>Сохраняется в этом браузере. Выключена по умолчанию: iOS заменяет -- и кавычки, а агенту нужны точные символы.</p></div>
-      <form class="hub-card" onsubmit="event.preventDefault();saveProjectDirectory()"><label for="project_directory">Папка проектов</label><input type="text" id="project_directory" autocomplete="off" autocapitalize="off" spellcheck="false" required><p>Используется для новых сессий. Существующие сессии остаются в своих папках.</p><div class="acts"><button class="pri" id="project_directory_save">Сохранить</button></div></form>
-      <div class="hub-card"><h4>Agent Deck</h4><div id="hub_version"></div><label class="integration-toggle"><span>Автоматически обновлять Agent Deck</span><input type="checkbox" id="auto_update_enabled" onchange="saveAutoUpdates()"></label><p>Проверка каждые 30 минут. Обновление ждёт завершения запросов локальной модели и сохраняет сессии.</p><p id="auto_update_status"></p></div>
+    <section id="hub_general" role="tabpanel" aria-labelledby="tab_general" hidden>
+      <header class="hub-section-head"><h3>Общие</h3><p>Язык, папка проектов, версия и обновления.</p></header>
+      <div class="hub-card"><h4>Этот браузер</h4><label for="ui_language">Язык интерфейса</label><select id="ui_language" onchange="saveLanguage()"></select><p class="hint">Сообщения и вывод агентов не переводятся.</p>
+        <label class="toggle"><span>Автокоррекция в поле сообщения</span><input type="checkbox" role="switch" id="autocorrect_enabled" onchange="saveAutocorrect()"></label><p class="hint">Выключена по умолчанию: iOS заменяет -- и кавычки, а агенту нужны точные символы.</p></div>
+      <form class="hub-card" onsubmit="event.preventDefault();saveProjectDirectory()"><h4>Новые сессии</h4><label for="project_directory">Папка проектов</label><input type="text" id="project_directory" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="done" required><p class="hint">Используется для новых сессий. Существующие сессии остаются в своих папках.</p><div class="acts"><button class="pri" id="project_directory_save">Сохранить</button></div></form>
+      <div class="hub-card" data-card="version">
+        <div class="card-top"><span class="card-icon" aria-hidden="true"><svg class="ui-icon"><use href="#i-download"/></svg></span><div class="card-main"><h4>Версия и обновления</h4><p id="version_status" class="card-status" role="status"></p><p id="version_meta" class="card-meta"></p></div></div>
+        <p id="version_hint" class="hint" hidden></p>
+        <label class="integration-toggle" id="auto_update_row"><span>Обновлять автоматически</span><input type="checkbox" role="switch" id="auto_update_enabled" onchange="saveAutoUpdates()"></label>
+        <p class="hint" id="auto_update_hint">Проверка каждые 30 минут. Обновление ждёт завершения запросов локальной модели и сохраняет сессии.</p><p id="auto_update_status" class="hint" role="status"></p>
+        <div id="hub_version" class="acts"></div>
+      </div>
       <div class="settings-account"><button type="button" onclick="logout()"><svg class="ui-icon"><use href="#i-logout"/></svg><span>Выйти</span></button></div>
     </section>
   </div>

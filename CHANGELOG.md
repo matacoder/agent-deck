@@ -2,6 +2,20 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.22.0 — 2026-10-07
+
+Settings redesigned after a five-way review (structure, copy, visual design, phone and accessibility).
+
+- **Sections say what they hold:** Agents (Claude, Codex, Kimi with its key, Pi, GitHub), Notifications (devices and Telegram), Local models (LM Studio only), Computers (other Agent Decks first, then this computer's address), Backups, General (this browser, new sessions, version and updates). "Computer" now always means another Agent Deck; LM Studio is a "server". With other computers connected, the title names the one being configured.
+- **One card pattern:** icon, title, a coloured status (works / needs a step / broken / off), address or version, one main action and a ⋯ menu for the rest. Editors open in place of the card they edit; removing something is always red, on the left, and asks first (LM Studio servers, connected computers, other devices' notifications).
+- **Getting started:** a card with three steps (sign in to an agent, notifications on this device, backups) until they are done or hidden, and a dot on every section that needs attention.
+- Signing in or installing an agent closes Settings so its session is visible. Escape first closes an open editor and asks before dropping a typed key or password.
+- Clearer states and fixes: "Not signed in" instead of a second "Log in", "first token" instead of TTFT, no "No limits" label, an unreachable LM Studio says how to start its server, notifications that need HTTPS point to the public address, Telegram's update hint names the real place. Restore folds into one link while there is nothing to restore.
+- Phone and iPad: buttons never break inside a word, the active section stays visible in the tab row (fades on both sides), a section opens at its top, the ports field takes commas, logins are not capitalised, keys and tokens are no longer offered as new passwords, touch iPads get 16 px fields and finger-sized controls; tab list semantics, labelled list buttons and status announcements for screen readers.
+- About 135 strings per language that were still English in 14 locales are translated; the Spanish "complete installation" label no longer says "installation complete".
+- **Sidebar:** computers keep one order whichever is selected; switching only moves the highlight instead of reshuffling the list.
+- **Drop files onto the window** (desktop, iPad Split View) to attach them to the open session, including over the terminal; a frame shows where they will go or why they cannot.
+
 ## 1.21.0 — 2026-10-07
 
 - **Uncommitted changes with comments for the agent:** Change history opens on a new Changes tab — what the agent changed since the last commit (staged, unstaged and new files git does not ignore), read-only. Tap a line, write a comment, and it is added to the session's message as `file:line`, the quoted line and your note; send it when ready.

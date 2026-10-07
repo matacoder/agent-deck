@@ -310,7 +310,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 .chk.warn span{color:var(--fg)}.chk.warn code{font:11.5px var(--mono);color:var(--orange);white-space:nowrap}
 .toggle,.integration-toggle{display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:var(--tap);color:var(--fg2)}
 .toggle>span,.integration-toggle>span{flex:1;min-width:0;line-height:1.5}
-.toggle input,.integration-toggle input{appearance:none;-webkit-appearance:none;flex:0 0 36px;width:36px;height:21px;margin:0;border-radius:12px;background:var(--ctl);position:relative;cursor:pointer}
+.toggle input,.integration-toggle input{appearance:none;-webkit-appearance:none;flex:0 0 36px;width:36px;height:21px;margin:0;border-radius:12px;background:var(--ctl);box-shadow:inset 0 0 0 1px var(--ctl-bd);position:relative;cursor:pointer}
 .toggle input::after,.integration-toggle input::after{content:"";position:absolute;top:3px;left:3px;width:15px;height:15px;border-radius:50%;background:var(--fg2);transition:left .15s}
 .toggle input:checked,.integration-toggle input:checked{background:var(--acc)}
 .toggle input:checked::after,.integration-toggle input:checked::after{left:18px}
@@ -360,20 +360,73 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 .closed-draft .acts{padding:0;justify-content:flex-start;flex-wrap:wrap;border:0}
 
 /* ---------- settings hub ---------- */
-#settings_dlg{width:min(940px,calc(100vw - 48px));max-height:85dvh}
-.settings-hub{display:grid;grid-template-columns:168px minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);height:min(680px,85dvh);max-height:85dvh}
+#settings_dlg{width:min(1000px,calc(100vw - 48px));max-height:90dvh}
+.settings-hub{display:grid;grid-template-columns:216px minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);height:min(820px,90dvh);max-height:90dvh}
 .hub-heading{grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;padding:12px 14px 12px 22px;border-bottom:1px solid var(--bd)}
 .hub-heading h3{margin:0;font-size:17px}
 .hub-heading button{display:grid;place-items:center;width:var(--tap);height:var(--tap);border-radius:var(--r);color:var(--mut)}
 @media (hover:hover){.hub-heading button:hover{background:var(--side2);color:var(--fg2)}}
 .hub-heading button svg{width:var(--icon-lg);height:var(--icon-lg)}
 .hub-nav{display:flex;flex-direction:column;gap:4px;padding:14px 10px;border-right:1px solid var(--bd);background:#0000000a}
-.hub-nav button{min-height:40px;text-align:left;padding:8px 12px;border-radius:9px;color:var(--mut);font-size:13px;overflow-wrap:anywhere}
+.hub-nav button{position:relative;display:flex;align-items:center;gap:10px;min-height:40px;text-align:left;padding:8px 12px;border-radius:9px;color:var(--mut);font-size:13px;overflow-wrap:normal}
+.hub-nav button .ui-icon{flex:none;width:var(--icon-sm);height:var(--icon-sm)}
+.hub-nav button.attn::after{content:"";width:7px;height:7px;margin-left:auto;border-radius:50%;background:var(--warn);flex:none}
 @media (hover:hover){.hub-nav button:hover{background:var(--side2);color:var(--fg)}}
 .hub-nav button.on{background:var(--acc-soft);color:var(--acc-text);font-weight:600}
 .hub-content{padding:20px;overflow-y:auto;min-width:0}
 .hub-section-title{margin:0 0 4px;font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--dim)}
 .hub-card{border:1px solid var(--bd);border-radius:12px;padding:16px;margin-bottom:12px;background:#ffffff03;min-width:0;overflow-wrap:anywhere}
+/* One card anatomy: icon, title, coloured status, meta; body; actions with danger on the left. */
+.hub-section-head{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:4px 12px;margin:0 0 16px}
+.hub-section-head h3{margin:0;font-size:16px;color:var(--fg2)}
+.hub-section-head p{grid-column:1/-1;margin:0;color:var(--mut);font-size:12.5px;line-height:1.5}
+.hub-section-head .pri{grid-row:1;grid-column:2;padding:8px 14px;border-radius:9px;font-size:12.5px;background:var(--acc-soft);color:var(--acc-text)}
+.hub-section-title{margin:16px 0 4px}
+.card-icon{display:grid;place-items:center;flex:none;width:36px;height:36px;border-radius:10px;background:var(--side2);color:var(--fg2)}
+.card-icon .ui-icon,.card-icon svg{width:var(--icon-lg);height:var(--icon-lg)}
+.card-icon .ag{font-size:18px}.card-icon .telegram-glyph{display:grid;color:#57b9ef}
+.card-tools{display:flex;align-items:flex-start;gap:6px;flex:none}
+.hub-card p.card-status,.card-status{display:flex;align-items:center;gap:7px;margin:4px 0 0;font-size:12.5px;color:var(--fg)}
+.card-status::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--dim);flex:none}
+.card-status.ok::before{background:var(--ok)}.card-status.warn::before{background:var(--warn)}
+.card-status.bad,.hub-card p.card-status.bad{color:var(--bad-text)}.card-status.bad::before{background:var(--bad)}
+.card-status:empty{display:none}
+.hub-card p.card-meta,.card-meta{margin:3px 0 0;color:var(--dim);font-size:12px;overflow-wrap:anywhere}
+.hub-card p.hint,.hint{margin:10px 0 0;color:var(--mut);font-size:12.5px;line-height:1.5}
+.hub-card p.card-metrics{margin:8px 0 0;color:var(--fg);font-size:12.5px}
+.card-more{position:relative}
+.hub-card .card-more{margin:0}
+.card-more>summary{display:grid;place-items:center;width:40px;min-height:40px;padding:0;border-radius:9px;color:var(--mut);list-style:none}
+.card-more>summary::-webkit-details-marker{display:none}
+@media (hover:hover){.card-more>summary:hover{background:var(--side2);color:var(--fg)}}
+.card-more>summary .ui-icon{width:var(--icon-lg);height:var(--icon-lg)}
+.card-menu{position:absolute;right:0;top:calc(100% + 4px);z-index:5;display:flex;flex-direction:column;min-width:200px;padding:6px;border:1px solid var(--bd-strong);border-radius:10px;background:var(--side);box-shadow:0 12px 32px #0008}
+.hub-card .card-menu button{margin:0;padding:10px 12px;border-radius:7px;background:none;text-align:left;color:var(--fg2)}
+.hub-card .card-menu button.danger{color:var(--bad-text)}
+@media (hover:hover){.hub-card .card-menu button:hover{background:var(--side2)}}
+.hub-row{display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--bd)}
+.hub-row-info{flex:1;min-width:0;display:flex;flex-direction:column}
+.hub-row-info strong{font-size:13px;font-weight:500;color:var(--fg2);overflow-wrap:anywhere}
+.hub-row-info .card-status,.hub-row-info .card-meta{margin-top:3px}
+.hub-row-actions{display:flex;align-items:center;gap:6px;flex:none}
+.hub-row-actions>button{min-height:40px;padding:8px 14px;border:1px solid var(--bd);border-radius:9px;background:var(--side2);font-size:12.5px;white-space:nowrap}
+.hub-row-actions>button.danger{background:none;border-color:transparent;color:var(--bad-text)}
+.hub-empty{margin:0 0 12px;padding:16px;border:1px dashed var(--bd);border-radius:12px;color:var(--mut);font-size:12.5px;line-height:1.5}
+.hub-expand{margin-top:8px;padding:0;color:var(--acc-text);text-align:left;font-size:13px}
+.hub-card.setup{border-color:#0a84ff55;background:var(--acc-soft)}
+.setup-steps{display:flex;flex-direction:column;gap:4px;margin-top:10px}
+.setup-step{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;text-align:left;color:var(--fg2);font-size:13px}
+@media (hover:hover){.setup-step:hover:not(:disabled){background:#ffffff10}}
+.setup-step.done{color:var(--mut);opacity:1}.setup-mark{width:18px;text-align:center;color:var(--acc-text);font-weight:700}.setup-step.done .setup-mark{color:var(--ok)}
+.setup-hide{padding:6px 10px;border-radius:8px;color:var(--mut);font-size:12.5px}
+/* Buttons never break inside a word; long labels wrap between words. */
+.settings-hub button{overflow-wrap:normal;word-break:normal;hyphens:auto}
+.hub-card .acts button.danger{margin-right:auto;background:none;color:var(--bad-text);padding-left:4px}
+/* Touch iPads keep the wide layout but need finger-sized controls and no focus zoom. */
+@media (pointer:coarse){
+  .settings-hub input:not([type=hidden]):not([type=checkbox]),.settings-hub select{font-size:16px;min-height:var(--tap)}
+  .settings-hub button,.settings-hub summary{min-height:var(--tap)}
+}
 .hub-card h4{margin:0;font-size:14px;font-weight:600;color:var(--fg2)}
 .hub-card p{color:var(--mut);margin:6px 0 12px;font-size:12.5px;line-height:1.5}
 .hub-card label{display:block;font-size:12px;color:var(--mut);margin:12px 0 6px}
@@ -384,12 +437,12 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 .hub-card details{margin-top:10px}
 .hub-card summary{font-size:12.5px;color:var(--mut);padding:10px 0;cursor:pointer}
 .hub-card details button{margin:4px;padding:8px 12px;border-radius:8px;background:var(--side2)}
-.card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.card-top{display:flex;align-items:flex-start;gap:12px}
 .card-main{min-width:0;flex:1}
 .card-main p{margin:5px 0 0}
-.card-top>.pri{flex-shrink:0;max-width:48%;padding:9px 14px;border-radius:9px;background:var(--acc-soft);color:var(--acc-text);font-size:12.5px;font-weight:600;white-space:normal}
-@media (hover:hover){.card-top>.pri:hover{background:#0a84ff30}}
-.card-top>.pri.quiet{background:var(--side2);color:var(--fg2);border:1px solid var(--bd)}
+.card-tools>.pri{max-width:220px;padding:9px 14px;border-radius:9px;background:var(--acc-soft);color:var(--acc-text);font-size:12.5px;font-weight:600;white-space:normal}
+@media (hover:hover){.card-tools>.pri:hover{background:#0a84ff30}}
+.card-tools>.pri.quiet{background:var(--side2);color:var(--fg2);border:1px solid var(--bd)}
 .settings-hub button,.settings-hub select,.settings-hub summary{min-height:40px}
 .settings-hub .acts button.pri{padding:10px 14px}
 .hub-card.editor{border-color:var(--bd-strong)}
@@ -731,13 +784,25 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
   .hub-nav{flex-direction:row;gap:6px;padding:8px 12px;border-right:0;border-bottom:1px solid var(--bd);flex-shrink:0;background:none;overflow-x:auto;scrollbar-width:none}
   .hub-nav::-webkit-scrollbar{display:none}
   .hub-nav.more-right{-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 32px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 32px),transparent)}
+  .hub-nav.more-left{-webkit-mask-image:linear-gradient(90deg,transparent,#000 32px);mask-image:linear-gradient(90deg,transparent,#000 32px)}
+  .hub-nav.more-left.more-right{-webkit-mask-image:linear-gradient(90deg,transparent,#000 32px,#000 calc(100% - 32px),transparent);mask-image:linear-gradient(90deg,transparent,#000 32px,#000 calc(100% - 32px),transparent)}
+  .hub-nav button .ui-icon{display:none}.hub-nav button.attn::after{margin-left:6px}
   .hub-nav button{flex:none;min-height:38px;padding:0 14px;border-radius:19px;font-size:14px;white-space:nowrap;background:var(--side2)}
   .hub-content{padding:16px 16px calc(16px + var(--sab));flex:1;min-height:0;overscroll-behavior:contain;scroll-padding:16px}
   .hub-card{padding:14px;margin-bottom:10px}
   .hub-card p{font-size:13.5px}
   .hub-card h4{font-size:15px}
   .card-top{gap:10px}
-  .card-top>.pri{min-height:var(--tap);font-size:14px}
+  .card-top{flex-wrap:wrap}.card-main{flex:1 1 0}
+  .card-tools>.pri{order:2;flex:1 1 100%;max-width:none;min-height:var(--tap);font-size:14px}
+  /* With a primary action it takes its own full-width row; the "more" menu stays in the corner. */
+  .card-top>.card-tools:has(.pri){flex:1 1 100%;flex-wrap:wrap}
+  .card-tools:has(.pri)>.card-more{position:absolute;top:10px;right:10px}
+  .hub-card{position:relative}.card-top:has(.card-tools .pri):has(.card-more) .card-main{padding-right:44px}
+  .hub-card .acts button.danger{flex:1 1 100%;order:3;margin:4px 0 0}
+  .hub-row-actions>button{min-height:var(--tap);font-size:14px}
+  .card-more>summary{width:var(--tap);min-height:var(--tap)}
+  .hub-section-head .pri{min-height:var(--tap);font-size:14px}
   .hub-card .acts button{flex:1;min-width:0;white-space:normal;font-size:15px}
   .settings-hub button,.settings-hub select,.settings-hub summary{min-height:var(--tap)}
   .hub-card label.toggle,.hub-card label.integration-toggle{font-size:15px}
@@ -812,6 +877,14 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 .inbox-empty strong{color:var(--fg2);font-weight:600}
 .empty-list{display:grid;gap:10px;justify-items:start}
 .empty-new{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid var(--bd);border-radius:var(--r-sm);color:var(--acc-text)}
+/* Files dragged over the window: one clear target, red when the drop cannot be taken. */
+.drop-zone{position:fixed;inset:0;z-index:60;display:grid;place-items:center;padding:24px;background:#0a84ff26;border:3px dashed var(--acc);pointer-events:auto}
+.drop-zone[hidden]{display:none}
+.drop-zone.blocked{background:#ff453a1f;border-color:var(--bad)}
+.drop-card{display:flex;flex-direction:column;align-items:center;gap:8px;max-width:420px;padding:22px 28px;border-radius:16px;background:var(--side);border:1px solid var(--bd-strong);box-shadow:0 24px 80px #0007;text-align:center;color:var(--mut);font-size:13px}
+.drop-card b{color:var(--fg2);font-size:16px}
+.drop-card .ui-icon{width:28px;height:28px;color:var(--acc-text)}
+.drop-zone.blocked .drop-card .ui-icon{color:var(--bad-text)}
 </style></head><body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
   <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
@@ -827,6 +900,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
   <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14.9-3.9L4 8"/><path d="M4 4v4h4M4 13a8 8 0 0 0 14.9 3.9L20 16"/><path d="M20 20v-4h-4"/></symbol>
   <symbol id="i-pencil" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16v4zM13 7l4 4"/></symbol>
   <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.94 1.94 0 0 0 3.4 0"/></symbol>
   <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
   <symbol id="i-history" viewBox="0 0 24 24"><circle cx="6" cy="5" r="2"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="7" r="2"/><path d="M6 7v10M18 9c0 5-5 5-11 8"/></symbol>
   <symbol id="i-arrow-left" viewBox="0 0 24 24"><path d="M19 12H5M11 6l-6 6 6 6"/></symbol>
@@ -872,6 +946,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
     </div>
     <div id="stage">
       <div id="conn" class="conn" role="status" aria-live="polite" hidden></div>
+      <div id="drop_zone" class="drop-zone" hidden><div class="drop-card"><svg class="ui-icon"><use href="#i-paperclip"/></svg><b id="drop_title"></b><span>До 4 файлов, до 200 МБ каждый</span></div></div>
       <div id="term_loading" class="term-loading" role="status" hidden><span class="spinner" aria-hidden="true"></span><span>Подключаюсь к терминалу…</span></div>
       <div id="empty"><span id="empty_text">Загружаю сессии…</span><button type="button" class="pri" id="empty_new" onclick="openNew()" hidden><svg class="ui-icon"><use href="#i-plus"/></svg><span>Новая сессия</span></button></div>
       <div id="screen">
@@ -991,84 +1066,134 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 
 <dialog id="rename_dlg"><form class="dlg" onsubmit="event.preventDefault();saveSessionTitle()"><div class="dlg-body"><h3>Переименовать сессию</h3><label for="session_title">Название</label><input type="text" id="session_title" required maxlength="100"></div><div class="acts"><button type="button" onclick="$('rename_dlg').close()">Отмена</button><button class="pri" id="rename_save">Сохранить</button></div></form></dialog>
 <dialog id="settings_dlg"><div class="dlg settings-hub">
-  <div class="hub-heading"><h3 tabindex="-1" autofocus>Настройки</h3><button type="button" onclick="$('settings_dlg').close()" aria-label="Закрыть"><svg class="ui-icon"><use href="#i-x"/></svg></button></div>
-  <nav class="hub-nav" aria-label="Настройки">
-    <button type="button" data-section="agents" onclick="settingsSection('agents')">Агенты</button>
-    <button type="button" data-section="models" onclick="settingsSection('models')">Модели</button>
-    <button type="button" data-section="connections" onclick="settingsSection('connections')">Подключения</button>
-    <button type="button" data-section="network" onclick="settingsSection('network')">Сеть</button>
-    <button type="button" data-section="backups" onclick="settingsSection('backups')">Бэкапы</button>
-    <button type="button" data-section="app" onclick="settingsSection('app')">Приложение</button>
+  <div class="hub-heading"><h3 tabindex="-1" autofocus id="hub_title">Настройки</h3><button type="button" onclick="closeSettings()" aria-label="Закрыть"><svg class="ui-icon"><use href="#i-x"/></svg></button></div>
+  <nav class="hub-nav" aria-label="Разделы настроек" role="tablist">
+    <button type="button" role="tab" id="tab_agents" aria-controls="hub_agents" data-section="agents" onclick="settingsSection('agents')"><svg class="ui-icon"><use href="#i-terminal"/></svg><span>Агенты</span></button>
+    <button type="button" role="tab" id="tab_notifications" aria-controls="hub_notifications" data-section="notifications" onclick="settingsSection('notifications')"><svg class="ui-icon"><use href="#i-bell"/></svg><span>Уведомления</span></button>
+    <button type="button" role="tab" id="tab_models" aria-controls="hub_models" data-section="models" onclick="settingsSection('models')"><svg class="ui-icon"><use href="#i-cpu"/></svg><span>Локальные модели</span></button>
+    <button type="button" role="tab" id="tab_computers" aria-controls="hub_computers" data-section="computers" onclick="settingsSection('computers')"><svg class="ui-icon"><use href="#i-monitor"/></svg><span>Компьютеры</span></button>
+    <button type="button" role="tab" id="tab_backups" aria-controls="hub_backups" data-section="backups" onclick="settingsSection('backups')"><svg class="ui-icon"><use href="#i-lock"/></svg><span>Бэкапы</span></button>
+    <button type="button" role="tab" id="tab_general" aria-controls="hub_general" data-section="general" onclick="settingsSection('general')"><svg class="ui-icon"><use href="#i-gear"/></svg><span>Общие</span></button>
   </nav>
   <div class="dlg-body hub-content">
-    <section id="hub_agents"></section>
-    <section id="hub_models"><div id="kimi_dlg" class="hub-card editor" hidden><form onsubmit="event.preventDefault();saveKimi()">
-      <h3>Настройки Kimi</h3>
-      <p id="kimi_state"></p>
-      <label for="kimi_key">API-ключ Kimi Code</label>
-      <input id="kimi_key" type="password" autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Вставьте ключ; пустое поле сохраняет текущий">
-      <label for="kimi_model">Модель для новых запусков</label>
-      <select id="kimi_model"><option value="k3">K3</option><option value="kimi-for-coding">Kimi for coding</option><option value="kimi-for-coding-highspeed">Kimi for coding · highspeed</option></select>
-      <p>Один ключ для Claude · Kimi и Kimi Code. Изменения применятся при следующем запуске агента.</p>
-      <div class="acts"><button type="button" class="integration-remove" onclick="clearKimi()">Удалить ключ</button><button type="button" onclick="closeKimi()">Отмена</button><button class="pri" id="kimi_save">Сохранить</button></div>
-    </form></div>
+    <section id="hub_agents" role="tabpanel" aria-labelledby="tab_agents">
+      <header class="hub-section-head"><h3>Агенты</h3><p>Программы, которые работают в сессиях, и аккаунты для них.</p></header>
+      <div id="setup_card"></div>
+      <div id="agent_cards"></div>
+      <form id="kimi_dlg" class="hub-card editor" hidden onsubmit="event.preventDefault();saveKimi()">
+        <h4>Ключ и модель Kimi</h4>
+        <p id="kimi_state" class="card-status" role="status"></p>
+        <label for="kimi_key">API-ключ Kimi Code</label>
+        <input id="kimi_key" type="password" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="done" placeholder="Вставьте ключ">
+        <p class="hint">Пустое поле сохраняет текущий ключ.</p>
+        <label for="kimi_model">Модель для новых запусков</label>
+        <select id="kimi_model"><option value="k3">K3</option><option value="kimi-for-coding">Kimi for coding</option><option value="kimi-for-coding-highspeed">Kimi for coding · highspeed</option></select>
+        <p class="hint">Этот ключ используют Claude на моделях Kimi и Kimi Code. Изменения применятся при следующем запуске агента.</p>
+        <div class="acts"><button type="button" class="danger" id="kimi_clear" onclick="clearKimi()">Удалить ключ</button><button type="button" onclick="closeKimi()">Отмена</button><button class="pri" id="kimi_save">Сохранить</button></div>
+      </form>
+    </section>
+    <section id="hub_notifications" role="tabpanel" aria-labelledby="tab_notifications" hidden>
+      <header class="hub-section-head"><h3>Уведомления</h3><p>Вопросы агентов и завершение работы со всех подключённых компьютеров — на это устройство или в Telegram.</p></header>
+      <div class="hub-card" id="push_card" data-card="push">
+        <div class="card-top"><span class="card-icon" aria-hidden="true"><svg class="ui-icon"><use href="#i-bell"/></svg></span><div class="card-main"><h4>Уведомления на устройствах</h4><p id="push_state" class="card-status" role="status"></p></div></div>
+        <div id="push_fix"></div>
+        <label class="integration-toggle"><span>Вопросы агентов</span><input type="checkbox" role="switch" id="push_questions" onchange="savePushEvents()"></label>
+        <label class="integration-toggle"><span>Агент закончил работу</span><input type="checkbox" role="switch" id="push_finished" onchange="savePushEvents()"></label>
+        <p class="hub-section-title" id="push_devices_title" hidden>Устройства</p><div id="push_devices"></div>
+        <div id="push_actions"></div>
+      </div>
+      <div id="telegram_cards"></div>
+      <form id="integrations_dlg" class="hub-card editor integration-dialog" hidden onsubmit="event.preventDefault();saveTelegram()">
+        <div class="card-top"><span class="card-icon telegram-mark" aria-hidden="true"><svg class="ui-icon"><use href="#i-telegram"/></svg></span><div class="card-main"><h4>Telegram</h4><p id="telegram_state" class="card-status" role="status"></p></div></div>
+        <p id="telegram_duplicates" class="integration-note danger" hidden></p>
+        <p class="hint">Вопросы со всех подключённых компьютеров приходят в этот бот, настраивать Telegram на них не нужно.</p>
+        <details id="telegram_credentials" open><summary>Токен бота</summary>
+        <label for="telegram_token">Токен бота из @BotFather</label>
+        <input id="telegram_token" type="password" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="done" placeholder="Вставьте токен">
+        <p class="hint">Пустое поле сохраняет текущий токен.</p>
+        </details>
+        <label class="integration-toggle"><span>Отправлять вопросы</span><input type="checkbox" role="switch" id="telegram_enabled" checked></label>
+        <div id="telegram_pairing" hidden>
+          <p class="hint">Откройте бота и нажмите Start. Ответы доступны только вашему аккаунту.</p>
+          <a class="integration-link" id="telegram_link" target="_blank" rel="noopener noreferrer">Привязать мой Telegram ↗</a>
+          <p class="hint">Ссылка действует 10 минут.</p>
+        </div>
+        <button type="button" class="integration-pair" id="telegram_pair" onclick="pairTelegram()" hidden>Привязать Telegram</button>
+        <div class="acts"><button type="button" class="danger" id="telegram_clear" onclick="clearTelegram()">Отключить</button><button type="button" onclick="closeIntegrations()">Закрыть</button><button class="pri" id="telegram_save">Сохранить</button></div>
+      </form>
+    </section>
+    <section id="hub_models" role="tabpanel" aria-labelledby="tab_models" hidden>
+      <header class="hub-section-head"><h3>Локальные модели</h3><p>Серверы LM Studio на ваших компьютерах. Claude и Pi работают на этих моделях без квот подписки.</p><button type="button" class="pri" onclick="editLM()">Добавить сервер</button></header>
       <div id="model_cards"></div>
-      <details id="lm_editor" class="hub-card"><summary>Добавить компьютер</summary><form onsubmit="event.preventDefault();saveLM()">
-        <input type="hidden" id="lm_id"><label for="lm_name">Название</label><input type="text" id="lm_name" required maxlength="100">
-        <label for="lm_url">Адрес компьютера</label><input id="lm_url" type="url" required placeholder="http://100.64.0.1:1234">
-        <label for="lm_key">API-ключ</label><input id="lm_key" type="password" autocomplete="new-password" placeholder="Вставьте ключ; пустое поле сохраняет текущий">
-        <label class="chk"><input type="checkbox" id="lm_clear_key"><span>Удалить ключ</span></label>
-        <div class="acts"><button type="button" onclick="resetLM()">Отмена</button><button class="pri">Сохранить</button></div>
-      </form></details>
-      <div class="hub-card"><h4>Tailscale</h4><p>Поиск компьютеров на известных узлах</p><label for="lm_ports">Порты</label><input id="lm_ports" type="text" value="1234" inputmode="numeric">
-      <div class="acts"><button type="button" onclick="discoverLM()">Найти компьютеры</button><button type="button" id="lm_cancel" onclick="discoverLM(true)" hidden>Остановить</button></div>
-      <p id="lm_progress" role="status"></p><div id="lm_results"></div></div>
+      <form id="lm_editor" class="hub-card editor" hidden onsubmit="event.preventDefault();saveLM()">
+        <h4 id="lm_editor_title">Новый сервер LM Studio</h4>
+        <input type="hidden" id="lm_id"><label for="lm_name">Название</label><input type="text" id="lm_name" required maxlength="100" autocomplete="off">
+        <label for="lm_url">Адрес сервера LM Studio</label><input id="lm_url" type="url" required autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="http://100.64.0.1:1234">
+        <label for="lm_key">API-ключ</label><input id="lm_key" type="password" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="done" placeholder="Если в LM Studio включена авторизация">
+        <label class="chk" id="lm_clear_row"><input type="checkbox" id="lm_clear_key"><span>Удалить сохранённый ключ</span></label>
+        <div class="acts"><button type="button" onclick="resetLM()">Отмена</button><button class="pri" id="lm_save">Сохранить</button></div>
+      </form>
+      <div class="hub-card" data-card="lm-discovery"><h4>Найти LM Studio в Tailscale</h4><p class="hint">Проверяет ваши устройства Tailscale на этих портах (LM Studio по умолчанию: 1234).</p>
+        <label for="lm_ports">Порты</label><input id="lm_ports" type="text" value="1234" inputmode="text" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="search" placeholder="1234, 8080">
+        <div class="acts"><button type="button" id="lm_cancel" onclick="discoverLM(true)" hidden>Остановить</button><button type="button" id="lm_find" onclick="discoverLM()">Найти в Tailscale</button></div>
+        <p id="lm_progress" class="hint" role="status"></p><div id="lm_results"></div></div>
     </section>
-    <section id="hub_connections"><div class="hub-card" id="push_card"><h4>Уведомления</h4><p>Вопросы агентов и завершение работы на всех подключённых Agent Deck приходят на телефон или компьютер, даже когда панель закрыта.</p><p id="push_state" role="status"></p><div id="push_actions"></div>
-      <label class="integration-toggle"><span>Вопросы агентов</span><input type="checkbox" role="switch" id="push_questions" onchange="savePushEvents()"></label>
-      <label class="integration-toggle"><span>Агент закончил работу</span><input type="checkbox" role="switch" id="push_finished" onchange="savePushEvents()"></label>
-      <div id="push_devices"></div></div><div id="connection_cards"></div><div id="integrations_dlg" class="hub-card editor" hidden><form class="integration-dialog" onsubmit="event.preventDefault();saveTelegram()">
-      <div class="integration-heading"><span class="telegram-mark" aria-hidden="true"><svg class="ui-icon"><use href="#i-telegram"/></svg></span><div><h4>Telegram</h4><p>Вопросы и ответы в чате с ботом</p></div></div>
-      <p id="telegram_state" class="integration-status" role="status"></p>
-      <p id="telegram_duplicates" class="integration-note danger" hidden></p>
-      <p class="integration-note">Вопросы подключённых Agent Deck тоже приходят в этот бот. На них Telegram настраивать не нужно.</p>
-      <details id="telegram_credentials" open><summary>Токен бота</summary>
-      <label for="telegram_token">Токен бота из @BotFather</label>
-      <input id="telegram_token" type="password" autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Вставить или заменить токен">
-      <p class="integration-note">Пустое поле сохраняет текущий токен.</p>
-      </details>
-      <label class="integration-toggle"><span>Отправлять вопросы</span><input type="checkbox" role="switch" id="telegram_enabled" checked></label>
-      <div id="telegram_pairing" style="display:none">
-        <p class="integration-note">Откройте бота и нажмите Start. Ответы доступны только вашему аккаунту.</p>
-        <a class="integration-link" id="telegram_link" target="_blank" rel="noopener noreferrer">Привязать мой Telegram ↗</a>
-        <p class="integration-note">Ссылка действует 10 минут.</p>
+    <section id="hub_computers" role="tabpanel" aria-labelledby="tab_computers" hidden>
+      <header class="hub-section-head"><h3>Компьютеры</h3><p>Другие компьютеры с Agent Deck: их сессии видны в списке, а уведомления и бэкапы работают для всех.</p></header>
+      <div class="hub-card" data-card="decks">
+        <div class="card-top"><span class="card-icon" aria-hidden="true"><svg class="ui-icon"><use href="#i-monitor"/></svg></span><div class="card-main"><h4>Другие компьютеры</h4><p id="deck_summary" class="card-status"></p></div></div>
+        <div id="fleet_bar" class="fleet-bar"></div><div id="deck_connections"></div>
+        <label class="integration-toggle" id="network_isolate_row" hidden><span>Изолировать терминалы других компьютеров</span><input type="checkbox" role="switch" id="network_isolate" onchange="saveIsolation()"></label>
+        <p class="hint" id="network_isolate_hint" hidden>Терминалы других компьютеров открываются в песочнице без доступа к этой панели. Там не работают горячие клавиши, копирование выделением и свайп меню.</p>
+        <p class="hub-section-title">Найти и подключить</p>
+        <div class="deck-toolbar"><div class="deck-port"><label for="deck_port">Порт</label><input type="text" id="deck_port" inputmode="numeric" pattern="[0-9]*" maxlength="5" value="8790"></div><div class="deck-actions"><button type="button" id="deck_discover" onclick="discoverDecks()">Найти в Tailscale</button><button type="button" onclick="editDeck()">Добавить вручную</button></div></div>
+        <p id="deck_discovery_status" class="hint" role="status"></p><div id="deck_discovery_results"></div>
       </div>
-      <button type="button" class="integration-pair" id="telegram_pair" onclick="pairTelegram()" style="display:none">Привязать Telegram</button>
-      <div class="acts"><button type="button" class="integration-remove" onclick="clearTelegram()">Отключить</button><button type="button" onclick="closeIntegrations()">Закрыть</button><button class="pri" id="telegram_save">Сохранить</button></div>
-    </form></div>
+      <form id="deck_editor" class="hub-card editor" hidden onsubmit="event.preventDefault();saveDeck()">
+        <h4 id="deck_editor_title">Подключить другой Agent Deck</h4>
+        <input type="hidden" id="deck_id"><label for="deck_name">Название</label><input type="text" id="deck_name" required maxlength="100" autocomplete="off">
+        <label for="deck_url">Адрес Tailscale</label><input type="url" id="deck_url" required autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="http://100.68.39.62:8790">
+        <label for="deck_username">Логин панели на том компьютере</label><input type="text" id="deck_username" required autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false">
+        <label for="deck_password">Пароль</label><input type="password" id="deck_password" autocomplete="current-password" enterkeyhint="done">
+        <p class="hint">Пароль хранится на этом сервере. Пустое поле сохраняет пароль существующего подключения.</p>
+        <div class="acts"><button type="button" onclick="closeDeckEditor()">Отмена</button><button class="pri" id="deck_save">Подключить</button></div>
+      </form>
+      <form class="hub-card" data-card="network" onsubmit="event.preventDefault();saveNetwork()"><h4>Этот компьютер</h4>
+        <p class="card-meta"><span>Адрес в браузере</span>: <span id="network_browser"></span></p><p class="card-meta"><span>Адрес на сервере</span>: <span id="network_bind"></span></p>
+        <label for="network_name">Название</label><input type="text" id="network_name" required maxlength="100" autocomplete="off">
+        <label for="network_public_url">Публичный адрес</label><input type="url" id="network_public_url" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="done" placeholder="https://agents.example.com">
+        <p class="hint">HTTPS-адрес панели, если он настроен на сервере (домен или tailscale serve). Нужен для уведомлений на телефоне.</p>
+        <div class="acts"><button class="pri" id="network_save">Сохранить</button></div></form>
     </section>
-    <section id="hub_network">
-      <form class="hub-card" onsubmit="event.preventDefault();saveNetwork()"><h4>Сеть и адрес панели</h4><p><span>Адрес в браузере</span>: <span id="network_browser"></span></p><p><span>Панель слушает</span>: <span id="network_bind"></span></p><label for="network_name">Название этого компьютера</label><input type="text" id="network_name" required maxlength="100"><label for="network_public_url">Публичный адрес</label><input type="url" id="network_public_url" placeholder="https://agents.example.com"><p>Для доступа по этому адресу домен и HTTPS должны быть настроены на сервере.</p><label class="chk"><input type="checkbox" id="network_isolate"><span>Изолировать терминалы других компьютеров</span></label><p>Страница терминала подключённого компьютера открывается в песочнице и не получает доступа к этой панели. В таких терминалах не работают ⌥1…9, копирование выделения и свайп меню.</p><div class="acts"><button class="pri" id="network_save">Сохранить</button></div></form>
-      <div class="hub-card"><h4>Другие компьютеры</h4><p>Управляйте другими компьютерами через этот сервер.</p><div id="fleet_bar" class="fleet-bar"></div><div id="deck_connections"></div>
-        <div class="deck-toolbar"><div class="deck-port"><label for="deck_port">Порт</label><input type="number" id="deck_port" min="1" max="65535" value="8790"></div><div class="deck-actions"><button type="button" id="deck_discover" onclick="discoverDecks()">Обнаружить</button><button type="button" onclick="editDeck()">Подключить</button></div></div><p id="deck_discovery_status"></p><div id="deck_discovery_results"></div>
-        <details id="deck_editor"><summary>Подключение Agent Deck</summary><form onsubmit="event.preventDefault();saveDeck()"><input type="hidden" id="deck_id"><label for="deck_name">Название</label><input type="text" id="deck_name" required maxlength="100"><label for="deck_url">Адрес Tailscale</label><input type="url" id="deck_url" required placeholder="http://100.68.39.62:8790"><label for="deck_username">Логин</label><input type="text" id="deck_username" required autocomplete="off"><label for="deck_password">Пароль</label><input type="password" id="deck_password" autocomplete="new-password"><p>Пароль хранится на основном сервере. Пустое поле сохраняет пароль существующего подключения.</p><button class="pri" id="deck_save">Подключить</button></form></details>
+    <section id="hub_backups" role="tabpanel" aria-labelledby="tab_backups" hidden>
+      <header class="hub-section-head"><h3>Бэкапы</h3><p>Настройки Agent Deck, ключи интеграций и логины агентов. Копии шифруются кодом восстановления и хранятся на всех подключённых компьютерах. Логин и пароль панели в бэкап не входят.</p></header>
+      <div class="hub-card" data-card="backups">
+        <div class="card-top"><span class="card-icon" aria-hidden="true"><svg class="ui-icon"><use href="#i-lock"/></svg></span><div class="card-main"><h4>Бэкап этого компьютера</h4><p id="backup_status" class="card-status" role="status"></p><p id="backup_meta" class="card-meta"></p></div></div>
+        <div id="backup_state"></div>
       </div>
-    </section>
-    <section id="hub_backups">
-      <div class="hub-card"><h4>Бэкапы настроек и ключей</h4><p>Настройки Agent Deck, ключи интеграций и логины агентов. Копии шифруются кодом восстановления и хранятся на всех подключённых Agent Deck. Логин и пароль панели задаются при установке и в бэкап не входят.</p><div id="backup_state"></div></div>
-      <div class="hub-card editor" id="backup_code_card" hidden><h4>Код восстановления</h4><p>Сохраните код в менеджере паролей. Без него бэкап на новом компьютере не расшифровать. Больше он показан не будет.</p><code id="backup_code" class="recovery-code"></code><div class="acts"><button type="button" onclick="copyBackupCode()">Скопировать</button><button type="button" class="pri" onclick="finishBackupCode()">Я сохранил код</button></div></div>
-      <form class="hub-card editor" id="backup_join_card" hidden onsubmit="event.preventDefault();joinBackups()"><label for="backup_join_code">Код восстановления</label><input type="text" id="backup_join_code" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="AD1-…" required><div class="acts"><button type="button" onclick="$('backup_join_card').hidden=true">Отмена</button><button class="pri">Подключить</button></div></form>
-      <div class="hub-card"><h4>Восстановление</h4><p>Заменяет настройки, ключи и логины агентов. Текущее состояние сначала сохраняется в бэкап, затем панель перезапускается; сессии tmux продолжают работать.</p>
+      <div class="hub-card editor" id="backup_code_card" hidden><h4>Код восстановления</h4><p class="hint">Сохраните код в менеджере паролей. Без него бэкап на новом компьютере не расшифровать. Больше он показан не будет.</p><code id="backup_code" class="recovery-code"></code><div class="acts"><button type="button" onclick="copyBackupCode()">Скопировать</button><button type="button" class="pri" onclick="finishBackupCode()">Я сохранил код</button></div></div>
+      <form class="hub-card editor" id="backup_join_card" hidden onsubmit="event.preventDefault();joinBackups()"><h4>Бэкапы уже включены на другом компьютере</h4><label for="backup_join_code">Код восстановления оттуда</label><input type="text" id="backup_join_code" autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false" enterkeyhint="done" placeholder="AD1-…" required><div class="acts"><button type="button" onclick="closeBackupJoin()">Отмена</button><button class="pri">Присоединиться</button></div></form>
+      <div class="hub-card" data-card="restore"><h4>Восстановление</h4>
+        <button type="button" class="hub-expand" id="backup_restore_open" onclick="openBackupRestore()" hidden>Восстановить из файла или с другого компьютера</button>
+        <div id="backup_restore_body">
+        <p class="hint">Заменяет настройки, ключи и логины агентов. Текущее состояние сначала сохраняется в бэкап, затем панель перезапускается; сессии tmux продолжают работать.</p>
         <div class="two"><div><label for="backup_source">Где взять копию</label><select id="backup_source" onchange="renderBackupList()"></select></div><div><label for="backup_target">Куда восстановить</label><select id="backup_target"></select></div></div>
-        <div id="backup_restore_code_row" hidden><label for="backup_restore_code">Код восстановления</label><input type="text" id="backup_restore_code" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="AD1-…"></div>
+        <div id="backup_restore_code_row" hidden><label for="backup_restore_code">Код восстановления</label><input type="text" id="backup_restore_code" autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false" placeholder="AD1-…"></div>
         <div id="backup_list"></div>
-        <div class="acts"><button type="button" onclick="$('backup_file').click()">Восстановить из файла</button></div><input type="file" id="backup_file" accept=".adbk" hidden onchange="restoreBackupFile(this)"></div>
+        <div class="acts"><button type="button" onclick="$('backup_file').click()">Восстановить из файла</button></div><input type="file" id="backup_file" accept=".adbk" hidden onchange="restoreBackupFile(this)"></div></div>
     </section>
-    <section id="hub_app">
-      <div class="hub-card"><label for="ui_language">Язык интерфейса</label><select id="ui_language" onchange="saveLanguage()"></select><p>Язык сохраняется в этом браузере. Сообщения и вывод агентов не переводятся.</p>
-        <label class="toggle"><span>Автокоррекция в поле сообщения</span><input type="checkbox" role="switch" id="autocorrect_enabled" onchange="saveAutocorrect()"></label><p>Сохраняется в этом браузере. Выключена по умолчанию: iOS заменяет -- и кавычки, а агенту нужны точные символы.</p></div>
-      <form class="hub-card" onsubmit="event.preventDefault();saveProjectDirectory()"><label for="project_directory">Папка проектов</label><input type="text" id="project_directory" autocomplete="off" autocapitalize="off" spellcheck="false" required><p>Используется для новых сессий. Существующие сессии остаются в своих папках.</p><div class="acts"><button class="pri" id="project_directory_save">Сохранить</button></div></form>
-      <div class="hub-card"><h4>Agent Deck</h4><div id="hub_version"></div><label class="integration-toggle"><span>Автоматически обновлять Agent Deck</span><input type="checkbox" id="auto_update_enabled" onchange="saveAutoUpdates()"></label><p>Проверка каждые 30 минут. Обновление ждёт завершения запросов локальной модели и сохраняет сессии.</p><p id="auto_update_status"></p></div>
+    <section id="hub_general" role="tabpanel" aria-labelledby="tab_general" hidden>
+      <header class="hub-section-head"><h3>Общие</h3><p>Язык, папка проектов, версия и обновления.</p></header>
+      <div class="hub-card"><h4>Этот браузер</h4><label for="ui_language">Язык интерфейса</label><select id="ui_language" onchange="saveLanguage()"></select><p class="hint">Сообщения и вывод агентов не переводятся.</p>
+        <label class="toggle"><span>Автокоррекция в поле сообщения</span><input type="checkbox" role="switch" id="autocorrect_enabled" onchange="saveAutocorrect()"></label><p class="hint">Выключена по умолчанию: iOS заменяет -- и кавычки, а агенту нужны точные символы.</p></div>
+      <form class="hub-card" onsubmit="event.preventDefault();saveProjectDirectory()"><h4>Новые сессии</h4><label for="project_directory">Папка проектов</label><input type="text" id="project_directory" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="done" required><p class="hint">Используется для новых сессий. Существующие сессии остаются в своих папках.</p><div class="acts"><button class="pri" id="project_directory_save">Сохранить</button></div></form>
+      <div class="hub-card" data-card="version">
+        <div class="card-top"><span class="card-icon" aria-hidden="true"><svg class="ui-icon"><use href="#i-download"/></svg></span><div class="card-main"><h4>Версия и обновления</h4><p id="version_status" class="card-status" role="status"></p><p id="version_meta" class="card-meta"></p></div></div>
+        <p id="version_hint" class="hint" hidden></p>
+        <label class="integration-toggle" id="auto_update_row"><span>Обновлять автоматически</span><input type="checkbox" role="switch" id="auto_update_enabled" onchange="saveAutoUpdates()"></label>
+        <p class="hint" id="auto_update_hint">Проверка каждые 30 минут. Обновление ждёт завершения запросов локальной модели и сохраняет сессии.</p><p id="auto_update_status" class="hint" role="status"></p>
+        <div id="hub_version" class="acts"></div>
+      </div>
       <div class="settings-account"><button type="button" onclick="logout()"><svg class="ui-icon"><use href="#i-logout"/></svg><span>Выйти</span></button></div>
     </section>
   </div>
@@ -1262,8 +1387,10 @@ function formatBackupTime(seconds,locale){
 // One line per machine for the last cycle: what is protected and what needs attention.
 function backupReportLines(report,translate,locale){
   if(!report)return [];
-  return report.machines.map(m=>({ok:m.ok,text:m.name+" · "+(m.ok?translate("копий на других компьютерах: {0}",[m.copies||0]):m.error||translate("ошибка"))}))
-    .concat(report.finished?[{ok:true,text:translate("Последний цикл: {0}",[formatBackupTime(report.finished,locale)])}]:[]);
+  // Errors often start with the machine's name, which the row already shows.
+  const own=m=>String(m.error||"").startsWith(m.name+": ")?m.error.slice(m.name.length+2):m.error;
+  return report.machines.map(m=>({ok:m.ok,name:m.name,text:m.ok?translate("копий на других компьютерах: {0}",[m.copies||0]):own(m)||translate("ошибка")}))
+    .concat(report.finished?[{ok:true,name:"",text:translate("Последняя проверка всех копий: {0}",[formatBackupTime(report.finished,locale)])}]:[]);
 }
 function backupLabel(meta,locale){
   return meta.name+" · "+formatBackupTime(meta.created,locale)+" · "+Math.max(1,Math.round((meta.size||0)/1024))+" KB";
@@ -1278,36 +1405,53 @@ async function loadBackups(){
   }));
   renderBackups();
 }
+let backupRestoreOpen=false;
+function renderBackupState(s){
+  const status=$("backup_status"),busy=!$("backup_code_card").hidden||!$("backup_join_card").hidden;
+  if(!s.configured){
+    status.textContent=tr("Выключены");status.className="card-status warn";$("backup_meta").textContent="";
+    // While a recovery-code step is open, its own buttons are the only ones.
+    $("backup_state").replaceChildren(el("p","hint",tr("Без бэкапа ключи и логины агентов пропадут при переустановке.")),
+      ...(busy?[]:[el("div","acts",btn(tr("Уже включены на другом компьютере"),"",openBackupJoin),btn(tr("Включить бэкапы"),"pri",enableBackups))]));
+    return;
+  }
+  status.textContent=tr("Включены");status.className="card-status ok";
+  $("backup_meta").textContent=tr("Код восстановления …{0} · последний бэкап: {1}",[String(s.key_id||"").slice(-4),s.last?formatBackupTime(s.last,DATE_LOCALE):tr("ещё не было")]);
+  const rows=backupReportLines(s.report,tr,DATE_LOCALE).map(l=>l.name?hubRow({title:l.name,status:l.text,tone:l.ok?"ok":"bad"}):el("p","card-meta",l.text));
+  $("backup_state").replaceChildren(...rows,el("div","acts",btn(tr("Скачать файл"),"",downloadBackup),btn(tr("Сделать бэкап сейчас"),"pri",runBackup)));
+}
 function renderBackups(){
   const s=backupStatus;if(!s)return;
-  const box=$("backup_state");
-  if(!s.configured){
-    box.replaceChildren(el("p","",tr("Бэкапы выключены на этом компьютере.")),
-      el("div","acts",btn(tr("У меня есть код"),"",()=>{$("backup_join_card").hidden=false;$("backup_join_code").focus()}),btn(tr("Включить бэкапы"),"pri",enableBackups)));
-  }else{
-    const lines=backupReportLines(s.report,tr,DATE_LOCALE).map(l=>el("p","backup-line"+(l.ok?"":" danger"),l.text));
-    box.replaceChildren(el("p","",tr("Ключ {0} · последний бэкап: {1}",[s.key_id,s.last?formatBackupTime(s.last,DATE_LOCALE):tr("ещё не было")])),...lines,
-      el("div","acts",btn(tr("Скачать бэкап этого компьютера"),"",downloadBackup),btn(tr("Сделать бэкап сейчас"),"pri",runBackup)));
-  }
+  renderBackupState(s);
   const names=new Map([["",tr("Этот компьютер")],...deckDirectory.decks.map(d=>[d.id,d.name])]);
   const source=$("backup_source").value;
   $("backup_source").replaceChildren(...[...backupSources.keys()].map(id=>{const o=el("option","",names.get(id)||id);o.value=id;return o}));
   if(backupSources.has(source))$("backup_source").value=source;
+  // Nothing to restore from yet: one link instead of empty pickers.
+  const any=[...backupSources.values()].some(list=>list.length);
+  const collapsed=!s.configured&&!any&&!backupRestoreOpen;
+  $("backup_restore_open").hidden=!collapsed;$("backup_restore_body").hidden=collapsed;
   renderBackupList();
+  if($("settings_dlg").open){updateHubDots();renderSetupCard()}
 }
+function openBackupRestore(){backupRestoreOpen=true;renderBackups()}
+function openBackupJoin(){
+  $("backup_join_card").hidden=false;$("backup_state").after($("backup_join_card"));renderBackups();
+  if(!isMobile())$("backup_join_code").focus();
+}
+function closeBackupJoin(){$("backup_join_card").hidden=true;$("backup_join_code").value="";renderBackups()}
 function renderBackupList(){
   const source=$("backup_source").value,list=backupSources.get(source)||[];
   // A copy fetched from another machine can only be restored here; the gateway can push its own copies anywhere.
   const targets=[["",tr("Этот компьютер")],...(!selectedDeck&&!source?deckDirectory.decks.map(d=>[d.id,d.name]):[])];
   $("backup_target").replaceChildren(...targets.map(([id,name])=>{const o=el("option","",name);o.value=id;return o}));
   $("backup_restore_code_row").hidden=Boolean(backupStatus?.configured);
-  $("backup_list").replaceChildren(...(list.length?list.map(meta=>el("div","deck-connection deck-result",
-    el("div","deck-info",el("strong","",backupLabel(meta,DATE_LOCALE))),
-    el("div","deck-actions",btn(tr("Восстановить"),"",()=>restoreBackup(meta,source)))))
-    :[el("p","",tr("Копий пока нет"))]));
+  $("backup_list").replaceChildren(...(list.length?list.map(meta=>hubRow({title:backupLabel(meta,DATE_LOCALE),
+    actions:[labelledButton(tr("Восстановить"),"",()=>restoreBackup(meta,source),backupLabel(meta,DATE_LOCALE))]}))
+    :[el("p","hint",tr("Копий пока нет"))]));
 }
 async function enableBackups(){
-  try{const result=await api("/api/backup_setup",{});$("backup_code").textContent=result.code;$("backup_code_card").hidden=false;$("backup_code_card").scrollIntoView({block:"nearest"})}
+  try{const result=await api("/api/backup_setup",{});$("backup_code").textContent=result.code;$("backup_code_card").hidden=false;$("backup_state").after($("backup_code_card"));$("backup_code_card").scrollIntoView({block:"nearest"})}
   catch(e){toast(e.message);return}
   await loadBackups();
 }
@@ -1318,7 +1462,7 @@ async function finishBackupCode(){
   await runBackup();
 }
 async function joinBackups(){
-  try{await api("/api/backup_setup",{code:$("backup_join_code").value});$("backup_join_code").value="";$("backup_join_card").hidden=true;await runBackup()}
+  try{await api("/api/backup_setup",{code:$("backup_join_code").value});closeBackupJoin();await runBackup()}
   catch(e){toast(e.message)}
 }
 async function runBackup(){
@@ -1398,19 +1542,37 @@ async function loadPush(){
   try{pushState=await gatewayApi("/api/push")}catch(e){if(e.message!==STALE)toast(e.message);return}
   renderPush();
 }
+// Encryption parts download in the background; if that never finishes, say so instead of waiting forever.
+let pushUnavailableSince=0;
+function pushStatus(s,blocker,subscribed){
+  if(blocker)return [tr(blocker[0],blocker[1]),"warn"];
+  if(!s.available){
+    pushUnavailableSince=pushUnavailableSince||Date.now();
+    if(s.error)return [s.error,"bad"];
+    return Date.now()-pushUnavailableSince>60000?[tr("Не удалось загрузить компоненты шифрования — обновите Agent Deck"),"bad"]:[tr("Панель скачивает компоненты шифрования…"),"idle"];
+  }
+  pushUnavailableSince=0;
+  return subscribed?[tr("Включены на этом устройстве"),"ok"]:[tr("Выключены на этом устройстве"),"idle"];
+}
 function renderPush(){
   const s=pushState;if(!s)return;
   const blocker=pushBlocker(pushEnvironment()),mine=localStore.getItem("cc.push-id"),subscribed=s.devices.some(d=>d.id===mine);
-  const state=blocker?tr(blocker[0],blocker[1]):!s.available?(s.error||tr("Панель скачивает компоненты шифрования…")):
-    subscribed?tr("Включены на этом устройстве."):tr("Выключены на этом устройстве.");
-  $("push_state").textContent=state;
+  const [status,tone]=pushStatus(s,blocker,subscribed);
+  $("push_state").textContent=status;$("push_state").className="card-status "+tone;
+  // Without HTTPS the fix lives in another section: point there instead of leaving a dead end.
+  $("push_fix").replaceChildren(...(blocker&&!pushEnvironment().secure?[el("p","hint",tr("Откройте панель по HTTPS-адресу или укажите его в разделе «Компьютеры» → «Публичный адрес».")),
+    el("div","acts",btn(tr("Указать публичный адрес"),"",()=>{settingsSection("computers");$("network_public_url").focus()}))]:[]));
   const actions=[];
-  if(!blocker&&s.available)actions.push(...(subscribed?[btn(tr("Отключить на этом устройстве"),"",disablePush),btn(tr("Отправить тест"),"pri",()=>testPush(mine))]:[btn(tr("Включить уведомления"),"pri",enablePush)]));
+  if(!blocker&&s.available)actions.push(...(subscribed?[btn(tr("Выключить"),"",disablePush),btn(tr("Отправить тест"),"pri",()=>testPush(mine))]:[btn(tr("Включить уведомления"),"pri",enablePush)]));
   $("push_actions").replaceChildren(...(actions.length?[el("div","acts",...actions)]:[]));
   $("push_questions").checked=s.events.questions;$("push_finished").checked=s.events.finished;
-  $("push_devices").replaceChildren(...s.devices.map(d=>el("div","push-device",
-    el("div","push-device-info",el("strong","",d.label+(d.id===mine?" · "+tr("это устройство"):"")),el("span","",formatBackupTime(d.created,DATE_LOCALE))),
-    btn(tr("Удалить"),"danger",()=>removePushDevice(d.id)))));
+  $("push_questions").disabled=$("push_finished").disabled=Boolean(blocker)||!s.available;
+  $("push_devices_title").hidden=!s.devices.length;
+  $("push_devices").replaceChildren(...s.devices.map(d=>{
+    const name=d.label+(d.id===mine?" · "+tr("это устройство"):"");
+    return hubRow({title:name,meta:formatBackupTime(d.created,DATE_LOCALE),actions:[labelledButton(tr("Удалить"),"danger",()=>removePushDevice(d),name)]});
+  }));
+  if($("settings_dlg").open){updateHubDots();renderSetupCard()}
 }
 async function enablePush(){
   // iOS only allows the permission prompt from a tap, which is why this runs from the button.
@@ -1436,8 +1598,10 @@ async function disablePush(){
   }catch(e){if(e.message!==STALE)toast(e.message)}
   localStore.removeItem("cc.push-id");await loadPush();
 }
-async function removePushDevice(id){
+async function removePushDevice(device){
+  const id=device.id;
   if(id===localStore.getItem("cc.push-id"))return disablePush();
+  if(!await confirmAction(tr("Удалить устройство «{0}»?",[device.label]),{text:tr("Уведомления туда перестанут приходить, пока их не включат на нём снова."),confirm:tr("Удалить"),danger:true}))return;
   try{await gatewayApi("/api/push_unsubscribe",{id});await loadPush()}catch(e){if(e.message!==STALE)toast(e.message)}
 }
 async function savePushEvents(){
@@ -1616,6 +1780,7 @@ function renderFleet(){
   for(const node of document.querySelectorAll("[data-deck-version]")){
     const v=fleet.versions.get(node.dataset.deckVersion);
     node.textContent=versionLabel(v,tr);node.classList.toggle("outdated",Boolean(v?.update));
+    if(node.classList.contains("card-status"))node.className="card-status "+(!v?"bad":v.update||UPDATING.has(v.job?.phase)?"warn":"ok");
   }
   const targets=fleetTargets(fleet.versions),gatewayOld=Boolean(fleet.gateway?.update&&fleet.gateway?.can_update);
   const count=targets.length+(gatewayOld?1:0);
@@ -1623,6 +1788,7 @@ function renderFleet(){
   if(!deckDirectory.decks.length)return;
   bar.append(el("span","",fleet.updating?tr("Обновляю компьютеры…"):count?tr("Обновления доступны: {0}",[count]):tr("Все компьютеры обновлены")));
   if(count&&!fleet.updating)bar.append(btn(tr("Обновить все"),"pri",updateAllComputers));
+  if(typeof updateHubDots==="function"&&$("settings_dlg").open)updateHubDots();
 }
 async function updateAllComputers(){
   const targets=fleetTargets(fleet.versions),gatewayOld=Boolean(fleet.gateway?.update&&fleet.gateway?.can_update);
@@ -2555,6 +2721,571 @@ function paletteKey(e){
 }
 
 if(typeof module!=="undefined")module.exports={matchPalette,markMatch};
+// Settings: six sections, one card pattern (icon, title, coloured status, meta, one primary action, a
+// "more" menu), editors that open in place of the card they edit, a getting-started card and dots on
+// sections that need attention. Bundled before app.js; nothing here touches the page at load time.
+const HUB_SECTIONS=["agents","notifications","models","computers","backups","general"];
+// Old names still arrive from links and older code paths.
+const HUB_ALIASES={connections:"notifications",network:"computers",app:"general"};
+let hubSection="agents",lmData={profiles:[],discovery:{}},lmTimer=null,returnToNew=false,lmRefreshPending=null,lmModelsChecked=0;
+let deckTimer=null,telegramConfig={},integrationTimer=null,telegramDirty=false,editorReturn=null;
+let panelUpdating=false,panelVersion=null,versionTimer=null,versionLoading=null;
+const UPDATE_PHASES=new Set(["checking","downloading","installing","restarting"]);
+
+/* ---------- card pattern ---------- */
+function cardIcon(icon){
+  const box=el("span","card-icon");box.setAttribute("aria-hidden","true");
+  box.append(icon instanceof Node?icon:svgIcon(icon));return box;
+}
+// tone: ok (works), warn (needs a step), bad (broken or unreachable), idle (off or not installed).
+function hubCard({key,icon,title,status,tone="idle",meta,primary,more=[],body=[]}){
+  const main=el("div","card-main",el("h4","",title));
+  if(status)main.append(el("p","card-status "+tone,status));
+  if(meta)main.append(el("p","card-meta",meta));
+  const top=el("div","card-top",...(icon?[cardIcon(icon)]:[]),main),tools=el("div","card-tools");
+  if(primary)tools.append(btn(primary.label,primary.quiet?"pri quiet":"pri",primary.run));
+  if(more.length)tools.append(moreMenu(more,title));
+  if(tools.childElementCount)top.append(tools);
+  const card=el("div","hub-card",top,...body.filter(Boolean));card.dataset.card=key;
+  return card;
+}
+function moreMenu(items,title){
+  const menu=el("details","card-more"),summary=el("summary","",svgIcon("more"));
+  summary.setAttribute("aria-label",tr("Другие действия: {0}",[title]));summary.title=tr("Другие действия");
+  const list=el("div","card-menu");
+  for(const [label,run,danger] of items.filter(Boolean))list.append(btn(label,danger?"danger":"",()=>{menu.open=false;run()}));
+  menu.append(summary,list);return menu;
+}
+// A row inside a card (a computer, a device, a found server): name, status, then its own actions.
+function hubRow({title,status,tone="idle",meta,actions=[]}){
+  const info=el("div","hub-row-info",el("strong","",title));
+  if(status)info.append(el("span","card-status "+tone,status));
+  if(meta)info.append(el("span","card-meta",meta));
+  return el("div","hub-row",info,el("div","hub-row-actions",...actions.filter(Boolean)));
+}
+function labelledButton(label,cls,run,name){const b=btn(label,cls,run);b.setAttribute("aria-label",label+": "+name);return b}
+// An open editor replaces its card; a new item's editor goes first. A closed one stays in the list
+// (hidden): rebuilding the cards must never drop it from the page.
+function placeEditor(cards,key,editor){
+  if(editor.hidden)return [...cards,editor];
+  const index=cards.findIndex(card=>card.dataset.card===key);
+  if(index<0)return [editor,...cards];
+  cards[index].hidden=true;cards.splice(index+1,0,editor);return cards;
+}
+// After an editor closes, focus returns to the card it came from instead of the page body.
+function focusCard(key){
+  if(!key)return;
+  requestAnimationFrame(()=>document.querySelector(`#settings_dlg [data-card="${key}"] .card-tools button, #settings_dlg [data-card="${key}"] .card-tools summary`)?.focus({preventScroll:true}));
+}
+
+/* ---------- sections ---------- */
+function settingsSection(section){
+  section=HUB_ALIASES[section]||section;
+  if(!HUB_SECTIONS.includes(section))section="agents";
+  const changed=section!==hubSection;hubSection=section;
+  for(const name of HUB_SECTIONS)$("hub_"+name).hidden=name!==section;
+  if(changed)document.querySelector(".hub-content").scrollTop=0;
+  const open=$("settings_dlg").open;
+  if(section==="backups"&&open)loadBackups();
+  if(section==="notifications"&&open)loadPush();
+  if(section==="computers"&&open)loadFleet(true);
+  if(section==="models"&&open)refreshLMModels();
+  for(const b of document.querySelectorAll(".hub-nav button")){
+    const on=b.dataset.section===section;
+    b.classList.toggle("on",on);b.setAttribute("aria-selected",String(on));b.tabIndex=on?0:-1;
+    if(on&&isMobile())requestAnimationFrame(()=>{b.scrollIntoView({inline:"center",block:"nearest"});requestAnimationFrame(updateHubNavFade)});
+  }
+  updateHubNavFade();
+}
+function updateHubNavFade(){
+  const nav=document.querySelector(".hub-nav");
+  nav.classList.toggle("more-right",nav.scrollLeft+nav.clientWidth<nav.scrollWidth-4);
+  nav.classList.toggle("more-left",nav.scrollLeft>4);
+}
+// Arrow keys move between sections, as in any tab list.
+function hubNavKey(e){
+  if(!["ArrowDown","ArrowUp","ArrowLeft","ArrowRight","Home","End"].includes(e.key))return;
+  e.preventDefault();
+  const i=HUB_SECTIONS.indexOf(hubSection),n=HUB_SECTIONS.length;
+  const next=e.key==="Home"?0:e.key==="End"?n-1:(i+(["ArrowDown","ArrowRight"].includes(e.key)?1:-1)+n)%n;
+  settingsSection(HUB_SECTIONS[next]);$("tab_"+HUB_SECTIONS[next]).focus();
+}
+async function openSettings(section="agents"){
+  drawer(false);sheet(false);settingsSection(section);
+  $("hub_title").textContent=deckDirectory.decks.length?tr("Настройки · {0}",[currentDeckName()]):tr("Настройки");
+  if(!$("settings_dlg").open)$("settings_dlg").showModal();updateHubNavFade();
+  renderHub();
+  // Push and backup state feed the getting-started card and the section dots.
+  await Promise.allSettled([loadDeckSettings(),loadPush(),loadBackups(),(async()=>{const data=await api("/api/project_directory");$("project_directory").value=data.directory})(),refreshLMModels(),loadIntegrations(),checkGithubFoot(),(async()=>{const data=await api("/api/locales");$("ui_language").replaceChildren(...data.languages.map(x=>{const o=el("option","",x.name);o.value=x.code;return o}));$("ui_language").value=I18N.language})()]);
+  renderHub();
+  clearInterval(lmTimer);lmTimer=setInterval(()=>{if(!document.hidden&&$("settings_dlg").open){if(lmData.discovery?.phase==="running")loadLM(false);if(hubSection==="models"&&Date.now()-lmModelsChecked>30000)refreshLMModels()}},2000);
+}
+function openHubEditor(){return ["kimi_dlg","integrations_dlg","lm_editor","deck_editor","backup_join_card"].map($).find(e=>!e.hidden)}
+function hubEditorDirty(){
+  return Boolean($("kimi_key").value||telegramDirty||$("lm_key").value||$("deck_password").value||$("backup_join_code").value||
+    (!$("lm_editor").hidden&&!$("lm_id").value&&$("lm_url").value)||(!$("deck_editor").hidden&&!$("deck_id").value&&$("deck_url").value));
+}
+function closeHubEditor(editor){
+  ({kimi_dlg:closeKimi,integrations_dlg:closeIntegrations,lm_editor:resetLM,deck_editor:closeDeckEditor,backup_join_card:closeBackupJoin})[editor.id]();
+}
+// Escape first closes an open editor; typed keys and passwords are never dropped without asking.
+async function settingsCancel(e){
+  const editor=openHubEditor();if(!editor)return;
+  e.preventDefault();
+  if(hubEditorDirty()&&!await confirmAction(tr("Изменения не сохранены. Закрыть без сохранения?"),{confirm:tr("Закрыть без сохранения"),danger:true}))return;
+  closeHubEditor(editor);
+}
+async function closeSettings(){
+  if(openHubEditor()&&hubEditorDirty()&&!await confirmAction(tr("Изменения не сохранены. Закрыть без сохранения?"),{confirm:tr("Закрыть без сохранения"),danger:true}))return;
+  $("settings_dlg").close();
+}
+function settingsClosed(){
+  if($("settings_dlg").open)return;
+  clearInterval(lmTimer);clearInterval(deckTimer);closeKimi();closeIntegrations();resetLM();closeDeckEditor();
+  if(returnToNew){returnToNew=false;$("dlg").showModal();renderSources()}
+}
+function hubInit(){
+  const nav=document.querySelector(".hub-nav");
+  nav.addEventListener("scroll",updateHubNavFade,{passive:true});nav.addEventListener("keydown",hubNavKey);
+  $("settings_dlg").addEventListener("cancel",settingsCancel);
+  $("settings_dlg").addEventListener("close",settingsClosed);
+  for(const id of ["telegram_token","telegram_enabled"])$(id).addEventListener("input",()=>{telegramDirty=true});
+  // A "more" menu closes when the tap lands anywhere else.
+  document.addEventListener("click",e=>{for(const menu of document.querySelectorAll(".card-more[open]"))if(!menu.contains(e.target))menu.open=false});
+}
+
+/* ---------- attention: getting started and section dots ---------- */
+function pushReadyHere(){
+  if(!Array.isArray(pushState?.devices))return null;
+  return pushState.devices.some(d=>d.id===localStore.getItem("cc.push-id"));
+}
+function setupSteps(){
+  return [[tr("Войдите в Claude или Codex"),["claude","codex"].some(a=>lastAg[a]?.logged_in),"agents"],
+    [tr("Включите уведомления на этом устройстве"),pushReadyHere(),"notifications"],
+    [tr("Включите бэкапы"),backupStatus?Boolean(backupStatus.configured):null,"backups"]];
+}
+function renderSetupCard(){
+  let hidden=false;try{hidden=localStore.getItem("cc.setup-hidden")==="1"}catch(e){}
+  const steps=setupSteps(),box=$("setup_card");
+  if(hidden||steps.every(([,done])=>done!==false)){box.replaceChildren();return}
+  const list=el("div","setup-steps");
+  for(const [label,done,section] of steps){
+    const row=btn("","setup-step"+(done?" done":""),()=>settingsSection(section));
+    row.append(el("span","setup-mark",done?"✓":"○"),el("span","",label));if(done)row.disabled=true;list.append(row);
+  }
+  const hide=btn(tr("Скрыть"),"setup-hide",()=>{try{localStore.setItem("cc.setup-hidden","1")}catch(e){}renderSetupCard()});
+  box.replaceChildren(el("div","hub-card setup",el("div","card-top",el("div","card-main",el("h4","",tr("Начало работы")),
+    el("p","card-meta",tr("Три шага, чтобы агенты работали и звали вас, когда нужны."))),hide),list));
+}
+function hubAttention(){
+  const need=new Set(),version=panelVersion||{};
+  if(lastAg.claude&&!["claude","codex"].some(a=>lastAg[a]?.logged_in))need.add("agents");
+  if(pushState&&pushState.available&&!pushBlocker(pushEnvironment())&&pushReadyHere()===false)need.add("notifications");
+  if((lmData.profiles||[]).some(p=>["offline","needs_key"].includes(p.status)))need.add("models");
+  if(fleetTargets(fleet.versions).length||deckDirectory.decks.some(d=>fleet.versions.has(d.id)&&!fleet.versions.get(d.id)))need.add("computers");
+  if(backupStatus&&!backupStatus.configured)need.add("backups");
+  if((version.update&&version.can_update)||version.job?.phase==="error")need.add("general");
+  return need;
+}
+function updateHubDots(){
+  const need=hubAttention();
+  for(const b of document.querySelectorAll(".hub-nav button")){
+    const on=need.has(b.dataset.section);b.classList.toggle("attn",on);
+    b.setAttribute("aria-description",on?tr("требует внимания"):"");
+  }
+}
+function renderHub(){
+  renderSetupCard();renderAgentCards();renderTelegramCard();
+  // Rebuilding during a running test/benchmark would re-enable its buttons and allow a duplicate run.
+  if($("model_cards").getAttribute("aria-busy")!=="true")renderModelCards();
+  if(panelVersion)renderVersion(panelVersion);
+  updateHubDots();
+}
+// Settings cards for agents (with Kimi and GitHub), Telegram and the version. Bundled before app.js.
+
+/* ---------- agents ---------- */
+function agentCard(a){
+  const st=lastAg[a]||{},title=AGENTS[a].label,icon=agentIcon({agent:a}),update=[tr("Обновить"),()=>agentAction("install",a)];
+  if(!st.installed)return hubCard({key:a,icon,title,status:tr("Не установлен"),primary:{label:tr("Установить"),run:()=>agentAction("install",a)}});
+  if(!st.logged_in)return hubCard({key:a,icon,title,status:tr("Вход не выполнен"),tone:"warn",meta:st.version,
+    primary:{label:tr("Войти"),run:()=>agentAction("login",a)},more:[update]});
+  return hubCard({key:a,icon,title,status:tr("Подключён"),tone:"ok",meta:st.version,more:[update]});
+}
+// One Kimi key serves Claude on Kimi models and Kimi Code, so both live on this card.
+function kimiCard(){
+  const st=lastAg.kimi||{},config=lastAg.kimi_config||{};
+  const install=[st.installed?tr("Обновить Kimi Code"):tr("Установить Kimi Code"),()=>agentAction("install","kimi")];
+  return hubCard({key:"kimi",icon:agentIcon({agent:"kimi"}),title:"Kimi",
+    status:config.configured?tr("Ключ сохранён · {0}",[config.model||"k3"]):tr("Ключ не указан"),tone:config.configured?"ok":"idle",
+    meta:st.installed?"Kimi Code "+(st.version||""):tr("Kimi Code не установлен"),
+    primary:config.configured?null:{label:tr("Указать ключ"),run:openKimi,quiet:true},
+    more:[config.configured&&[tr("Изменить ключ и модель"),openKimi],install],
+    body:[el("p","hint",tr("Ключ используют Claude на моделях Kimi и Kimi Code."))]});
+}
+function piCard(){
+  const st=lastAg.pi||{},icon=agentIcon({agent:"pi"}),hint=el("p","hint",tr("Агент для локальных моделей LM Studio."));
+  if(!st.installed)return hubCard({key:"pi",icon,title:"Pi",status:tr("Не установлен"),primary:{label:tr("Установить"),run:()=>agentAction("install","pi"),quiet:true},body:[hint]});
+  return hubCard({key:"pi",icon,title:"Pi",status:tr("Установлен"),tone:"ok",meta:st.version,more:[[tr("Обновить"),()=>agentAction("install","pi")]],body:[hint]});
+}
+function githubCard(){
+  const icon=el("span","");icon.innerHTML=GH_ICON;
+  const leave=run=>()=>{returnToNew=false;$("settings_dlg").close();run()};
+  if(!ghLogin)return hubCard({key:"github",icon,title:"GitHub",status:tr("Не подключён"),primary:{label:tr("Подключить"),run:leave(ghConnect),quiet:true},
+    body:[el("p","hint",tr("Чтобы выбирать репозиторий при создании сессии."))]});
+  return hubCard({key:"github",icon,title:"GitHub",status:"@"+ghLogin,tone:"ok",more:[[tr("Новая сессия из репозитория"),leave(openNew)]]});
+}
+function renderAgentCards(){
+  const cards=[agentCard("claude"),agentCard("codex"),kimiCard(),piCard(),githubCard()];
+  $("agent_cards").replaceChildren(...placeEditor(cards,"kimi",$("kimi_dlg")));
+}
+function openKimi(){
+  const config=lastAg.kimi_config||{};
+  $("kimi_key").value="";$("kimi_model").value=config.model||"k3";
+  $("kimi_state").textContent=config.configured?tr("Ключ сохранён на сервере"):tr("Ключ ещё не указан");
+  $("kimi_state").className="card-status "+(config.configured?"ok":"idle");
+  $("kimi_clear").hidden=!config.configured;
+  $("kimi_dlg").hidden=false;openSettings("agents");$("kimi_dlg").scrollIntoView({block:"nearest"});
+  // On a phone the keyboard would cover the explanation and the Save button.
+  if(!isMobile()&&lastPointer!=="touch")$("kimi_key").focus({preventScroll:true});
+}
+function closeKimi(){
+  const wasOpen=!$("kimi_dlg").hidden;
+  $("kimi_key").value="";$("kimi_dlg").hidden=true;
+  if($("settings_dlg").open){renderHub();if(wasOpen)focusCard("kimi")}
+}
+async function saveKimi(clear=false){
+  $("kimi_save").disabled=true;
+  try{
+    await api("/api/kimi_config",{key:$("kimi_key").value.trim(),model:$("kimi_model").value,clear});
+    await checkGithubFoot();closeKimi();await loadUsage();renderSources();toast(clear?tr("Ключ Kimi удалён"):tr("Настройки Kimi сохранены"),"success");
+  }catch(e){toast(e.message)}finally{$("kimi_save").disabled=false}
+}
+async function clearKimi(){if(await confirmAction(tr("Удалить ключ Kimi из панели?"),{text:tr("Сессии на моделях Kimi перестанут запускаться, пока ключ не будет указан снова."),confirm:tr("Удалить ключ"),danger:true}))saveKimi(true)}
+// Install and sign-in run in a session of their own; Settings steps aside so it is visible.
+async function agentAction(kind,agent){
+  const name=kind==="install"?"install-"+agent:agent+"-login";
+  if(await post("/api/agent_"+kind,{agent})){if($("settings_dlg").open)$("settings_dlg").close();select(name);if(isMobile())setMode("screen")}
+}
+
+/* ---------- Telegram ---------- */
+function telegramSummary(c){
+  if(c.available===false)return [tr("Нужно обновление Agent Deck: Общие → Версия и обновления"),"bad"];
+  if(c.error)return [c.error,"bad"];
+  if(c.paired)return [`@${c.bot} · ${c.account||tr("аккаунт привязан")} · ${c.enabled?tr("включён"):tr("пауза")}`,c.enabled?"ok":"warn"];
+  if(c.configured)return [tr("@{0} · привяжите свой Telegram",[c.bot]),"warn"];
+  return [tr("Не настроен"),"idle"];
+}
+function renderTelegramCard(){
+  const [status,tone]=telegramSummary(telegramConfig);
+  const card=hubCard({key:"telegram",icon:el("span","telegram-glyph",svgIcon("telegram")),title:"Telegram",status,tone,
+    primary:{label:tr("Настроить"),run:openIntegrations,quiet:Boolean(telegramConfig.paired)},
+    body:[el("p","hint",tr("Вопросы с кнопками ответа в личном чате с вашим ботом."))]});
+  $("telegram_cards").replaceChildren(...placeEditor([card],"telegram",$("integrations_dlg")));
+}
+function renderTelegram(config){
+  const wasConfigured=telegramConfig.configured;
+  telegramConfig=config||{};
+  const c=telegramConfig,[status,tone]=telegramSummary(c),state=$("telegram_state");
+  if(wasConfigured!==c.configured)$("telegram_credentials").open=!c.configured;
+  $("telegram_credentials").querySelector("summary").textContent=c.configured?tr("Изменить токен бота"):tr("Токен бота");
+  // Polled every few seconds: rewriting the same text would make screen readers repeat it.
+  if(state.textContent!==status)state.textContent=status;
+  state.className="card-status "+tone;
+  $("telegram_duplicates").hidden=!c.duplicates?.length;
+  if(c.duplicates?.length)$("telegram_duplicates").textContent=tr("Этот бот также включён на: {0}. Вопросы будут приходить дважды; отключите Telegram там.",[c.duplicates.join(", ")]);
+  $("telegram_enabled").checked=c.enabled!==false;
+  $("telegram_clear").hidden=!c.configured;
+  $("telegram_pair").hidden=!(c.configured&&!c.pair_url);
+  $("telegram_pair").textContent=c.paired?tr("Привязать другой аккаунт"):tr("Получить ссылку привязки");
+  $("telegram_pairing").hidden=!c.pair_url;
+  if(typeof c.pair_url==="string"&&c.pair_url.startsWith("https://t.me/"))$("telegram_link").href=c.pair_url;else $("telegram_link").removeAttribute("href");
+  if($("settings_dlg").open&&$("integrations_dlg").hidden)renderTelegramCard();
+  renderInteg();
+}
+async function loadIntegrations(){
+  try{const data=await api("/api/integrations");renderTelegram(data.telegram)}catch(e){if(!$("integrations_dlg").hidden&&e.message!==STALE)$("telegram_state").textContent=e.message}
+}
+function openIntegrations(){
+  telegramDirty=false;$("telegram_token").value="";$("telegram_credentials").open=!telegramConfig.configured;$("integrations_dlg").hidden=false;
+  openSettings("notifications");loadIntegrations();$("integrations_dlg").scrollIntoView({block:"nearest"});
+  clearInterval(integrationTimer);integrationTimer=setInterval(()=>{if(!document.hidden&&!telegramDirty)loadIntegrations()},3000);
+}
+function closeIntegrations(){
+  const wasOpen=!$("integrations_dlg").hidden;
+  $("telegram_token").value="";telegramDirty=false;clearInterval(integrationTimer);$("integrations_dlg").hidden=true;
+  if($("settings_dlg").open){renderHub();if(wasOpen)focusCard("telegram")}
+}
+async function saveTelegram(clear=false){
+  $("telegram_save").disabled=true;
+  try{
+    const data=await api("/api/telegram_config",{token:$("telegram_token").value.trim(),enabled:$("telegram_enabled").checked,language:I18N.language,clear});
+    telegramDirty=false;$("telegram_token").value="";renderTelegram(data.telegram);
+    if(!clear&&!data.telegram.paired)await pairTelegram();
+    toast(clear?tr("Telegram отключён"):tr("Настройки Telegram сохранены"),"success");
+  }catch(e){toast(e.message)}finally{$("telegram_save").disabled=false}
+}
+async function pairTelegram(){
+  try{const data=await api("/api/telegram_pair",{});renderTelegram(data.telegram)}catch(e){toast(e.message)}
+}
+async function clearTelegram(){if(await confirmAction(tr("Отключить Telegram и удалить сохранённый токен?"),{confirm:tr("Отключить"),danger:true}))saveTelegram(true)}
+
+/* ---------- version and updates ---------- */
+// What the version card says and which single action it offers; also drives the sidebar and the menu.
+function versionState(v){
+  const job=v.job||{};
+  // The button stays, disabled, so the progress is visible where the update was started.
+  if(UPDATE_PHASES.has(job.phase))return {status:job.message||tr("Обновляю панель…"),tone:"idle",label:job.message||tr("Обновляю панель…"),run:()=>{}};
+  if(job.phase==="done"&&job.version===v.version&&UI_PANEL_VERSION!==null&&job.version!==UI_PANEL_VERSION)
+    return {status:tr("Обновлено до v{0}",[v.version]),tone:"ok",label:tr("Перезагрузить страницу"),run:refreshInterface};
+  if(job.phase==="error")return {status:tr("Обновление не удалось: {0}",[job.message||tr("ошибка")]),tone:"bad",label:tr("Повторить обновление"),run:startPanelUpdate};
+  if(v.update)return v.incomplete?{status:tr("Не хватает компонентов"),tone:"warn",label:tr("Доустановить компоненты"),run:startPanelUpdate}
+    :{status:tr("Доступна v{0}",[v.latest]),tone:"warn",label:tr("Обновить до v")+v.latest,run:startPanelUpdate};
+  if(v.release_error)return {status:tr("Не удалось проверить обновления"),tone:"idle"};
+  return {status:tr("Установлена последняя версия"),tone:"ok"};
+}
+function renderVersion(v){
+  panelVersion=v;const job=v.job||{},state=versionState(v),box=$("ver"),mobile=$("s_update");
+  panelUpdating=UPDATE_PHASES.has(job.phase);
+  box.replaceChildren("v"+v.version);box.title=v.latest?tr("последний релиз: v{0}",[v.latest]):"";
+  const blocked=Boolean(state.run===startPanelUpdate&&!v.can_update);
+  const how=v.container?tr("Контейнер: обновите образ и пересоздайте контейнер: {0}",[v.update_command||"docker compose up -d --build"]):tr("Разработка: обновляйте чекаут через git. Кнопка доступна после установки панели.");
+  mobile.style.display="none";
+  if(blocked)box.title=how;
+  if(state.label||panelUpdating){
+    box.append(btn(tr("Обновить"),"",()=>openSettings("general")));
+    $("s_update_label").textContent=state.label||state.status;mobile.style.display="flex";mobile.disabled=panelUpdating||blocked;
+  }
+  $("version_status").textContent=state.status;$("version_status").className="card-status "+state.tone;
+  const revision=el("span","version-build","UI "+UI_REVISION.slice(0,7));revision.title=UI_REVISION;
+  $("version_meta").replaceChildren("v"+v.version+" · ",revision);
+  $("version_hint").hidden=!(blocked||!v.can_update);$("version_hint").textContent=v.can_update?"":how;
+  const actions=[btn(tr("Проверить обновления"),"",checkPanelUpdates)];actions[0].id="b_check_updates";
+  if(state.run!==refreshInterface){const reload=btn(tr("Перезагрузить страницу"),"",refreshInterface);reload.id="b_refresh_interface";actions.push(reload)}
+  if(state.label){const main=btn(state.label,"pri",state.run);main.id="b_update";main.disabled=panelUpdating||blocked;actions.push(main)}
+  for(const b of actions)if(b.id!=="b_update")b.disabled=panelUpdating;
+  $("hub_version").replaceChildren(...actions);
+  // Containers and development checkouts update outside the panel: the switch would only mislead.
+  $("auto_update_row").hidden=$("auto_update_hint").hidden=!v.can_update||!v.auto_update;
+  $("auto_update_enabled").checked=v.auto_update?.enabled!==false;$("auto_update_enabled").disabled=panelUpdating;
+  $("auto_update_status").textContent=v.auto_update?.phase==="waiting"?tr("Обновление ждёт завершения локальной генерации"):"";
+  if($("settings_dlg").open)updateHubDots();
+  renderAttachments();
+}
+async function checkPanelUpdates(){
+  const button=$("b_check_updates");if(button)button.disabled=true;
+  try{renderVersion(await api("/api/check_update",{}));toast(tr("Проверка завершена"),"success")}
+  catch(e){toast(e.message)}finally{if(button)button.disabled=false}
+}
+async function saveAutoUpdates(){
+  const input=$("auto_update_enabled"),enabled=input.checked;input.disabled=true;
+  try{const data=await api("/api/auto_update",{enabled});renderVersion({...panelVersion,auto_update:data.auto_update})}
+  catch(e){input.checked=!enabled;toast(e.message)}finally{input.disabled=!panelVersion?.can_update}
+}
+// Settings cards for LM Studio servers and for other computers running Agent Deck. Bundled before app.js.
+
+/* ---------- local models (LM Studio) ---------- */
+const LM_STATUS={online:["Подключён","ok"],needs_key:["Нужен API-ключ","warn"],offline:["Не отвечает","bad"]};
+function lmMetrics(m){
+  const label=m.source==="session"?tr("Последний ответ"):m.source==="benchmark"?tr("Тест скорости"):tr("Замер");
+  const parts=[];
+  if(Number.isFinite(m.tokens_per_second))parts.push(m.tokens_per_second.toFixed(1)+" tok/s");
+  if(Number.isFinite(m.time_to_first_token_seconds))parts.push(tr("первый токен {0} с",[m.time_to_first_token_seconds.toFixed(2)]));
+  if(Number.isFinite(m.model_load_time_seconds))parts.push(tr("загрузка {0} с",[m.model_load_time_seconds.toFixed(2)]));
+  return parts.length?label+": "+parts.join(" · "):"";
+}
+function lmModelPicker(p,selection){
+  const select=el("select","");select.dataset.profile=p.id;select.setAttribute("aria-label",tr("Модель на {0}",[p.name]));
+  for(const m of p.models){const o=el("option","",m.name+(m.loaded?" · "+tr("загружена"):"")+(m.tool_tested?" · ✓ "+tr("инструменты"):""));o.value=m.id;select.append(o)}
+  if(selection)select.value=selection;if(!select.value&&select.options.length)select.selectedIndex=0;
+  const detail=el("p","card-meta");
+  const describe=()=>{const m=p.models.find(x=>x.id===select.value)||{};detail.textContent=[m.context_length||m.max_context_length?tr("Контекст: {0}",[m.context_length||m.max_context_length]):"",m.quantization||"",m.tool_tested?tr("Инструменты: ✓"):tr("Инструменты: не проверены")].filter(Boolean).join(" · ")};
+  select.onchange=describe;describe();
+  const actions=el("div","acts",btn(tr("Проверить инструменты"),"",()=>lmAction("test",{id:p.id,model:select.value})),btn(tr("Измерить скорость"),"",()=>lmAction("benchmark",{id:p.id,model:select.value})));
+  return [select,detail,actions];
+}
+function lmCard(p,selection){
+  const [status,tone]=LM_STATUS[p.status]||["Не проверен","idle"];
+  const primary=p.status==="needs_key"?{label:tr("Указать ключ"),run:()=>editLM(p)}:p.status==="offline"?{label:tr("Проверить снова"),run:()=>lmAction("probe",{id:p.id}),quiet:true}:null;
+  const samples=p.measurements?Object.values(p.measurements).flatMap(group=>Object.values(group)):[p.performance||{}];
+  const body=samples.map(lmMetrics).filter(Boolean).map(text=>el("p","card-metrics",text));
+  if(p.status==="offline")body.unshift(el("p","hint",tr("{0} не отвечает. Запустите LM Studio, включите Developer → Start server и проверьте порт.",[p.url])));
+  if(p.models?.length)body.push(...lmModelPicker(p,selection));
+  return hubCard({key:"lm:"+p.id,icon:"cpu",title:p.name,status:tr(status),tone,meta:p.url,primary,
+    more:[[tr("Обновить список моделей"),()=>lmAction("probe",{id:p.id})],[tr("Изменить"),()=>editLM(p)],[tr("Удалить"),()=>removeLM(p),true]],body});
+}
+function renderModelCards(){
+  const selections=new Map([...$("model_cards").querySelectorAll("select")].map(x=>[x.dataset.profile,x.value]));
+  const cards=(lmData.profiles||[]).map(p=>lmCard(p,selections.get(p.id)));
+  if(!cards.length&&$("lm_editor").hidden)cards.push(el("p","hub-empty",tr("Серверов пока нет. Добавьте адрес LM Studio или найдите его в Tailscale ниже.")));
+  $("model_cards").replaceChildren(...placeEditor(cards,"lm:"+$("lm_id").value,$("lm_editor")));
+}
+async function refreshLMModels(){
+  if(document.hidden)return;
+  if(lmRefreshPending)return lmRefreshPending;
+  lmModelsChecked=Date.now();
+  lmRefreshPending=(async()=>{try{lmData=await refreshModelCatalog(api);if($("settings_dlg").open)renderHub();renderDiscovery();renderSources()}catch(e){if(!e.offline)toast(e.message)}finally{lmRefreshPending=null}})();
+  return lmRefreshPending;
+}
+async function loadLM(refresh=true){try{lmData=await api("/api/lmstudio");if($("settings_dlg").open&&refresh)renderHub();renderDiscovery()}catch(e){if(e.message!==STALE)$("lm_progress").textContent=e.message}}
+function editLM(p={}){
+  $("lm_id").value=p.id||"";$("lm_name").value=p.name||"";$("lm_url").value=p.url||"";$("lm_key").value="";$("lm_clear_key").checked=false;
+  $("lm_clear_row").hidden=!p.id;
+  $("lm_editor_title").textContent=p.id?tr("Изменить · {0}",[p.name]):tr("Новый сервер LM Studio");
+  $("lm_editor").hidden=false;if(hubSection!=="models")settingsSection("models");
+  renderModelCards();$("lm_editor").scrollIntoView({block:"nearest"});
+  if(!isMobile()&&lastPointer!=="touch")$(p.id&&p.status==="needs_key"?"lm_key":"lm_name").focus({preventScroll:true});
+}
+function resetLM(){
+  const key=$("lm_id").value,wasOpen=!$("lm_editor").hidden;
+  $("lm_editor").hidden=true;$("lm_id").value="";$("lm_name").value="";$("lm_url").value="";$("lm_key").value="";
+  if($("settings_dlg").open&&wasOpen){renderModelCards();if(key)focusCard("lm:"+key)}
+}
+async function saveLM(){
+  const button=$("lm_save");button.disabled=true;
+  try{
+    const saved=await api("/api/lm_save",{id:$("lm_id").value||undefined,name:$("lm_name").value.trim(),url:$("lm_url").value.trim(),key:$("lm_key").value,clear_key:$("lm_clear_key").checked});
+    $("lm_key").value="";await api("/api/lm_probe",{id:saved.profile.id});resetLM();await loadLM();renderSources();focusCard("lm:"+saved.profile.id);
+  }catch(e){toast(e.message)}finally{button.disabled=false}
+}
+const LM_WORKING={probe:"Проверяю модели…",test:"Проверяю инструменты…",benchmark:"Измеряю скорость…",remove:"Удаляю…"};
+async function lmAction(action,data){
+  if($("model_cards").getAttribute("aria-busy")==="true")return;
+  const buttons=[...$("model_cards").querySelectorAll("button")];buttons.forEach(b=>b.disabled=true);$("model_cards").setAttribute("aria-busy","true");toast(tr(LM_WORKING[action]),true);
+  let r=null;
+  try{r=await api("/api/lm_"+action,data);if(r.result)toast(r.result.ok?tr("Проверка завершена"):r.result.error,r.result.ok?"success":"error");else if(action!=="remove")hideToast()}catch(e){toast(e.message)}
+  finally{buttons.forEach(b=>b.disabled=false);$("model_cards").removeAttribute("aria-busy")}
+  // Reload after clearing aria-busy, otherwise renderHub would skip the refreshed model cards.
+  if(r){if(action==="remove")toast(tr("Сервер удалён"),"success");await loadLM();renderSources()}
+}
+async function removeLM(p){
+  if(await confirmAction(tr("Удалить сервер LM Studio «{0}»?",[p.name]),{text:tr("Сессии на его моделях перестанут отвечать."),confirm:tr("Удалить"),danger:true}))lmAction("remove",{id:p.id});
+}
+function lmPorts(){return $("lm_ports").value.split(/[\s,;]+/).filter(Boolean).map(Number)}
+async function discoverLM(cancel=false){try{await api("/api/lm_discover",cancel?{cancel:true}:{ports:lmPorts()});await loadLM()}catch(e){toast(e.message)}}
+function renderDiscovery(){
+  const d=lmData.discovery||{},running=d.phase==="running";
+  $("lm_progress").textContent=d.error||[tr(running?"Поиск…":d.phase==="done"?"Поиск завершён":d.phase==="cancelled"?"Остановлено":""),d.total?d.checked+" / "+d.total:""].filter(Boolean).join(" · ");
+  $("lm_cancel").hidden=!running;$("lm_find").disabled=running;
+  $("lm_results").replaceChildren(...(d.results||[]).map(p=>hubRow({title:p.name,meta:p.url,status:p.status==="needs_key"?tr("Нужен API-ключ"):"",tone:"warn",
+    actions:[labelledButton(tr("Добавить"),"",()=>editLM({name:p.name,url:p.url}),p.name)]})));
+}
+function configureSource(){returnToNew=true;$("dlg").close();openSettings("models")}
+
+/* ---------- computers ---------- */
+function renderComputers(data,network){
+  $("network_name").value=network.name;$("network_public_url").value=network.public_url;$("network_isolate").checked=network.isolate_terminals===true;
+  $("network_bind").textContent="http://"+network.bind_host+":"+network.bind_port;
+  $("network_browser").textContent=location.origin;
+  const count=data.decks.length;
+  $("deck_summary").textContent=count?tr("Подключено: {0}",[count]):tr("Пока не подключены");
+  $("deck_summary").className="card-status "+(count?"ok":"idle");
+  $("network_isolate_row").hidden=$("network_isolate_hint").hidden=!count;
+  const rows=data.decks.map(deck=>{
+    const row=hubRow({title:deck.name,meta:deck.url,status:"…",
+      actions:[deck.id===selectedDeck?el("span","card-meta",tr("открыт")):labelledButton(tr("Открыть"),"",()=>switchDeck(deck.id),deck.name),
+        moreMenu([[tr("Изменить"),()=>editDeck(deck)],[tr("Отключить"),()=>removeDeck(deck),true]],deck.name)]});
+    row.querySelector(".card-status").dataset.deckVersion=deck.id;row.dataset.card="deck:"+deck.id;return row;
+  });
+  $("deck_connections").replaceChildren(...placeEditor(rows,"deck:"+$("deck_id").value,$("deck_editor")));
+  renderDeckDiscovery(data.discovery);
+}
+function editDeck(deck={}){
+  $("deck_id").value=deck.id||"";$("deck_name").value=deck.name||"";$("deck_url").value=deck.url||"";$("deck_username").value=deck.username||"";$("deck_password").value="";
+  $("deck_editor_title").textContent=deck.id?tr("Изменить · {0}",[deck.name]):tr("Подключить другой Agent Deck");
+  $("deck_save").textContent=deck.id?tr("Сохранить"):tr("Подключить");
+  $("deck_editor").hidden=false;
+  const row=deck.id&&$("deck_connections").querySelector(`[data-card="deck:${deck.id}"]`);
+  if(row){row.hidden=true;row.after($("deck_editor"))}else $("deck_connections").prepend($("deck_editor"));
+  $("deck_editor").scrollIntoView({block:"nearest"});
+  if(!isMobile()&&lastPointer!=="touch")$(deck.url?"deck_username":"deck_name").focus({preventScroll:true});
+}
+function closeDeckEditor(){
+  const key=$("deck_id").value;
+  $("deck_editor").hidden=true;$("deck_password").value="";$("deck_id").value="";$("deck_url").value="";
+  for(const row of $("deck_connections").querySelectorAll(".hub-row[hidden]"))row.hidden=false;
+  // The editor lives in the section, not inside a row that the next render replaces.
+  $("hub_computers").append($("deck_editor"));
+  if(key)focusCard("deck:"+key);
+}
+async function saveDeck(){
+  const button=$("deck_save");button.disabled=true;
+  try{await gatewayApi("/api/decks_save",{id:$("deck_id").value||undefined,name:$("deck_name").value.trim(),url:$("deck_url").value.trim(),username:$("deck_username").value.trim(),password:$("deck_password").value});closeDeckEditor();await loadDeckSettings();toast(tr("Agent Deck подключён"),"success")}
+  catch(e){$("deck_password").value="";toast(e.message)}finally{button.disabled=false}
+}
+async function removeDeck(deck){
+  if(!await confirmAction(tr("Отключить «{0}»?",[deck.name]),{text:tr("Сессии на нём продолжат работать; сохранённый пароль будет удалён с этого сервера."),confirm:tr("Отключить"),danger:true}))return;
+  try{await gatewayApi("/api/decks_remove",{id:deck.id});if(deck.id===selectedDeck)switchDeck("");else await loadDeckSettings()}catch(e){toast(e.message)}
+}
+function renderDeckDiscovery(discovery){
+  $("deck_discover").disabled=discovery.phase==="running";
+  $("deck_discovery_status").textContent=discovery.error||tr(discovery.phase==="running"?"Поиск…":discovery.phase==="done"?"Поиск завершён":"");
+  $("deck_discovery_results").replaceChildren(...(discovery.results||[]).map(deck=>hubRow({title:deck.name,meta:deck.url,actions:[labelledButton(tr("Подключить"),"",()=>editDeck(deck),deck.name)]})));
+  clearInterval(deckTimer);
+  if(discovery.phase==="running")deckTimer=setInterval(async()=>{if(document.hidden||!$("settings_dlg").open)return;try{const data=await gatewayApi("/api/decks");renderDeckDiscovery(data.discovery)}catch(e){toast(e.message);clearInterval(deckTimer)}},2000);
+}
+async function discoverDecks(){
+  try{const result=await gatewayApi("/api/decks_discover",{port:Number($("deck_port").value)});renderDeckDiscovery(result.discovery)}catch(e){toast(e.message)}
+}
+// fields: the name and public address to save; the isolation switch saves alone with the stored ones.
+async function saveNetworkSettings(isolate,fields){
+  const changed=isolate!==(deckDirectory.network?.isolate_terminals===true);
+  await gatewayApi("/api/network_save",{...fields,isolate_terminals:isolate});
+  // Open terminal frames were loaded under the previous mode; reopen them under the new one.
+  if(changed&&selectedDeck)for(const frame of frames.values())frame.src=frame.src;
+  await loadDeckSettings();
+}
+async function saveNetwork(){
+  const button=$("network_save");button.disabled=true;
+  try{await saveNetworkSettings($("network_isolate").checked,{name:$("network_name").value.trim(),public_url:$("network_public_url").value.trim()});toast(tr("Настройки сохранены"),"success")}catch(e){toast(e.message)}finally{button.disabled=false}
+}
+async function saveIsolation(){
+  const input=$("network_isolate");input.disabled=true;
+  const stored=deckDirectory.network||{};
+  try{await saveNetworkSettings(input.checked,{name:stored.name||deckDirectory.name,public_url:stored.public_url||""});toast(tr("Настройки сохранены"),"success")}catch(e){input.checked=!input.checked;toast(e.message)}finally{input.disabled=false}
+}
+
+if(typeof module!=="undefined")module.exports={lmMetrics};
+// Files dragged onto the window (desktop, iPad Split View) are attached to the open session, the same
+// way as the paperclip and paste. The terminal is a frame with its own document, so it is watched too.
+// Bundled before app.js; nothing here runs at load time.
+let dropHideTimer=null;
+function dragHasFiles(e){return Array.from(e.dataTransfer?.types||[]).includes("Files")}
+// Where a drop would land, or why it cannot; pure for tests.
+function dropTarget(session,blocked){
+  if(blocked)return {ok:false,text:"Дождитесь окончания отправки или загрузки"};
+  if(!session)return {ok:false,text:"Сначала откройте сессию"};
+  if(agentOf(session)==="shell")return {ok:false,text:"Выберите сессию Claude или Codex"};
+  return {ok:true,text:"Отпустите, чтобы приложить к «{0}»",args:[sessionTitle(session)]};
+}
+function showDropZone(target){
+  const zone=$("drop_zone");
+  $("drop_title").textContent=tr(target.text,target.args||[]);
+  zone.classList.toggle("blocked",!target.ok);zone.hidden=false;
+  // dragover repeats while the pointer is over the window; when it stops, the drag has left.
+  clearTimeout(dropHideTimer);dropHideTimer=setTimeout(hideDropZone,250);
+}
+function hideDropZone(){clearTimeout(dropHideTimer);$("drop_zone").hidden=true}
+function dropBlocked(){return sending||uploading||panelUpdating||Boolean(document.querySelector("dialog[open]"))}
+function onFileDrag(e){
+  if(!dragHasFiles(e))return;
+  e.preventDefault();
+  const target=dropTarget(cur(),dropBlocked());
+  e.dataTransfer.dropEffect=target.ok?"copy":"none";
+  showDropZone(target);
+}
+function onFileDrop(e){
+  if(!dragHasFiles(e))return;
+  e.preventDefault();hideDropZone();
+  const target=dropTarget(cur(),dropBlocked()),files=Array.from(e.dataTransfer.files||[]);
+  if(!target.ok){toast(tr(target.text));return}
+  uploadImages(files);
+}
+function watchFileDrops(win){
+  win.addEventListener("dragenter",onFileDrag);win.addEventListener("dragover",onFileDrag);
+  win.addEventListener("drop",onFileDrop);
+}
+
+if(typeof module!=="undefined")module.exports={dropTarget,dragHasFiles};
 const I18N=__PANEL_I18N__;
 const DATE_LOCALE=(()=>{try{return Intl.getCanonicalLocales(I18N.language)[0]}catch(e){return "en"}})();
 const $=id=>document.getElementById(id);
@@ -2835,10 +3566,29 @@ function renderTabs(){
   // screen-reader position survive; on a swap, keyboard focus stays on the same session row.
   const was=view.contains(document.activeElement)?document.activeElement:null;
   const focused=was?.dataset.session?'[data-session="'+CSS.escape(was.dataset.session)+'"]':was?.dataset.deck?'[data-deck="'+CSS.escape(was.dataset.deck)+'"]':null;
-  const list=sessions.filter(s=>matchesSessionQuery(s,q));
+  const list=sessions.filter(s=>matchesSessionQuery(s,q)),others=otherDecks.filter(d=>d.id!==selectedDeck);
+  // Computers keep one order whichever is selected: switching only moves the highlight, never the rows.
+  const order=deckOrder();
+  if(order.length<2&&!others.length){renderCurrentSessions(box,list);finishTabs(view,box,focused);return}
+  for(const id of order){
+    if(id===selectedDeck){box.append(deckHeader({id,name:currentDeckName(),count:list.length},true));renderCurrentSessions(box,list);continue}
+    const deck=others.find(d=>d.id===id);
+    if(deck)renderDeckSection(box,deck,q);
+    else if(!q)box.append(deckHeader({id,name:deckName(id),count:"…"},false));  // Its list has not arrived yet.
+  }
+  finishTabs(view,box,focused);
+}
+// This computer first, then connected ones in the order they were added; any list we know but the
+// directory does not (yet) goes last.
+function deckOrder(){
+  const ids=["",...deckDirectory.decks.map(d=>d.id)];
+  for(const d of otherDecks)if(!ids.includes(d.id))ids.push(d.id);
+  if(!ids.includes(selectedDeck))ids.push(selectedDeck);
+  return ids;
+}
+function deckName(id){return id?deckDirectory.decks.find(d=>d.id===id)?.name||"Agent Deck":deckDirectory.name||tr("Этот компьютер")}
+function renderCurrentSessions(box,list){
   let grp=null,i=0;
-  const others=otherDecks.filter(d=>d.id!==selectedDeck);
-  if(others.length)box.append(deckHeader({id:selectedDeck,name:currentDeckName(),count:list.length},true));
   for(const s of list){
     if(s.group!==grp){grp=s.group;box.append(el("div","grp",grp))}
     i++;const st=state(s);
@@ -2860,7 +3610,8 @@ function renderTabs(){
     const start=el("button","empty-new",svgIcon("plus"),el("span","",tr("Новая сессия")));start.type="button";start.onclick=openNew;
     box.append(el("div","empty-list",el("span","",tr("Сессий пока нет")),start));
   }
-  for(const deck of others)renderDeckSection(box,deck,q);
+}
+function finishTabs(view,box,focused){
   if(box.innerHTML!==view.innerHTML){
     view.replaceChildren(...box.childNodes);
     if(focused)view.querySelector(focused)?.focus({preventScroll:true});
@@ -2890,7 +3641,7 @@ function frameFor(name){
     f=document.createElement("iframe");f.src=activePath("/t/?arg="+encodeURIComponent("=cc-"+name));
     // Only the overlay reacts: a full show() would scroll the Screen view or move focus into the terminal.
     f.dataset.loading="1";f.addEventListener("load",()=>{delete f.dataset.loading;if(frames.get(active)===f&&curMode()==="term")$("term_loading").hidden=true},{once:true});
-    f.onload=()=>{try{f.contentWindow.addEventListener("keydown",hotkeys,true);hookClipboard(f.contentWindow);attachDrawerSwipe(f.contentDocument,drawerSwipe)}catch(e){}};
+    f.onload=()=>{try{f.contentWindow.addEventListener("keydown",hotkeys,true);watchFileDrops(f.contentWindow);hookClipboard(f.contentWindow);attachDrawerSwipe(f.contentDocument,drawerSwipe)}catch(e){}};
     $("stage").append(f);frames.set(name,f);
   }
   return f;
@@ -3192,6 +3943,7 @@ function settleImageChoice(){if(choosingImages)setTimeout(()=>{choosingImages=fa
 addEventListener("focus",settleImageChoice);
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)settleImageChoice()});
 $("image_files").addEventListener("change",e=>{choosingImages=false;const files=Array.from(e.target.files||[]);e.target.value="";uploadImages(files)});
+watchFileDrops(window);
 $("msg").addEventListener("paste",e=>{
   const files=Array.from(e.clipboardData&&e.clipboardData.files||[]);
   if(files.length){e.preventDefault();uploadImages(files)}
@@ -3284,10 +4036,6 @@ const GH_ICON='<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColo
 let repos=[],ghLogin=null;
 async function ghStatus(){try{const st=await api("/api/github/status");ghLogin=st.connected?st.login:null}catch(e){ghLogin=null}return ghLogin}
 async function ghConnect(){if(await post("/api/github_login",{})){if($("dlg").open)$("dlg").close();select("github-login");setMode("screen")}}
-async function agentAction(kind,agent){
-  const name=kind==="install"?"install-"+agent:agent+"-login";
-  if(await post("/api/agent_"+kind,{agent})){select(name);if(isMobile())setMode("screen")}
-}
 function btn(label,cls,fn,title){const b=el("button",cls||"",label);b.onclick=fn;if(title)b.title=title;return b}
 let lastGh=0,lastAg={},usageData={};
 async function checkGithubFoot(force){
@@ -3369,11 +4117,11 @@ function localUsage(profile){
   summary.title=model+" · "+profile.name;summary.setAttribute("aria-label",summary.title);
   details.open=openLocalModels.has(profile.id);
   details.addEventListener("toggle",()=>{if(details.open)openLocalModels.add(profile.id);else openLocalModels.delete(profile.id)});
-  const full=el("div","",model);details.append(summary,full,el("p","",profile.name+" · "+performanceText(sample,false)));box.append(details);
+  const full=el("div","",model);details.append(summary,full,el("p","",profile.name+" · "+(lmMetrics(sample)||tr("Нет замеров"))));box.append(details);
   const line=el("div","local-live-line");
   const seconds=Math.floor(live?.request_time_seconds||0),elapsed=Math.floor(seconds/60)+":"+String(seconds%60).padStart(2,"0");
   const state=el("span","local-state",live?(live.phase==="waiting"?"◌ TTFT "+elapsed:(live.phase==="tool"?"⚙ ":"✦ ")+elapsed+(live.chunks?" · "+live.chunks+" Δ":"")):"✓ "+(Number.isFinite(sample.output_tokens)?sample.output_tokens+" tok":"—"));
-  state.title=live?tr(labels[live.phase]||labels.waiting):performanceText(sample,false);
+  state.title=live?tr(labels[live.phase]||labels.waiting):(lmMetrics(sample)||tr("Нет замеров"));
   if(live){box.setAttribute("aria-busy","true");state.classList.add("local-active")}
   line.append(state);
   const m=Number.isFinite(live?.tokens_per_second)?live:sample;
@@ -3384,35 +4132,10 @@ function localUsage(profile){
   line.append(speed);box.append(line);
   return box;
 }
-let hubSection="agents",lmData={profiles:[],discovery:{}},lmTimer=null,returnToNew=false,lmRefreshPending=null,lmModelsChecked=0;
-function settingsSection(section){
-  hubSection=section;for(const name of ["agents","models","connections","network","backups","app"])$("hub_"+name).hidden=name!==section;
-  if(section==="backups"&&$("settings_dlg").open)loadBackups();
-  if(section==="connections"&&$("settings_dlg").open)loadPush();
-  if(section==="network"&&$("settings_dlg").open)loadFleet(true);
-  for(const b of document.querySelectorAll(".hub-nav button")){
-    b.classList.toggle("on",b.dataset.section===section);b.setAttribute("aria-current",String(b.dataset.section===section));
-    if(b.dataset.section===section&&isMobile())requestAnimationFrame(()=>b.scrollIntoView({inline:"nearest",block:"nearest"}));
-  }
-  updateHubNavFade();
-  if(section==="models"&&$("settings_dlg").open)refreshLMModels();
-}
-function updateHubNavFade(){const nav=document.querySelector(".hub-nav");nav.classList.toggle("more-right",nav.scrollLeft+nav.clientWidth<nav.scrollWidth-4)}
-document.querySelector(".hub-nav").addEventListener("scroll",updateHubNavFade,{passive:true});
-async function openSettings(section="agents"){
-  drawer(false);sheet(false);settingsSection(section);
-  if(!$("settings_dlg").open)$("settings_dlg").showModal();updateHubNavFade();
-  if(section==="backups")loadBackups();
-  if(section==="connections")loadPush();
-  renderHub();
-  await Promise.allSettled([loadDeckSettings(),(async()=>{const data=await api("/api/project_directory");$("project_directory").value=data.directory})(),refreshLMModels(),loadIntegrations(),checkGithubFoot(),(async()=>{const data=await api("/api/locales");$("ui_language").replaceChildren(...data.languages.map(x=>{const o=el("option","",x.name);o.value=x.code;return o}));$("ui_language").value=I18N.language})()]);
-  clearInterval(lmTimer);lmTimer=setInterval(()=>{if(!document.hidden&&$("settings_dlg").open){if(lmData.discovery?.phase==="running")loadLM(false);if(hubSection==="models"&&Date.now()-lmModelsChecked>30000)refreshLMModels()}},2000);
-}
-$("settings_dlg").addEventListener("close",()=>{if($("settings_dlg").open)return;clearInterval(lmTimer);clearInterval(deckTimer);closeKimi();closeIntegrations();$("lm_key").value="";if(returnToNew){returnToNew=false;$("dlg").showModal();renderSources()}});
+hubInit();
 async function saveProjectDirectory(){
   await saveDirectorySetting({request:api,input:$("project_directory"),button:$("project_directory_save"),notify:toast,translate:tr});
 }
-let deckTimer=null;
 async function loadDeckSettings(){
   const [data,network]=await Promise.all([gatewayApi("/api/decks"),gatewayApi("/api/network")]);
   const current=data.decks.find(deck=>deck.id===selectedDeck);
@@ -3423,16 +4146,7 @@ async function loadDeckSettings(){
   $("deck_switch").hidden=!data.decks.length&&!selectedDeck;
   deckDirectory={decks:data.decks,name:network.name,network};loadOtherDecks();
   if(Date.now()-fleet.loadedAt>10*60*1000||$("settings_dlg").open)loadFleet();else renderFleet();
-  $("network_name").value=network.name;$("network_public_url").value=network.public_url;$("network_isolate").checked=network.isolate_terminals===true;
-  $("network_bind").textContent="http://"+network.bind_host+":"+network.bind_port;
-  $("network_browser").textContent=location.origin;
-  const box=$("deck_connections");box.replaceChildren();
-  for(const deck of data.decks){
-    const version=el("span","deck-version");version.dataset.deckVersion=deck.id;
-    const card=el("div","deck-connection",el("strong","",deck.name),el("p","",deck.url," · ",version));
-    card.append(el("div","deck-actions",btn(tr("Переключиться"),"pri",()=>switchDeck(deck.id)),btn(tr("Изменить"),"",()=>editDeck(deck)),btn(tr("Удалить"),"danger",()=>removeDeck(deck.id))));box.append(card);
-  }
-  renderDeckDiscovery(data.discovery);
+  renderComputers(data,network);
   if(selectedDeck&&!data.decks.some(d=>d.id===selectedDeck))switchDeck("");
 }
 // Sessions of every connected machine, so switching environments is one tap from the sidebar.
@@ -3530,91 +4244,6 @@ function resetInstanceState(known){
   $("pre").dataset.raw="";$("pre").replaceChildren();$("srv").replaceChildren();$("ver").replaceChildren();
   $("metric_cpu").textContent=$("metric_ram").textContent="—";
 }
-function editDeck(deck={}){
-  $("deck_id").value=deck.id||"";$("deck_name").value=deck.name||"";$("deck_url").value=deck.url||"";$("deck_username").value=deck.username||"";$("deck_password").value="";
-  $("deck_editor").open=true;$("deck_editor").scrollIntoView({block:"nearest"});
-}
-async function saveDeck(){
-  const button=$("deck_save");button.disabled=true;
-  try{await gatewayApi("/api/decks_save",{id:$("deck_id").value||undefined,name:$("deck_name").value.trim(),url:$("deck_url").value.trim(),username:$("deck_username").value.trim(),password:$("deck_password").value});$("deck_password").value="";$("deck_editor").open=false;await loadDeckSettings();toast(tr("Agent Deck подключён"),"success")}
-  catch(e){$("deck_password").value="";toast(e.message)}finally{button.disabled=false}
-}
-async function removeDeck(identity){
-  if(!await confirmAction(tr("Отключить этот Agent Deck?"),{confirm:tr("Удалить"),danger:true}))return;
-  try{await gatewayApi("/api/decks_remove",{id:identity});if(identity===selectedDeck)switchDeck("");else await loadDeckSettings()}catch(e){toast(e.message)}
-}
-function renderDeckDiscovery(discovery){
-  $("deck_discover").disabled=discovery.phase==="running";
-  $("deck_discovery_status").textContent=discovery.error||tr(discovery.phase==="running"?"Поиск…":discovery.phase==="done"?"Поиск завершён":"");
-  $("deck_discovery_results").replaceChildren(...(discovery.results||[]).map(deck=>el("div","deck-connection deck-result",el("div","deck-info",el("strong","",deck.name),el("p","",deck.url)),el("div","deck-actions",btn(tr("Подключить"),"",()=>editDeck(deck))))));
-  clearInterval(deckTimer);
-  if(discovery.phase==="running")deckTimer=setInterval(async()=>{if(document.hidden||!$("settings_dlg").open)return;try{const data=await gatewayApi("/api/decks");renderDeckDiscovery(data.discovery)}catch(e){toast(e.message);clearInterval(deckTimer)}},2000);
-}
-async function discoverDecks(){
-  try{const result=await gatewayApi("/api/decks_discover",{port:Number($("deck_port").value)});renderDeckDiscovery(result.discovery)}catch(e){toast(e.message)}
-}
-async function saveNetwork(){
-  const button=$("network_save");button.disabled=true;
-  const isolate=$("network_isolate").checked,changed=isolate!==(deckDirectory.network?.isolate_terminals===true);
-  try{await gatewayApi("/api/network_save",{name:$("network_name").value.trim(),public_url:$("network_public_url").value.trim(),isolate_terminals:isolate});
-    // Open terminal frames were loaded under the previous mode; reopen them under the new one.
-    if(changed&&selectedDeck)for(const frame of frames.values())frame.src=frame.src;await loadDeckSettings();toast(tr("Настройки сохранены"),"success")}
-  catch(e){toast(e.message)}finally{button.disabled=false}
-}
-// quiet: a routine action (updating something that works) need not shout like a missing setup step.
-function card(name,status,label,action,secondary=[],hidden=false,quiet=false){const c=el("div","hub-card",el("div","card-top",el("div","card-main",el("h4","",name),el("p","",status)),btn(label,quiet?"pri quiet":"pri",action)));if(secondary.length){const d=el("details","",el("summary","",tr("Другие действия")));for(const [text,fn] of secondary)d.append(btn(text,"",fn));c.append(d)}c.hidden=hidden;return c}
-function openCardDetails(box){return new Set([...box.querySelectorAll(".hub-card")].filter(c=>c.querySelector("details[open]")).map(c=>c.querySelector("h4").textContent))}
-function restoreCardDetails(box,open){for(const c of box.querySelectorAll(".hub-card")){const d=c.querySelector("details");if(d&&open.has(c.querySelector("h4").textContent))d.open=true}}
-function renderHub(){
-  const openAgents=openCardDetails($("hub_agents")),openModels=openCardDetails($("model_cards"));
-  const selections=new Map([...$("model_cards").querySelectorAll("select")].map(x=>[x.dataset.profile,x.value]));
-  $("hub_agents").replaceChildren(...["claude","codex","kimi","pi"].map(a=>{const st=lastAg[a]||{};if(a==="pi")return card("Pi",st.version||tr("Не установлен"),st.installed?tr("Обновить"):tr("Установить"),()=>agentAction("install",a),[],false,st.installed);if(a==="kimi")return card(AGENTS[a].label,st.version||tr("Не установлен"),st.installed?(lastAg.kimi_config?.configured?tr("Обновить"):tr("Указать ключ")):tr("Установить"),()=>st.installed&&!lastAg.kimi_config?.configured?openKimi():agentAction("install",a),[],false,st.installed&&lastAg.kimi_config?.configured);return card(AGENTS[a].label,[st.version,st.installed?(st.logged_in?tr("подключён"):tr("Войти")):tr("Не установлен")].filter(Boolean).join(" · "),st.installed?(st.logged_in?tr("Обновить"):tr("Войти")):tr("Установить"),()=>agentAction(st.installed&&!st.logged_in?"login":"install",a),st.installed&&!st.logged_in?[[tr("Обновить"),()=>agentAction("install",a)]]:[],false,st.installed&&st.logged_in)}));
-  restoreCardDetails($("hub_agents"),openAgents);
-  // Rebuilding during a running test/benchmark would re-enable its buttons and allow a duplicate run.
-  if($("model_cards").getAttribute("aria-busy")!=="true")renderModelCards(selections,openModels);
-  $("connection_cards").replaceChildren(card("GitHub",ghLogin||tr("Не подключён"),ghLogin?tr("Репозитории"):tr("Подключить"),()=>{returnToNew=false;$("settings_dlg").close();ghLogin?openNew():ghConnect()}),card("Telegram",telegramConfig.paired?tr("подключён"):tr("Не подключён"),tr("Настроить"),()=>openEditor("telegram"),[],!$("integrations_dlg").hidden));
-  if(panelVersion)renderVersion(panelVersion);
-}
-function renderModelCards(selections,open){
-  const cards=[card("Kimi",lastAg.kimi_config?.configured?tr("Ключ сохранён на сервере"):tr("Ключ ещё не настроен"),tr("Настроить"),()=>openEditor("kimi"),[],!$("kimi_dlg").hidden)];
-  for(const p of lmData.profiles||[]){
-    const c=card(p.name+" · LM Studio",p.url+" · "+tr(p.status==="online"?"подключён":p.status==="needs_key"?"Нужен ключ":p.status==="offline"?"Недоступен":"Не проверен"),tr("Обновить модели"),()=>lmAction("probe",{id:p.id}),[[tr("Изменить"),()=>editLM(p)],[tr("Удалить"),()=>lmAction("remove",{id:p.id})]]);
-    const samples=p.measurements?Object.values(p.measurements).flatMap(group=>Object.values(group)):[p.performance||{}];for(const sample of samples)c.append(el("p","",performanceText(sample,false)));
-    if(p.models?.length){const select=el("select","");select.dataset.profile=p.id;select.setAttribute("aria-label",tr("Модель"));for(const m of p.models){const o=el("option","",m.name+(m.loaded?" · "+tr("Загружена"):"")+(m.tool_tested?" · ✓ tools":""));o.value=m.id;select.append(o)}if(selections.has(p.id))select.value=selections.get(p.id);if(!select.value&&select.options.length)select.selectedIndex=0;c.append(select);const detail=el("p","");const describe=()=>{const m=p.models.find(x=>x.id===select.value);detail.textContent=[m.context_length||m.max_context_length?tr("Контекст: {0}",[m.context_length||m.max_context_length]):"",m.quantization||"",m.tool_tested?tr("Инструменты: ✓"):tr("Инструменты: ?")].filter(Boolean).join(" · ")};select.onchange=describe;describe();c.append(detail);const actions=el("div","acts",btn(tr("Проверить инструменты"),"",()=>lmAction("test",{id:p.id,model:select.value})),btn(tr("Измерить скорость"),"",()=>lmAction("benchmark",{id:p.id,model:select.value})));c.append(actions)}cards.push(c);
-  }
-  $("model_cards").replaceChildren(...cards);restoreCardDetails($("model_cards"),open);
-}
-function performanceText(m,includeModel=true){
-  const parts=[m.source==="session"?tr("Последний ответ"):m.source==="benchmark"?tr("Тест скорости"):tr("Без лимитов")];
-  if(Number.isFinite(m.tokens_per_second))parts.push(m.tokens_per_second.toFixed(1)+" tok/s");
-  if(Number.isFinite(m.time_to_first_token_seconds))parts.push("TTFT "+m.time_to_first_token_seconds.toFixed(2)+" s");
-  if(Number.isFinite(m.model_load_time_seconds))parts.push(tr("Загрузка")+" "+m.model_load_time_seconds.toFixed(2)+" s");
-  if(includeModel&&m.model)parts.push(m.model);return parts.join(" · ");
-}
-async function refreshLMModels(){
-  if(document.hidden)return;
-  if(lmRefreshPending)return lmRefreshPending;
-  lmModelsChecked=Date.now();
-  lmRefreshPending=(async()=>{try{lmData=await refreshModelCatalog(api);if($("settings_dlg").open)renderHub();renderDiscovery();renderSources()}catch(e){if(!e.offline)toast(e.message)}finally{lmRefreshPending=null}})();
-  return lmRefreshPending;
-}
-async function loadLM(refresh=true){try{lmData=await api("/api/lmstudio");if($("settings_dlg").open&&refresh)renderHub();renderDiscovery()}catch(e){if(e.message!==STALE)$("lm_progress").textContent=e.message}}
-function editLM(p){$("lm_editor").open=true;$("lm_id").value=p.id||"";$("lm_name").value=p.name||"";$("lm_url").value=p.url||"";$("lm_key").value="";$("lm_clear_key").checked=false;$("lm_editor").scrollIntoView({block:"nearest"})}
-function resetLM(){editLM({});$("lm_editor").open=false}
-async function saveLM(){try{const saved=await api("/api/lm_save",{id:$("lm_id").value||undefined,name:$("lm_name").value.trim(),url:$("lm_url").value.trim(),key:$("lm_key").value,clear_key:$("lm_clear_key").checked});$("lm_key").value="";await api("/api/lm_probe",{id:saved.profile.id});resetLM();await loadLM();renderSources()}catch(e){toast(e.message)}}
-async function lmAction(action,data){
-  if($("model_cards").getAttribute("aria-busy")==="true")return;
-  const buttons=[...$("model_cards").querySelectorAll("button")];buttons.forEach(b=>b.disabled=true);$("model_cards").setAttribute("aria-busy","true");toast(tr("Загружаю…"));
-  let r=null;
-  try{r=await api("/api/lm_"+action,data);if(r.result)toast(r.result.ok?tr("Проверка завершена"):r.result.error,r.result.ok?"success":"error")}catch(e){toast(e.message)}
-  finally{buttons.forEach(b=>b.disabled=false);$("model_cards").removeAttribute("aria-busy")}
-  // Reload after clearing aria-busy, otherwise renderHub would skip the refreshed model cards.
-  if(r){await loadLM();renderSources()}
-}
-async function discoverLM(cancel=false){try{const ports=$("lm_ports").value.split(",").map(x=>Number(x.trim()));await api("/api/lm_discover",cancel?{cancel:true}:{ports});await loadLM()}catch(e){toast(e.message)}}
-function renderDiscovery(){const d=lmData.discovery||{};$("lm_progress").textContent=d.error||[tr(d.phase==="running"?"Поиск…":d.phase==="done"?"Поиск завершён":d.phase==="cancelled"?"Остановлено":""),d.total?d.checked+" / "+d.total:""].filter(Boolean).join(" · ");$("lm_cancel").hidden=d.phase!=="running";$("lm_results").replaceChildren(...(d.results||[]).map(p=>card(p.name,p.url+(p.status==="needs_key"?" · "+tr("Нужен ключ"):""),tr("Добавить"),()=>editLM(p))))}
-function openEditor(kind){kind==="kimi"?openKimi():openIntegrations()}
-function configureSource(){returnToNew=true;$("dlg").close();openSettings("models")}
 function renderSources(){
   const old=$("n_source").value;$("source_row").hidden=!["claude","kimi","pi"].includes(newAgent);
   const values=[];if(newAgent==="claude")values.push([{kind:"default"},"Claude"]);
@@ -3636,106 +4265,6 @@ function applyAutocorrect(){
 }
 function saveAutocorrect(){try{localStore.setItem("cc.autocorrect",$("autocorrect_enabled").checked?"1":"0")}catch(e){}applyAutocorrect()}
 applyAutocorrect();
-function closeKimi(){$("kimi_key").value="";$("kimi_dlg").hidden=true;if($("settings_dlg").open)renderHub()}
-function openKimi(){
-  const config=lastAg.kimi_config||{};
-  $("kimi_key").value="";$("kimi_model").value=config.model||"k3";
-  $("kimi_state").textContent=config.configured?tr("Ключ сохранён на сервере"):tr("Ключ ещё не настроен");
-  $("kimi_dlg").hidden=false;openSettings("models");$("kimi_dlg").scrollIntoView({block:"nearest"});$("kimi_key").focus({preventScroll:true});
-}
-
-async function saveKimi(clear=false){
-  $("kimi_save").disabled=true;
-  try{
-    await api("/api/kimi_config",{key:$("kimi_key").value.trim(),model:$("kimi_model").value,clear});
-    closeKimi();await checkGithubFoot();await loadUsage();renderHub();renderSources();toast(clear?tr("Ключ Kimi удалён"):tr("Настройки Kimi сохранены"),"success");
-  }catch(e){toast(e.message)}finally{$("kimi_save").disabled=false}
-}
-async function clearKimi(){if(await confirmAction(tr("Удалить ключ Kimi из панели?"),{confirm:tr("Удалить ключ"),danger:true}))saveKimi(true)}
-let telegramConfig={},integrationTimer=null,telegramDirty=false;
-for(const id of ["telegram_token","telegram_enabled"])$(id).addEventListener("input",()=>{telegramDirty=true});
-function renderTelegram(config){
-  const wasConfigured=telegramConfig.configured;
-  telegramConfig=config||{};
-  const c=telegramConfig;
-  if(wasConfigured!==c.configured)$("telegram_credentials").open=!c.configured;
-  $("telegram_credentials").querySelector("summary").textContent=c.configured?tr("Изменить токен бота"):tr("Токен бота");
-  $("telegram_state").classList.toggle("connected",!!c.paired&&!!c.enabled&&!c.error);
-  $("telegram_state").classList.toggle("error",!!c.error);
-  $("telegram_state").textContent=c.available===false?tr("Обновите панель: установите интеграции из меню обновлений"):c.error||
-    (c.paired?`@${c.bot} · ${c.account||tr("аккаунт привязан")} · ${c.enabled?tr("включён"):tr("пауза")}`:c.configured?tr("@{0} · привяжите свой Telegram",[c.bot]):tr("Бот ещё не подключён"));
-  $("telegram_duplicates").hidden=!c.duplicates?.length;
-  if(c.duplicates?.length)$("telegram_duplicates").textContent=tr("Этот бот также включён на: {0}. Вопросы будут приходить дважды; отключите Telegram там.",[c.duplicates.join(", ")]);
-  $("telegram_enabled").checked=c.enabled!==false;
-  $("telegram_pair").style.display=c.configured&&!c.pair_url?"flex":"none";
-  $("telegram_pair").textContent=c.paired?tr("Привязать другой аккаунт"):tr("Получить ссылку привязки");
-  $("telegram_pairing").style.display=c.pair_url?"block":"none";
-  if(typeof c.pair_url==="string"&&c.pair_url.startsWith("https://t.me/"))$("telegram_link").href=c.pair_url;else $("telegram_link").removeAttribute("href");
-  renderInteg();
-}
-async function loadIntegrations(){
-  try{const data=await api("/api/integrations");renderTelegram(data.telegram)}catch(e){if(!$("integrations_dlg").hidden&&e.message!==STALE)$("telegram_state").textContent=e.message}
-}
-function openIntegrations(){
-  telegramDirty=false;$("telegram_token").value="";$("telegram_credentials").open=!telegramConfig.configured;$("integrations_dlg").hidden=false;openSettings("connections");loadIntegrations();
-  clearInterval(integrationTimer);integrationTimer=setInterval(()=>{if(!document.hidden&&!telegramDirty)loadIntegrations()},3000);
-}
-function closeIntegrations(){$("telegram_token").value="";clearInterval(integrationTimer);$("integrations_dlg").hidden=true;if($("settings_dlg").open)renderHub()}
-async function saveTelegram(clear=false){
-  $("telegram_save").disabled=true;
-  try{
-    const data=await api("/api/telegram_config",{token:$("telegram_token").value.trim(),enabled:$("telegram_enabled").checked,language:I18N.language,clear});
-    telegramDirty=false;$("telegram_token").value="";renderTelegram(data.telegram);renderHub();
-    if(!clear&&!data.telegram.paired)await pairTelegram();
-    toast(clear?tr("Telegram отключён"):tr("Настройки Telegram сохранены"),"success");
-  }catch(e){toast(e.message)}finally{$("telegram_save").disabled=false}
-}
-async function pairTelegram(){
-  try{const data=await api("/api/telegram_pair",{});renderTelegram(data.telegram)}catch(e){toast(e.message)}
-}
-async function clearTelegram(){if(await confirmAction(tr("Отключить Telegram и удалить сохранённый токен?"),{confirm:tr("Отключить"),danger:true}))saveTelegram(true)}
-let panelUpdating=false,panelVersion=null,versionTimer=null,versionLoading=null;
-const UPDATE_PHASES=new Set(["checking","downloading","installing","restarting"]);
-function versionInfo(v){
-  const revision=el("span","version-build","UI "+UI_REVISION.slice(0,7));revision.title=UI_REVISION;
-  return el("div","version-info",el("span","version-number","v"+v.version),revision);
-}
-function renderVersion(v){
-  panelVersion=v;const job=v.job||{},box=$("ver"),mobile=$("s_update");
-  panelUpdating=UPDATE_PHASES.has(job.phase);
-  box.replaceChildren("v"+v.version);box.title=v.latest?tr("последний релиз: v{0}",[v.latest]):"";
-  mobile.style.display="none";
-  let label,action;
-  if(panelUpdating){label=job.message||tr("Обновляю панель…");action=()=>{}}
-  else if(job.phase==="done"&&job.version===v.version&&UI_PANEL_VERSION!==null&&job.version!==UI_PANEL_VERSION){label=tr("Обновлено · перезагрузить интерфейс");action=refreshInterface}
-  else if(job.phase==="error"){label=tr("Обновление не удалось · повторить");action=startPanelUpdate;box.title=job.message||label}
-  else if(v.update){label=v.incomplete?tr("Доустановить компоненты"):tr("Обновить до v")+v.latest;action=startPanelUpdate}
-  if(label){
-    const b=btn(label,"pri",action);b.id="b_update";b.disabled=panelUpdating;
-    if(!v.can_update&&!panelUpdating&&job.phase!=="done"){
-      b.disabled=true;box.title=v.container?tr("Контейнер: обновите образ и пересоздайте контейнер: {0}",[v.update_command||"docker compose up -d --build"]):tr("Разработка: обновляйте чекаут через git. Кнопка доступна после установки панели.");
-    }
-    $("hub_version").replaceChildren(versionInfo(v),b);box.append(btn(tr("Обновить"),"",()=>openSettings("app")));$("s_update_label").textContent=label;mobile.style.display="flex";mobile.disabled=b.disabled;
-  }
-  if(!label)$("hub_version").replaceChildren(versionInfo(v));
-  if(action!==refreshInterface){const refresh=btn(tr("Обновить интерфейс"),"",refreshInterface);refresh.id="b_refresh_interface";refresh.disabled=panelUpdating;$("hub_version").append(refresh)}
-  // The action people open this card for is primary; with an update pending, that is the update itself.
-  const check=btn(tr("Проверить обновления"),label?"":"pri",checkPanelUpdates);check.id="b_check_updates";check.disabled=panelUpdating;$("hub_version").append(check);
-  $("auto_update_enabled").checked=v.auto_update?.enabled!==false;
-  $("auto_update_enabled").disabled=!v.can_update||!v.auto_update||panelUpdating;
-  $("auto_update_status").textContent=v.release_error?tr("Не удалось проверить обновления. Повторите проверку."):v.auto_update?.phase==="waiting"?tr("Обновление ждёт завершения локальной генерации"):"";
-  renderAttachments();
-}
-async function checkPanelUpdates(){
-  const button=$("b_check_updates");if(button)button.disabled=true;
-  try{renderVersion(await api("/api/check_update",{}));toast(tr("Проверка завершена"),"success")}
-  catch(e){toast(e.message)}finally{if(button)button.disabled=false}
-}
-async function saveAutoUpdates(){
-  const input=$("auto_update_enabled"),enabled=input.checked;input.disabled=true;
-  try{const data=await api("/api/auto_update",{enabled});renderVersion({...panelVersion,auto_update:data.auto_update})}
-  catch(e){input.checked=!enabled;toast(e.message)}finally{input.disabled=!panelVersion?.can_update}
-}
 let UI_PANEL_VERSION=null;
 async function loadVersion(){
   if(versionLoading===deckEpoch)return;clearTimeout(versionTimer);

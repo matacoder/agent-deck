@@ -30,6 +30,7 @@ function renderFleet(){
   for(const node of document.querySelectorAll("[data-deck-version]")){
     const v=fleet.versions.get(node.dataset.deckVersion);
     node.textContent=versionLabel(v,tr);node.classList.toggle("outdated",Boolean(v?.update));
+    if(node.classList.contains("card-status"))node.className="card-status "+(!v?"bad":v.update||UPDATING.has(v.job?.phase)?"warn":"ok");
   }
   const targets=fleetTargets(fleet.versions),gatewayOld=Boolean(fleet.gateway?.update&&fleet.gateway?.can_update);
   const count=targets.length+(gatewayOld?1:0);
@@ -37,6 +38,7 @@ function renderFleet(){
   if(!deckDirectory.decks.length)return;
   bar.append(el("span","",fleet.updating?tr("Обновляю компьютеры…"):count?tr("Обновления доступны: {0}",[count]):tr("Все компьютеры обновлены")));
   if(count&&!fleet.updating)bar.append(btn(tr("Обновить все"),"pri",updateAllComputers));
+  if(typeof updateHubDots==="function"&&$("settings_dlg").open)updateHubDots();
 }
 async function updateAllComputers(){
   const targets=fleetTargets(fleet.versions),gatewayOld=Boolean(fleet.gateway?.update&&fleet.gateway?.can_update);
