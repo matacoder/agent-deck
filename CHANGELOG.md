@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.22.9 — 2026-10-07
+
+- The message field no longer creeps while typing (seen in desktop Safari): its height now includes the border, so it never ends up 2 px short and scrolled, and it is re-measured only when a line is added or text is removed instead of collapsing on every key.
+
 ## 1.22.8 — 2026-10-07
 
 - Computers: a machine found on Tailscale that is already connected shows "Connected" (or "Connected as …" when it was added under another name) with an Open button, instead of offering to connect it again. Machines are matched by address, not name.

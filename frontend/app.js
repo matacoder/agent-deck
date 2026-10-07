@@ -749,7 +749,17 @@ function hideKeyboard(){
 $("msg").addEventListener("focus",()=>document.body.classList.add("message-focused"));
 $("msg").addEventListener("blur",()=>document.body.classList.remove("message-focused"));
 
-$("msg").addEventListener("input",e=>{if(active)messageDrafts.set(active,e.target.value);e.target.style.height="";e.target.style.height=Math.min(e.target.scrollHeight,160)+"px"});
+// The field grows with its text. Its height includes the border (border-box), otherwise it stays 2 px
+// short and Safari scrolls it on every key. It is collapsed and measured again only when the text got
+// shorter: typing forward changes the height only when a line is added.
+let msgLength=0;
+function fitMessage(box){
+  if(box.value.length<msgLength||!box.value)box.style.height="";
+  msgLength=box.value.length;
+  const border=box.offsetHeight-box.clientHeight,next=Math.min(box.scrollHeight+border,160)+"px";
+  if(box.style.height!==next&&(box.scrollHeight>box.clientHeight||!box.style.height))box.style.height=next;
+}
+$("msg").addEventListener("input",e=>{if(active)messageDrafts.set(active,e.target.value);fitMessage(e.target)});
 $("msg").addEventListener("keydown",e=>{
   if(e.key==="Enter"&&!e.shiftKey&&(isMobile()?false:true)&&!e.isComposing){e.preventDefault();send()}
   else if(e.key==="Enter"&&(e.metaKey||e.ctrlKey)){e.preventDefault();send()}
