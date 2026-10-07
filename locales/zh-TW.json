@@ -637,6 +637,18 @@
     "Enter — отправить, Shift+Enter — новая строка": "Enter sends, Shift+Enter adds a line",
     "ждёт ответа": "waiting for an answer",
     "Скрыть или показать список сессий": "Hide or show the session list",
-    "Новый файл": "New file"
+    "Новый файл": "New file",
+    "Модель для группировки": "Model for grouping",
+    "{0} — локально, бесплатно": "{0} — local, free",
+    "Сгруппировано: {0}": "Grouped with {0}",
+    "Модель группирует коммиты по фичам. Локальной модели может понадобиться несколько минут.": "The model is grouping commits by feature. A local model may need a few minutes.",
+    "Модель прочитает заголовки последних 80 коммитов и имена изменённых файлов (без кода) и объединит их в группы по фичам. Результат сохраняется до следующего коммита.": "The model reads the subjects of the last 80 commits and the names of the changed files (no code) and joins them into feature groups. The result is kept until the next commit.",
+    "Неизвестная модель для группировки": "Unknown model for grouping",
+    "Этой модели больше нет в профиле LM Studio": "This model is no longer in the LM Studio profile",
+    "Сохраните ключ Kimi в настройках агентов": "Save the Kimi key in the agent settings",
+    "Указать ключ": "Add key",
+    "план {0}%": "plan {0}%",
+    "Путь": "Path",
+    "Когда агент задаст вопрос или закончит работу, он появится здесь — на любом подключённом компьютере.": "When an agent asks a question or finishes, it shows up here — from any connected computer."
   }
 }

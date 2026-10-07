@@ -7,6 +7,18 @@ const files={session:null,listing:null,file:null,seq:0,error:"",path:""};
 function formatSize(bytes){
   return bytes<1024?bytes+" B":bytes<1048576?(bytes/1024).toFixed(1)+" KB":(bytes/1048576).toFixed(1)+" MB";
 }
+// Each folder on the way from home is one tap away instead of several "Up" taps.
+function breadcrumbs(listing){
+  const nav=el("nav","files-crumbs");nav.setAttribute("aria-label",tr("Путь"));
+  const rest=listing.path===listing.home?[]:listing.path.slice(listing.home.length+1).split("/");
+  const parts=[["~",listing.home],...rest.map((name,i)=>[name,listing.home+"/"+rest.slice(0,i+1).join("/")])];
+  parts.forEach(([name,path],i)=>{
+    if(i)nav.append(el("span","sep","/"));
+    if(i===parts.length-1){nav.append(el("span","here",name));return}
+    const link=el("button","",name);link.type="button";link.onclick=()=>loadFolder(path);nav.append(link);
+  });
+  return nav;
+}
 function homeRelative(path,home){return path===home?"~":path.startsWith(home+"/")?"~/"+path.slice(home.length+1):path}
 function filesDirty(){return Boolean(files.file&&files.file.content!==files.file.saved)}
 
@@ -69,7 +81,7 @@ function renderFiles(){
   if(!listing&&files.error){box.append(errorWithRetry(files.error,()=>loadFolder(files.path)));return}
   if(!listing){box.append(el("p","files-empty",tr("Загрузка…")));return}
   if(files.file)return renderEditor(box,listing);
-  const crumbs=el("div","files-path",el("code","",homeRelative(listing.path,listing.home)));
+  const crumbs=el("div","files-path",breadcrumbs(listing));
   if(listing.parent)crumbs.prepend(fileButton(tr("Вверх"),"files-up",()=>loadFolder(listing.parent),"arrow-up"));
   // Creating a file is occasional: a small button in the path row, the name field only once asked for.
   let create;

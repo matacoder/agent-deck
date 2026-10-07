@@ -2,6 +2,17 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.20.0 — 2026-10-07
+
+- **Feature groups on any model:** Change history lets you pick who groups the commits — a model from your LM Studio profiles (marked "local, free"; runs with reasoning off, so 80 commits take about a minute and a half on a 27B model), Kimi (with a saved key) or Claude Haiku. The choice is remembered per computer, and each result says which model made it. Codex is not offered because it can run commands.
+- A feature group's combined diff is read in one git call instead of one per commit (40 commits: from seconds to a quarter of a second).
+- Security: logging out ends every isolated terminal link issued before, not only the session cookie.
+- "Update all" in Network checks GitHub for a newer release when you open it instead of using an answer up to an hour old.
+- Agent cards: a signed-in agent shows one quiet "Update" button instead of a blue one plus a duplicate; Kimi without a key says "Add key".
+- The quota line under the input labels the plan value ("plan 40%") so the two percentages are not confused.
+- Project files: the path is clickable — each folder on the way from home is one tap.
+- Empty states: Waiting for you explains what will appear there; an empty session list has a "New session" button.
+
 ## 1.19.0 — 2026-10-07
 
 Design polish from a review on iPhone, iPhone Duo (folded and unfolded), iPad (portrait, landscape, Split View) and desktop.

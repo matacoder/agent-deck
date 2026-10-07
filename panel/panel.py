@@ -344,16 +344,39 @@ ISOLATED_ROUTE = re.compile(r'^/deck/([0-9a-f]{24})/c/([0-9a-f]{1,12}\.[0-9a-f]{
 SANDBOX = "sandbox allow-scripts allow-forms allow-popups allow-modals allow-downloads"
 
 
+TERMINAL_EPOCH = os.path.expanduser("~/.config/cc-panel/terminal-epoch")
+
+
+def terminal_epoch():
+    try:
+        with open(TERMINAL_EPOCH) as stream:
+            return int(stream.read().strip() or 0)
+    except (OSError, ValueError):
+        return 0
+
+
+def revoke_terminal_links():
+    """Logging out ends every isolated terminal link issued so far, without waiting for them to expire."""
+    from pathlib import Path
+    from integrations.relay import private_write
+    private_write(Path(TERMINAL_EPOCH), terminal_epoch() + 1)
+
+
+def _capability_signature(identity, expiry):
+    message = f"deck-terminal:{identity}:{expiry}:{terminal_epoch()}"
+    return hmac.new(COOKIE_KEY, message.encode(), hashlib.sha256).hexdigest()
+
+
 def terminal_capability(identity, now=None):
     expiry = format(int((now or time.time()) + CAPABILITY_TTL), "x")
-    return expiry + "." + hmac.new(COOKIE_KEY, f"deck-terminal:{identity}:{expiry}".encode(), hashlib.sha256).hexdigest()
+    return expiry + "." + _capability_signature(identity, expiry)
 
 
 def capability_valid(identity, token, now=None):
     expiry, _, sig = token.partition(".")
     if int(expiry, 16) < (now or time.time()):
         return False
-    return hmac.compare_digest(sig, hmac.new(COOKIE_KEY, f"deck-terminal:{identity}:{expiry}".encode(), hashlib.sha256).hexdigest())
+    return hmac.compare_digest(sig, _capability_signature(identity, expiry))
 
 os.makedirs(project_directory.get(), exist_ok=True)
 
@@ -1095,7 +1118,7 @@ def _semver(v):
     return tuple(map(int, m.groups())) if m else None
 
 
-def version_info(force=False):
+def version_info(force=False, fresh=False):
     info = {"version": VERSION, "checkout": CHECKOUT, "repo": UPDATE_REPO,
             "can_update": updater.available(HERE, UPDATE_REPO), "job": updater.status(UPDATE_STATE),
             "auto_update": auto_update_service().status()}
@@ -1110,7 +1133,7 @@ def version_info(force=False):
                       {"Accept": "application/vnd.github+json"}, timeout=8)
         return {"latest": (r.get("tag_name") or "").lstrip("v"), "url": r.get("html_url")}
     with _release_lock:
-        if force:_cache.pop("release", None)
+        if force or (fresh and time.time() - _cache.get("release", (0, None))[0] > 60):_cache.pop("release", None)
         rel = cached("release", 1800, fetch)
     if rel.get("latest"):
         cur, new = _semver(VERSION), _semver(rel["latest"])
@@ -1681,11 +1704,69 @@ def git_payload(route, query):
         return git.group_diff(folder, [s for s in query.get("shas", [""])[0].split(",") if s])
     if route == "/api/git/groups":
         return git_grouper().status(folder, query.get("ref", [""])[0])
+    if route == "/api/git/models":
+        return grouping_models()
     raise ValueError("Agent Deck route not found")
 
 
+LOCAL_GROUP_TIMEOUT = 900  # A local model on a laptop can take minutes; it costs nothing.
+
+
+def grouping_models():
+    """Models on this computer that can group commits, local (free) first."""
+    options = []
+    try:
+        for profile in model_service().status().get("profiles", []):
+            for item in profile.get("models") or []:
+                options.append({"id": f"lmstudio:{profile['id']}:{item['id']}",
+                                "label": f"{item.get('name') or item['id']} · {profile.get('name', 'LM Studio')}", "local": True})
+    except (OSError, ValueError, KeyError, TypeError, AttributeError):
+        pass
+    kimi = kimi_config.read()
+    if kimi.get("key"):
+        options.append({"id": "kimi", "label": f"Kimi · {kimi.get('model', 'k3')}", "local": False})
+    if agent_status("claude")["logged_in"]:
+        options.append({"id": "claude", "label": "Claude Haiku", "local": False})
+    return {"models": options}
+
+
+def grouping_model(choice):
+    """None means Claude Haiku through Claude Code; others answer through their HTTP API, no tools at all."""
+    from integrations import lmstudio
+    if not choice or choice == "claude":
+        return None
+    if choice == "kimi":
+        kimi = kimi_config.read()
+        if not kimi.get("key"):
+            raise ValueError("Сохраните ключ Kimi в настройках агентов")
+        model = kimi.get("model", "k3")
+        def complete(prompt):
+            answer = lmstudio.request("https://api.kimi.com/coding", "/v1/messages", "POST",
+                                      {"model": model, "max_tokens": 8192, "messages": [{"role": "user", "content": prompt}]},
+                                      key=kimi["key"], timeout=300)
+            return "".join(block.get("text", "") for block in answer.get("content", []) if isinstance(block, dict))
+        return {"label": f"Kimi · {model}", "complete": complete}
+    match = re.fullmatch(r"lmstudio:([^:]+):(.+)", str(choice))
+    if not match:
+        raise ValueError("Неизвестная модель для группировки")
+    profile = model_service().get(match.group(1))
+    model = match.group(2)
+    if model not in {item.get("id") for item in profile.get("models") or []}:
+        raise ValueError("Этой модели больше нет в профиле LM Studio")
+    def complete(prompt):
+        # Grouping needs no reasoning; on a local machine thinking is the difference between seconds and
+        # many minutes. LM Studio turns it off with reasoning_effort "none" (ignored by other models).
+        answer = lmstudio.request(profile["url"], "/v1/chat/completions", "POST",
+                                  {"model": model, "temperature": 0.2, "reasoning_effort": "none",
+                                   "messages": [{"role": "user", "content": prompt}]},
+                                  key=profile.get("key", ""), timeout=LOCAL_GROUP_TIMEOUT)
+        return ((answer.get("choices") or [{}])[0].get("message") or {}).get("content") or ""
+    return {"label": f"{model} · {profile.get('name', 'LM Studio')}", "complete": complete}
+
+
 def action_git_group(d):
-    return git_grouper().start(session_folder(d.get("name")), d.get("_language", DEFAULT_LANGUAGE), d.get("ref") or None)
+    return git_grouper().start(session_folder(d.get("name")), d.get("_language", DEFAULT_LANGUAGE), d.get("ref") or None,
+                               grouping_model(d.get("model")))
 
 
 def action_git_fetch(d):
@@ -2042,8 +2123,9 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_json(200, {"question": question_payload(question) if question else None})
         if self.path == "/api/usage":
             return self.send_json(200, usage())
-        if self.path == "/api/version":
-            return self.send_json(200, version_info())
+        if self.path in ("/api/version", "/api/version?fresh=1"):
+            # Settings → Network asks for a fresh release check, at most once a minute (GitHub rate limits).
+            return self.send_json(200, version_info(fresh=self.path.endswith("fresh=1")))
         if self.path == "/api/server-metrics":
             return self.send_json(200, server_metrics())
         if self.path == "/api/server":
@@ -2083,6 +2165,10 @@ class Handler(BaseHTTPRequestHandler):
             if not self.same_origin():
                 self.close_connection = True
                 return self.send_json(403, {"error": "неверный источник запроса"})
+            try:
+                revoke_terminal_links()
+            except (OSError, ValueError):
+                pass  # Logging out must work even when the settings folder is read-only.
             return self.redirect("/login", f"{COOKIE}=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax")
         if not self.authorized():
             return

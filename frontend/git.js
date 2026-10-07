@@ -60,7 +60,7 @@ function fileBlock(title,file,open,content){
 
 async function openHistory(){
   if(!active)return;
-  hist.session=active;hist.ref="";hist.tab="commits";hist.back=null;freshList();
+  hist.session=active;hist.ref="";hist.tab="commits";hist.back=null;hist.models=null;freshList();
   applyCodeFont();
   if(!$("git_dlg").open)$("git_dlg").showModal();
   renderHistory();await loadHistoryPage();
@@ -118,11 +118,30 @@ async function loadGroups(){
   if(state.phase==="running"&&$("git_dlg").open)hist.timer=setTimeout(loadGroups,3000);
   if(hist.tab==="groups"&&!hist.view)renderHistory();
 }
+// Any model this computer can reach groups commits; local ones come first because they cost nothing.
+async function loadGroupModels(){
+  try{hist.models=(await api(gitPath("models"))).models||[]}catch(e){hist.models=[]}
+  if(hist.tab==="groups"&&!hist.view)renderHistory();
+}
+function groupModel(){
+  let saved="";try{saved=deckLocalStorage.getItem("cc.group-model")||""}catch(e){}
+  const models=hist.models||[];
+  return models.some(m=>m.id===saved)?saved:(models[0]?.id||"claude");
+}
+function modelPicker(){
+  const models=hist.models||[];
+  if(!models.length)return null;
+  const select=el("select","git-branch");select.setAttribute("aria-label",tr("Модель для группировки"));
+  for(const m of models){const option=el("option","",m.local?tr("{0} — локально, бесплатно",[m.label]):m.label);option.value=m.id;select.append(option)}
+  select.value=groupModel();
+  select.onchange=()=>{try{deckLocalStorage.setItem("cc.group-model",select.value)}catch(e){}};
+  return el("label","git-model",el("span","",tr("Модель")),select);
+}
 async function startGrouping(){
-  try{hist.groups=await api("/api/git_group",{name:hist.session,ref:hist.ref})}catch(e){if(e.message!==STALE)toast(e.message);return}
+  try{hist.groups=await api("/api/git_group",{name:hist.session,ref:hist.ref,model:groupModel()})}catch(e){if(e.message!==STALE)toast(e.message);return}
   renderHistory();hist.timer=setTimeout(loadGroups,3000);
 }
-function historyTab(tab){hist.tab=tab;hist.view=null;if(tab==="groups"&&!hist.groups)loadGroups();renderHistory()}
+function historyTab(tab){hist.tab=tab;hist.view=null;if(tab==="groups"){if(!hist.groups)loadGroups();if(!hist.models)loadGroupModels()}renderHistory()}
 
 function commitRow(c,back){
   const row=el("button","git-row",el("span","git-subject",c.subject),
@@ -191,13 +210,15 @@ function renderGroups(box){
         ...(group.summary?[el("span","git-summary",group.summary)]:[]),el("span","git-meta",tr("Коммитов: {0}",[group.commits.length])));
       card.type="button";card.onclick=()=>showGroup(group);box.append(card);
     }
-    const again=el("button","git-more",tr("Сгруппировать заново"));again.type="button";again.onclick=startGrouping;box.append(again);
+    if(state.model)box.append(el("p","git-meta",tr("Сгруппировано: {0}",[state.model])));
+    const again=el("button","git-more",tr("Сгруппировать заново"));again.type="button";again.onclick=startGrouping;
+    box.append(...[modelPicker(),again].filter(Boolean));
     return;
   }
-  if(state.phase==="running"){box.append(el("p","files-empty",tr("Claude Haiku группирует коммиты по фичам. Это занимает до пары минут.")));return}
-  box.append(el("p","git-summary",tr("Claude Haiku прочитает заголовки последних 80 коммитов и имена изменённых файлов (без кода) и объединит их в группы по фичам. Результат сохраняется до следующего коммита.")));
+  if(state.phase==="running"){box.append(el("p","files-empty",tr("Модель группирует коммиты по фичам. Локальной модели может понадобиться несколько минут.")));return}
+  box.append(el("p","git-summary",tr("Модель прочитает заголовки последних 80 коммитов и имена изменённых файлов (без кода) и объединит их в группы по фичам. Результат сохраняется до следующего коммита.")));
   if(state.phase==="error")box.append(el("p","diff-note",state.error));
-  const start=fileButton(tr("Сгруппировать коммиты"),"pri",startGrouping);box.append(el("div","acts",start));
+  const start=fileButton(tr("Сгруппировать коммиты"),"pri",startGrouping);box.append(...[modelPicker(),el("div","acts",start)].filter(Boolean));
 }
 
 if(typeof module!=="undefined")module.exports={diffRows};

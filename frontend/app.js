@@ -299,7 +299,10 @@ function renderTabs(){
     t.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();select(s.name)}};
     box.append(t);
   }
-  if(!sessions.length)box.append(el("div","empty-list",tr("Сессий пока нет")));
+  if(!sessions.length){
+    const start=el("button","empty-new",svgIcon("plus"),el("span","",tr("Новая сессия")));start.type="button";start.onclick=openNew;
+    box.append(el("div","empty-list",el("span","",tr("Сессий пока нет")),start));
+  }
   for(const deck of others)renderDeckSection(box,deck,q);
   if(box.innerHTML!==view.innerHTML){
     view.replaceChildren(...box.childNodes);
@@ -748,10 +751,11 @@ function compactReset(ts){
   const duration=days?tr("{0}д {1}ч",[days,hours]):hours?tr("{0}ч {1}м",[hours,minutes%60]):tr("{0}м",[minutes]);
   return "↻ "+duration;
 }
-function quotaValues(w){
+// labelled: outside the sidebar (which has "Left / Plan" headings) the plan value says what it is.
+function quotaValues(w,labelled=false){
   const percent=Number.isFinite(w?.percent)?Math.round(Math.max(0,Math.min(100,100-w.percent))):null,plan=plannedRemaining(w,now());
   const remaining=el("span","quota-percent "+quotaTone(percent,plan),percent===null?"—":percent+"%");remaining.title=tr("Остаток");
-  const target=el("span","quota-plan",plan===null?"—":plan+"%");target.title=tr("По плану к концу дня");
+  const target=el("span","quota-plan",plan===null?"—":labelled?tr("план {0}%",[plan]):plan+"%");target.title=tr("По плану к концу дня");
   target.setAttribute("aria-label",target.title+": "+target.textContent);
   return el("span","quota-values",remaining,target);
 }
@@ -763,7 +767,7 @@ function sessionStatus(session){
   const model=session.source?.model||session.model,w=primaryQuota(usageData[quota]);
   const line=el("span","session-status",el("span","composer-model",AGENTS[agent].label+(model?" · "+shortModel(model):"")));
   line.title=AGENTS[agent].label+(model?" · "+model:"")+(w?" · "+tr("Остаток")+" / "+tr("По плану к концу дня")+" · "+fmtReset(w.resets_at):"");
-  if(w)line.append(quotaValues(w),el("span","quota-reset",compactReset(w.resets_at)));
+  if(w)line.append(quotaValues(w,true),el("span","quota-reset",compactReset(w.resets_at)));
   return line;
 }
 let quotaHelpOpen=false,hubSignature="";
@@ -823,7 +827,7 @@ function settingsSection(section){
   hubSection=section;for(const name of ["agents","models","connections","network","backups","app"])$("hub_"+name).hidden=name!==section;
   if(section==="backups"&&$("settings_dlg").open)loadBackups();
   if(section==="connections"&&$("settings_dlg").open)loadPush();
-  if(section==="network"&&$("settings_dlg").open)loadFleet();
+  if(section==="network"&&$("settings_dlg").open)loadFleet(true);
   for(const b of document.querySelectorAll(".hub-nav button")){
     b.classList.toggle("on",b.dataset.section===section);b.setAttribute("aria-current",String(b.dataset.section===section));
     if(b.dataset.section===section&&isMobile())requestAnimationFrame(()=>b.scrollIntoView({inline:"nearest",block:"nearest"}));
@@ -995,13 +999,14 @@ async function saveNetwork(){
     if(changed&&selectedDeck)for(const frame of frames.values())frame.src=frame.src;await loadDeckSettings();toast(tr("Настройки сохранены"),"success")}
   catch(e){toast(e.message)}finally{button.disabled=false}
 }
-function card(name,status,label,action,secondary=[],hidden=false){const c=el("div","hub-card",el("div","card-top",el("div","card-main",el("h4","",name),el("p","",status)),btn(label,"pri",action)));if(secondary.length){const d=el("details","",el("summary","",tr("Другие действия")));for(const [text,fn] of secondary)d.append(btn(text,"",fn));c.append(d)}c.hidden=hidden;return c}
+// quiet: a routine action (updating something that works) need not shout like a missing setup step.
+function card(name,status,label,action,secondary=[],hidden=false,quiet=false){const c=el("div","hub-card",el("div","card-top",el("div","card-main",el("h4","",name),el("p","",status)),btn(label,quiet?"pri quiet":"pri",action)));if(secondary.length){const d=el("details","",el("summary","",tr("Другие действия")));for(const [text,fn] of secondary)d.append(btn(text,"",fn));c.append(d)}c.hidden=hidden;return c}
 function openCardDetails(box){return new Set([...box.querySelectorAll(".hub-card")].filter(c=>c.querySelector("details[open]")).map(c=>c.querySelector("h4").textContent))}
 function restoreCardDetails(box,open){for(const c of box.querySelectorAll(".hub-card")){const d=c.querySelector("details");if(d&&open.has(c.querySelector("h4").textContent))d.open=true}}
 function renderHub(){
   const openAgents=openCardDetails($("hub_agents")),openModels=openCardDetails($("model_cards"));
   const selections=new Map([...$("model_cards").querySelectorAll("select")].map(x=>[x.dataset.profile,x.value]));
-  $("hub_agents").replaceChildren(...["claude","codex","kimi","pi"].map(a=>{const st=lastAg[a]||{};if(a==="pi")return card("Pi",st.version||tr("Не установлен"),st.installed?tr("Обновить"):tr("Установить"),()=>agentAction("install",a));if(a==="kimi")return card(AGENTS[a].label,st.version||tr("Не установлен"),st.installed?(lastAg.kimi_config?.configured?tr("Обновить"):tr("Настроить ключ Kimi")):tr("Установить"),()=>st.installed&&!lastAg.kimi_config?.configured?openKimi():agentAction("install",a));return card(AGENTS[a].label,[st.version,st.installed?(st.logged_in?tr("подключён"):tr("Войти")):tr("Не установлен")].filter(Boolean).join(" · "),st.installed?(st.logged_in?tr("Обновить"):tr("Войти")):tr("Установить"),()=>agentAction(st.installed&&!st.logged_in?"login":"install",a),st.installed?[[tr("Обновить"),()=>agentAction("install",a)]]:[])}));
+  $("hub_agents").replaceChildren(...["claude","codex","kimi","pi"].map(a=>{const st=lastAg[a]||{};if(a==="pi")return card("Pi",st.version||tr("Не установлен"),st.installed?tr("Обновить"):tr("Установить"),()=>agentAction("install",a),[],false,st.installed);if(a==="kimi")return card(AGENTS[a].label,st.version||tr("Не установлен"),st.installed?(lastAg.kimi_config?.configured?tr("Обновить"):tr("Указать ключ")):tr("Установить"),()=>st.installed&&!lastAg.kimi_config?.configured?openKimi():agentAction("install",a),[],false,st.installed&&lastAg.kimi_config?.configured);return card(AGENTS[a].label,[st.version,st.installed?(st.logged_in?tr("подключён"):tr("Войти")):tr("Не установлен")].filter(Boolean).join(" · "),st.installed?(st.logged_in?tr("Обновить"):tr("Войти")):tr("Установить"),()=>agentAction(st.installed&&!st.logged_in?"login":"install",a),st.installed&&!st.logged_in?[[tr("Обновить"),()=>agentAction("install",a)]]:[],false,st.installed&&st.logged_in)}));
   restoreCardDetails($("hub_agents"),openAgents);
   // Rebuilding during a running test/benchmark would re-enable its buttons and allow a duplicate run.
   if($("model_cards").getAttribute("aria-busy")!=="true")renderModelCards(selections,openModels);

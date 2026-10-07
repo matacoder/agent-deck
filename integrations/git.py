@@ -162,19 +162,24 @@ def commit(folder, sha, run=subprocess.run):
 
 
 def group_diff(folder, shas, run=subprocess.run):
-    """Every change of a group's commits, collected per file (oldest commit first)."""
+    """Every change of a group's commits, collected per file (oldest commit first). One git process for the
+    whole group, read up to a size limit, instead of two per commit."""
     if not isinstance(shas, list) or not 0 < len(shas) <= GROUP_COMMITS:
         raise ValueError('Неверный список коммитов')
+    ordered = list(reversed([checked_sha(s) for s in shas]))
+    args = ['log', '--no-walk=unsorted', '--patch', '--find-renames', '--no-color', '--no-ext-diff', '--no-textconv',
+            '--diff-merges=first-parent', f'--format={REC}%H{SEP}%h{SEP}%s', *ordered, '--']
+    raw = capped(folder, args, MAX_PATCH * 2) if run is subprocess.run else git(folder, *args, run=run)
     by_path, size = {}, 0
-    for sha in reversed([checked_sha(s) for s in shas]):
-        detail = commit(folder, sha, run=run)
-        for item in detail['files']:
+    for record in raw.split(REC)[1:]:
+        head, _, patch = record.partition('\n')
+        full, short, subject = (head.split(SEP) + ['', '', ''])[:3]
+        for item in split_patch(patch):
             size += len(item['patch'])
             entry = by_path.setdefault(item['path'], {'path': item['path'], 'added': 0, 'removed': 0, 'changes': []})
             entry['added'] += item['added']
             entry['removed'] += item['removed']
-            entry['changes'].append({'sha': detail['sha'], 'short': detail['short'], 'subject':
-                                     detail['message'].split('\n', 1)[0], 'status': item['status'],
+            entry['changes'].append({'sha': full, 'short': short, 'subject': subject, 'status': item['status'],
                                      'binary': item['binary'], 'truncated': item['truncated'] or size > MAX_PATCH,
                                      'patch': item['patch'] if size <= MAX_PATCH else ''})
     return {'files': sorted(by_path.values(), key=lambda f: f['path'])}
@@ -193,7 +198,9 @@ def group_prompt(commits, files, language):
 
 def parse_groups(text, commits):
     """The model's JSON, trusted only for structure: shas must be real commits, each used once."""
-    match = re.search(r'\{.*\}', text or '', re.S)
+    # Reasoning models (often the local ones) think aloud before the answer; only the answer counts.
+    text = re.sub(r'<think>.*?</think>', '', text or '', flags=re.S)
+    match = re.search(r'\{.*\}', text, re.S)
     try:
         data = json.loads(match.group(0)) if match else None
     except ValueError:
@@ -244,7 +251,9 @@ class Grouper:
         with self.lock:
             return {'phase': 'idle', 'head': head, **self.jobs.get(key, {})}
 
-    def start(self, folder, language='en', ref=None):
+    def start(self, folder, language='en', ref=None, model=None):
+        """model: None for Claude Haiku through Claude Code, else {'label', 'complete': prompt -> text}
+        (a local LM Studio model or Kimi, prepared by the panel)."""
         repo = git(folder, 'rev-parse', '--show-toplevel', run=self.run).strip()
         commits = []
         while len(commits) < GROUP_COMMITS:
@@ -255,19 +264,32 @@ class Grouper:
         commits = commits[:GROUP_COMMITS]
         if not commits:
             raise ValueError('В репозитории ещё нет коммитов')
-        claude = self.which('claude') or str(Path.home() / '.local/bin/claude')
-        if not os.access(claude, os.X_OK):
-            raise ValueError('Для группировки нужен Claude Code: войдите в него в настройках агентов')
+        if model is None:
+            claude = self.which('claude') or str(Path.home() / '.local/bin/claude')
+            if not os.access(claude, os.X_OK):
+                raise ValueError('Для группировки нужен Claude Code: войдите в него в настройках агентов')
+            model = {'label': 'Claude Haiku', 'complete': lambda prompt: self.claude(claude, prompt)}
         key = self.key(repo, commits[0]['sha'])
         with self.lock:
             if self.jobs.get(key, {}).get('phase') == 'running':
                 return {'phase': 'running'}
             self.jobs[key] = {'phase': 'running', 'started': int(time.time())}
-        threading.Thread(target=self.work, args=(key, repo, commits, claude, language), daemon=True,
+        threading.Thread(target=self.work, args=(key, repo, commits, model, language), daemon=True,
                          name='agent-deck-git-groups').start()
         return {'phase': 'running'}
 
-    def work(self, key, repo, commits, claude, language):
+    def claude(self, claude, prompt):
+        with tempfile.TemporaryDirectory(prefix='agent-deck-groups-') as empty:
+            # No tools and an empty folder: commit text can only shape the answer, never act.
+            result = self.run([claude, '-p', '--model', 'haiku', '--tools', '', '--output-format', 'json',
+                               '--no-session-persistence', '--strict-mcp-config', '--setting-sources', ''],
+                              input=prompt.encode(), capture_output=True, timeout=GROUP_TIMEOUT, cwd=empty)
+        if result.returncode:
+            raise ValueError('Claude Code не ответил; проверьте вход в Claude в настройках агентов')
+        answer = json.loads(result.stdout.decode('utf-8', 'replace'))
+        return answer.get('result', '') if isinstance(answer, dict) else ''
+
+    def work(self, key, repo, commits, model, language):
         try:
             names = git(repo, 'log', '--no-walk=unsorted', '--name-only', f'--format={REC}%H',
                         *[c['sha'] for c in commits], '--', run=self.run)
@@ -276,16 +298,9 @@ class Grouper:
                 sha, _, rest = record.partition('\n')
                 files[sha.strip()] = [line for line in rest.split('\n') if line.strip()]
             prompt = group_prompt(commits, files, language if re.fullmatch(r'[a-zA-Z-]{2,10}', language) else 'en')
-            with tempfile.TemporaryDirectory(prefix='agent-deck-groups-') as empty:
-                # No tools and an empty folder: commit text can only shape the answer, never act.
-                result = self.run([claude, '-p', '--model', 'haiku', '--tools', '', '--output-format', 'json',
-                                   '--no-session-persistence', '--strict-mcp-config', '--setting-sources', ''],
-                                  input=prompt.encode(), capture_output=True, timeout=GROUP_TIMEOUT, cwd=empty)
-            if result.returncode:
-                raise ValueError('Claude Code не ответил; проверьте вход в Claude в настройках агентов')
-            answer = json.loads(result.stdout.decode('utf-8', 'replace'))
-            groups = parse_groups(answer.get('result', '') if isinstance(answer, dict) else '', commits)
-            value = {'groups': groups, 'commits': {c['sha']: c for c in commits}, 'created': int(time.time())}
+            groups = parse_groups(model['complete'](prompt), commits)
+            value = {'groups': groups, 'commits': {c['sha']: c for c in commits}, 'created': int(time.time()),
+                     'model': model['label']}
             self.cache.mkdir(parents=True, exist_ok=True, mode=0o700)
             (self.cache / (key + '.json')).write_text(json.dumps(value))
             with self.lock:

@@ -15,10 +15,12 @@ function versionLabel(v,translate){
   return v.update&&v.latest?"v"+v.version+" → v"+v.latest:"v"+v.version;
 }
 
-async function loadFleet(){
+async function loadFleet(fresh=false){
   fleet.loadedAt=Date.now();
   const decks=deckDirectory.decks;
-  const results=await Promise.all(decks.map(async d=>{try{return [d.id,await api(instancePath(d.id,"/api/version"),null,true)]}catch(e){return [d.id,null]}}));
+  // Opening Network asks every computer to check GitHub again, so "Update all" appears right after a release.
+  const path="/api/version"+(fresh?"?fresh=1":"");
+  const results=await Promise.all(decks.map(async d=>{try{return [d.id,await api(instancePath(d.id,path),null,true)]}catch(e){return [d.id,null]}}));
   fleet.versions=new Map(results);
   try{fleet.gateway=await api("/api/version",null,true)}catch(e){fleet.gateway=null}
   renderFleet();renderTabs();

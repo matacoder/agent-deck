@@ -159,7 +159,8 @@ test('project files: browse, open .env, paste a secret and save it with the vers
   await settle();await settle();
   const doc=window.document;
   await window.eval('openFiles()');await settle();
-  expect(doc.querySelector('.files-path code').textContent).toBe('~/projects/alpha');
+  expect(doc.querySelector('.files-crumbs').textContent).toBe('~/projects/alpha');
+  expect(doc.querySelector('.files-crumbs .here').textContent).toBe('alpha');
   doc.querySelector('.files-row.dir').click();await settle();
   doc.querySelector('.files-row').click();await settle();
   // Reading first: wrapped numbered lines and no editable field, so the keyboard stays down.
@@ -245,7 +246,7 @@ test('history drops an answer for a branch that is no longer selected and never 
 test('a folder that cannot be listed offers a retry instead of loading forever',async()=>{
   const state={local:()=>({sessions:[session('alpha')]})};
   const routes=routesFor(state);let fail=true;
-  routes['/api/files']=()=>fail?{__status:400,error:'Папка не найдена'}:{path:'/home/demo/p',home:'/home/demo',parent:null,entries:[]};
+  routes['/api/files']=url=>fail?{__status:400,error:'Папка не найдена'}:{path:url.searchParams.get('path')||'/home/demo/p',home:'/home/demo',parent:null,entries:[]};
   const window=boot(routes);
   try{
   await settle();await settle();
@@ -253,7 +254,10 @@ test('a folder that cannot be listed offers a retry instead of loading forever',
   const doc=window.document;
   expect(doc.querySelector('#files_body .diff-note').textContent).toBe('Папка не найдена');
   fail=false;[...doc.querySelectorAll('#files_body button')].find(b=>/Повторить|Retry/.test(b.textContent)).click();await settle();
-  expect(doc.querySelector('.files-path code').textContent).toBe('~/p');
+  expect(doc.querySelector('.files-crumbs').textContent).toBe('~/p');
+  // A crumb jumps straight to that folder.
+  doc.querySelector('.files-crumbs button').click();await settle();
+  expect(doc.querySelector('.files-crumbs .here').textContent).toBe('~');
   }finally{window.close()}
 });
 

@@ -389,6 +389,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 .card-main p{margin:5px 0 0}
 .card-top>.pri{flex-shrink:0;max-width:48%;padding:9px 14px;border-radius:9px;background:var(--acc-soft);color:var(--acc-text);font-size:12.5px;font-weight:600;white-space:normal}
 @media (hover:hover){.card-top>.pri:hover{background:#0a84ff30}}
+.card-top>.pri.quiet{background:var(--side2);color:var(--fg2);border:1px solid var(--bd)}
 .settings-hub button,.settings-hub select,.settings-hub summary{min-height:40px}
 .settings-hub .acts button.pri{padding:10px 14px}
 .hub-card.editor{border-color:var(--bd-strong)}
@@ -444,6 +445,8 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 .git-bar code{color:var(--mut);font-family:var(--mono);font-size:12.5px}
 .git-branch{min-width:0;max-width:100%;min-height:34px;padding:4px 28px 4px 10px;border:1px solid var(--bd);border-radius:var(--r-sm);background:var(--side2);color:var(--fg2);font:12.5px var(--mono)}
 .git-bar .git-branch{width:auto;flex:1 1 140px}
+.git-model{display:flex;align-items:center;gap:10px;color:var(--mut);font-size:12.5px}
+.git-model .git-branch{width:auto;flex:1}
 .git-bar code{flex-basis:100%}
 .git-fetch{display:inline-flex;align-items:center;gap:6px;flex:none;padding:6px 10px;border:1px solid var(--bd);border-radius:var(--r-sm);color:var(--fg2)}
 .git-behind{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;border:1px solid var(--bd);border-radius:10px;background:var(--acc-soft);color:var(--fg2);font-size:12.5px}
@@ -769,6 +772,15 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 }
 @keyframes dlg-in{from{opacity:0;transform:translateY(4px)}}
 @media (prefers-reduced-motion:no-preference){dialog[open]{animation:dlg-in .14s ease-out}}
+.files-crumbs{flex:1;min-width:0;display:flex;flex-wrap:wrap;align-items:center;gap:2px;font:12.5px var(--mono);color:var(--mut)}
+.files-crumbs button{padding:4px 6px;border-radius:6px;color:var(--acc-text)}
+.files-crumbs .here{padding:4px 6px;color:var(--fg2)}.files-crumbs .sep{color:var(--dim)}
+@media (pointer:coarse){.files-crumbs button{min-height:var(--tap)}}
+.inbox-empty{display:grid;justify-items:center;gap:8px;padding:40px 16px;text-align:center;color:var(--mut)}
+.inbox-empty svg{width:28px;height:28px;color:var(--dim)}
+.inbox-empty strong{color:var(--fg2);font-weight:600}
+.empty-list{display:grid;gap:10px;justify-items:start}
+.empty-new{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid var(--bd);border-radius:var(--r-sm);color:var(--acc-text)}
 </style></head><body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
   <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
@@ -1555,10 +1567,12 @@ function versionLabel(v,translate){
   return v.update&&v.latest?"v"+v.version+" → v"+v.latest:"v"+v.version;
 }
 
-async function loadFleet(){
+async function loadFleet(fresh=false){
   fleet.loadedAt=Date.now();
   const decks=deckDirectory.decks;
-  const results=await Promise.all(decks.map(async d=>{try{return [d.id,await api(instancePath(d.id,"/api/version"),null,true)]}catch(e){return [d.id,null]}}));
+  // Opening Network asks every computer to check GitHub again, so "Update all" appears right after a release.
+  const path="/api/version"+(fresh?"?fresh=1":"");
+  const results=await Promise.all(decks.map(async d=>{try{return [d.id,await api(instancePath(d.id,path),null,true)]}catch(e){return [d.id,null]}}));
   fleet.versions=new Map(results);
   try{fleet.gateway=await api("/api/version",null,true)}catch(e){fleet.gateway=null}
   renderFleet();renderTabs();
@@ -1635,7 +1649,7 @@ function renderInbox(){
   if(list.querySelector(".q-text textarea:focus"))return;  // Do not wipe a half-typed answer.
   const live=new Set(items.filter(i=>i.kind==="question").map(i=>i.key+"/"+i.question.id));
   for(const key of inbox.cards.keys())if(!live.has(key))inbox.cards.delete(key);
-  list.replaceChildren(...(items.length?items.map(renderInboxItem):[el("p","inbox-empty",tr("Сейчас никто не ждёт ответа"))]));
+  list.replaceChildren(...(items.length?items.map(renderInboxItem):[el("div","inbox-empty",svgIcon("inbox"),el("strong","",tr("Сейчас никто не ждёт ответа")),el("span","",tr("Когда агент задаст вопрос или закончит работу, он появится здесь — на любом подключённом компьютере.")))]));
 }
 // The name the user gave the session, not its technical tmux name.
 function inboxLabel(item,deck,session){
@@ -1900,6 +1914,18 @@ const files={session:null,listing:null,file:null,seq:0,error:"",path:""};
 function formatSize(bytes){
   return bytes<1024?bytes+" B":bytes<1048576?(bytes/1024).toFixed(1)+" KB":(bytes/1048576).toFixed(1)+" MB";
 }
+// Each folder on the way from home is one tap away instead of several "Up" taps.
+function breadcrumbs(listing){
+  const nav=el("nav","files-crumbs");nav.setAttribute("aria-label",tr("Путь"));
+  const rest=listing.path===listing.home?[]:listing.path.slice(listing.home.length+1).split("/");
+  const parts=[["~",listing.home],...rest.map((name,i)=>[name,listing.home+"/"+rest.slice(0,i+1).join("/")])];
+  parts.forEach(([name,path],i)=>{
+    if(i)nav.append(el("span","sep","/"));
+    if(i===parts.length-1){nav.append(el("span","here",name));return}
+    const link=el("button","",name);link.type="button";link.onclick=()=>loadFolder(path);nav.append(link);
+  });
+  return nav;
+}
 function homeRelative(path,home){return path===home?"~":path.startsWith(home+"/")?"~/"+path.slice(home.length+1):path}
 function filesDirty(){return Boolean(files.file&&files.file.content!==files.file.saved)}
 
@@ -1962,7 +1988,7 @@ function renderFiles(){
   if(!listing&&files.error){box.append(errorWithRetry(files.error,()=>loadFolder(files.path)));return}
   if(!listing){box.append(el("p","files-empty",tr("Загрузка…")));return}
   if(files.file)return renderEditor(box,listing);
-  const crumbs=el("div","files-path",el("code","",homeRelative(listing.path,listing.home)));
+  const crumbs=el("div","files-path",breadcrumbs(listing));
   if(listing.parent)crumbs.prepend(fileButton(tr("Вверх"),"files-up",()=>loadFolder(listing.parent),"arrow-up"));
   // Creating a file is occasional: a small button in the path row, the name field only once asked for.
   let create;
@@ -2084,7 +2110,7 @@ function fileBlock(title,file,open,content){
 
 async function openHistory(){
   if(!active)return;
-  hist.session=active;hist.ref="";hist.tab="commits";hist.back=null;freshList();
+  hist.session=active;hist.ref="";hist.tab="commits";hist.back=null;hist.models=null;freshList();
   applyCodeFont();
   if(!$("git_dlg").open)$("git_dlg").showModal();
   renderHistory();await loadHistoryPage();
@@ -2142,11 +2168,30 @@ async function loadGroups(){
   if(state.phase==="running"&&$("git_dlg").open)hist.timer=setTimeout(loadGroups,3000);
   if(hist.tab==="groups"&&!hist.view)renderHistory();
 }
+// Any model this computer can reach groups commits; local ones come first because they cost nothing.
+async function loadGroupModels(){
+  try{hist.models=(await api(gitPath("models"))).models||[]}catch(e){hist.models=[]}
+  if(hist.tab==="groups"&&!hist.view)renderHistory();
+}
+function groupModel(){
+  let saved="";try{saved=deckLocalStorage.getItem("cc.group-model")||""}catch(e){}
+  const models=hist.models||[];
+  return models.some(m=>m.id===saved)?saved:(models[0]?.id||"claude");
+}
+function modelPicker(){
+  const models=hist.models||[];
+  if(!models.length)return null;
+  const select=el("select","git-branch");select.setAttribute("aria-label",tr("Модель для группировки"));
+  for(const m of models){const option=el("option","",m.local?tr("{0} — локально, бесплатно",[m.label]):m.label);option.value=m.id;select.append(option)}
+  select.value=groupModel();
+  select.onchange=()=>{try{deckLocalStorage.setItem("cc.group-model",select.value)}catch(e){}};
+  return el("label","git-model",el("span","",tr("Модель")),select);
+}
 async function startGrouping(){
-  try{hist.groups=await api("/api/git_group",{name:hist.session,ref:hist.ref})}catch(e){if(e.message!==STALE)toast(e.message);return}
+  try{hist.groups=await api("/api/git_group",{name:hist.session,ref:hist.ref,model:groupModel()})}catch(e){if(e.message!==STALE)toast(e.message);return}
   renderHistory();hist.timer=setTimeout(loadGroups,3000);
 }
-function historyTab(tab){hist.tab=tab;hist.view=null;if(tab==="groups"&&!hist.groups)loadGroups();renderHistory()}
+function historyTab(tab){hist.tab=tab;hist.view=null;if(tab==="groups"){if(!hist.groups)loadGroups();if(!hist.models)loadGroupModels()}renderHistory()}
 
 function commitRow(c,back){
   const row=el("button","git-row",el("span","git-subject",c.subject),
@@ -2215,13 +2260,15 @@ function renderGroups(box){
         ...(group.summary?[el("span","git-summary",group.summary)]:[]),el("span","git-meta",tr("Коммитов: {0}",[group.commits.length])));
       card.type="button";card.onclick=()=>showGroup(group);box.append(card);
     }
-    const again=el("button","git-more",tr("Сгруппировать заново"));again.type="button";again.onclick=startGrouping;box.append(again);
+    if(state.model)box.append(el("p","git-meta",tr("Сгруппировано: {0}",[state.model])));
+    const again=el("button","git-more",tr("Сгруппировать заново"));again.type="button";again.onclick=startGrouping;
+    box.append(...[modelPicker(),again].filter(Boolean));
     return;
   }
-  if(state.phase==="running"){box.append(el("p","files-empty",tr("Claude Haiku группирует коммиты по фичам. Это занимает до пары минут.")));return}
-  box.append(el("p","git-summary",tr("Claude Haiku прочитает заголовки последних 80 коммитов и имена изменённых файлов (без кода) и объединит их в группы по фичам. Результат сохраняется до следующего коммита.")));
+  if(state.phase==="running"){box.append(el("p","files-empty",tr("Модель группирует коммиты по фичам. Локальной модели может понадобиться несколько минут.")));return}
+  box.append(el("p","git-summary",tr("Модель прочитает заголовки последних 80 коммитов и имена изменённых файлов (без кода) и объединит их в группы по фичам. Результат сохраняется до следующего коммита.")));
   if(state.phase==="error")box.append(el("p","diff-note",state.error));
-  const start=fileButton(tr("Сгруппировать коммиты"),"pri",startGrouping);box.append(el("div","acts",start));
+  const start=fileButton(tr("Сгруппировать коммиты"),"pri",startGrouping);box.append(...[modelPicker(),el("div","acts",start)].filter(Boolean));
 }
 
 if(typeof module!=="undefined")module.exports={diffRows};
@@ -2526,7 +2573,10 @@ function renderTabs(){
     t.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();select(s.name)}};
     box.append(t);
   }
-  if(!sessions.length)box.append(el("div","empty-list",tr("Сессий пока нет")));
+  if(!sessions.length){
+    const start=el("button","empty-new",svgIcon("plus"),el("span","",tr("Новая сессия")));start.type="button";start.onclick=openNew;
+    box.append(el("div","empty-list",el("span","",tr("Сессий пока нет")),start));
+  }
   for(const deck of others)renderDeckSection(box,deck,q);
   if(box.innerHTML!==view.innerHTML){
     view.replaceChildren(...box.childNodes);
@@ -2975,10 +3025,11 @@ function compactReset(ts){
   const duration=days?tr("{0}д {1}ч",[days,hours]):hours?tr("{0}ч {1}м",[hours,minutes%60]):tr("{0}м",[minutes]);
   return "↻ "+duration;
 }
-function quotaValues(w){
+// labelled: outside the sidebar (which has "Left / Plan" headings) the plan value says what it is.
+function quotaValues(w,labelled=false){
   const percent=Number.isFinite(w?.percent)?Math.round(Math.max(0,Math.min(100,100-w.percent))):null,plan=plannedRemaining(w,now());
   const remaining=el("span","quota-percent "+quotaTone(percent,plan),percent===null?"—":percent+"%");remaining.title=tr("Остаток");
-  const target=el("span","quota-plan",plan===null?"—":plan+"%");target.title=tr("По плану к концу дня");
+  const target=el("span","quota-plan",plan===null?"—":labelled?tr("план {0}%",[plan]):plan+"%");target.title=tr("По плану к концу дня");
   target.setAttribute("aria-label",target.title+": "+target.textContent);
   return el("span","quota-values",remaining,target);
 }
@@ -2990,7 +3041,7 @@ function sessionStatus(session){
   const model=session.source?.model||session.model,w=primaryQuota(usageData[quota]);
   const line=el("span","session-status",el("span","composer-model",AGENTS[agent].label+(model?" · "+shortModel(model):"")));
   line.title=AGENTS[agent].label+(model?" · "+model:"")+(w?" · "+tr("Остаток")+" / "+tr("По плану к концу дня")+" · "+fmtReset(w.resets_at):"");
-  if(w)line.append(quotaValues(w),el("span","quota-reset",compactReset(w.resets_at)));
+  if(w)line.append(quotaValues(w,true),el("span","quota-reset",compactReset(w.resets_at)));
   return line;
 }
 let quotaHelpOpen=false,hubSignature="";
@@ -3050,7 +3101,7 @@ function settingsSection(section){
   hubSection=section;for(const name of ["agents","models","connections","network","backups","app"])$("hub_"+name).hidden=name!==section;
   if(section==="backups"&&$("settings_dlg").open)loadBackups();
   if(section==="connections"&&$("settings_dlg").open)loadPush();
-  if(section==="network"&&$("settings_dlg").open)loadFleet();
+  if(section==="network"&&$("settings_dlg").open)loadFleet(true);
   for(const b of document.querySelectorAll(".hub-nav button")){
     b.classList.toggle("on",b.dataset.section===section);b.setAttribute("aria-current",String(b.dataset.section===section));
     if(b.dataset.section===section&&isMobile())requestAnimationFrame(()=>b.scrollIntoView({inline:"nearest",block:"nearest"}));
@@ -3222,13 +3273,14 @@ async function saveNetwork(){
     if(changed&&selectedDeck)for(const frame of frames.values())frame.src=frame.src;await loadDeckSettings();toast(tr("Настройки сохранены"),"success")}
   catch(e){toast(e.message)}finally{button.disabled=false}
 }
-function card(name,status,label,action,secondary=[],hidden=false){const c=el("div","hub-card",el("div","card-top",el("div","card-main",el("h4","",name),el("p","",status)),btn(label,"pri",action)));if(secondary.length){const d=el("details","",el("summary","",tr("Другие действия")));for(const [text,fn] of secondary)d.append(btn(text,"",fn));c.append(d)}c.hidden=hidden;return c}
+// quiet: a routine action (updating something that works) need not shout like a missing setup step.
+function card(name,status,label,action,secondary=[],hidden=false,quiet=false){const c=el("div","hub-card",el("div","card-top",el("div","card-main",el("h4","",name),el("p","",status)),btn(label,quiet?"pri quiet":"pri",action)));if(secondary.length){const d=el("details","",el("summary","",tr("Другие действия")));for(const [text,fn] of secondary)d.append(btn(text,"",fn));c.append(d)}c.hidden=hidden;return c}
 function openCardDetails(box){return new Set([...box.querySelectorAll(".hub-card")].filter(c=>c.querySelector("details[open]")).map(c=>c.querySelector("h4").textContent))}
 function restoreCardDetails(box,open){for(const c of box.querySelectorAll(".hub-card")){const d=c.querySelector("details");if(d&&open.has(c.querySelector("h4").textContent))d.open=true}}
 function renderHub(){
   const openAgents=openCardDetails($("hub_agents")),openModels=openCardDetails($("model_cards"));
   const selections=new Map([...$("model_cards").querySelectorAll("select")].map(x=>[x.dataset.profile,x.value]));
-  $("hub_agents").replaceChildren(...["claude","codex","kimi","pi"].map(a=>{const st=lastAg[a]||{};if(a==="pi")return card("Pi",st.version||tr("Не установлен"),st.installed?tr("Обновить"):tr("Установить"),()=>agentAction("install",a));if(a==="kimi")return card(AGENTS[a].label,st.version||tr("Не установлен"),st.installed?(lastAg.kimi_config?.configured?tr("Обновить"):tr("Настроить ключ Kimi")):tr("Установить"),()=>st.installed&&!lastAg.kimi_config?.configured?openKimi():agentAction("install",a));return card(AGENTS[a].label,[st.version,st.installed?(st.logged_in?tr("подключён"):tr("Войти")):tr("Не установлен")].filter(Boolean).join(" · "),st.installed?(st.logged_in?tr("Обновить"):tr("Войти")):tr("Установить"),()=>agentAction(st.installed&&!st.logged_in?"login":"install",a),st.installed?[[tr("Обновить"),()=>agentAction("install",a)]]:[])}));
+  $("hub_agents").replaceChildren(...["claude","codex","kimi","pi"].map(a=>{const st=lastAg[a]||{};if(a==="pi")return card("Pi",st.version||tr("Не установлен"),st.installed?tr("Обновить"):tr("Установить"),()=>agentAction("install",a),[],false,st.installed);if(a==="kimi")return card(AGENTS[a].label,st.version||tr("Не установлен"),st.installed?(lastAg.kimi_config?.configured?tr("Обновить"):tr("Указать ключ")):tr("Установить"),()=>st.installed&&!lastAg.kimi_config?.configured?openKimi():agentAction("install",a),[],false,st.installed&&lastAg.kimi_config?.configured);return card(AGENTS[a].label,[st.version,st.installed?(st.logged_in?tr("подключён"):tr("Войти")):tr("Не установлен")].filter(Boolean).join(" · "),st.installed?(st.logged_in?tr("Обновить"):tr("Войти")):tr("Установить"),()=>agentAction(st.installed&&!st.logged_in?"login":"install",a),st.installed&&!st.logged_in?[[tr("Обновить"),()=>agentAction("install",a)]]:[],false,st.installed&&st.logged_in)}));
   restoreCardDetails($("hub_agents"),openAgents);
   // Rebuilding during a running test/benchmark would re-enable its buttons and allow a duplicate run.
   if($("model_cards").getAttribute("aria-busy")!=="true")renderModelCards(selections,openModels);

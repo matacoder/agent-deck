@@ -178,3 +178,34 @@ class ReviewFixTests(unittest.TestCase):
             grouper.start(path)
             thread.call_args.kwargs['target'](*thread.call_args.kwargs['args'])
         self.assertEqual(grouper.status(path)['phase'], 'error')
+
+
+class GroupingModelTests(unittest.TestCase):
+    def test_a_thinking_answer_is_read_after_its_reasoning(self):
+        answer = '<think>maybe {"groups": []} ... hmm</think>{"groups":[{"title":"Login","commits":["aaaaaaaaaaaa"]}]}'
+        commits = [{'sha': 'a' * 40, 'subject': 'Add login'}]
+        self.assertEqual(G.parse_groups(answer, commits)[0]['title'], 'Login')
+
+
+class PanelGroupingModelTests(PanelCase):
+    def test_local_models_come_first_and_run_without_reasoning(self):
+        from unittest.mock import Mock
+        service = Mock()
+        service.status.return_value = {'profiles': [{'id': 'p1', 'name': 'RED', 'models': [{'id': 'qwen/q', 'name': 'Qwen'}]}]}
+        service.get.return_value = {'id': 'p1', 'name': 'RED', 'url': 'http://100.64.0.5:1234', 'key': '', 'models': [{'id': 'qwen/q'}]}
+        self.enterContext(patch.object(self.panel, 'model_service', return_value=service))
+        self.enterContext(patch.object(self.panel.kimi_config, 'read', return_value={}))
+        self.enterContext(patch.object(self.panel, 'agent_status', return_value={'logged_in': True}))
+        models = self.panel.grouping_models()['models']
+        self.assertEqual([m['id'] for m in models], ['lmstudio:p1:qwen/q', 'claude'])
+        self.assertTrue(models[0]['local'])
+        from integrations import lmstudio
+        with patch.object(lmstudio, 'request', return_value={'choices': [{'message': {'content': '{"groups":[]}'}}]}) as request:
+            model = self.panel.grouping_model('lmstudio:p1:qwen/q')
+            self.assertEqual(model['complete']('prompt'), '{"groups":[]}')
+        body = request.call_args.args[3]
+        self.assertEqual((body['model'], body['reasoning_effort']), ('qwen/q', 'none'))
+        self.assertIsNone(self.panel.grouping_model('claude'))
+        for bad in ('lmstudio:p1:other', 'shell:rm'):
+            with self.subTest(bad=bad), self.assertRaises(ValueError):
+                self.panel.grouping_model(bad)

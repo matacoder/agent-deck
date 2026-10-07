@@ -239,6 +239,16 @@ class RemoteDeckTests(PanelCase):
         self.assertNotIn(token,line)
         self.assertIn(f'/deck/{ID}/c/***/t/ws',line)
 
+    def test_logging_out_ends_every_isolated_terminal_link(self):
+        epoch=self.home/'terminal-epoch'
+        self.enterContext(patch.object(self.panel,'TERMINAL_EPOCH',str(epoch)))
+        token=self.panel.terminal_capability(ID)
+        self.assertTrue(self.panel.capability_valid(ID,token))
+        self.panel.revoke_terminal_links()
+        self.assertFalse(self.panel.capability_valid(ID,token))
+        self.assertTrue(self.panel.capability_valid(ID,self.panel.terminal_capability(ID)))
+        self.assertEqual(epoch.stat().st_mode & 0o777, 0o600)
+
     def test_terminal_html_stays_on_gateway_and_remote_cookies_are_not_forwarded(self):
         service=self.enterContext(patch.object(self.panel,'remote_decks'))
         service.request.return_value=(200,{'Content-Type':'text/html','Set-Cookie':'cc_auth=REMOTE_SECRET'},b'<base href="/t/"><script src="/t/app.js"></script>')

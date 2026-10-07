@@ -308,9 +308,10 @@ is not shown. Works for sessions on connected computers too.
 
 The **git icon** in the session bar (Change history) shows the commits of the session's repository: subject, author, time and line
 counts; tap one for its full message and a diff per file with line numbers. **Feature groups** asks
-Claude Haiku (through your signed-in Claude Code, no extra key) to join the last 80 commits into features —
-it sees only commit subjects and file names, never code — and shows each group's summary, its commits
-and a combined diff collected per file. Groups are kept until the next commit.
+a model of your choice to join the last 80 commits into features: a model from your LM Studio profiles
+(local and free, reasoning turned off), Kimi with a saved key, or Claude Haiku through your signed-in
+Claude Code. The model sees only commit subjects and file names, never code; the panel shows each
+group's summary, its commits and a combined diff collected per file. Groups are kept until the next commit.
 
 <img src="docs/screenshots/mobile-commit.png" width="260" alt="A commit with its diff"> <img src="docs/screenshots/mobile-groups.png" width="260" alt="Feature groups">
 

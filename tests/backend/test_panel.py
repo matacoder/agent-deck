@@ -380,6 +380,22 @@ class SingleFlightCacheTests(PanelCase):
         self.assertEqual(results, [{'value': 1}, {'value': 1}])
 
 
+class FreshReleaseCheckTests(PanelCase):
+    def test_network_asks_github_again_but_at_most_once_a_minute(self):
+        self.enterContext(patch.object(self.panel, 'UPDATE_REPO', 'matacoder/agent-deck'))
+        self.enterContext(patch.object(self.panel.updater, 'available', return_value=True))
+        self.panel.http_json = Mock(return_value={'tag_name': 'v99.0.0', 'html_url': 'https://example.test'})
+        self.panel._cache.pop('release', None)
+        self.addCleanup(self.panel._cache.pop, 'release', None)
+        self.assertEqual(self.panel.version_info(fresh=True)['latest'], '99.0.0')
+        self.panel.version_info(fresh=True)
+        self.assertEqual(self.panel.http_json.call_count, 1)
+        at, value = self.panel._cache['release']
+        self.panel._cache['release'] = (at - 61, value)
+        self.panel.version_info(fresh=True)
+        self.assertEqual(self.panel.http_json.call_count, 2)
+
+
 class ReviewFixTests(PanelCase):
     def fake_tmux(self, sessions):
         def run(*args, **kwargs):

@@ -36,7 +36,7 @@ function renderInbox(){
   if(list.querySelector(".q-text textarea:focus"))return;  // Do not wipe a half-typed answer.
   const live=new Set(items.filter(i=>i.kind==="question").map(i=>i.key+"/"+i.question.id));
   for(const key of inbox.cards.keys())if(!live.has(key))inbox.cards.delete(key);
-  list.replaceChildren(...(items.length?items.map(renderInboxItem):[el("p","inbox-empty",tr("Сейчас никто не ждёт ответа"))]));
+  list.replaceChildren(...(items.length?items.map(renderInboxItem):[el("div","inbox-empty",svgIcon("inbox"),el("strong","",tr("Сейчас никто не ждёт ответа")),el("span","",tr("Когда агент задаст вопрос или закончит работу, он появится здесь — на любом подключённом компьютере.")))]));
 }
 // The name the user gave the session, not its technical tmux name.
 function inboxLabel(item,deck,session){
