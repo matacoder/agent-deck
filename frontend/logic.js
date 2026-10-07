@@ -15,12 +15,14 @@ function quotaDuration(w){
   start.setUTCDate(Math.min(day,lastDay));
   return (reset-start)/1000;
 }
+// The window is split into equal days counted from its start (a week into 7), not calendar days: the
+// plan is what should be left when the current one of those days ends, so it moves in steps of 1/7.
 function plannedRemaining(w,instant=Date.now()/1000){
   const duration=quotaDuration(w);
   if(!Number.isFinite(w?.resets_at)||!duration)return null;
-  const end=new Date(instant*1000);end.setHours(24,0,0,0);
-  const cutoff=Math.min(end.getTime()/1000,w.resets_at);
-  return Math.round(Math.max(0,Math.min(100,100*(w.resets_at-cutoff)/duration)));
+  const days=Math.max(1,Math.round(duration/86400)),elapsed=instant-(w.resets_at-duration);
+  const day=Math.min(days,Math.max(1,Math.floor(elapsed/(duration/days))+1));
+  return Math.round(100*(days-day)/days);
 }
 function primaryQuota(u){
   const windows=u?.windows||[];

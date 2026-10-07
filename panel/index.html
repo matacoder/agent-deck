@@ -1224,12 +1224,14 @@ function quotaDuration(w){
   start.setUTCDate(Math.min(day,lastDay));
   return (reset-start)/1000;
 }
+// The window is split into equal days counted from its start (a week into 7), not calendar days: the
+// plan is what should be left when the current one of those days ends, so it moves in steps of 1/7.
 function plannedRemaining(w,instant=Date.now()/1000){
   const duration=quotaDuration(w);
   if(!Number.isFinite(w?.resets_at)||!duration)return null;
-  const end=new Date(instant*1000);end.setHours(24,0,0,0);
-  const cutoff=Math.min(end.getTime()/1000,w.resets_at);
-  return Math.round(Math.max(0,Math.min(100,100*(w.resets_at-cutoff)/duration)));
+  const days=Math.max(1,Math.round(duration/86400)),elapsed=instant-(w.resets_at-duration);
+  const day=Math.min(days,Math.max(1,Math.floor(elapsed/(duration/days))+1));
+  return Math.round(100*(days-day)/days);
 }
 function primaryQuota(u){
   const windows=u?.windows||[];
@@ -4095,7 +4097,7 @@ function compactReset(ts){
 function quotaValues(w,labelled=false){
   const percent=Number.isFinite(w?.percent)?Math.round(Math.max(0,Math.min(100,100-w.percent))):null,plan=plannedRemaining(w,now());
   const remaining=el("span","quota-percent "+quotaTone(percent,plan),percent===null?"—":percent+"%");remaining.title=tr("Остаток");
-  const target=el("span","quota-plan",plan===null?"—":labelled?tr("план {0}%",[plan]):plan+"%");target.title=tr("По плану к концу дня");
+  const target=el("span","quota-plan",plan===null?"—":labelled?tr("план {0}%",[plan]):plan+"%");target.title=tr("По плану к концу текущих суток лимита");
   target.setAttribute("aria-label",target.title+": "+target.textContent);
   return el("span","quota-values",remaining,target);
 }
@@ -4106,7 +4108,7 @@ function sessionStatus(session){
   if(!quota||!session.running)return null;
   const model=session.source?.model||session.model,w=primaryQuota(usageData[quota]);
   const line=el("span","session-status",el("span","composer-model",AGENTS[agent].label+(model?" · "+shortModel(model):"")));
-  line.title=AGENTS[agent].label+(model?" · "+model:"")+(w?" · "+tr("Остаток")+" / "+tr("По плану к концу дня")+" · "+fmtReset(w.resets_at):"");
+  line.title=AGENTS[agent].label+(model?" · "+model:"")+(w?" · "+tr("Остаток")+" / "+tr("По плану к концу текущих суток лимита")+" · "+fmtReset(w.resets_at):"");
   if(w)line.append(quotaValues(w,true),el("span","quota-reset",compactReset(w.resets_at)));
   return line;
 }
@@ -4116,7 +4118,7 @@ function renderInteg(){
   const gh=el("span","quota-github");gh.innerHTML=GH_ICON;gh.title=ghLogin?"GitHub · "+ghLogin:tr("GitHub не подключён");gh.append(el("span",ghLogin?"good":"dim",ghLogin?"✓":"—"));summary.append(gh);
   summary.setAttribute("aria-label",tr("Что означают лимиты"));
   // Phones have no hover, so the explanation and exact reset times open on tap instead of living in title.
-  const help=el("div","quota-help",el("div","",tr("Остаток — сколько лимита осталось. План — сколько должно остаться к концу дня при равномерном расходе.")));
+  const help=el("div","quota-help",el("div","",tr("Остаток — сколько лимита осталось. План — сколько должно остаться к концу текущих суток лимита: неделя делится на 7 равных частей от момента сброса.")));
   const head=el("details","quota-heading",summary,help);head.open=quotaHelpOpen;
   head.addEventListener("toggle",()=>{quotaHelpOpen=head.open});
   const rows=[head];

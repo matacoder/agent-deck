@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.22.3 — 2026-10-07
+
+- Quota plan counts days of the limit window, not calendar days: a weekly limit is split into 7 equal days from its reset, so the plan steps by sevenths (86%, 71%, …). It used to aim at the browser's midnight, which gave values like 90% on the first day of a week that started in the morning. The explanation under the quotas says so.
+
 ## 1.22.2 — 2026-10-07
 
 - Switching computers no longer moves the sidebar: each computer's last known address is cached in the browser and shown at once (a skeleton only the very first time), then refreshed in place.

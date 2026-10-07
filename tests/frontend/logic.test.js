@@ -23,6 +23,14 @@ test('daily plan stops at a reset today and tolerates missing duration',()=>{
  expect(plannedRemaining({resets_at:now+3600},now)).toBeNull();
  expect(plannedRemaining({period:'month',secs:0,resets_at:epoch('2026-11-01T00:00:00Z')},now)).toBe(87);
 });
+test('a weekly plan steps by sevenths from the window start, whatever the time of day',()=>{
+ const week=604800,start=epoch('2026-10-07T04:39:00Z');
+ const plan=hours=>plannedRemaining({secs:week,resets_at:start+week},start+hours*3600);
+ expect(plan(5)).toBe(86);     // First day of the window: 6/7 should remain when it ends.
+ expect(plan(23.9)).toBe(86);
+ expect(plan(24.1)).toBe(71);
+ expect(plan(167)).toBe(0);
+});
 test.each([[26,20,'good'],[70,77,'crit'],[75,77,'over'],[74,77,'over'],[10,10,'good'],[25,null,'']])('quota tone %s vs %s', (remaining,plan,tone)=>expect(quotaTone(remaining,plan)).toBe(tone));
 test('overall monthly quota wins over coding and short quotas',()=>{
  const code={period:'month',label:'Kimi Code'},overall={period:'month',label:'Overall'},short={secs:18000};

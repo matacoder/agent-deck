@@ -777,7 +777,7 @@ function compactReset(ts){
 function quotaValues(w,labelled=false){
   const percent=Number.isFinite(w?.percent)?Math.round(Math.max(0,Math.min(100,100-w.percent))):null,plan=plannedRemaining(w,now());
   const remaining=el("span","quota-percent "+quotaTone(percent,plan),percent===null?"—":percent+"%");remaining.title=tr("Остаток");
-  const target=el("span","quota-plan",plan===null?"—":labelled?tr("план {0}%",[plan]):plan+"%");target.title=tr("По плану к концу дня");
+  const target=el("span","quota-plan",plan===null?"—":labelled?tr("план {0}%",[plan]):plan+"%");target.title=tr("По плану к концу текущих суток лимита");
   target.setAttribute("aria-label",target.title+": "+target.textContent);
   return el("span","quota-values",remaining,target);
 }
@@ -788,7 +788,7 @@ function sessionStatus(session){
   if(!quota||!session.running)return null;
   const model=session.source?.model||session.model,w=primaryQuota(usageData[quota]);
   const line=el("span","session-status",el("span","composer-model",AGENTS[agent].label+(model?" · "+shortModel(model):"")));
-  line.title=AGENTS[agent].label+(model?" · "+model:"")+(w?" · "+tr("Остаток")+" / "+tr("По плану к концу дня")+" · "+fmtReset(w.resets_at):"");
+  line.title=AGENTS[agent].label+(model?" · "+model:"")+(w?" · "+tr("Остаток")+" / "+tr("По плану к концу текущих суток лимита")+" · "+fmtReset(w.resets_at):"");
   if(w)line.append(quotaValues(w,true),el("span","quota-reset",compactReset(w.resets_at)));
   return line;
 }
@@ -798,7 +798,7 @@ function renderInteg(){
   const gh=el("span","quota-github");gh.innerHTML=GH_ICON;gh.title=ghLogin?"GitHub · "+ghLogin:tr("GitHub не подключён");gh.append(el("span",ghLogin?"good":"dim",ghLogin?"✓":"—"));summary.append(gh);
   summary.setAttribute("aria-label",tr("Что означают лимиты"));
   // Phones have no hover, so the explanation and exact reset times open on tap instead of living in title.
-  const help=el("div","quota-help",el("div","",tr("Остаток — сколько лимита осталось. План — сколько должно остаться к концу дня при равномерном расходе.")));
+  const help=el("div","quota-help",el("div","",tr("Остаток — сколько лимита осталось. План — сколько должно остаться к концу текущих суток лимита: неделя делится на 7 равных частей от момента сброса.")));
   const head=el("details","quota-heading",summary,help);head.open=quotaHelpOpen;
   head.addEventListener("toggle",()=>{quotaHelpOpen=head.open});
   const rows=[head];
