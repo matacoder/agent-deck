@@ -102,12 +102,49 @@ def thumbnail(real, cache, kind, run=subprocess.run, which=shutil.which):
             os.unlink(temporary)
 
 
+SEARCH_DEPTH = 4
+SEARCH_ENTRIES = 20000
+SKIP_DIRS = {'.git', 'node_modules', '.venv', 'venv', '__pycache__', '.cache'}
+
+
+def find_by_name(name, cwd, depth=SEARCH_DEPTH, limit=SEARCH_ENTRIES):
+    """Agents such as Codex print only a file name ("Viewed image shot.png"). Look for it inside the
+    session folder: a few levels deep, never following links or entering dependency folders, with a
+    cap on how much is read. The newest match wins."""
+    best, seen, level = None, 0, [Path(cwd)]
+    for _ in range(depth + 1):
+        deeper = []
+        for folder in level:
+            try:
+                entries = list(os.scandir(folder))
+            except OSError:
+                continue
+            for entry in entries:
+                seen += 1
+                if seen > limit:
+                    return best and best[1]
+                try:
+                    if entry.is_dir(follow_symlinks=False):
+                        if entry.name not in SKIP_DIRS:
+                            deeper.append(Path(entry.path))
+                    elif entry.name == name and entry.is_file(follow_symlinks=False):
+                        mtime = entry.stat(follow_symlinks=False).st_mtime
+                        if not best or mtime > best[0]:
+                            best = (mtime, Path(entry.path))
+                except OSError:
+                    continue
+        level = deeper
+    return best and best[1]
+
+
 def read_image(path, cwd, home, screen, cache=None):
     if not path.lower().endswith(EXTENSIONS):
         raise ValueError('Показываются только PNG, JPEG, WebP и GIF')
     if not visible(path, screen):
         raise ValueError('Этой картинки нет на экране сессии')
     real = resolve(path, cwd, home)
+    if '/' not in path and not real.is_file():
+        real = find_by_name(path, cwd) or real
     if not real.is_file() or not str(real).lower().endswith(EXTENSIONS):
         raise FileNotFoundError(f'Картинка не найдена: {path}')
     if real.stat().st_size > MAX_BYTES:

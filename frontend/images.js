@@ -35,14 +35,23 @@ function imageLink(session,path,runs,from,to){
   link.onclick=event=>{event.preventDefault();openViewer(path)};
   return link;
 }
+// A path that did not load is not tried again for a while: the screen redraws often, and each new
+// attempt would show an empty thumbnail that then disappears (a blink).
+const missingImages=new Map(),MISSING_FOR=5*60*1000;
+function imageMissing(session,path,now=Date.now()){
+  const key=session+"\n"+path,at=missingImages.get(key);
+  if(at&&now-at<MISSING_FOR)return true;
+  missingImages.delete(key);return false;
+}
 function imageStrip(session,paths){
   const strip=el("div","img-strip");
   for(const path of new Set(paths)){
+    if(imageMissing(session,path))continue;
     const thumb=el("button","img-thumb"),img=document.createElement("img");
     thumb.type="button";thumb.title=path;thumb.setAttribute("aria-label",tr("Открыть картинку {0}",[path.split("/").pop()]));
     img.loading="lazy";img.decoding="async";img.alt="";img.src=imageUrl(session,path,true);
     // Missing files, or paths no longer on screen, simply leave the text without a preview.
-    img.onerror=()=>thumb.remove();
+    img.onerror=()=>{missingImages.set(session+"\n"+path,Date.now());thumb.remove()};
     thumb.append(img);thumb.onclick=()=>openViewer(path);strip.append(thumb);
   }
   return strip;
@@ -91,4 +100,4 @@ if(typeof document!=="undefined"&&document.getElementById("viewer")){
   },{passive:true});
 }
 
-if(typeof module!=="undefined")module.exports={imageMatches,joinImageLines,IMAGE_PATH_RE};
+if(typeof module!=="undefined")module.exports={imageMatches,joinImageLines,IMAGE_PATH_RE,imageMissing,missingImages};

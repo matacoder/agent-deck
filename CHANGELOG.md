@@ -2,6 +2,11 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.22.4 — 2026-10-07
+
+- iPhone: switching to another app with the keyboard open no longer leaves an empty band where the keyboard was. The page drops focus when it goes to the background, measures the screen again a few times on return, and ignores a keyboard height iOS keeps reporting while nothing is focused.
+- Images an agent names without a folder (Codex: "Viewed image shot.png") now show: a bare name is looked up in the session folder, a few levels deep, skipping links and dependency folders, newest match first. A picture that cannot be loaded is not retried on every screen refresh for five minutes, so its empty thumbnail no longer blinks.
+
 ## 1.22.3 — 2026-10-07
 
 - Quota plan counts days of the limit window, not calendar days: a weekly limit is split into 7 equal days from its reset, so the plan steps by sevenths (86%, 71%, …). It used to aim at the browser's midnight, which gave values like 90% on the first day of a week that started in the morning. The explanation under the quotas says so.

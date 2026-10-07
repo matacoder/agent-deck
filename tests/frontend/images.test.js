@@ -20,3 +20,11 @@ test('does not glue ordinary lines',()=>{
  const lines=[runs('see /tmp/done.png'),runs('next.png is separate'),runs('path /usr/lib/'),runs('and more text')];
  expect(joinImageLines(lines).map(plain)).toEqual(['see /tmp/done.png','next.png is separate','path /usr/lib/','and more text']);
 });
+
+test('an image that failed to load is not retried on every redraw for a while',()=>{
+  const {imageMissing,missingImages}=require('../../frontend/images');
+  missingImages.set('s\nshot.png',1000);
+  expect(imageMissing('s','shot.png',1000+60*1000)).toBe(true);
+  expect(imageMissing('other','shot.png',1000+60*1000)).toBe(false);
+  expect(imageMissing('s','shot.png',1000+6*60*1000)).toBe(false);  // Tried again after five minutes.
+});

@@ -13,7 +13,7 @@ const page=fs.readFileSync(path.resolve(__dirname,'../../panel/index.html'),'utf
   .replace('__PANEL_I18N__',JSON.stringify({language:'en',messages:{}})).replace(/__PANEL_REVISION__/g,'test');
 const session=(name,extra={})=>({name,title:name,agent:'codex',group:'demo',path:'/home/demo/projects/'+name,running:true,activity:1,created:1,...extra});
 
-function boot(routes,opened){
+function boot(routes,opened,setup){
   // jsdom cannot replace location.reload; a reload shows up as a "navigation" not-implemented error.
   const console=new VirtualConsole(),problems=[];
   console.on('jsdomError',error=>problems.push(String(error.message)));
@@ -33,6 +33,7 @@ function boot(routes,opened){
     window.HTMLDialogElement.prototype.showModal=function(){this.open=true};
     window.HTMLDialogElement.prototype.close=function(){this.open=false;this.dispatchEvent(new window.Event('close'))};
     window.HTMLElement.prototype.scrollIntoView=()=>{};
+    if(setup)setup(window);
     window.fetch=async(url,options={})=>{
       const target=new URL(url,'https://panel.test/');
       if(routes.__parked&&target.pathname===routes.__parked)return new Promise((_,reject)=>options.signal?.addEventListener('abort',()=>reject(new Error('aborted'))));
@@ -402,6 +403,27 @@ test('switching computers keeps the computers in one order in the sidebar',async
   expect([...window.document.querySelectorAll('#tabs .grp')].map(n=>n.textContent)).toEqual(['demo','demo']);
   window.openDeckSession('','alpha');await settle();await settle();
   expect(heads()).toEqual(before);
+  }finally{window.close()}
+});
+
+test('returning to the app with a stale keyboard height and nothing focused fills the screen again',async()=>{
+  const state={local:()=>({sessions:[session('alpha')]})};
+  const viewport={height:400,scale:1,offsetTop:0,listeners:{},addEventListener(type,fn){this.listeners[type]=fn}};
+  const window=boot(routesFor(state),null,w=>{
+    w.matchMedia=query=>({matches:/pointer:coarse|max-width/.test(query),addEventListener(){},removeEventListener(){}});
+    Object.defineProperty(w,'visualViewport',{value:viewport});
+    Object.defineProperty(w.HTMLHtmlElement.prototype,'clientHeight',{get:()=>844});
+  });
+  try{
+  await settle();await settle();
+  const doc=window.document,height=()=>doc.documentElement.style.getPropertyValue('--app-h');
+  doc.getElementById('msg').focus();viewport.listeners.resize();
+  expect(height()).toBe('400px');  // A real keyboard: the field is focused.
+  Object.defineProperty(doc,'hidden',{configurable:true,get:()=>true});doc.dispatchEvent(new window.Event('visibilitychange'));
+  expect(doc.activeElement).not.toBe(doc.getElementById('msg'));
+  Object.defineProperty(doc,'hidden',{configurable:true,get:()=>false});doc.dispatchEvent(new window.Event('visibilitychange'));
+  await new Promise(resolve=>setTimeout(resolve,750));
+  expect(height()).toBe('844px');  // iOS still reports 400 px, but no keyboard can be up.
   }finally{window.close()}
 });
 

@@ -1701,14 +1701,23 @@ function imageLink(session,path,runs,from,to){
   link.onclick=event=>{event.preventDefault();openViewer(path)};
   return link;
 }
+// A path that did not load is not tried again for a while: the screen redraws often, and each new
+// attempt would show an empty thumbnail that then disappears (a blink).
+const missingImages=new Map(),MISSING_FOR=5*60*1000;
+function imageMissing(session,path,now=Date.now()){
+  const key=session+"\n"+path,at=missingImages.get(key);
+  if(at&&now-at<MISSING_FOR)return true;
+  missingImages.delete(key);return false;
+}
 function imageStrip(session,paths){
   const strip=el("div","img-strip");
   for(const path of new Set(paths)){
+    if(imageMissing(session,path))continue;
     const thumb=el("button","img-thumb"),img=document.createElement("img");
     thumb.type="button";thumb.title=path;thumb.setAttribute("aria-label",tr("Открыть картинку {0}",[path.split("/").pop()]));
     img.loading="lazy";img.decoding="async";img.alt="";img.src=imageUrl(session,path,true);
     // Missing files, or paths no longer on screen, simply leave the text without a preview.
-    img.onerror=()=>thumb.remove();
+    img.onerror=()=>{missingImages.set(session+"\n"+path,Date.now());thumb.remove()};
     thumb.append(img);thumb.onclick=()=>openViewer(path);strip.append(thumb);
   }
   return strip;
@@ -1757,7 +1766,7 @@ if(typeof document!=="undefined"&&document.getElementById("viewer")){
   },{passive:true});
 }
 
-if(typeof module!=="undefined")module.exports={imageMatches,joinImageLines,IMAGE_PATH_RE};
+if(typeof module!=="undefined")module.exports={imageMatches,joinImageLines,IMAGE_PATH_RE,imageMissing,missingImages};
 // Versions of every connected computer and "update all" from the gateway.
 const fleet={versions:new Map(),gateway:null,updating:false,loadedAt:0};
 const UPDATING=new Set(["checking","downloading","installing","restarting"]);
@@ -3361,19 +3370,37 @@ let sessions=[],active=null,mode=null,clockSkew=0;
 const frames=new Map(),wasBusy=new Map(),attention=new Set();
 
 /* keep layout glued to the visible area when the iOS keyboard opens */
+// A keyboard can only be up while something that types has focus (the terminal frame counts).
+function editableFocused(){
+  const a=document.activeElement;
+  return Boolean(a&&(a.isContentEditable||/^(INPUT|TEXTAREA|SELECT|IFRAME)$/.test(a.tagName)));
+}
 function fitViewport(){
   const vv=window.visualViewport;if(!vv)return;
   if(Math.abs(vv.scale-1)>0.01)return; // Pinch zoom must not resize the document layout.
   const root=document.documentElement;
-  const keyboard=(isMobile()||isTouch())&&Math.abs(vv.scale-1)<0.01&&root.clientHeight-vv.height>150;
+  const shrunk=(isMobile()||isTouch())&&root.clientHeight-vv.height>150,keyboard=shrunk&&editableFocused();
   // Keep controls inside the web view: the OS-owned strip below an installed
   // app is outside its drawable viewport, even when screen.height is larger.
-  root.style.setProperty("--app-h",vv.height+"px");
+  // After an app switch iOS can keep reporting the keyboard's height with no keyboard on screen;
+  // shrunk with nothing focused means that height is stale, so the layout viewport is used instead.
+  root.style.setProperty("--app-h",(shrunk&&!keyboard?root.clientHeight:vv.height)+"px");
   root.style.setProperty("--app-top",keyboard?vv.offsetTop+"px":"0px");
   document.body.classList.toggle("keyboard-open",keyboard);
 }
+// iOS settles the viewport a moment after the app returns; measure again a few times.
+function refitViewport(){for(const ms of [0,100,300,700])setTimeout(fitViewport,ms)}
+// Leaving the app closes the keyboard anyway; dropping focus too keeps the page from returning
+// with a field focused but no keyboard, which is what leaves the empty gap at the bottom.
+function blurForBackground(){
+  const a=document.activeElement;if(!editableFocused())return;
+  try{if(a.tagName==="IFRAME")a.contentDocument?.activeElement?.blur()}catch(e){}
+  a.blur();
+}
+document.addEventListener("visibilitychange",()=>{if(document.hidden)blurForBackground();else refitViewport()});
+addEventListener("focus",refitViewport);
 if(window.visualViewport){visualViewport.addEventListener("resize",fitViewport);visualViewport.addEventListener("scroll",fitViewport);fitViewport()}
-addEventListener("pageshow",fitViewport);
+addEventListener("pageshow",refitViewport);
 addEventListener("orientationchange",()=>requestAnimationFrame(fitViewport));
 
 // Network failures and proxy/restart answers are "offline", not bugs: they go to the connection pill.

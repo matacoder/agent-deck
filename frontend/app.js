@@ -41,19 +41,37 @@ let sessions=[],active=null,mode=null,clockSkew=0;
 const frames=new Map(),wasBusy=new Map(),attention=new Set();
 
 /* keep layout glued to the visible area when the iOS keyboard opens */
+// A keyboard can only be up while something that types has focus (the terminal frame counts).
+function editableFocused(){
+  const a=document.activeElement;
+  return Boolean(a&&(a.isContentEditable||/^(INPUT|TEXTAREA|SELECT|IFRAME)$/.test(a.tagName)));
+}
 function fitViewport(){
   const vv=window.visualViewport;if(!vv)return;
   if(Math.abs(vv.scale-1)>0.01)return; // Pinch zoom must not resize the document layout.
   const root=document.documentElement;
-  const keyboard=(isMobile()||isTouch())&&Math.abs(vv.scale-1)<0.01&&root.clientHeight-vv.height>150;
+  const shrunk=(isMobile()||isTouch())&&root.clientHeight-vv.height>150,keyboard=shrunk&&editableFocused();
   // Keep controls inside the web view: the OS-owned strip below an installed
   // app is outside its drawable viewport, even when screen.height is larger.
-  root.style.setProperty("--app-h",vv.height+"px");
+  // After an app switch iOS can keep reporting the keyboard's height with no keyboard on screen;
+  // shrunk with nothing focused means that height is stale, so the layout viewport is used instead.
+  root.style.setProperty("--app-h",(shrunk&&!keyboard?root.clientHeight:vv.height)+"px");
   root.style.setProperty("--app-top",keyboard?vv.offsetTop+"px":"0px");
   document.body.classList.toggle("keyboard-open",keyboard);
 }
+// iOS settles the viewport a moment after the app returns; measure again a few times.
+function refitViewport(){for(const ms of [0,100,300,700])setTimeout(fitViewport,ms)}
+// Leaving the app closes the keyboard anyway; dropping focus too keeps the page from returning
+// with a field focused but no keyboard, which is what leaves the empty gap at the bottom.
+function blurForBackground(){
+  const a=document.activeElement;if(!editableFocused())return;
+  try{if(a.tagName==="IFRAME")a.contentDocument?.activeElement?.blur()}catch(e){}
+  a.blur();
+}
+document.addEventListener("visibilitychange",()=>{if(document.hidden)blurForBackground();else refitViewport()});
+addEventListener("focus",refitViewport);
 if(window.visualViewport){visualViewport.addEventListener("resize",fitViewport);visualViewport.addEventListener("scroll",fitViewport);fitViewport()}
-addEventListener("pageshow",fitViewport);
+addEventListener("pageshow",refitViewport);
 addEventListener("orientationchange",()=>requestAnimationFrame(fitViewport));
 
 // Network failures and proxy/restart answers are "offline", not bugs: they go to the connection pill.
