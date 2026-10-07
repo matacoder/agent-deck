@@ -905,7 +905,10 @@ function renderDeckSection(box,deck,q){
   if(q&&!list.length)return;
   box.append(deckHeader({...deck,count:list.length},false));
   if(deckOpen[deck.id||"local"]===false)return;
+  let grp=null;
   for(const s of list){
+    // Project headings as on this computer, so a session reads the same wherever you look from.
+    if(s.group&&s.group!==grp){grp=s.group;box.append(el("div","grp",grp))}
     const st=state(s),word=waitingFor(deck.id,s.name)?["ask",tr("ждёт ответа")]:st==="busy"?["busy",tr("работает")]:st==="off"?["off",tr("остановлен")]:null;
     const t=el("div","tab remote",el("span","dot "+st),agentIcon(s),el("div","t",el("div","n",sessionTitle(s)),
       el("div","s",...(word?[el("span","state "+word[0],word[1])," · "]:[]),shortPath(s.path))));
@@ -939,7 +942,7 @@ function switchDeck(identity){
   restoreInstance();
   if(mode===null)mode=previousMode;  // A computer without its own choice keeps the current view.
   renderTabs();show();
-  load();checkGithubFoot(true);loadUsage();loadLM().then(renderInteg);loadServer();loadVersion();loadMetrics();loadIntegrations();
+  load();checkGithubFoot(true);loadUsage();loadLM().then(renderInteg);showCachedServer();loadServer();loadVersion();loadMetrics();loadIntegrations();
   loadDeckSettings().catch(e=>{if(!e.offline)toast(e.message)});
 }
 // Everything below belongs to one computer; a switch must not carry any of it to the next.
@@ -954,8 +957,6 @@ function resetInstanceState(known){
   lmData={profiles:[],discovery:{}};lmRefreshPending=null;openLocalModels.clear();
   telegramConfig={};panelVersion=null;UI_PANEL_VERSION=null;panelUpdating=false;hubSignature="";
   $("pre").dataset.raw="";$("pre").replaceChildren();$("ver").replaceChildren();
-  // The address line keeps its place and the previous text, dimmed, until the new computer answers.
-  $("srv").classList.add("stale");
   $("metric_cpu").textContent=$("metric_ram").textContent="—";
 }
 function renderSources(){
@@ -1004,17 +1005,26 @@ function updatePanel(){
   if(panelVersion&&panelVersion.job&&panelVersion.job.phase==="done"&&panelVersion.job.version===panelVersion.version&&UI_PANEL_VERSION!==null&&panelVersion.job.version!==UI_PANEL_VERSION)refreshInterface();
   else startPanelUpdate();
 }
+// The address line never empties: the last known one for this computer shows at once (cached in this
+// browser), a skeleton only the very first time, and the fresh answer replaces it in place.
+function renderServer(s){
+  const box=$("srv"),cc=(s.country||"").toUpperCase();box.replaceChildren();
+  if(/^[A-Z]{2}$/.test(cc))box.append(el("span","fl",String.fromCodePoint(...[...cc].map(c=>0x1F1A5+c.charCodeAt(0)))));
+  box.append(el("span","ip",s.ip||s.tailscale_ip||"—"),...(s.hostname?[el("span","hn","· "+s.hostname)]:[]));
+  box.title=[s.city&&`${s.city}, ${cc}`,s.org,s.tailscale_ip&&`Tailscale: ${s.tailscale_ip}`].filter(Boolean).join("\n");
+}
+function showCachedServer(){
+  let cached=null;try{cached=JSON.parse(deckLocalStorage.getItem("cc.server")||"null")}catch(e){}
+  if(cached&&typeof cached==="object")renderServer(cached);
+  else $("srv").replaceChildren(el("span","sk-line srv-skeleton"));
+}
 async function loadServer(){
+  const epoch=deckEpoch;
   try{
-    const s=await api("/api/server"),box=$("srv");box.replaceChildren();box.classList.remove("stale");
-    const cc=(s.country||"").toUpperCase();
-    if(/^[A-Z]{2}$/.test(cc))box.append(el("span","fl",String.fromCodePoint(...[...cc].map(c=>0x1F1A5+c.charCodeAt(0)))));
-    box.append(el("span","ip",s.ip||s.tailscale_ip||"?"),el("span","hn","· "+s.hostname));
-    box.title=[s.city&&`${s.city}, ${cc}`,s.org,`Tailscale: ${s.tailscale_ip}`].filter(Boolean).join("\n");
-  }catch(e){
-    // A dimmed address of the computer we left must not stay as if it were this one's.
-    if(e.message!==STALE&&$("srv").classList.contains("stale")){$("srv").replaceChildren(el("span","ip","—"));$("srv").classList.remove("stale");$("srv").title=""}
-  }
+    const s=await api("/api/server");if(epoch!==deckEpoch)return;
+    const keep={country:s.country,ip:s.ip,tailscale_ip:s.tailscale_ip,hostname:s.hostname,city:s.city,org:s.org};
+    renderServer(keep);try{deckLocalStorage.setItem("cc.server",JSON.stringify(keep))}catch(e){}
+  }catch(e){if(e.message!==STALE&&$("srv").querySelector(".srv-skeleton"))renderServer({})}
 }
 async function loadGithub(){
   const body=$("gh_body");body.replaceChildren();$("gh_refresh").style.display="none";$("gh_state").textContent=tr("GitHub: проверяю…");
@@ -1233,7 +1243,7 @@ checkGithubFoot(true);setInterval(checkGithubFoot,5000);
 loadUsage();setInterval(()=>{loadUsage();if(!document.hidden&&!lmData.profiles?.length)loadLM(false).then(renderInteg)},60000);loadLM().then(renderInteg);let lmPolling=false;
 // Generation timing needs a fast tick, but only with a configured profile and one request at a time.
 setInterval(()=>{if(document.hidden||$("settings_dlg").open||lmPolling||!lmData.profiles?.length)return;lmPolling=true;loadLM(false).then(renderInteg).finally(()=>{lmPolling=false})},1000);
-loadServer();setInterval(loadServer,3600000);
+showCachedServer();loadServer();setInterval(loadServer,3600000);
 loadVersion();
 loadIntegrations();
 let hiddenAt=0;

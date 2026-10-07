@@ -48,10 +48,9 @@ __PANEL_STYLE__</style></head><body>
 <div id="app">
   <aside>
     <div class="deck-switch" id="deck_switch" hidden><label for="deck_select">Agent Deck</label><select id="deck_select" onchange="switchDeck(this.value)"><option value="">Этот компьютер</option></select><button type="button" onclick="openSettings('network')" aria-label="Подключить Agent Deck" title="Подключить Agent Deck"><svg class="ui-icon"><use href="#i-monitor"/></svg></button></div>
-    <div id="srv"></div>
+    <div class="srv-row" id="srv_row"><div id="srv"><span class="sk-line srv-skeleton"></span></div><button type="button" id="inbox_btn" class="iconbtn inbox-btn" onclick="openInbox()" title="Ждут ответа" aria-label="Ждут ответа"><svg class="ui-icon"><use href="#i-inbox"/></svg><b id="inbox_count"></b></button></div>
     <div class="side-top">
       <input id="q" class="search" placeholder="Поиск…" aria-label="Поиск…" title="Быстрый переход: ⌥K, Ctrl+K или ⌘K" autocomplete="off" autocapitalize="off" spellcheck="false">
-      <button type="button" id="inbox_btn" class="iconbtn inbox-btn" onclick="openInbox()" title="Ждут ответа" aria-label="Ждут ответа"><svg class="ui-icon"><use href="#i-inbox"/></svg><b id="inbox_count"></b></button>
       <button class="iconbtn accent" title="Новая сессия (⌥T)" aria-label="Новая сессия" onclick="openNew()"><svg class="ui-icon"><use href="#i-plus"/></svg></button>
     </div>
     <div id="tabs"></div>

@@ -2,6 +2,12 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.22.2 — 2026-10-07
+
+- Switching computers no longer moves the sidebar: each computer's last known address is cached in the browser and shown at once (a skeleton only the very first time), then refreshed in place.
+- "Waiting for you" is an icon with a number at the right of the address line, in a row of fixed height.
+- Sessions of other computers in the sidebar are grouped under their project headings, as on the selected one.
+
 ## 1.22.1 — 2026-10-07
 
 - Sidebar stays still when switching computers: the address line keeps its place (dimmed until the new computer answers) instead of collapsing and reappearing.

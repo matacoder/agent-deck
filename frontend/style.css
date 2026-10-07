@@ -41,11 +41,13 @@ aside{width:248px;flex:none;background:var(--side);border-right:1px solid var(--
 .deck-switch select{min-width:0;min-height:32px;background:var(--side2);color:var(--fg);border:1px solid var(--bd);border-radius:var(--r-sm);padding:6px 8px}
 .deck-switch button{display:grid;place-items:center;height:32px;border-radius:var(--r-sm);color:var(--mut)}
 @media (hover:hover){.deck-switch button:hover{background:var(--side2);color:var(--fg)}}
-#srv{display:flex;align-items:center;gap:6px;min-height:28px;padding:10px 12px 0;font-size:12px;color:var(--mut);white-space:nowrap;overflow:hidden;cursor:default}
-#srv.stale{opacity:.45}
+/* Address and the waiting count share one fixed-height row, so neither can push the list down. */
+.srv-row{display:flex;align-items:center;gap:6px;height:38px;padding:8px 6px 0 12px}
+#srv{display:flex;align-items:center;gap:6px;flex:1;min-width:0;font-size:12px;color:var(--mut);white-space:nowrap;overflow:hidden;cursor:default}
+.srv-skeleton{width:130px;height:12px}
 #srv .fl{font-size:14px;line-height:1}#srv .ip{font-family:var(--mono);color:var(--fg)}#srv .hn{overflow:hidden;text-overflow:ellipsis}
 /* With computers connected the selector already names this one; the host name would be a third label. */
-.deck-switch:not([hidden])+#srv .hn{display:none}
+.deck-switch:not([hidden])+.srv-row .hn{display:none}
 .side-top{display:flex;gap:6px;padding:10px 8px 8px}
 .search{flex:1;min-width:0;background:var(--bg);border:1px solid var(--bd);border-radius:var(--r-sm);color:var(--fg);padding:6px 9px;outline:none}
 .search:focus{border-color:var(--acc)}
@@ -469,10 +471,10 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 .fleet-bar .pri{flex:none;padding:8px 14px;border-radius:9px}
 .deck-version.outdated{color:var(--acc-text)}
 .deck-update{flex:none;color:var(--acc-text);font-weight:700}
-/* Fixed slot in the search row: a waiting count shows as a badge, nothing around it moves. */
-.inbox-btn{position:relative;flex:none;color:var(--dim)}
+/* Fixed slot beside the address: a waiting count shows as a number, nothing around it moves. */
+.inbox-btn{display:inline-flex;align-items:center;gap:4px;flex:none;width:auto;padding:0 6px;color:var(--dim)}
 .inbox-btn.on{color:var(--acc-text)}
-.inbox-btn b{position:absolute;top:1px;right:0;min-width:16px;padding:0 4px;border-radius:8px;background:var(--acc-strong);color:#fff;font:600 10.5px/16px -apple-system,BlinkMacSystemFont,system-ui,sans-serif;text-align:center}
+.inbox-btn b{min-width:16px;padding:0 4px;border-radius:8px;background:var(--acc-strong);color:#fff;font:600 10.5px/16px -apple-system,BlinkMacSystemFont,system-ui,sans-serif;text-align:center}
 .inbox-btn b:empty{display:none}
 #inbox_dlg{width:min(560px,calc(100vw - 32px))}
 #files_dlg{width:min(720px,calc(100vw - 32px))}
@@ -664,7 +666,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
   .deck-switch{padding:12px}
   .deck-switch select{font-size:16px;min-height:var(--tap)}
   .deck-switch button{height:var(--tap)}
-  #srv{font-size:13px;padding:12px 14px 0}#srv .fl{font-size:16px}
+  .srv-row{height:42px;padding:10px 8px 0 14px}#srv{font-size:13px}#srv .fl{font-size:16px}
   .side-top{padding:12px 12px 8px}
   .search{font-size:16px;padding:9px 12px;border-radius:var(--r)}
   .iconbtn{min-width:var(--tap);height:var(--tap);border-radius:var(--r)}
