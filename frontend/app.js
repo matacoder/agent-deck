@@ -923,6 +923,13 @@ function renderDeckSection(box,deck,q){
   if(q&&!list.length)return;
   box.append(deckHeader({...deck,count:list.length},false));
   if(deckOpen[deck.id||"local"]===false)return;
+  // A computer with no sessions still needs a way to start one without selecting it first.
+  if(!deck.sessions.length&&!deck.error){
+    const start=el("button","empty-new deck-new",svgIcon("plus"),el("span","",tr("Новая сессия")));start.type="button";
+    start.setAttribute("aria-label",tr("Новая сессия на «{0}»",[deck.name]));
+    start.onclick=()=>{switchDeck(deck.id);openNew()};
+    box.append(start);return;
+  }
   let grp=null;
   for(const s of list){
     // Project headings as on this computer, so a session reads the same wherever you look from.

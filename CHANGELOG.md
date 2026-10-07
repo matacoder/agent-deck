@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.22.6 — 2026-10-07
+
+- A connected computer without sessions shows a "New session" button in its sidebar section: it switches to that computer and opens the new-session dialog.
+
 ## 1.22.5 — 2026-10-07
 
 - macOS installer installs only what is missing and never upgrades tools that are already there (tmux, gh, Python, Claude Code, Codex). On a Mac where Homebrew belongs to another account it no longer fails halfway with Homebrew's permission list: if nothing is missing it just continues, otherwise it names the owner, lists what to install and shows the two ways to fix it. Python 3.10+ is checked before use.

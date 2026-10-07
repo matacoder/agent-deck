@@ -427,6 +427,20 @@ test('returning to the app with a stale keyboard height and nothing focused fill
   }finally{window.close()}
 });
 
+test('a connected computer with no sessions offers to start one there',async()=>{
+  const state={local:()=>({sessions:[session('alpha')]})};
+  const routes=routesFor(state);routes['/deck/'+DECK+'/api/sessions']=()=>({sessions:[]});
+  const window=boot(routes);
+  try{
+  await settle();await settle();
+  const start=window.document.querySelector('#tabs .deck-new');
+  expect(start.getAttribute('aria-label')).toBe('Новая сессия на «Mac Studio»');
+  start.click();await settle();
+  expect(window.eval('selectedDeck')).toBe(DECK);
+  expect(window.document.getElementById('dlg').open).toBe(true);
+  }finally{window.close()}
+});
+
 test('a folder that cannot be listed offers a retry instead of loading forever',async()=>{
   const state={local:()=>({sessions:[session('alpha')]})};
   const routes=routesFor(state);let fail=true;

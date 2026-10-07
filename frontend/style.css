@@ -875,6 +875,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 .inbox-empty strong{color:var(--fg2);font-weight:600}
 .empty-list{display:grid;gap:10px;justify-items:start}
 .empty-new{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid var(--bd);border-radius:var(--r-sm);color:var(--acc-text)}
+.deck-new{margin:2px 8px 8px}
 /* Files dragged over the window: one clear target, red when the drop cannot be taken. */
 .drop-zone{position:fixed;inset:0;z-index:60;display:grid;place-items:center;padding:24px;background:#0a84ff26;border:3px dashed var(--acc);pointer-events:auto}
 .drop-zone[hidden]{display:none}
