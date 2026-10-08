@@ -814,6 +814,16 @@
     "Всё закоммичено · последний коммит": "Semua sudah di-commit · commit terakhir",
     "Рабочее дерево": "Pohon kerja",
     "Авто": "Otomatis",
-    "{0} · авто": "{0} · otomatis"
+    "{0} · авто": "{0} · otomatis",
+    "Поиск по всему выводу сессии, включая прокрутку": "Cari di seluruh keluaran sesi, termasuk riwayat gulir",
+    "Закрыть поиск": "Tutup pencarian",
+    "Перезапустить — новый разговор": "Mulai ulang — percakapan baru",
+    "Перезапустить — продолжить разговор": "Mulai ulang — lanjutkan percakapan",
+    "Дублировать сессию — новый разговор": "Duplikat sesi — percakapan baru",
+    "Живой терминал вместо экрана с текстом": "Terminal langsung, bukan layar teks",
+    "Отключить на {0}": "Matikan di {0}",
+    "Отключить Telegram на {0}?": "Matikan Telegram di {0}?",
+    "Токен бота там будет удалён; здесь Telegram продолжит работать.": "Token bot di sana akan dihapus; Telegram di sini tetap berjalan.",
+    "Telegram отключён на {0}": "Telegram dimatikan di {0}"
   }
 }

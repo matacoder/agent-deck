@@ -18,10 +18,10 @@ after a reboot.
 ## Features
 
 - Tabs for all your sessions, grouped by project, with live terminals and "working / waiting / done" status.
-- Claude Code, Codex, Claude through Kimi, native Kimi Code or a plain terminal per tab; restart an agent keeping the conversation.
+- Claude Code, Codex, Claude through Kimi, native Kimi Code or a plain terminal per tab; the **⋯** menu restarts an agent with a new or the same conversation, duplicates a session with a fresh conversation, renames or closes it.
 - Pick a GitHub repo and start working; optional git worktree per session (one branch per agent).
 - Change history with uncommitted changes: tap a line of the agent's diff to add a `file:line` comment to your message.
-- Search the whole output of a session (including scrollback); quick switcher for sessions and actions with Alt+K, Ctrl+K or ⌘K.
+- Search the whole output of a session (including scrollback) from the field in the session bar (the search icon on a phone); results drop down under it; quick switcher for sessions and actions with Alt+K, Ctrl+K or ⌘K.
 - Project files: browse, edit text, read Markdown rendered, preview images and PDF.
 - Drop screenshots and files onto the window (desktop, iPad Split View) to attach them to the open session.
 - Claude / Codex subscription limits with a pace forecast; Kimi usage windows and reset times.
@@ -391,7 +391,9 @@ address, webhook endpoint or extra dependency is needed.
 so configure the bot only on the Agent Deck you open in the browser and connect the
 others in **Settings → Network → Other Agent Deck instances**. Their questions arrive
 in the same bot, labelled with the computer name, and answers are relayed back through
-the authenticated gateway. Leave Telegram off on the connected computers.
+the authenticated gateway. Leave Telegram off on the connected computers: if the same bot is
+still on there, Settings warns and offers **Turn off on <computer>** right in the Telegram card,
+whose **⋯** menu also disconnects the bot here.
 
 Settings stay in JSON files. Telegram credentials and pairing are in
 `~/.config/cc-panel/integrations/telegram.json`; the durable question outbox is in

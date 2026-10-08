@@ -4,6 +4,8 @@
 const HUB_SECTIONS=["agents","notifications","models","computers","backups","general"];
 // Old names still arrive from links and older code paths.
 const HUB_ALIASES={connections:"notifications",network:"computers",app:"general"};
+// integReady: the sidebar's limits and local models have answered once; until then it keeps their place.
+const integReady={usage:false,lm:false};
 let hubSection="agents",lmData={profiles:[],discovery:{}},lmTimer=null,returnToNew=false,lmRefreshPending=null,lmModelsChecked=0;
 let deckTimer=null,telegramConfig={},integrationTimer=null,telegramDirty=false,editorReturn=null;
 let panelUpdating=false,panelVersion=null,versionTimer=null,versionLoading=null;

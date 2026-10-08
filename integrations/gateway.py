@@ -120,11 +120,11 @@ class Gateway:
         return list(self.session_items)
 
     def telegram_states(self):
-        """(computer name, its Telegram status) for every connected computer that answered."""
+        """(computer id, name, its Telegram status) for every connected computer that answered."""
         def fetch(deck):
             status, data = get_json(self.decks(), deck['id'], '/api/integrations', timeout=3)
             return data.get('telegram', {}) if status == 200 else {}
-        return [(deck.get('name', ''), state) for deck, state, error in each(self.connected(), fetch)
+        return [(deck['id'], deck.get('name', ''), state) for deck, state, error in each(self.connected(), fetch)
                 if not error and isinstance(state, dict)]
 
     def answer(self, question, index, text=None):

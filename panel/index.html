@@ -138,7 +138,7 @@ aside{position:relative;width:min(var(--side-w,248px),40vw);flex:none;background
 
 /* ---------- main ---------- */
 main{flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;background:var(--bg)}
-.bar{flex:none;display:flex;align-items:center;gap:6px;padding:0 8px 0 14px;height:44px;border-bottom:1px solid var(--bd);background:var(--side)}
+.bar{position:relative;z-index:6;flex:none;display:flex;align-items:center;gap:6px;padding:0 8px 0 14px;height:44px;border-bottom:1px solid var(--bd);background:var(--side)}
 #title{flex:1;min-width:0;display:flex;align-items:baseline;gap:10px;white-space:nowrap;overflow:hidden}
 #title b{color:var(--fg2);font-weight:600;overflow:hidden;text-overflow:ellipsis;flex:none;max-width:50%}
 #title .st{color:var(--mut);font-size:12px;overflow:hidden;text-overflow:ellipsis}
@@ -157,6 +157,7 @@ main{flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;backgrou
 #stage iframe{position:absolute;inset:0;width:100%;height:100%;border:0;display:none;background:var(--bg)}
 #stage iframe.on{display:block}
 .screen-skeleton{display:grid;gap:12px;padding:16px 4px}
+.integ-skeleton{display:grid;gap:8px;padding:8px 6px}.integ-skeleton .sk-line:last-child{width:45%}
 .sk-line{display:block;height:12px;border-radius:6px;background:linear-gradient(90deg,var(--side2) 0%,var(--sel) 50%,var(--side2) 100%);background-size:200% 100%;animation:shimmer 1.2s ease-in-out infinite}
 .sk-label{margin-top:6px;color:var(--mut);font:12.5px/1.4 -apple-system,BlinkMacSystemFont,system-ui,sans-serif}
 @keyframes shimmer{from{background-position:100% 0}to{background-position:-100% 0}}
@@ -465,6 +466,7 @@ dialog:focus,dialog:focus-visible{outline:none}
 .integration-status.error{color:var(--bad-text)}
 .integration-status.error::before{background:var(--bad)}
 .integration-note{margin:5px 0 0;color:var(--mut);font-size:12px;line-height:1.5}
+.integration-note>p{margin:0}.integration-note>button{margin:6px 6px 0 0;padding:5px 10px;border:1px solid var(--bd);border-radius:var(--r-sm)}
 #telegram_credentials{border-top:1px solid var(--bd);padding-top:4px;margin-top:8px}
 .hub-card .integration-toggle{border-top:1px solid var(--bd);margin-top:8px;padding-top:6px}
 .integration-link,.integration-pair{display:flex;align-items:center;justify-content:center;min-height:var(--tap);padding:9px 12px;border-radius:9px;width:100%;font-size:13px;margin-top:12px}
@@ -509,10 +511,14 @@ body.resizing iframe{pointer-events:none}
 /* The tab row takes the dialog's first focus (no button lights up) and scrolls sideways on narrow phones. */
 #project_tabs:focus{outline:none}
 .project-close{display:inline-flex;align-items:center;justify-content:center;flex:none;width:32px;height:32px;padding:0!important}
-#search_dlg{width:min(820px,calc(100vw - 32px))}
-.search-form{display:flex;gap:8px;padding:12px 22px;border-bottom:1px solid var(--bd)}
-.search-form input{flex:1;min-width:0;padding:9px 12px;border:1px solid var(--bd);border-radius:9px;background:var(--bg);color:var(--fg);font:inherit;font-size:14px;outline:none}
-.search-form button{padding:0 16px;border-radius:9px}
+/* Output search: a quiet field in the bar, results in a card under it; nothing covers the session. */
+.bar-search{display:flex;align-items:center;gap:6px;width:190px;height:30px;padding:0 8px;border:1px solid var(--bd);border-radius:var(--r-sm);background:var(--bg);color:var(--mut);transition:width .15s ease}
+.bar-search:focus-within{width:280px;border-color:var(--bd-strong)}
+.bar-search>.ui-icon{flex:none;width:14px;height:14px}
+.bar-search input{flex:1;min-width:0;height:100%;padding:0;border:0;background:transparent;color:var(--fg);font:inherit;font-size:12.5px;outline:none}
+.search-pop{position:absolute;top:calc(100% + 4px);right:8px;width:min(640px,calc(100% - 16px));max-height:min(70vh,640px);overflow-y:auto;overscroll-behavior:contain;padding:12px;background:var(--side);border:1px solid var(--bd-soft);border-radius:12px;box-shadow:0 18px 50px #0007}
+.search-pop[hidden]{display:none}
+#search_body{display:grid;gap:10px}
 .search-result{margin-bottom:12px}.search-result>.git-meta{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:4px}
 .search-copy{padding:4px 10px;border-radius:var(--r-sm);color:var(--mut)}@media (hover:hover){.search-copy:hover{background:var(--side2)}}
 .search-lines{padding:6px 10px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);font:var(--code-font,12px)/1.45 var(--mono);white-space:pre-wrap;overflow-wrap:anywhere;-webkit-user-select:text;user-select:text}
@@ -530,6 +536,8 @@ body.resizing iframe{pointer-events:none}
 .git-tabs .git-font button{min-width:36px;padding:0 6px;font-weight:600}
 .git-tabs button{padding:6px 12px;border-radius:var(--r-sm);color:var(--mut)}
 .git-tabs button.on{background:var(--sel);color:var(--fg2)}
+.git-tabs [role=tab]{display:inline-flex;align-items:center;justify-content:center;min-width:36px}
+.git-tabs [role=tab] .ui-icon{width:18px;height:18px}
 #git_body{display:flex;flex-direction:column;gap:10px}
 #git_body>*{flex:none}
 .git-bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
@@ -681,7 +689,7 @@ body.resizing iframe{pointer-events:none}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 
 /* Any touch screen (an iPad too): iOS zooms the page when an input below 16px gets focus. */
-@media (pointer:coarse){.q-text textarea,.files-new input,.git-branch,.git-tree,.diff-comment textarea,.palette input,.search-form input{font-size:16px}.files-text{font-size:max(16px,var(--code-font,16px))}}
+@media (pointer:coarse){.q-text textarea,.files-new input,.git-branch,.git-tree,.diff-comment textarea,.palette input,.bar-search input{font-size:16px}.files-text{font-size:max(16px,var(--code-font,16px))}}
 /* ---------- mobile (phones, including landscape) ----------
    Keep in sync with MOBILE_QUERY in app.js. */
 @media (max-width:760px),(pointer:coarse) and (max-height:500px){
@@ -801,9 +809,17 @@ body.resizing iframe{pointer-events:none}
   .chk,.dlg label.chk{font-size:15px}
   .acts{padding:12px 16px calc(12px + var(--sab))}
   .acts button{flex:1;min-height:var(--tap);padding:12px;font-size:16px;border-radius:var(--r)}
-  #inbox_dlg,#project_dlg,#search_dlg,.palette{width:100vw}
-  #inbox_dlg .dlg,#project_dlg .dlg,#search_dlg .dlg,.palette .dlg{padding-top:var(--sat)}
-  .palette{margin-top:0}.palette-list{max-height:none;flex:1}.search-form{padding:10px 16px}
+  #inbox_dlg,#project_dlg,.palette{width:100vw}
+  #inbox_dlg .dlg,#project_dlg .dlg,.palette .dlg{padding-top:var(--sat)}
+  .palette{margin-top:0}.palette-list{max-height:none;flex:1}
+  /* Phone: the search icon swaps the title and bar icons for the field; × puts them back. */
+  .bar-search{display:none}
+  body.searching .bar-search{display:flex;flex:1;width:auto;height:var(--tap)}
+  body.searching .bar-tools{flex:1;min-width:0}
+  body.searching #title,body.searching .bar-tools>.iconbtn,body.searching #b_actions{display:none!important}
+  .search-close{place-items:center;flex:none;width:32px;height:32px;margin-right:-6px;color:var(--mut)}
+  .search-pop{left:8px;right:8px;width:auto;max-height:60dvh}
+  .bar-search input::-webkit-search-cancel-button{display:none}
   .git-branch{font-size:16px;min-height:var(--tap)}
   .git-tabs{padding:10px 20px}.git-tabs button{min-height:var(--tap);padding:0 14px}
   #project_tabs{gap:2px;padding:8px 6px}#project_tabs button{padding:0 9px}#project_tabs .git-font button{min-width:36px}
@@ -940,6 +956,9 @@ body.resizing iframe{pointer-events:none}
   <symbol id="i-history" viewBox="0 0 24 24"><circle cx="6" cy="5" r="2"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="7" r="2"/><path d="M6 7v10M18 9c0 5-5 5-11 8"/></symbol>
   <symbol id="i-arrow-left" viewBox="0 0 24 24"><path d="M19 12H5M11 6l-6 6 6 6"/></symbol>
   <symbol id="i-sidebar" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></symbol>
+  <symbol id="i-diff" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M12 10v5M9.5 12.5h5M9.5 17.5h5"/></symbol>
+  <symbol id="i-commit" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.5"/><path d="M3 12h5.5M15.5 12H21"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/></symbol>
   <symbol id="i-sidebar-right" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16"/></symbol>
   <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
   <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></symbol>
@@ -976,9 +995,9 @@ body.resizing iframe{pointer-events:none}
       <button class="iconbtn m-only" style="position:relative" onclick="drawer(true)" aria-label="Сессии"><svg class="ui-icon"><use href="#i-menu"/></svg><span id="menuBadge"></span></button>
       <button class="iconbtn d-only" id="b_side" onclick="toggleSidebar()" aria-label="Скрыть или показать список сессий" title="Скрыть или показать список сессий"><svg class="ui-icon"><use href="#i-sidebar"/></svg></button>
       <div id="title">—</div>
-      <span class="bar-tools" id="bar_tools"><button class="iconbtn" id="b_files" onclick="toggleProject(['files'])" aria-pressed="false" aria-label="Файлы проекта" title="Файлы проекта"><svg class="ui-icon"><use href="#i-folder"/></svg></button><button class="iconbtn" id="b_search" onclick="openOutputSearch()" aria-label="Поиск в выводе" title="Поиск в выводе"><svg class="ui-icon"><use href="#i-search"/></svg></button><button class="iconbtn" id="b_history" onclick="toggleProject(['changes','commits'])" aria-pressed="false" aria-label="История изменений" title="История изменений"><svg class="ui-icon"><use href="#i-history"/></svg></button></span>
-      <button class="act d-only" id="b_link" title="Открыть последнюю ссылку из терминала" onclick="openLink()" style="display:none"><svg class="ui-icon"><use href="#i-link"/></svg><span>Ссылка</span></button>
+      <span class="bar-tools" id="bar_tools"><form class="bar-search" id="search_form" role="search"><svg class="ui-icon"><use href="#i-search"/></svg><input id="search_q" type="search" maxlength="200" placeholder="Поиск в выводе" aria-label="Поиск в выводе" title="Поиск по всему выводу сессии, включая прокрутку" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search"><button type="button" class="m-only search-close" onclick="closeOutputSearch()" aria-label="Закрыть поиск"><svg class="ui-icon"><use href="#i-x"/></svg></button></form><button class="iconbtn m-only" id="b_files" onclick="toggleProject(['files'])" aria-pressed="false" aria-label="Файлы проекта" title="Файлы проекта"><svg class="ui-icon"><use href="#i-folder"/></svg></button><button class="iconbtn m-only" id="b_search" onclick="openOutputSearch()" aria-label="Поиск в выводе" title="Поиск в выводе"><svg class="ui-icon"><use href="#i-search"/></svg></button><button class="iconbtn m-only" id="b_history" onclick="toggleProject(['changes','commits'])" aria-pressed="false" aria-label="История изменений" title="История изменений"><svg class="ui-icon"><use href="#i-history"/></svg></button></span>
       <button class="iconbtn" id="b_actions" onclick="sheet(true)" aria-label="Действия" title="Действия" aria-haspopup="menu"><svg class="ui-icon"><use href="#i-more"/></svg></button>
+      <div id="search_pop" class="search-pop" hidden><div id="search_body" role="region" aria-label="Поиск в выводе"></div></div>
       <button class="iconbtn d-only" id="b_project" onclick="toggleProject(PROJECT_TABS)" aria-pressed="false" aria-label="Скрыть или показать панель проекта" title="Скрыть или показать панель проекта"><svg class="ui-icon"><use href="#i-sidebar-right"/></svg></button>
     </div>
     <div id="stage">
@@ -1003,6 +1022,7 @@ body.resizing iframe{pointer-events:none}
             <button class="key key-extra" onclick="key('BTab')" aria-label="Назад по полям (Shift+Tab)" title="Назад по полям (Shift+Tab)">⇧Tab</button><button class="key key-extra" onclick="key('Tab')" aria-label="Дальше по полям (Tab)" title="Дальше по полям (Tab)">Tab</button>
             <button class="key key-extra" onclick="key('C-c')" aria-label="Прервать (Ctrl+C)" title="Прервать (Ctrl+C)">^C</button>
             <button class="key" id="b_reconnect" onclick="reconnectTerminal()" hidden>Переподключить терминал</button>
+            <button class="key key-extra" id="b_mode" onclick="toggleMode()" aria-pressed="false" title="Живой терминал вместо экрана с текстом">Терминал</button>
             <button class="key key-extra" id="b_wrap" onclick="toggleWrap()" aria-pressed="true">Перенос</button>
           </div>
           <button class="keyboard-hide" id="b_keyboard" onpointerdown="event.preventDefault()" onclick="hideKeyboard()" aria-label="Скрыть клавиатуру" title="Скрыть клавиатуру"><svg class="ui-icon"><use href="#i-keyboard-hide"/></svg></button>
@@ -1028,31 +1048,23 @@ body.resizing iframe{pointer-events:none}
     <div id="terminal_keys" hidden></div>
     <nav id="quick_tabs" aria-label="Быстрое переключение сессий"></nav>
   </main>
-  <dialog id="project_dlg" aria-label="Проект"><div class="resizer" id="project_resizer" role="separator" aria-orientation="vertical" tabindex="0" aria-label="Ширина боковой панели" title="Потяните, чтобы изменить ширину; двойной клик — ширина по умолчанию"></div><div class="dlg"><div class="git-tabs" id="project_tabs" role="tablist" tabindex="-1" autofocus><button type="button" role="tab" data-tab="changes" onclick="projectTab('changes')">Изменения</button><button type="button" role="tab" data-tab="commits" onclick="projectTab('commits')">Коммиты</button><button type="button" role="tab" data-tab="files" onclick="projectTab('files')">Файлы</button><span class="git-font"><button type="button" onclick="codeFont(-1)" aria-label="Уменьшить шрифт">A−</button><button type="button" onclick="codeFont(1)" aria-label="Увеличить шрифт">A+</button></span><button type="button" class="project-close" onclick="closeProject()" aria-label="Закрыть"><svg class="ui-icon"><use href="#i-x"/></svg></button></div><div class="dlg-body" id="git_body"></div><div class="dlg-body" id="files_body" hidden></div></div></dialog>
+  <dialog id="project_dlg" aria-label="Проект"><div class="resizer" id="project_resizer" role="separator" aria-orientation="vertical" tabindex="0" aria-label="Ширина боковой панели" title="Потяните, чтобы изменить ширину; двойной клик — ширина по умолчанию"></div><div class="dlg"><div class="git-tabs" id="project_tabs" role="tablist" tabindex="-1" autofocus><button type="button" role="tab" data-tab="changes" onclick="projectTab('changes')" aria-label="Изменения" title="Изменения"><svg class="ui-icon"><use href="#i-diff"/></svg></button><button type="button" role="tab" data-tab="commits" onclick="projectTab('commits')" aria-label="Коммиты" title="Коммиты"><svg class="ui-icon"><use href="#i-commit"/></svg></button><button type="button" role="tab" data-tab="files" onclick="projectTab('files')" aria-label="Файлы" title="Файлы"><svg class="ui-icon"><use href="#i-folder"/></svg></button><span class="git-font"><button type="button" onclick="codeFont(-1)" aria-label="Уменьшить шрифт">A−</button><button type="button" onclick="codeFont(1)" aria-label="Увеличить шрифт">A+</button></span><button type="button" class="project-close" onclick="closeProject()" aria-label="Закрыть"><svg class="ui-icon"><use href="#i-x"/></svg></button></div><div class="dlg-body" id="git_body"></div><div class="dlg-body" id="files_body" hidden></div></div></dialog>
 </div>
 
 <div id="sheet"><div class="scrim" onclick="sheet(false)"></div><div class="panel" role="menu" aria-labelledby="sheetCap">
   <div class="cap" id="sheetCap"></div>
-  <div class="sheet-group" id="s_mode_group">
-    <button id="s_mode" onclick="sheet(false);toggleMode()"><svg class="ui-icon"><use href="#i-terminal"/></svg><span id="s_mode_label">Показать терминал</span></button>
-    <button onclick="sheet(false);popout()"><svg class="ui-icon"><use href="#i-external"/></svg><span>Терминал в новой вкладке</span></button>
-    <button onclick="sheet(false);termHere()"><svg class="ui-icon"><use href="#i-plus"/></svg><span>Новый терминал в этой папке</span></button>
+  <div class="sheet-group" id="s_session">
+    <button class="agent-only" onclick="sheet(false);restart('new')"><svg class="ui-icon"><use href="#i-chat-plus"/></svg><span>Перезапустить — новый разговор</span></button>
+    <button class="agent-only" onclick="sheet(false);restart('continue')"><svg class="ui-icon"><use href="#i-restart"/></svg><span>Перезапустить — продолжить разговор</span></button>
+    <button onclick="sheet(false);duplicateSession()"><svg class="ui-icon"><use href="#i-copy"/></svg><span>Дублировать сессию — новый разговор</span></button>
   </div>
-  <div class="sheet-group">
-    <button onclick="sheet(false);openRename()"><svg class="ui-icon"><use href="#i-pencil"/></svg><span>Переименовать</span></button>
-    <button id="s_link" onclick="sheet(false);openLink()"><svg class="ui-icon"><use href="#i-link"/></svg><span>Открыть ссылку из терминала</span></button>
-    <button class="agent-only" onclick="sheet(false);restart('continue')"><svg class="ui-icon"><use href="#i-restart"/></svg><span>Перезапустить, продолжив разговор</span></button>
-    <button class="agent-only" onclick="sheet(false);restart('new')"><svg class="ui-icon"><use href="#i-chat-plus"/></svg><span>Перезапустить с новым разговором</span></button>
+  <div class="sheet-group" id="s_manage">
+    <button onclick="sheet(false);openRename()"><svg class="ui-icon"><use href="#i-pencil"/></svg><span>Переименовать сессию</span></button>
+    <button class="dng" onclick="sheet(false);kill()"><svg class="ui-icon"><use href="#i-x"/></svg><span>Закрыть сессию</span></button>
   </div>
-  <div class="sheet-group">
-    <button onclick="sheet(false);openNew()"><svg class="ui-icon"><use href="#i-plus"/></svg><span>Новая сессия</span></button>
-    <button onclick="sheet(false);openSettings()"><svg class="ui-icon"><use href="#i-gear"/></svg><span>Настройки</span></button>
-    <button onclick="refreshInterface()"><svg class="ui-icon"><use href="#i-refresh"/></svg><span>Обновить интерфейс</span></button>
+  <div class="sheet-group" id="s_app">
     <button id="s_update" onclick="updatePanel()" style="display:none"><svg class="ui-icon"><use href="#i-download"/></svg><span id="s_update_label"></span></button>
     <button id="s_drafts" onclick="showClosedDrafts()" style="display:none"><svg class="ui-icon"><use href="#i-file"/></svg><span>Черновики закрытых сессий</span></button>
-  </div>
-  <div class="sheet-group">
-    <button class="dng" onclick="sheet(false);kill()"><svg class="ui-icon"><use href="#i-x"/></svg><span>Закрыть сессию</span></button>
   </div>
 </div><button class="sheet-cancel" onclick="sheet(false)">Отмена</button></div>
 <div id="toast" role="status" aria-live="polite"></div>
@@ -1064,7 +1076,6 @@ body.resizing iframe{pointer-events:none}
   <div class="viewer-bar"><span id="viewer_caption"></span><a id="viewer_open" target="_blank" rel="noopener">Открыть оригинал</a></div>
 </div>
 <dialog id="confirm_dlg"><form class="dlg" method="dialog"><div class="dlg-body"><h3 id="confirm_title"></h3><p id="confirm_text"></p></div><div class="acts"><button value="cancel">Отмена</button><button value="ok" class="pri" id="confirm_ok">OK</button></div></form></dialog>
-<dialog id="search_dlg"><div class="dlg"><div class="hub-heading"><h3>Поиск в выводе</h3><button type="button" onclick="$('search_dlg').close()" aria-label="Закрыть"><svg class="ui-icon"><use href="#i-x"/></svg></button></div><form class="search-form" id="search_form"><input id="search_q" type="search" maxlength="200" placeholder="Текст из вывода" aria-label="Текст из вывода" autocomplete="off" autocapitalize="off" spellcheck="false"><button type="submit" class="pri">Найти</button></form><div class="dlg-body" id="search_body"></div></div></dialog>
 <dialog id="palette_dlg" class="palette"><div class="dlg"><input id="palette_q" type="text" placeholder="Сессия или действие" aria-label="Сессия или действие" autocomplete="off" autocapitalize="off" spellcheck="false" role="combobox" aria-controls="palette_list"><div class="palette-list" id="palette_list" role="listbox"></div></div></dialog>
 <dialog id="inbox_dlg"><div class="dlg"><div class="hub-heading"><h3 tabindex="-1" autofocus>Ждут ответа</h3><button type="button" onclick="$('inbox_dlg').close()" aria-label="Закрыть"><svg class="ui-icon"><use href="#i-x"/></svg></button></div><div class="dlg-body" id="inbox_list"></div></div></dialog>
 <dialog id="draft_dlg"><div class="dlg"><div class="dlg-body"><h3>Черновики закрытых сессий</h3><div id="closed_drafts"></div></div><div class="acts"><button type="button" onclick="$('draft_dlg').close()">Закрыть</button></div></div></dialog>
@@ -1141,7 +1152,7 @@ body.resizing iframe{pointer-events:none}
       <div id="telegram_cards"></div>
       <form id="integrations_dlg" class="hub-card editor integration-dialog" hidden onsubmit="event.preventDefault();saveTelegram()">
         <div class="card-top"><span class="card-icon telegram-mark" aria-hidden="true"><svg class="ui-icon"><use href="#i-telegram"/></svg></span><div class="card-main"><h4>Telegram</h4><p id="telegram_state" class="card-status" role="status"></p></div></div>
-        <p id="telegram_duplicates" class="integration-note danger" hidden></p>
+        <div id="telegram_duplicates" hidden></div>
         <p class="hint">Вопросы со всех подключённых компьютеров приходят в этот бот, настраивать Telegram на них не нужно.</p>
         <details id="telegram_credentials" open><summary>Токен бота</summary>
         <label for="telegram_token">Токен бота из @BotFather</label>
@@ -1968,9 +1979,6 @@ function unwrapUrls(text){
 let panelOrigins=[location.origin];
 const resolvePanelLink=u=>panelLinkTarget(u,{browserOrigin:location.origin,panelOrigins,identity:selectedDeck});
 const cleanUrl=u=>u.replace(/[.,;)\]]+$/,"");
-function lastUrl(s){const m=unwrapUrls(s&&s.preview||"").match(URL_RE);return m?cleanUrl(m[m.length-1]):null}
-function updateLink(){$("b_link").style.display=lastUrl(cur())?"":"none"}
-function openLink(){const u=lastUrl(cur());if(u)window.open(resolvePanelLink(u),"_blank","noopener")}
 const ANSI_PALETTE=["#2e3436","#cc0000","#4e9a06","#c4a000","#3465a4","#75507b","#06989a","#d3d7cf","#555753","#ef2929","#8ae234","#fce94f","#729fcf","#ad7fa8","#34e2e2","#eeeeec"];
 function ansiColor(n){
   if(!Number.isInteger(n)||n<0||n>255)return null;
@@ -2381,6 +2389,15 @@ function codeFont(step){
   try{localStore.setItem("cc.code-font",String(size))}catch(e){}
   applyCodeFont();
 }
+// Which diffs open by themselves: source code, at most a handful. Tests, translations, generated or vendored
+// files, docs, configs and huge diffs stay folded; each renders only when tapped, which keeps a phone fast.
+const CODE_FILE=/\.(py|js|mjs|cjs|ts|tsx|jsx|go|rs|rb|java|kt|swift|c|cc|cpp|h|hpp|cs|php|sh|bash|zsh|ps1|sql|html|css|scss|vue|svelte|lua|dart|scala|ex|exs)$/i;
+const QUIET_PATH=/test|\.spec\.|(^|\/)(specs?|fixtures|__snapshots__|locales?|i18n|translations|vendor|dist|build|node_modules)\/|\.min\./i;
+const OPEN_FILES=8,OPEN_LINES=600;
+function filesToOpen(files){
+  const worth=files.filter(f=>CODE_FILE.test(f.path)&&!QUIET_PATH.test(f.path)&&(f.added||0)+(f.removed||0)<=OPEN_LINES);
+  return new Set(worth.slice(0,OPEN_FILES).map(f=>f.path));
+}
 // Collapsed files render their diff only when opened, so large commits stay fast on a phone.
 function fileBlock(title,file,open,content){
   const binary=file.binary||file.changes?.every(change=>change.binary);
@@ -2407,6 +2424,22 @@ async function loadChanges(){
     if(data.tree&&hist.log?.tree&&hist.log.tree!==data.tree){freshList();loadHistoryPage()}
   }catch(e){if(seq!==hist.changesSeq)return;hist.changesError=e.message===STALE?"":e.message||tr("Не удалось загрузить")}
   if(hist.tab==="changes"&&!hist.view)renderHistory();
+}
+// While Changes is on screen it quietly checks again, so a new edit or the agent moving to another worktree
+// shows up without a tap. It redraws only when something changed and never under a comment being typed.
+async function pollChanges(){
+  const typing=()=>$("git_body").querySelector(".diff-comment");
+  if(document.hidden||!$("project_dlg").open||project.tab!=="changes"||hist.view||hist.session!==active||!hist.changes||hist.polling||typing())return;
+  const seq=hist.changesSeq,old=hist.changes;hist.polling=true;
+  try{
+    const data=await api(gitPath("changes",{tree:hist.tree}),null,false,{timeout:60000});
+    if(!data.files.length&&data.head)data.last=data.head===old.head&&old.last&&!old.last.error?old.last:await lastCommit(data.head);
+    if(seq!==hist.changesSeq||hist.changes!==old||JSON.stringify(data)===JSON.stringify(old)||typing())return;
+    hist.changes=data;
+    if(data.tree&&hist.log?.tree&&hist.log.tree!==data.tree){freshList();loadHistoryPage()}
+    if(project.tab==="changes"&&!hist.view)renderHistory();
+  }catch(e){}
+  finally{hist.polling=false}
 }
 async function lastCommit(sha){
   try{return await api(gitPath("commit",{sha}),null,false,{timeout:60000})}
@@ -2578,8 +2611,9 @@ function renderHistoryView(box){
   box.append(list,el("h5","git-section",tr("Общий дифф")));
   if(view.error!==undefined){box.append(errorWithRetry(view.error,()=>showGroup(group)));return}
   if(!view.diff){box.append(el("p","files-empty",tr("Загрузка…")));return}
+  const open=filesToOpen(view.diff.files);
   for(const file of view.diff.files){
-    box.append(fileBlock(file.path,file,true,()=>{
+    box.append(fileBlock(file.path,file,open.has(file.path),()=>{
       const wrap=el("div","");
       for(const change of file.changes)wrap.append(el("div","diff-commit",change.short+" · "+change.subject),renderDiff(change.patch,change));
       return wrap;
@@ -2592,7 +2626,8 @@ function commitDetails(box,c,compact){
   const when=compact?relativeTime(c.time):new Date(c.time*1000).toLocaleString(DATE_LOCALE);
   box.append(el("h4","git-title"+(compact?" compact":""),subject),el("p","git-meta",c.short,el("span","sep","·"),authorLabel(c.author),el("span","sep","·"),when));
   const body=rest.join("\n").trim();if(body&&!compact)box.append(el("pre","git-message",body));
-  for(const f of c.files)box.append(fileBlock(f.path,f,true,()=>renderDiff(f.patch,f)));
+  const open=filesToOpen(c.files);
+  for(const f of c.files)box.append(fileBlock(f.path,f,open.has(f.path),()=>renderDiff(f.patch,f)));
 }
 // A comment names the file, the line and quotes it, so the agent finds the place without the diff.
 function lineComment(path,row,text){
@@ -2634,9 +2669,8 @@ function renderChanges(box){
   box.append(el("div","git-head",...treePicker(data),refresh));
   if(!data.files.length)return renderLastCommit(box,data.last);
   box.append(el("p","git-meta",tr("Нажмите на строку, чтобы добавить комментарий в сообщение агенту")));
-  // Many files stay folded: each diff renders only when opened, which keeps a phone responsive.
-  const open=data.files.length<=5;
-  for(const f of data.files)box.append(fileBlock(f.path,f,open,()=>renderDiff(f.patch,f,(row,line)=>commentForm(f.path,row,line))));
+  const open=filesToOpen(data.files);
+  for(const f of data.files)box.append(fileBlock(f.path,f,open.has(f.path),()=>renderDiff(f.patch,f,(row,line)=>commentForm(f.path,row,line))));
   if(data.skipped)box.append(el("p","diff-note",tr("Ещё новых файлов: {0}; они не показаны",[data.skipped])));
 }
 function renderLastCommit(box,last){
@@ -2666,7 +2700,7 @@ function renderGroups(box){
   const start=fileButton(tr("Сгруппировать коммиты"),"pri",startGrouping);box.append(...[modelPicker(),el("div","acts",start)].filter(Boolean));
 }
 
-if(typeof module!=="undefined")module.exports={diffRows,lineComment,authorColor,AUTHOR_COLORS};
+if(typeof module!=="undefined")module.exports={diffRows,lineComment,authorColor,AUTHOR_COLORS,filesToOpen};
 // Changes, commits and files of the open session in one panel: a right sidebar on wide screens that stays
 // open while sessions switch (remembered in this browser), a full-screen dialog on phones. Each tab keeps
 // its own state and scroll; a tab loads for the open session only when shown.
@@ -2875,18 +2909,29 @@ if(typeof module!=="undefined")module.exports={renderMarkdown,isMarkdown};
 // Bundled before app.js; nothing here runs at load time.
 const outputSearch={session:null,query:"",seq:0,result:null,error:"",busy:false};
 
+// The field lives in the session bar: always shown on a wide screen, opened by the search icon on a phone.
+// Results float under the bar instead of covering the session.
 function openOutputSearch(){
   if(!active)return;
-  // A new number drops an answer still on its way for the previous session.
-  if(outputSearch.session!==active)Object.assign(outputSearch,{session:active,query:"",result:null,error:"",busy:false,seq:outputSearch.seq+1});
-  if(!$("search_dlg").open)$("search_dlg").showModal();
-  const input=$("search_q");input.value=outputSearch.query;renderOutputSearch();
-  setTimeout(()=>{input.focus();input.select()},0);
+  searchSession();
+  if(isMobile())document.body.classList.add("searching");
+  if(outputSearch.result||outputSearch.error)showSearchPop(true);
+  const input=$("search_q");setTimeout(()=>{input.focus();input.select()},0);
+}
+function closeOutputSearch(){
+  showSearchPop(false);document.body.classList.remove("searching");$("search_q").blur();
+}
+function showSearchPop(on){$("search_pop").hidden=!on}
+// Another session starts a new search; a new number drops an answer still on its way for the previous one.
+function searchSession(){
+  if(outputSearch.session===active)return;
+  Object.assign(outputSearch,{session:active,query:"",result:null,error:"",busy:false,seq:outputSearch.seq+1});
+  $("search_q").value="";closeOutputSearch();
 }
 async function runOutputSearch(){
   const query=$("search_q").value.trim();
   if(!query)return;
-  const seq=++outputSearch.seq;Object.assign(outputSearch,{query,busy:true,error:""});renderOutputSearch();
+  const seq=++outputSearch.seq;Object.assign(outputSearch,{query,busy:true,error:""});renderOutputSearch();showSearchPop(true);
   try{
     const result=await api("/api/scrollback?"+new URLSearchParams({name:outputSearch.session,q:query}),null,false,{timeout:60000});
     if(seq===outputSearch.seq)outputSearch.result=result;
@@ -2903,7 +2948,7 @@ function renderOutputSearch(){
   const box=$("search_body"),state=outputSearch,result=state.result;box.replaceChildren();
   if(state.busy){box.append(el("p","files-empty",tr("Ищу…")));return}
   if(state.error){box.append(errorWithRetry(state.error,runOutputSearch));return}
-  if(!result){box.append(el("p","files-empty",tr("Ищет по всему выводу сессии, включая прокрутку, начиная с последних строк")));return}
+  if(!result)return;
   if(!result.total){box.append(el("p","files-empty",tr("Ничего не найдено")));return}
   box.append(el("p","git-meta",result.total>result.matches.length?tr("Найдено: {0}, показаны последние {1}",[result.total,result.matches.length]):tr("Найдено: {0}",[result.total])));
   for(const hit of result.matches){
@@ -2962,6 +3007,8 @@ if(typeof module!=="undefined")module.exports={matchPalette,markMatch};
 const HUB_SECTIONS=["agents","notifications","models","computers","backups","general"];
 // Old names still arrive from links and older code paths.
 const HUB_ALIASES={connections:"notifications",network:"computers",app:"general"};
+// integReady: the sidebar's limits and local models have answered once; until then it keeps their place.
+const integReady={usage:false,lm:false};
 let hubSection="agents",lmData={profiles:[],discovery:{}},lmTimer=null,returnToNew=false,lmRefreshPending=null,lmModelsChecked=0;
 let deckTimer=null,telegramConfig={},integrationTimer=null,telegramDirty=false,editorReturn=null;
 let panelUpdating=false,panelVersion=null,versionTimer=null,versionLoading=null;
@@ -3231,12 +3278,28 @@ function telegramSummary(c){
   if(c.configured)return [tr("@{0} · привяжите свой Telegram",[c.bot]),"warn"];
   return [tr("Не настроен"),"idle"];
 }
+// The same bot polled by another computer delivers every question twice; it can be turned off there from here.
+const telegramClearedOn=new Set();  // The server remembers duplicates for a minute; a computer just switched off is not one.
+function duplicateWarning(c){
+  const decks=(c.duplicates||[]).map(d=>typeof d==="string"?{name:d}:d).filter(d=>!telegramClearedOn.has(d.id));
+  if(!decks.length)return null;
+  const box=el("div","integration-note danger",el("p","",tr("Этот бот также включён на: {0}. Вопросы будут приходить дважды; отключите Telegram там.",[decks.map(d=>d.name).join(", ")])));
+  for(const d of decks)if(d.id)box.append(btn(tr("Отключить на {0}",[d.name]),"danger",()=>disableTelegramOn(d)));
+  return box;
+}
+async function disableTelegramOn(deck){
+  if(!await confirmAction(tr("Отключить Telegram на {0}?",[deck.name]),{text:tr("Токен бота там будет удалён; здесь Telegram продолжит работать."),confirm:tr("Отключить"),danger:true}))return;
+  try{await api(instancePath(deck.id,"/api/telegram_config"),{clear:true});telegramClearedOn.add(deck.id);toast(tr("Telegram отключён на {0}",[deck.name]),"success")}
+  catch(e){if(e.message!==STALE)toast(e.message)}
+  renderTelegram(telegramConfig);
+}
 function renderTelegramCard(){
   if(editorInUse($("integrations_dlg")))return;
   const [status,tone]=telegramSummary(telegramConfig);
   const card=hubCard({key:"telegram",icon:el("span","telegram-glyph",svgIcon("telegram")),title:"Telegram",status,tone,
     primary:{label:tr("Настроить"),run:openIntegrations,quiet:Boolean(telegramConfig.paired)},
-    body:[el("p","hint",tr("Вопросы с кнопками ответа в личном чате с вашим ботом."))]});
+    more:[telegramConfig.configured&&[tr("Отключить"),clearTelegram,true]],
+    body:[el("p","hint",tr("Вопросы с кнопками ответа в личном чате с вашим ботом.")),duplicateWarning(telegramConfig)]});
   $("telegram_cards").replaceChildren(...placeEditor([card],"telegram",$("integrations_dlg")));
 }
 function renderTelegram(config){
@@ -3248,8 +3311,8 @@ function renderTelegram(config){
   // Polled every few seconds: rewriting the same text would make screen readers repeat it.
   if(state.textContent!==status)state.textContent=status;
   state.className="card-status "+tone;
-  $("telegram_duplicates").hidden=!c.duplicates?.length;
-  if(c.duplicates?.length)$("telegram_duplicates").textContent=tr("Этот бот также включён на: {0}. Вопросы будут приходить дважды; отключите Telegram там.",[c.duplicates.join(", ")]);
+  const warning=duplicateWarning(c);
+  $("telegram_duplicates").hidden=!warning;$("telegram_duplicates").replaceChildren(...(warning?[warning]:[]));
   if(!telegramDirty)$("telegram_enabled").checked=c.enabled!==false;  // A poll must not undo the user's switch.
   $("telegram_clear").hidden=!c.configured;
   $("telegram_pair").hidden=!(c.configured&&!c.pair_url);
@@ -3385,7 +3448,7 @@ async function refreshLMModels(){
   lmRefreshPending=(async()=>{try{lmData=await refreshModelCatalog(api);if($("settings_dlg").open)renderHub();renderDiscovery();renderSources()}catch(e){if(!e.offline)toast(e.message)}finally{lmRefreshPending=null}})();
   return lmRefreshPending;
 }
-async function loadLM(refresh=true){try{lmData=await api("/api/lmstudio");if($("settings_dlg").open&&refresh)renderHub();renderDiscovery()}catch(e){if(e.message!==STALE)$("lm_progress").textContent=e.message}}
+async function loadLM(refresh=true){try{lmData=await api("/api/lmstudio");if($("settings_dlg").open&&refresh)renderHub();renderDiscovery()}catch(e){if(e.message!==STALE)$("lm_progress").textContent=e.message}finally{integReady.lm=true}}
 function editLM(p={}){
   $("lm_id").value=p.id||"";$("lm_name").value=p.name||"";$("lm_url").value=p.url||"";$("lm_key").value="";$("lm_clear_key").checked=false;
   $("lm_clear_row").hidden=!p.id;
@@ -3753,12 +3816,11 @@ const drawerSwipe={panel:document.querySelector("aside"),isOpen:()=>document.bod
 attachDrawerSwipe(document,drawerSwipe);
 function sheet(on){
   if(on){
-    const s=cur(),groups=$("sheet").querySelectorAll(".sheet-group");
+    const s=cur();
     $("sheetCap").textContent=s?sessionTitle(s):"Agent Deck";
-    groups[0].hidden=groups[1].hidden=groups[3].hidden=!s;
-    $("s_mode_label").textContent=curMode()==="term"?tr("Показать экран"):tr("Показать терминал");
-    $("s_mode").querySelector("use").setAttribute("href",curMode()==="term"?"#i-file":"#i-terminal");
-    $("s_link").style.display=lastUrl(s)?"":"none";
+    $("s_session").hidden=$("s_manage").hidden=!s;
+    // Update and closed drafts appear only when there is something to do; an empty group would be a stray line.
+    $("s_app").hidden=$("s_update").style.display==="none"&&$("s_drafts").style.display==="none";
   }
   const wasOpen=$("sheet").classList.contains("on");
   $("sheet").classList.toggle("on",on);
@@ -3953,7 +4015,8 @@ function show(){
   $("term_loading").hidden=!(s&&m==="term"&&frameFor(active).dataset.loading);
   if(s&&m==="term"){const f=frameFor(active);f.classList.add("on");f.inert=isLocal(s)&&!s.running;if(!isMobile()&&!isTouch()&&!f.inert&&document.activeElement!==$("msg"))setTimeout(()=>{try{f.contentWindow.focus();f.contentWindow.term&&f.contentWindow.term.focus()}catch(e){}},30)}
   if(s&&m==="screen")updateScreen(s,true);
-  updateLink();fitKeys();syncProject();
+  $("b_mode").setAttribute("aria-pressed",String(!!s&&m==="term"));
+  fitKeys();syncProject();searchSession();
 }
 function reconnectTerminal(){
   if(!active)return;
@@ -4050,7 +4113,7 @@ async function loadSessions(){
     saveClosedDrafts();
     if(active!==requested)sessionsQueued=true;
     if(first&&!active&&isMobile())drawer(true);
-    renderTabs();renderTitle();updateLink();
+    renderTabs();renderTitle();
     const s=cur(),m=curMode();
     if(first||active!==previousActive||!s||(m==="term"&&!frames.has(active)))show();
     else if(m==="screen")updateScreen(s);
@@ -4124,18 +4187,17 @@ function restart(m){
   const title=m==="new"?tr("Перезапустить {0} в «{1}» с НОВЫМ разговором?",[a,sessionTitle(s)]):tr("Перезапустить {0} в «{1}», продолжив разговор?",[a,sessionTitle(s)]);
   post("/api/restart",{name:active,mode:m},{title,confirm:tr("Перезапустить")});
 }
-async function termHere(){
-  const s=cur();if(!s)return;
-  const names=new Set(sessions.map(x=>x.name));
-  let base=s.name.replace(/-sh\d*$/,"").slice(0,27)+"-sh",n=base,i=2;
-  while(names.has(n))n=base+(i++);
-  const created=await post("/api/new",{name:n,agent:"shell",path:s.path});if(created)select(created.name||n);
-}
 async function kill(){
   const s=cur();if(!s)return;
   await post("/api/kill",{name:s.name},{title:tr("Закрыть сессию «{0}»? Агент будет остановлен.",[sessionTitle(s)]),confirm:tr("Закрыть сессию"),danger:true});
 }
-function popout(){if(active)window.open(activePath("/t/?arg="+encodeURIComponent("=cc-"+active)),"_blank")}
+// Same folder, agent, permissions and model as the open session, with a fresh conversation.
+async function duplicateSession(){
+  const s=cur();if(!s)return;
+  const source=s.source&&["kimi","lmstudio"].includes(s.source.kind)?{kind:s.source.kind,profile:s.source.profile,model:s.source.model}:undefined;
+  const created=await post("/api/new",{name:s.name,path:s.path,agent:s.agent==="claude-kimi"?"claude":s.agent||"claude",skip:s.skip,source});
+  if(created)select(created.name);
+}
 let uploading=false,choosingImages=false;
 const imageAttachments=new Map();
 const attachmentsFor=name=>imageAttachments.get(name)||[];
@@ -4331,6 +4393,10 @@ $("msg").addEventListener("keydown",e=>{
 });
 $("q").addEventListener("input",renderTabs);
 $("search_form").addEventListener("submit",e=>{e.preventDefault();runOutputSearch()});
+$("search_q").addEventListener("focus",()=>{if(outputSearch.result||outputSearch.busy||outputSearch.error)showSearchPop(true)});
+$("search_q").addEventListener("keydown",e=>{if(e.key==="Escape"){e.preventDefault();e.stopPropagation();closeOutputSearch()}});
+// Results float under the bar; a tap or click anywhere else folds them away and keeps the query.
+document.addEventListener("pointerdown",e=>{if(!$("search_pop").hidden&&!$("search_pop").contains(e.target)&&!$("search_form").contains(e.target))showSearchPop(false)});
 $("palette_q").addEventListener("input",filterPalette);
 $("palette_q").addEventListener("keydown",paletteKey);
 // A click on the backdrop (outside the box) closes the switcher, as Escape does.
@@ -4349,7 +4415,7 @@ async function checkGithubFoot(force){
   if(force===true||Date.now()-lastGh>30000||sessions.some(s=>s.name==="github-login")){await ghStatus();lastGh=Date.now()}
   renderInteg();
 }
-async function loadUsage(){if(document.hidden)return;try{usageData=await api("/api/usage")}catch(e){}renderInteg()}
+async function loadUsage(){if(document.hidden)return;try{usageData=await api("/api/usage")}catch(e){}integReady.usage=true;renderInteg()}
 
 function fmtReset(ts){
   if(!ts)return"";
@@ -4405,12 +4471,30 @@ function renderInteg(){
     if(w||u?.error)help.append(el("div","",row.title));
   }
   for(const p of lmData.profiles||[])rows.push(localUsage(p));
+  rows.push(...integSkeleton());
   // Rebuilding identical nodes every second drops hover, focus and screen-reader position.
   const next=el("div","",...rows);
   if(next.innerHTML!==$("integ").innerHTML)$("integ").replaceChildren(...next.childNodes);
+  keepIntegHeight();
   renderSendState();
   const signature=JSON.stringify([lastAg,ghLogin,telegramConfig,lmData.profiles,panelVersion]);
   if($("settings_dlg").open&&signature!==hubSignature&&!$("settings_dlg").contains(document.activeElement)){hubSignature=signature;renderHub()}
+}
+// Limits and local models arrive after the session list; until both answered, the block keeps the height and
+// model rows it had last time (per computer), so the session list above does not jump when they appear.
+function integSkeleton(){
+  if(integReady.lm)return [];
+  let count=0;try{count=Math.min(4,+deckLocalStorage.getItem("cc.integ-models")||0)}catch(e){}
+  return Array.from({length:count},()=>el("div","local-usage compact-local integ-skeleton",el("span","sk-line"),el("span","sk-line")));
+}
+function keepIntegHeight(){
+  const box=$("integ");
+  if(!integReady.lm||!integReady.usage){
+    let height=0;try{height=+deckLocalStorage.getItem("cc.integ-height")||0}catch(e){}
+    box.style.minHeight=height>0?height+"px":"";return;
+  }
+  box.style.minHeight="";
+  try{deckLocalStorage.setItem("cc.integ-height",String(box.offsetHeight));deckLocalStorage.setItem("cc.integ-models",String(lmData.profiles?.length||0))}catch(e){}
 }
 const openLocalModels=new Set(); // renderInteg rebuilds every second; keep user-opened rows open.
 function localUsage(profile){
@@ -4526,6 +4610,7 @@ function openDeckSession(identity,name){
   switchDeck(identity);
 }
 setInterval(loadOtherDecks,10000);
+setInterval(pollChanges,15000);
 function switchDeck(identity){
   if(identity===selectedDeck)return;
   if(sending||uploading||choosingImages||question.busy!==null){$("deck_select").value=selectedDeck;toast(tr("Дождитесь окончания отправки или загрузки"));return}
@@ -4554,7 +4639,7 @@ function resetInstanceState(known){
   sessions=known;quickSignature=null;quickActive=null;
   question={name:null,data:null,expanded:false,busy:null,textIndex:null};loadingQuestion=false;
   loadingSessions=null;queuedSessions=null;sessionsQueued=false;load.done=false;
-  lastAg={};usageData={};ghLogin=null;lastGh=0;repos=[];
+  lastAg={};usageData={};ghLogin=null;lastGh=0;repos=[];integReady.usage=integReady.lm=false;
   lmData={profiles:[],discovery:{}};lmRefreshPending=null;openLocalModels.clear();
   telegramConfig={};panelVersion=null;UI_PANEL_VERSION=null;panelUpdating=false;hubSignature="";
   // Backups, the recovery code and the update entry belong to the computer we leave.

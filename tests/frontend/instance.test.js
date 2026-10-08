@@ -342,9 +342,84 @@ test('Changes follows the worktree the agent works in and a picked tree wins',as
   expect(doc.querySelector('#git_body .git-head code').textContent).toBe('r');
   expect(select().value).toBe('');
   expect(select().options[0].textContent).toMatch(/^w2 · worktree-w2 · /);
+  // The agent moves on to w3: a quiet check picks it up without a tap.
+  routes['/api/git/changes']=url=>({repo:'/r/.claude/worktrees/w3',name:'w3',branch:'worktree-w3',head:'',skipped:0,files:[],trees,tree:url.searchParams.get('tree')||'/r/.claude/worktrees/w3',auto:!url.searchParams.get('tree')});
+  await window.eval('pollChanges()');await settle();
+  expect(select().options[0].textContent).toMatch(/^w3 · worktree-w3 · /);
   select().value='/r/.claude/worktrees/w3';select().dispatchEvent(new window.Event('change'));await settle();await settle();
-  expect(asked.slice(-2).sort()).toEqual(['changes:/r/.claude/worktrees/w3','log:/r/.claude/worktrees/w3']);
+  expect(asked.slice(-1)).toEqual(['log:/r/.claude/worktrees/w3']);
   expect(select().value).toBe('/r/.claude/worktrees/w3');
+  }finally{window.close()}
+});
+
+test('the actions menu keeps restarts, duplicate, rename and close; duplicate keeps agent, folder and model',async()=>{
+  const state={local:()=>({sessions:[session('alpha',{agent:'claude-kimi',skip:true,source:{kind:'kimi',model:'k2',label:'Kimi · k2'}})]})};
+  const routes=routesFor(state),created=[];
+  routes['/api/new']=(url,options)=>{created.push(JSON.parse(options.body));return {name:'alpha-2'}};
+  const window=boot(routes);
+  try{
+  await settle();await settle();
+  const doc=window.document;
+  window.eval('sheet(true)');
+  const labels=[...doc.querySelectorAll('#sheet .panel button')].filter(b=>b.style.display!=='none'&&!b.closest('[hidden]')&&!b.classList.contains('sheet-cancel')).map(b=>b.textContent);
+  expect(labels).toEqual(['Перезапустить — новый разговор','Перезапустить — продолжить разговор','Дублировать сессию — новый разговор','Переименовать сессию','Закрыть сессию']);
+  expect(doc.getElementById('b_link')).toBeNull();
+  window.eval('duplicateSession()');await settle();
+  expect(created).toEqual([{name:'alpha',path:'/home/demo/projects/alpha',agent:'claude',skip:true,source:{kind:'kimi',model:'k2'}}]);
+  }finally{window.close()}
+});
+
+test('output search runs from the bar field and shows results under it without a dialog',async()=>{
+  const state={local:()=>({sessions:[session('alpha'),session('beta')]})};
+  const routes=routesFor(state),asked=[];
+  routes['/api/scrollback']=url=>{asked.push(url.searchParams.get('name')+':'+url.searchParams.get('q'));return {query:'boom',total:1,lines:10,matches:[{line:4,text:'boom here',before:[],after:[]}]}};
+  const window=boot(routes);
+  try{
+  await settle();await settle();
+  const doc=window.document,pop=doc.getElementById('search_pop');
+  doc.getElementById('search_q').value='boom';
+  doc.getElementById('search_form').requestSubmit();await settle();
+  expect(asked).toEqual(['alpha:boom']);
+  expect(pop.hidden).toBe(false);
+  expect(doc.querySelector('#search_body mark').textContent).toBe('boom');
+  expect(doc.querySelector('dialog[open]')).toBeNull();
+  doc.getElementById('search_q').dispatchEvent(new window.KeyboardEvent('keydown',{key:'Escape',bubbles:true}));
+  expect(pop.hidden).toBe(true);
+  // Another session starts with an empty field.
+  window.eval('select("beta")');await settle();
+  expect(doc.getElementById('search_q').value).toBe('');
+  }finally{window.close()}
+});
+
+test('the sidebar keeps the place of local models until they load',async()=>{
+  const state={local:()=>({sessions:[session('alpha')]})};
+  const routes=routesFor(state);let release;
+  routes['/api/lmstudio']=()=>new Promise(resolve=>{release=()=>resolve({profiles:[],discovery:{}})});
+  const window=boot(routes,null,w=>{w.localStorage.setItem('cc.integ-models','1');w.localStorage.setItem('cc.integ-height','90')});
+  try{
+  await settle();await settle();
+  const doc=window.document;
+  expect(doc.querySelectorAll('#integ .integ-skeleton')).toHaveLength(1);
+  expect(doc.getElementById('integ').style.minHeight).toBe('90px');
+  release();await settle();await settle();
+  expect(doc.querySelectorAll('#integ .integ-skeleton')).toHaveLength(0);
+  }finally{window.close()}
+});
+
+test('the same Telegram bot on another computer can be turned off there from here',async()=>{
+  const state={local:()=>({sessions:[session('alpha')]})};
+  const routes=routesFor(state),cleared=[];
+  routes['/api/integrations']=()=>({telegram:{available:true,configured:true,paired:true,enabled:true,bot:'deck_bot',duplicates:[{id:DECK,name:'Mac Studio'}]}});
+  routes['/deck/'+DECK+'/api/telegram_config']=(url,options)=>{cleared.push(JSON.parse(options.body).clear);return {telegram:{}}};
+  const window=boot(routes);
+  try{
+  await settle();await settle();
+  const doc=window.document,box=doc.getElementById('telegram_duplicates');
+  expect(box.hidden).toBe(false);
+  [...box.querySelectorAll('button')].find(b=>/Mac Studio/.test(b.textContent)).click();await settle();
+  const confirm=doc.getElementById('confirm_dlg');confirm.returnValue='ok';confirm.close();await settle();
+  expect(cleared).toEqual([true]);
+  expect(box.hidden).toBe(true);  // Gone at once, without waiting for the server's one-minute memory.
   }finally{window.close()}
 });
 

@@ -1629,9 +1629,10 @@ def push_service():
 
 
 def telegram_duplicates(bot):
-    """Connected Agent Decks polling the same bot: their questions would arrive twice."""
+    """Connected Agent Decks polling the same bot: their questions would arrive twice. The id lets the panel
+    turn Telegram off there."""
     def scan():
-        return [name for name, state in gateway.telegram_states()
+        return [{'id': deck, 'name': name} for deck, name, state in gateway.telegram_states()
                 if state.get('configured') and state.get('enabled') and state.get('bot') == bot]
     result = cached('telegram-duplicates-' + bot, 60, scan) if bot else []
     return result if isinstance(result, list) else []  # cached() reports failures as a dict.

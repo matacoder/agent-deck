@@ -29,6 +29,9 @@ __PANEL_STYLE__</style></head><body>
   <symbol id="i-history" viewBox="0 0 24 24"><circle cx="6" cy="5" r="2"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="7" r="2"/><path d="M6 7v10M18 9c0 5-5 5-11 8"/></symbol>
   <symbol id="i-arrow-left" viewBox="0 0 24 24"><path d="M19 12H5M11 6l-6 6 6 6"/></symbol>
   <symbol id="i-sidebar" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></symbol>
+  <symbol id="i-diff" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M12 10v5M9.5 12.5h5M9.5 17.5h5"/></symbol>
+  <symbol id="i-commit" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.5"/><path d="M3 12h5.5M15.5 12H21"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/></symbol>
   <symbol id="i-sidebar-right" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16"/></symbol>
   <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
   <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></symbol>
@@ -65,9 +68,9 @@ __PANEL_STYLE__</style></head><body>
       <button class="iconbtn m-only" style="position:relative" onclick="drawer(true)" aria-label="Сессии"><svg class="ui-icon"><use href="#i-menu"/></svg><span id="menuBadge"></span></button>
       <button class="iconbtn d-only" id="b_side" onclick="toggleSidebar()" aria-label="Скрыть или показать список сессий" title="Скрыть или показать список сессий"><svg class="ui-icon"><use href="#i-sidebar"/></svg></button>
       <div id="title">—</div>
-      <span class="bar-tools" id="bar_tools"><button class="iconbtn" id="b_files" onclick="toggleProject(['files'])" aria-pressed="false" aria-label="Файлы проекта" title="Файлы проекта"><svg class="ui-icon"><use href="#i-folder"/></svg></button><button class="iconbtn" id="b_search" onclick="openOutputSearch()" aria-label="Поиск в выводе" title="Поиск в выводе"><svg class="ui-icon"><use href="#i-search"/></svg></button><button class="iconbtn" id="b_history" onclick="toggleProject(['changes','commits'])" aria-pressed="false" aria-label="История изменений" title="История изменений"><svg class="ui-icon"><use href="#i-history"/></svg></button></span>
-      <button class="act d-only" id="b_link" title="Открыть последнюю ссылку из терминала" onclick="openLink()" style="display:none"><svg class="ui-icon"><use href="#i-link"/></svg><span>Ссылка</span></button>
+      <span class="bar-tools" id="bar_tools"><form class="bar-search" id="search_form" role="search"><svg class="ui-icon"><use href="#i-search"/></svg><input id="search_q" type="search" maxlength="200" placeholder="Поиск в выводе" aria-label="Поиск в выводе" title="Поиск по всему выводу сессии, включая прокрутку" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search"><button type="button" class="m-only search-close" onclick="closeOutputSearch()" aria-label="Закрыть поиск"><svg class="ui-icon"><use href="#i-x"/></svg></button></form><button class="iconbtn m-only" id="b_files" onclick="toggleProject(['files'])" aria-pressed="false" aria-label="Файлы проекта" title="Файлы проекта"><svg class="ui-icon"><use href="#i-folder"/></svg></button><button class="iconbtn m-only" id="b_search" onclick="openOutputSearch()" aria-label="Поиск в выводе" title="Поиск в выводе"><svg class="ui-icon"><use href="#i-search"/></svg></button><button class="iconbtn m-only" id="b_history" onclick="toggleProject(['changes','commits'])" aria-pressed="false" aria-label="История изменений" title="История изменений"><svg class="ui-icon"><use href="#i-history"/></svg></button></span>
       <button class="iconbtn" id="b_actions" onclick="sheet(true)" aria-label="Действия" title="Действия" aria-haspopup="menu"><svg class="ui-icon"><use href="#i-more"/></svg></button>
+      <div id="search_pop" class="search-pop" hidden><div id="search_body" role="region" aria-label="Поиск в выводе"></div></div>
       <button class="iconbtn d-only" id="b_project" onclick="toggleProject(PROJECT_TABS)" aria-pressed="false" aria-label="Скрыть или показать панель проекта" title="Скрыть или показать панель проекта"><svg class="ui-icon"><use href="#i-sidebar-right"/></svg></button>
     </div>
     <div id="stage">
@@ -92,6 +95,7 @@ __PANEL_STYLE__</style></head><body>
             <button class="key key-extra" onclick="key('BTab')" aria-label="Назад по полям (Shift+Tab)" title="Назад по полям (Shift+Tab)">⇧Tab</button><button class="key key-extra" onclick="key('Tab')" aria-label="Дальше по полям (Tab)" title="Дальше по полям (Tab)">Tab</button>
             <button class="key key-extra" onclick="key('C-c')" aria-label="Прервать (Ctrl+C)" title="Прервать (Ctrl+C)">^C</button>
             <button class="key" id="b_reconnect" onclick="reconnectTerminal()" hidden>Переподключить терминал</button>
+            <button class="key key-extra" id="b_mode" onclick="toggleMode()" aria-pressed="false" title="Живой терминал вместо экрана с текстом">Терминал</button>
             <button class="key key-extra" id="b_wrap" onclick="toggleWrap()" aria-pressed="true">Перенос</button>
           </div>
           <button class="keyboard-hide" id="b_keyboard" onpointerdown="event.preventDefault()" onclick="hideKeyboard()" aria-label="Скрыть клавиатуру" title="Скрыть клавиатуру"><svg class="ui-icon"><use href="#i-keyboard-hide"/></svg></button>
@@ -117,31 +121,23 @@ __PANEL_STYLE__</style></head><body>
     <div id="terminal_keys" hidden></div>
     <nav id="quick_tabs" aria-label="Быстрое переключение сессий"></nav>
   </main>
-  <dialog id="project_dlg" aria-label="Проект"><div class="resizer" id="project_resizer" role="separator" aria-orientation="vertical" tabindex="0" aria-label="Ширина боковой панели" title="Потяните, чтобы изменить ширину; двойной клик — ширина по умолчанию"></div><div class="dlg"><div class="git-tabs" id="project_tabs" role="tablist" tabindex="-1" autofocus><button type="button" role="tab" data-tab="changes" onclick="projectTab('changes')">Изменения</button><button type="button" role="tab" data-tab="commits" onclick="projectTab('commits')">Коммиты</button><button type="button" role="tab" data-tab="files" onclick="projectTab('files')">Файлы</button><span class="git-font"><button type="button" onclick="codeFont(-1)" aria-label="Уменьшить шрифт">A−</button><button type="button" onclick="codeFont(1)" aria-label="Увеличить шрифт">A+</button></span><button type="button" class="project-close" onclick="closeProject()" aria-label="Закрыть"><svg class="ui-icon"><use href="#i-x"/></svg></button></div><div class="dlg-body" id="git_body"></div><div class="dlg-body" id="files_body" hidden></div></div></dialog>
+  <dialog id="project_dlg" aria-label="Проект"><div class="resizer" id="project_resizer" role="separator" aria-orientation="vertical" tabindex="0" aria-label="Ширина боковой панели" title="Потяните, чтобы изменить ширину; двойной клик — ширина по умолчанию"></div><div class="dlg"><div class="git-tabs" id="project_tabs" role="tablist" tabindex="-1" autofocus><button type="button" role="tab" data-tab="changes" onclick="projectTab('changes')" aria-label="Изменения" title="Изменения"><svg class="ui-icon"><use href="#i-diff"/></svg></button><button type="button" role="tab" data-tab="commits" onclick="projectTab('commits')" aria-label="Коммиты" title="Коммиты"><svg class="ui-icon"><use href="#i-commit"/></svg></button><button type="button" role="tab" data-tab="files" onclick="projectTab('files')" aria-label="Файлы" title="Файлы"><svg class="ui-icon"><use href="#i-folder"/></svg></button><span class="git-font"><button type="button" onclick="codeFont(-1)" aria-label="Уменьшить шрифт">A−</button><button type="button" onclick="codeFont(1)" aria-label="Увеличить шрифт">A+</button></span><button type="button" class="project-close" onclick="closeProject()" aria-label="Закрыть"><svg class="ui-icon"><use href="#i-x"/></svg></button></div><div class="dlg-body" id="git_body"></div><div class="dlg-body" id="files_body" hidden></div></div></dialog>
 </div>
 
 <div id="sheet"><div class="scrim" onclick="sheet(false)"></div><div class="panel" role="menu" aria-labelledby="sheetCap">
   <div class="cap" id="sheetCap"></div>
-  <div class="sheet-group" id="s_mode_group">
-    <button id="s_mode" onclick="sheet(false);toggleMode()"><svg class="ui-icon"><use href="#i-terminal"/></svg><span id="s_mode_label">Показать терминал</span></button>
-    <button onclick="sheet(false);popout()"><svg class="ui-icon"><use href="#i-external"/></svg><span>Терминал в новой вкладке</span></button>
-    <button onclick="sheet(false);termHere()"><svg class="ui-icon"><use href="#i-plus"/></svg><span>Новый терминал в этой папке</span></button>
+  <div class="sheet-group" id="s_session">
+    <button class="agent-only" onclick="sheet(false);restart('new')"><svg class="ui-icon"><use href="#i-chat-plus"/></svg><span>Перезапустить — новый разговор</span></button>
+    <button class="agent-only" onclick="sheet(false);restart('continue')"><svg class="ui-icon"><use href="#i-restart"/></svg><span>Перезапустить — продолжить разговор</span></button>
+    <button onclick="sheet(false);duplicateSession()"><svg class="ui-icon"><use href="#i-copy"/></svg><span>Дублировать сессию — новый разговор</span></button>
   </div>
-  <div class="sheet-group">
-    <button onclick="sheet(false);openRename()"><svg class="ui-icon"><use href="#i-pencil"/></svg><span>Переименовать</span></button>
-    <button id="s_link" onclick="sheet(false);openLink()"><svg class="ui-icon"><use href="#i-link"/></svg><span>Открыть ссылку из терминала</span></button>
-    <button class="agent-only" onclick="sheet(false);restart('continue')"><svg class="ui-icon"><use href="#i-restart"/></svg><span>Перезапустить, продолжив разговор</span></button>
-    <button class="agent-only" onclick="sheet(false);restart('new')"><svg class="ui-icon"><use href="#i-chat-plus"/></svg><span>Перезапустить с новым разговором</span></button>
+  <div class="sheet-group" id="s_manage">
+    <button onclick="sheet(false);openRename()"><svg class="ui-icon"><use href="#i-pencil"/></svg><span>Переименовать сессию</span></button>
+    <button class="dng" onclick="sheet(false);kill()"><svg class="ui-icon"><use href="#i-x"/></svg><span>Закрыть сессию</span></button>
   </div>
-  <div class="sheet-group">
-    <button onclick="sheet(false);openNew()"><svg class="ui-icon"><use href="#i-plus"/></svg><span>Новая сессия</span></button>
-    <button onclick="sheet(false);openSettings()"><svg class="ui-icon"><use href="#i-gear"/></svg><span>Настройки</span></button>
-    <button onclick="refreshInterface()"><svg class="ui-icon"><use href="#i-refresh"/></svg><span>Обновить интерфейс</span></button>
+  <div class="sheet-group" id="s_app">
     <button id="s_update" onclick="updatePanel()" style="display:none"><svg class="ui-icon"><use href="#i-download"/></svg><span id="s_update_label"></span></button>
     <button id="s_drafts" onclick="showClosedDrafts()" style="display:none"><svg class="ui-icon"><use href="#i-file"/></svg><span>Черновики закрытых сессий</span></button>
-  </div>
-  <div class="sheet-group">
-    <button class="dng" onclick="sheet(false);kill()"><svg class="ui-icon"><use href="#i-x"/></svg><span>Закрыть сессию</span></button>
   </div>
 </div><button class="sheet-cancel" onclick="sheet(false)">Отмена</button></div>
 <div id="toast" role="status" aria-live="polite"></div>
@@ -153,7 +149,6 @@ __PANEL_STYLE__</style></head><body>
   <div class="viewer-bar"><span id="viewer_caption"></span><a id="viewer_open" target="_blank" rel="noopener">Открыть оригинал</a></div>
 </div>
 <dialog id="confirm_dlg"><form class="dlg" method="dialog"><div class="dlg-body"><h3 id="confirm_title"></h3><p id="confirm_text"></p></div><div class="acts"><button value="cancel">Отмена</button><button value="ok" class="pri" id="confirm_ok">OK</button></div></form></dialog>
-<dialog id="search_dlg"><div class="dlg"><div class="hub-heading"><h3>Поиск в выводе</h3><button type="button" onclick="$('search_dlg').close()" aria-label="Закрыть"><svg class="ui-icon"><use href="#i-x"/></svg></button></div><form class="search-form" id="search_form"><input id="search_q" type="search" maxlength="200" placeholder="Текст из вывода" aria-label="Текст из вывода" autocomplete="off" autocapitalize="off" spellcheck="false"><button type="submit" class="pri">Найти</button></form><div class="dlg-body" id="search_body"></div></div></dialog>
 <dialog id="palette_dlg" class="palette"><div class="dlg"><input id="palette_q" type="text" placeholder="Сессия или действие" aria-label="Сессия или действие" autocomplete="off" autocapitalize="off" spellcheck="false" role="combobox" aria-controls="palette_list"><div class="palette-list" id="palette_list" role="listbox"></div></div></dialog>
 <dialog id="inbox_dlg"><div class="dlg"><div class="hub-heading"><h3 tabindex="-1" autofocus>Ждут ответа</h3><button type="button" onclick="$('inbox_dlg').close()" aria-label="Закрыть"><svg class="ui-icon"><use href="#i-x"/></svg></button></div><div class="dlg-body" id="inbox_list"></div></div></dialog>
 <dialog id="draft_dlg"><div class="dlg"><div class="dlg-body"><h3>Черновики закрытых сессий</h3><div id="closed_drafts"></div></div><div class="acts"><button type="button" onclick="$('draft_dlg').close()">Закрыть</button></div></div></dialog>
@@ -230,7 +225,7 @@ __PANEL_STYLE__</style></head><body>
       <div id="telegram_cards"></div>
       <form id="integrations_dlg" class="hub-card editor integration-dialog" hidden onsubmit="event.preventDefault();saveTelegram()">
         <div class="card-top"><span class="card-icon telegram-mark" aria-hidden="true"><svg class="ui-icon"><use href="#i-telegram"/></svg></span><div class="card-main"><h4>Telegram</h4><p id="telegram_state" class="card-status" role="status"></p></div></div>
-        <p id="telegram_duplicates" class="integration-note danger" hidden></p>
+        <div id="telegram_duplicates" hidden></div>
         <p class="hint">Вопросы со всех подключённых компьютеров приходят в этот бот, настраивать Telegram на них не нужно.</p>
         <details id="telegram_credentials" open><summary>Токен бота</summary>
         <label for="telegram_token">Токен бота из @BotFather</label>

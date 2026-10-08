@@ -73,12 +73,28 @@ function telegramSummary(c){
   if(c.configured)return [tr("@{0} · привяжите свой Telegram",[c.bot]),"warn"];
   return [tr("Не настроен"),"idle"];
 }
+// The same bot polled by another computer delivers every question twice; it can be turned off there from here.
+const telegramClearedOn=new Set();  // The server remembers duplicates for a minute; a computer just switched off is not one.
+function duplicateWarning(c){
+  const decks=(c.duplicates||[]).map(d=>typeof d==="string"?{name:d}:d).filter(d=>!telegramClearedOn.has(d.id));
+  if(!decks.length)return null;
+  const box=el("div","integration-note danger",el("p","",tr("Этот бот также включён на: {0}. Вопросы будут приходить дважды; отключите Telegram там.",[decks.map(d=>d.name).join(", ")])));
+  for(const d of decks)if(d.id)box.append(btn(tr("Отключить на {0}",[d.name]),"danger",()=>disableTelegramOn(d)));
+  return box;
+}
+async function disableTelegramOn(deck){
+  if(!await confirmAction(tr("Отключить Telegram на {0}?",[deck.name]),{text:tr("Токен бота там будет удалён; здесь Telegram продолжит работать."),confirm:tr("Отключить"),danger:true}))return;
+  try{await api(instancePath(deck.id,"/api/telegram_config"),{clear:true});telegramClearedOn.add(deck.id);toast(tr("Telegram отключён на {0}",[deck.name]),"success")}
+  catch(e){if(e.message!==STALE)toast(e.message)}
+  renderTelegram(telegramConfig);
+}
 function renderTelegramCard(){
   if(editorInUse($("integrations_dlg")))return;
   const [status,tone]=telegramSummary(telegramConfig);
   const card=hubCard({key:"telegram",icon:el("span","telegram-glyph",svgIcon("telegram")),title:"Telegram",status,tone,
     primary:{label:tr("Настроить"),run:openIntegrations,quiet:Boolean(telegramConfig.paired)},
-    body:[el("p","hint",tr("Вопросы с кнопками ответа в личном чате с вашим ботом."))]});
+    more:[telegramConfig.configured&&[tr("Отключить"),clearTelegram,true]],
+    body:[el("p","hint",tr("Вопросы с кнопками ответа в личном чате с вашим ботом.")),duplicateWarning(telegramConfig)]});
   $("telegram_cards").replaceChildren(...placeEditor([card],"telegram",$("integrations_dlg")));
 }
 function renderTelegram(config){
@@ -90,8 +106,8 @@ function renderTelegram(config){
   // Polled every few seconds: rewriting the same text would make screen readers repeat it.
   if(state.textContent!==status)state.textContent=status;
   state.className="card-status "+tone;
-  $("telegram_duplicates").hidden=!c.duplicates?.length;
-  if(c.duplicates?.length)$("telegram_duplicates").textContent=tr("Этот бот также включён на: {0}. Вопросы будут приходить дважды; отключите Telegram там.",[c.duplicates.join(", ")]);
+  const warning=duplicateWarning(c);
+  $("telegram_duplicates").hidden=!warning;$("telegram_duplicates").replaceChildren(...(warning?[warning]:[]));
   if(!telegramDirty)$("telegram_enabled").checked=c.enabled!==false;  // A poll must not undo the user's switch.
   $("telegram_clear").hidden=!c.configured;
   $("telegram_pair").hidden=!(c.configured&&!c.pair_url);

@@ -487,5 +487,5 @@ class DuplicateBotTests(PanelCase):
             return replies[deck]
         decks.request.side_effect = request
         with patch.object(self.panel, 'remote_decks', decks):
-            self.assertEqual(self.panel.telegram_duplicates('deck_bot'), ['Mac'])
+            self.assertEqual(self.panel.telegram_duplicates('deck_bot'), [{'id': 'a' * 24, 'name': 'Mac'}])
             self.assertEqual(self.panel.telegram_duplicates(''), [])

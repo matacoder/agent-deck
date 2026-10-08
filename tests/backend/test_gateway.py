@@ -58,4 +58,4 @@ class GatewayTests(unittest.TestCase):
                 return 200, {}, b'not json'
             return 200, {}, b'{"telegram":{"bot":"deck_bot","enabled":true}}'
         self.decks.request.side_effect = request
-        self.assertEqual(self.gateway.telegram_states(), [('Mac', {'bot': 'deck_bot', 'enabled': True})])
+        self.assertEqual(self.gateway.telegram_states(), [('a' * 24, 'Mac', {'bot': 'deck_bot', 'enabled': True})])

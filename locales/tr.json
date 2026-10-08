@@ -814,6 +814,16 @@
     "Всё закоммичено · последний коммит": "Hepsi commit edildi · son commit",
     "Рабочее дерево": "Çalışma ağacı",
     "Авто": "Otomatik",
-    "{0} · авто": "{0} · otomatik"
+    "{0} · авто": "{0} · otomatik",
+    "Поиск по всему выводу сессии, включая прокрутку": "Kaydırma geçmişi dahil oturumun tüm çıktısında ara",
+    "Закрыть поиск": "Aramayı kapat",
+    "Перезапустить — новый разговор": "Yeniden başlat — yeni konuşma",
+    "Перезапустить — продолжить разговор": "Yeniden başlat — konuşmaya devam et",
+    "Дублировать сессию — новый разговор": "Oturumu çoğalt — yeni konuşma",
+    "Живой терминал вместо экрана с текстом": "Metin ekranı yerine canlı terminal",
+    "Отключить на {0}": "{0} üzerinde kapat",
+    "Отключить Telegram на {0}?": "{0} üzerinde Telegram kapatılsın mı?",
+    "Токен бота там будет удалён; здесь Telegram продолжит работать.": "Oradaki bot jetonu silinecek; burada Telegram çalışmaya devam eder.",
+    "Telegram отключён на {0}": "{0} üzerinde Telegram kapatıldı"
   }
 }

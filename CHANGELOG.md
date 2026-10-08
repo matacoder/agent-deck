@@ -2,6 +2,15 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.25.0 — 2026-10-08
+
+- Session bar, tidied: the Link button is gone (links in the output open on a tap); on desktop the Files and History icons give way to the project sidebar, whose tabs are now icons. Output search is a field in the bar on desktop (the search icon opens it on a phone) with results in a card under it instead of a dimmed full-screen dialog.
+- The **⋯** menu keeps what is used: restart with a new conversation, restart continuing it, duplicate the session with a new conversation (same folder, agent, permissions and model), rename and close; an update or closed-session drafts appear there only when they exist. Terminal in a new tab and New terminal in this folder are removed; the live terminal mode is a **Terminal** toggle among the keys.
+- The sidebar keeps the place of limits and local models while they load (a skeleton the size it had last time), so the session list no longer jumps.
+- Changes checks again every 15 seconds while it is on screen, so the agent moving to another worktree or a new edit appears without a tap; it never redraws under a comment being typed.
+- Diffs open by themselves only for source code (up to 8 files, none over 600 changed lines); tests, translations, docs, configs, generated and vendored files stay folded until tapped. The same rule applies to Changes, a commit and a feature group.
+- Telegram: when the same bot is still on on a connected computer, the warning offers **Turn off on <computer>**; the Telegram card's **⋯** menu disconnects the bot here.
+
 ## 1.24.0 — 2026-10-08
 
 - Changes and Commits follow the worktree the agent works in: the panel looks for the last worktree the agent named in its output (its path or its branch) and shows that tree, marked "auto"; with several worktrees a quiet picker in the Changes header lets you choose one by hand. The output itself never leaves the server.

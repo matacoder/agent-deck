@@ -31,11 +31,9 @@ test('closing a session immediately keeps another session visible', async ({ app
   await expect(page.locator('#empty')).toBeHidden();
 });
 
-test('terminal iframe and popout use exact tmux targets', async ({ app, page }) => {
+test('the terminal iframe uses the exact tmux target', async ({ app, page }) => {
   await app.open({ mode: 'term' });
   await expect(page.locator('#stage iframe')).toHaveAttribute('src', '/t/?arg=%3Dcc-tmux');
-  await page.evaluate(() => { window.open = url => { window.openedTerminal = url; };popout(); });
-  expect(await page.evaluate(() => window.openedTerminal)).toBe('/t/?arg=%3Dcc-tmux');
 });
 
 test('401 redirects to login and restores text, attachments and active session afterwards', async ({ app, page }) => {

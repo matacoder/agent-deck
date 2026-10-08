@@ -127,7 +127,7 @@ aside{position:relative;width:min(var(--side-w,248px),40vw);flex:none;background
 
 /* ---------- main ---------- */
 main{flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;background:var(--bg)}
-.bar{flex:none;display:flex;align-items:center;gap:6px;padding:0 8px 0 14px;height:44px;border-bottom:1px solid var(--bd);background:var(--side)}
+.bar{position:relative;z-index:6;flex:none;display:flex;align-items:center;gap:6px;padding:0 8px 0 14px;height:44px;border-bottom:1px solid var(--bd);background:var(--side)}
 #title{flex:1;min-width:0;display:flex;align-items:baseline;gap:10px;white-space:nowrap;overflow:hidden}
 #title b{color:var(--fg2);font-weight:600;overflow:hidden;text-overflow:ellipsis;flex:none;max-width:50%}
 #title .st{color:var(--mut);font-size:12px;overflow:hidden;text-overflow:ellipsis}
@@ -146,6 +146,7 @@ main{flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;backgrou
 #stage iframe{position:absolute;inset:0;width:100%;height:100%;border:0;display:none;background:var(--bg)}
 #stage iframe.on{display:block}
 .screen-skeleton{display:grid;gap:12px;padding:16px 4px}
+.integ-skeleton{display:grid;gap:8px;padding:8px 6px}.integ-skeleton .sk-line:last-child{width:45%}
 .sk-line{display:block;height:12px;border-radius:6px;background:linear-gradient(90deg,var(--side2) 0%,var(--sel) 50%,var(--side2) 100%);background-size:200% 100%;animation:shimmer 1.2s ease-in-out infinite}
 .sk-label{margin-top:6px;color:var(--mut);font:12.5px/1.4 -apple-system,BlinkMacSystemFont,system-ui,sans-serif}
 @keyframes shimmer{from{background-position:100% 0}to{background-position:-100% 0}}
@@ -454,6 +455,7 @@ dialog:focus,dialog:focus-visible{outline:none}
 .integration-status.error{color:var(--bad-text)}
 .integration-status.error::before{background:var(--bad)}
 .integration-note{margin:5px 0 0;color:var(--mut);font-size:12px;line-height:1.5}
+.integration-note>p{margin:0}.integration-note>button{margin:6px 6px 0 0;padding:5px 10px;border:1px solid var(--bd);border-radius:var(--r-sm)}
 #telegram_credentials{border-top:1px solid var(--bd);padding-top:4px;margin-top:8px}
 .hub-card .integration-toggle{border-top:1px solid var(--bd);margin-top:8px;padding-top:6px}
 .integration-link,.integration-pair{display:flex;align-items:center;justify-content:center;min-height:var(--tap);padding:9px 12px;border-radius:9px;width:100%;font-size:13px;margin-top:12px}
@@ -498,10 +500,14 @@ body.resizing iframe{pointer-events:none}
 /* The tab row takes the dialog's first focus (no button lights up) and scrolls sideways on narrow phones. */
 #project_tabs:focus{outline:none}
 .project-close{display:inline-flex;align-items:center;justify-content:center;flex:none;width:32px;height:32px;padding:0!important}
-#search_dlg{width:min(820px,calc(100vw - 32px))}
-.search-form{display:flex;gap:8px;padding:12px 22px;border-bottom:1px solid var(--bd)}
-.search-form input{flex:1;min-width:0;padding:9px 12px;border:1px solid var(--bd);border-radius:9px;background:var(--bg);color:var(--fg);font:inherit;font-size:14px;outline:none}
-.search-form button{padding:0 16px;border-radius:9px}
+/* Output search: a quiet field in the bar, results in a card under it; nothing covers the session. */
+.bar-search{display:flex;align-items:center;gap:6px;width:190px;height:30px;padding:0 8px;border:1px solid var(--bd);border-radius:var(--r-sm);background:var(--bg);color:var(--mut);transition:width .15s ease}
+.bar-search:focus-within{width:280px;border-color:var(--bd-strong)}
+.bar-search>.ui-icon{flex:none;width:14px;height:14px}
+.bar-search input{flex:1;min-width:0;height:100%;padding:0;border:0;background:transparent;color:var(--fg);font:inherit;font-size:12.5px;outline:none}
+.search-pop{position:absolute;top:calc(100% + 4px);right:8px;width:min(640px,calc(100% - 16px));max-height:min(70vh,640px);overflow-y:auto;overscroll-behavior:contain;padding:12px;background:var(--side);border:1px solid var(--bd-soft);border-radius:12px;box-shadow:0 18px 50px #0007}
+.search-pop[hidden]{display:none}
+#search_body{display:grid;gap:10px}
 .search-result{margin-bottom:12px}.search-result>.git-meta{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:4px}
 .search-copy{padding:4px 10px;border-radius:var(--r-sm);color:var(--mut)}@media (hover:hover){.search-copy:hover{background:var(--side2)}}
 .search-lines{padding:6px 10px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);font:var(--code-font,12px)/1.45 var(--mono);white-space:pre-wrap;overflow-wrap:anywhere;-webkit-user-select:text;user-select:text}
@@ -519,6 +525,8 @@ body.resizing iframe{pointer-events:none}
 .git-tabs .git-font button{min-width:36px;padding:0 6px;font-weight:600}
 .git-tabs button{padding:6px 12px;border-radius:var(--r-sm);color:var(--mut)}
 .git-tabs button.on{background:var(--sel);color:var(--fg2)}
+.git-tabs [role=tab]{display:inline-flex;align-items:center;justify-content:center;min-width:36px}
+.git-tabs [role=tab] .ui-icon{width:18px;height:18px}
 #git_body{display:flex;flex-direction:column;gap:10px}
 #git_body>*{flex:none}
 .git-bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
@@ -670,7 +678,7 @@ body.resizing iframe{pointer-events:none}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 
 /* Any touch screen (an iPad too): iOS zooms the page when an input below 16px gets focus. */
-@media (pointer:coarse){.q-text textarea,.files-new input,.git-branch,.git-tree,.diff-comment textarea,.palette input,.search-form input{font-size:16px}.files-text{font-size:max(16px,var(--code-font,16px))}}
+@media (pointer:coarse){.q-text textarea,.files-new input,.git-branch,.git-tree,.diff-comment textarea,.palette input,.bar-search input{font-size:16px}.files-text{font-size:max(16px,var(--code-font,16px))}}
 /* ---------- mobile (phones, including landscape) ----------
    Keep in sync with MOBILE_QUERY in app.js. */
 @media (max-width:760px),(pointer:coarse) and (max-height:500px){
@@ -790,9 +798,17 @@ body.resizing iframe{pointer-events:none}
   .chk,.dlg label.chk{font-size:15px}
   .acts{padding:12px 16px calc(12px + var(--sab))}
   .acts button{flex:1;min-height:var(--tap);padding:12px;font-size:16px;border-radius:var(--r)}
-  #inbox_dlg,#project_dlg,#search_dlg,.palette{width:100vw}
-  #inbox_dlg .dlg,#project_dlg .dlg,#search_dlg .dlg,.palette .dlg{padding-top:var(--sat)}
-  .palette{margin-top:0}.palette-list{max-height:none;flex:1}.search-form{padding:10px 16px}
+  #inbox_dlg,#project_dlg,.palette{width:100vw}
+  #inbox_dlg .dlg,#project_dlg .dlg,.palette .dlg{padding-top:var(--sat)}
+  .palette{margin-top:0}.palette-list{max-height:none;flex:1}
+  /* Phone: the search icon swaps the title and bar icons for the field; × puts them back. */
+  .bar-search{display:none}
+  body.searching .bar-search{display:flex;flex:1;width:auto;height:var(--tap)}
+  body.searching .bar-tools{flex:1;min-width:0}
+  body.searching #title,body.searching .bar-tools>.iconbtn,body.searching #b_actions{display:none!important}
+  .search-close{place-items:center;flex:none;width:32px;height:32px;margin-right:-6px;color:var(--mut)}
+  .search-pop{left:8px;right:8px;width:auto;max-height:60dvh}
+  .bar-search input::-webkit-search-cancel-button{display:none}
   .git-branch{font-size:16px;min-height:var(--tap)}
   .git-tabs{padding:10px 20px}.git-tabs button{min-height:var(--tap);padding:0 14px}
   #project_tabs{gap:2px;padding:8px 6px}#project_tabs button{padding:0 9px}#project_tabs .git-font button{min-width:36px}

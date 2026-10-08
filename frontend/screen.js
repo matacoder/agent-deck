@@ -21,9 +21,6 @@ function unwrapUrls(text){
 let panelOrigins=[location.origin];
 const resolvePanelLink=u=>panelLinkTarget(u,{browserOrigin:location.origin,panelOrigins,identity:selectedDeck});
 const cleanUrl=u=>u.replace(/[.,;)\]]+$/,"");
-function lastUrl(s){const m=unwrapUrls(s&&s.preview||"").match(URL_RE);return m?cleanUrl(m[m.length-1]):null}
-function updateLink(){$("b_link").style.display=lastUrl(cur())?"":"none"}
-function openLink(){const u=lastUrl(cur());if(u)window.open(resolvePanelLink(u),"_blank","noopener")}
 const ANSI_PALETTE=["#2e3436","#cc0000","#4e9a06","#c4a000","#3465a4","#75507b","#06989a","#d3d7cf","#555753","#ef2929","#8ae234","#fce94f","#729fcf","#ad7fa8","#34e2e2","#eeeeec"];
 function ansiColor(n){
   if(!Number.isInteger(n)||n<0||n>255)return null;

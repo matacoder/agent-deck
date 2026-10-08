@@ -814,6 +814,16 @@
     "Всё закоммичено · последний коммит": "Tout est validé · dernier commit",
     "Рабочее дерево": "Arbre de travail",
     "Авто": "Auto",
-    "{0} · авто": "{0} · auto"
+    "{0} · авто": "{0} · auto",
+    "Поиск по всему выводу сессии, включая прокрутку": "Recherche dans toute la sortie de la session, historique compris",
+    "Закрыть поиск": "Fermer la recherche",
+    "Перезапустить — новый разговор": "Redémarrer — nouvelle conversation",
+    "Перезапустить — продолжить разговор": "Redémarrer — poursuivre la conversation",
+    "Дублировать сессию — новый разговор": "Dupliquer la session — nouvelle conversation",
+    "Живой терминал вместо экрана с текстом": "Terminal en direct au lieu de l'écran texte",
+    "Отключить на {0}": "Désactiver sur {0}",
+    "Отключить Telegram на {0}?": "Désactiver Telegram sur {0} ?",
+    "Токен бота там будет удалён; здесь Telegram продолжит работать.": "Le jeton du bot y sera supprimé ; ici, Telegram continue de fonctionner.",
+    "Telegram отключён на {0}": "Telegram désactivé sur {0}"
   }
 }

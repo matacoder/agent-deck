@@ -58,6 +58,15 @@ function codeFont(step){
   try{localStore.setItem("cc.code-font",String(size))}catch(e){}
   applyCodeFont();
 }
+// Which diffs open by themselves: source code, at most a handful. Tests, translations, generated or vendored
+// files, docs, configs and huge diffs stay folded; each renders only when tapped, which keeps a phone fast.
+const CODE_FILE=/\.(py|js|mjs|cjs|ts|tsx|jsx|go|rs|rb|java|kt|swift|c|cc|cpp|h|hpp|cs|php|sh|bash|zsh|ps1|sql|html|css|scss|vue|svelte|lua|dart|scala|ex|exs)$/i;
+const QUIET_PATH=/test|\.spec\.|(^|\/)(specs?|fixtures|__snapshots__|locales?|i18n|translations|vendor|dist|build|node_modules)\/|\.min\./i;
+const OPEN_FILES=8,OPEN_LINES=600;
+function filesToOpen(files){
+  const worth=files.filter(f=>CODE_FILE.test(f.path)&&!QUIET_PATH.test(f.path)&&(f.added||0)+(f.removed||0)<=OPEN_LINES);
+  return new Set(worth.slice(0,OPEN_FILES).map(f=>f.path));
+}
 // Collapsed files render their diff only when opened, so large commits stay fast on a phone.
 function fileBlock(title,file,open,content){
   const binary=file.binary||file.changes?.every(change=>change.binary);
@@ -84,6 +93,22 @@ async function loadChanges(){
     if(data.tree&&hist.log?.tree&&hist.log.tree!==data.tree){freshList();loadHistoryPage()}
   }catch(e){if(seq!==hist.changesSeq)return;hist.changesError=e.message===STALE?"":e.message||tr("Не удалось загрузить")}
   if(hist.tab==="changes"&&!hist.view)renderHistory();
+}
+// While Changes is on screen it quietly checks again, so a new edit or the agent moving to another worktree
+// shows up without a tap. It redraws only when something changed and never under a comment being typed.
+async function pollChanges(){
+  const typing=()=>$("git_body").querySelector(".diff-comment");
+  if(document.hidden||!$("project_dlg").open||project.tab!=="changes"||hist.view||hist.session!==active||!hist.changes||hist.polling||typing())return;
+  const seq=hist.changesSeq,old=hist.changes;hist.polling=true;
+  try{
+    const data=await api(gitPath("changes",{tree:hist.tree}),null,false,{timeout:60000});
+    if(!data.files.length&&data.head)data.last=data.head===old.head&&old.last&&!old.last.error?old.last:await lastCommit(data.head);
+    if(seq!==hist.changesSeq||hist.changes!==old||JSON.stringify(data)===JSON.stringify(old)||typing())return;
+    hist.changes=data;
+    if(data.tree&&hist.log?.tree&&hist.log.tree!==data.tree){freshList();loadHistoryPage()}
+    if(project.tab==="changes"&&!hist.view)renderHistory();
+  }catch(e){}
+  finally{hist.polling=false}
 }
 async function lastCommit(sha){
   try{return await api(gitPath("commit",{sha}),null,false,{timeout:60000})}
@@ -255,8 +280,9 @@ function renderHistoryView(box){
   box.append(list,el("h5","git-section",tr("Общий дифф")));
   if(view.error!==undefined){box.append(errorWithRetry(view.error,()=>showGroup(group)));return}
   if(!view.diff){box.append(el("p","files-empty",tr("Загрузка…")));return}
+  const open=filesToOpen(view.diff.files);
   for(const file of view.diff.files){
-    box.append(fileBlock(file.path,file,true,()=>{
+    box.append(fileBlock(file.path,file,open.has(file.path),()=>{
       const wrap=el("div","");
       for(const change of file.changes)wrap.append(el("div","diff-commit",change.short+" · "+change.subject),renderDiff(change.patch,change));
       return wrap;
@@ -269,7 +295,8 @@ function commitDetails(box,c,compact){
   const when=compact?relativeTime(c.time):new Date(c.time*1000).toLocaleString(DATE_LOCALE);
   box.append(el("h4","git-title"+(compact?" compact":""),subject),el("p","git-meta",c.short,el("span","sep","·"),authorLabel(c.author),el("span","sep","·"),when));
   const body=rest.join("\n").trim();if(body&&!compact)box.append(el("pre","git-message",body));
-  for(const f of c.files)box.append(fileBlock(f.path,f,true,()=>renderDiff(f.patch,f)));
+  const open=filesToOpen(c.files);
+  for(const f of c.files)box.append(fileBlock(f.path,f,open.has(f.path),()=>renderDiff(f.patch,f)));
 }
 // A comment names the file, the line and quotes it, so the agent finds the place without the diff.
 function lineComment(path,row,text){
@@ -311,9 +338,8 @@ function renderChanges(box){
   box.append(el("div","git-head",...treePicker(data),refresh));
   if(!data.files.length)return renderLastCommit(box,data.last);
   box.append(el("p","git-meta",tr("Нажмите на строку, чтобы добавить комментарий в сообщение агенту")));
-  // Many files stay folded: each diff renders only when opened, which keeps a phone responsive.
-  const open=data.files.length<=5;
-  for(const f of data.files)box.append(fileBlock(f.path,f,open,()=>renderDiff(f.patch,f,(row,line)=>commentForm(f.path,row,line))));
+  const open=filesToOpen(data.files);
+  for(const f of data.files)box.append(fileBlock(f.path,f,open.has(f.path),()=>renderDiff(f.patch,f,(row,line)=>commentForm(f.path,row,line))));
   if(data.skipped)box.append(el("p","diff-note",tr("Ещё новых файлов: {0}; они не показаны",[data.skipped])));
 }
 function renderLastCommit(box,last){
@@ -343,4 +369,4 @@ function renderGroups(box){
   const start=fileButton(tr("Сгруппировать коммиты"),"pri",startGrouping);box.append(...[modelPicker(),el("div","acts",start)].filter(Boolean));
 }
 
-if(typeof module!=="undefined")module.exports={diffRows,lineComment,authorColor,AUTHOR_COLORS};
+if(typeof module!=="undefined")module.exports={diffRows,lineComment,authorColor,AUTHOR_COLORS,filesToOpen};

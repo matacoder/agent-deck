@@ -3,18 +3,29 @@
 // Bundled before app.js; nothing here runs at load time.
 const outputSearch={session:null,query:"",seq:0,result:null,error:"",busy:false};
 
+// The field lives in the session bar: always shown on a wide screen, opened by the search icon on a phone.
+// Results float under the bar instead of covering the session.
 function openOutputSearch(){
   if(!active)return;
-  // A new number drops an answer still on its way for the previous session.
-  if(outputSearch.session!==active)Object.assign(outputSearch,{session:active,query:"",result:null,error:"",busy:false,seq:outputSearch.seq+1});
-  if(!$("search_dlg").open)$("search_dlg").showModal();
-  const input=$("search_q");input.value=outputSearch.query;renderOutputSearch();
-  setTimeout(()=>{input.focus();input.select()},0);
+  searchSession();
+  if(isMobile())document.body.classList.add("searching");
+  if(outputSearch.result||outputSearch.error)showSearchPop(true);
+  const input=$("search_q");setTimeout(()=>{input.focus();input.select()},0);
+}
+function closeOutputSearch(){
+  showSearchPop(false);document.body.classList.remove("searching");$("search_q").blur();
+}
+function showSearchPop(on){$("search_pop").hidden=!on}
+// Another session starts a new search; a new number drops an answer still on its way for the previous one.
+function searchSession(){
+  if(outputSearch.session===active)return;
+  Object.assign(outputSearch,{session:active,query:"",result:null,error:"",busy:false,seq:outputSearch.seq+1});
+  $("search_q").value="";closeOutputSearch();
 }
 async function runOutputSearch(){
   const query=$("search_q").value.trim();
   if(!query)return;
-  const seq=++outputSearch.seq;Object.assign(outputSearch,{query,busy:true,error:""});renderOutputSearch();
+  const seq=++outputSearch.seq;Object.assign(outputSearch,{query,busy:true,error:""});renderOutputSearch();showSearchPop(true);
   try{
     const result=await api("/api/scrollback?"+new URLSearchParams({name:outputSearch.session,q:query}),null,false,{timeout:60000});
     if(seq===outputSearch.seq)outputSearch.result=result;
@@ -31,7 +42,7 @@ function renderOutputSearch(){
   const box=$("search_body"),state=outputSearch,result=state.result;box.replaceChildren();
   if(state.busy){box.append(el("p","files-empty",tr("Ищу…")));return}
   if(state.error){box.append(errorWithRetry(state.error,runOutputSearch));return}
-  if(!result){box.append(el("p","files-empty",tr("Ищет по всему выводу сессии, включая прокрутку, начиная с последних строк")));return}
+  if(!result)return;
   if(!result.total){box.append(el("p","files-empty",tr("Ничего не найдено")));return}
   box.append(el("p","git-meta",result.total>result.matches.length?tr("Найдено: {0}, показаны последние {1}",[result.total,result.matches.length]):tr("Найдено: {0}",[result.total])));
   for(const hit of result.matches){

@@ -814,6 +814,16 @@
     "Всё закоммичено · последний коммит": "All committed · last commit",
     "Рабочее дерево": "Working tree",
     "Авто": "Auto",
-    "{0} · авто": "{0} · auto"
+    "{0} · авто": "{0} · auto",
+    "Поиск по всему выводу сессии, включая прокрутку": "Search the session's whole output, including scrollback",
+    "Закрыть поиск": "Close search",
+    "Перезапустить — новый разговор": "Restart — new conversation",
+    "Перезапустить — продолжить разговор": "Restart — continue conversation",
+    "Дублировать сессию — новый разговор": "Duplicate session — new conversation",
+    "Живой терминал вместо экрана с текстом": "Live terminal instead of the text screen",
+    "Отключить на {0}": "Turn off on {0}",
+    "Отключить Telegram на {0}?": "Turn off Telegram on {0}?",
+    "Токен бота там будет удалён; здесь Telegram продолжит работать.": "The bot token will be removed there; Telegram keeps working here.",
+    "Telegram отключён на {0}": "Telegram turned off on {0}"
   }
 }

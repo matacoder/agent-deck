@@ -192,12 +192,11 @@ const drawerSwipe={panel:document.querySelector("aside"),isOpen:()=>document.bod
 attachDrawerSwipe(document,drawerSwipe);
 function sheet(on){
   if(on){
-    const s=cur(),groups=$("sheet").querySelectorAll(".sheet-group");
+    const s=cur();
     $("sheetCap").textContent=s?sessionTitle(s):"Agent Deck";
-    groups[0].hidden=groups[1].hidden=groups[3].hidden=!s;
-    $("s_mode_label").textContent=curMode()==="term"?tr("Показать экран"):tr("Показать терминал");
-    $("s_mode").querySelector("use").setAttribute("href",curMode()==="term"?"#i-file":"#i-terminal");
-    $("s_link").style.display=lastUrl(s)?"":"none";
+    $("s_session").hidden=$("s_manage").hidden=!s;
+    // Update and closed drafts appear only when there is something to do; an empty group would be a stray line.
+    $("s_app").hidden=$("s_update").style.display==="none"&&$("s_drafts").style.display==="none";
   }
   const wasOpen=$("sheet").classList.contains("on");
   $("sheet").classList.toggle("on",on);
@@ -392,7 +391,8 @@ function show(){
   $("term_loading").hidden=!(s&&m==="term"&&frameFor(active).dataset.loading);
   if(s&&m==="term"){const f=frameFor(active);f.classList.add("on");f.inert=isLocal(s)&&!s.running;if(!isMobile()&&!isTouch()&&!f.inert&&document.activeElement!==$("msg"))setTimeout(()=>{try{f.contentWindow.focus();f.contentWindow.term&&f.contentWindow.term.focus()}catch(e){}},30)}
   if(s&&m==="screen")updateScreen(s,true);
-  updateLink();fitKeys();syncProject();
+  $("b_mode").setAttribute("aria-pressed",String(!!s&&m==="term"));
+  fitKeys();syncProject();searchSession();
 }
 function reconnectTerminal(){
   if(!active)return;
@@ -489,7 +489,7 @@ async function loadSessions(){
     saveClosedDrafts();
     if(active!==requested)sessionsQueued=true;
     if(first&&!active&&isMobile())drawer(true);
-    renderTabs();renderTitle();updateLink();
+    renderTabs();renderTitle();
     const s=cur(),m=curMode();
     if(first||active!==previousActive||!s||(m==="term"&&!frames.has(active)))show();
     else if(m==="screen")updateScreen(s);
@@ -563,18 +563,17 @@ function restart(m){
   const title=m==="new"?tr("Перезапустить {0} в «{1}» с НОВЫМ разговором?",[a,sessionTitle(s)]):tr("Перезапустить {0} в «{1}», продолжив разговор?",[a,sessionTitle(s)]);
   post("/api/restart",{name:active,mode:m},{title,confirm:tr("Перезапустить")});
 }
-async function termHere(){
-  const s=cur();if(!s)return;
-  const names=new Set(sessions.map(x=>x.name));
-  let base=s.name.replace(/-sh\d*$/,"").slice(0,27)+"-sh",n=base,i=2;
-  while(names.has(n))n=base+(i++);
-  const created=await post("/api/new",{name:n,agent:"shell",path:s.path});if(created)select(created.name||n);
-}
 async function kill(){
   const s=cur();if(!s)return;
   await post("/api/kill",{name:s.name},{title:tr("Закрыть сессию «{0}»? Агент будет остановлен.",[sessionTitle(s)]),confirm:tr("Закрыть сессию"),danger:true});
 }
-function popout(){if(active)window.open(activePath("/t/?arg="+encodeURIComponent("=cc-"+active)),"_blank")}
+// Same folder, agent, permissions and model as the open session, with a fresh conversation.
+async function duplicateSession(){
+  const s=cur();if(!s)return;
+  const source=s.source&&["kimi","lmstudio"].includes(s.source.kind)?{kind:s.source.kind,profile:s.source.profile,model:s.source.model}:undefined;
+  const created=await post("/api/new",{name:s.name,path:s.path,agent:s.agent==="claude-kimi"?"claude":s.agent||"claude",skip:s.skip,source});
+  if(created)select(created.name);
+}
 let uploading=false,choosingImages=false;
 const imageAttachments=new Map();
 const attachmentsFor=name=>imageAttachments.get(name)||[];
@@ -770,6 +769,10 @@ $("msg").addEventListener("keydown",e=>{
 });
 $("q").addEventListener("input",renderTabs);
 $("search_form").addEventListener("submit",e=>{e.preventDefault();runOutputSearch()});
+$("search_q").addEventListener("focus",()=>{if(outputSearch.result||outputSearch.busy||outputSearch.error)showSearchPop(true)});
+$("search_q").addEventListener("keydown",e=>{if(e.key==="Escape"){e.preventDefault();e.stopPropagation();closeOutputSearch()}});
+// Results float under the bar; a tap or click anywhere else folds them away and keeps the query.
+document.addEventListener("pointerdown",e=>{if(!$("search_pop").hidden&&!$("search_pop").contains(e.target)&&!$("search_form").contains(e.target))showSearchPop(false)});
 $("palette_q").addEventListener("input",filterPalette);
 $("palette_q").addEventListener("keydown",paletteKey);
 // A click on the backdrop (outside the box) closes the switcher, as Escape does.
@@ -788,7 +791,7 @@ async function checkGithubFoot(force){
   if(force===true||Date.now()-lastGh>30000||sessions.some(s=>s.name==="github-login")){await ghStatus();lastGh=Date.now()}
   renderInteg();
 }
-async function loadUsage(){if(document.hidden)return;try{usageData=await api("/api/usage")}catch(e){}renderInteg()}
+async function loadUsage(){if(document.hidden)return;try{usageData=await api("/api/usage")}catch(e){}integReady.usage=true;renderInteg()}
 
 function fmtReset(ts){
   if(!ts)return"";
@@ -844,12 +847,30 @@ function renderInteg(){
     if(w||u?.error)help.append(el("div","",row.title));
   }
   for(const p of lmData.profiles||[])rows.push(localUsage(p));
+  rows.push(...integSkeleton());
   // Rebuilding identical nodes every second drops hover, focus and screen-reader position.
   const next=el("div","",...rows);
   if(next.innerHTML!==$("integ").innerHTML)$("integ").replaceChildren(...next.childNodes);
+  keepIntegHeight();
   renderSendState();
   const signature=JSON.stringify([lastAg,ghLogin,telegramConfig,lmData.profiles,panelVersion]);
   if($("settings_dlg").open&&signature!==hubSignature&&!$("settings_dlg").contains(document.activeElement)){hubSignature=signature;renderHub()}
+}
+// Limits and local models arrive after the session list; until both answered, the block keeps the height and
+// model rows it had last time (per computer), so the session list above does not jump when they appear.
+function integSkeleton(){
+  if(integReady.lm)return [];
+  let count=0;try{count=Math.min(4,+deckLocalStorage.getItem("cc.integ-models")||0)}catch(e){}
+  return Array.from({length:count},()=>el("div","local-usage compact-local integ-skeleton",el("span","sk-line"),el("span","sk-line")));
+}
+function keepIntegHeight(){
+  const box=$("integ");
+  if(!integReady.lm||!integReady.usage){
+    let height=0;try{height=+deckLocalStorage.getItem("cc.integ-height")||0}catch(e){}
+    box.style.minHeight=height>0?height+"px":"";return;
+  }
+  box.style.minHeight="";
+  try{deckLocalStorage.setItem("cc.integ-height",String(box.offsetHeight));deckLocalStorage.setItem("cc.integ-models",String(lmData.profiles?.length||0))}catch(e){}
 }
 const openLocalModels=new Set(); // renderInteg rebuilds every second; keep user-opened rows open.
 function localUsage(profile){
@@ -965,6 +986,7 @@ function openDeckSession(identity,name){
   switchDeck(identity);
 }
 setInterval(loadOtherDecks,10000);
+setInterval(pollChanges,15000);
 function switchDeck(identity){
   if(identity===selectedDeck)return;
   if(sending||uploading||choosingImages||question.busy!==null){$("deck_select").value=selectedDeck;toast(tr("Дождитесь окончания отправки или загрузки"));return}
@@ -993,7 +1015,7 @@ function resetInstanceState(known){
   sessions=known;quickSignature=null;quickActive=null;
   question={name:null,data:null,expanded:false,busy:null,textIndex:null};loadingQuestion=false;
   loadingSessions=null;queuedSessions=null;sessionsQueued=false;load.done=false;
-  lastAg={};usageData={};ghLogin=null;lastGh=0;repos=[];
+  lastAg={};usageData={};ghLogin=null;lastGh=0;repos=[];integReady.usage=integReady.lm=false;
   lmData={profiles:[],discovery:{}};lmRefreshPending=null;openLocalModels.clear();
   telegramConfig={};panelVersion=null;UI_PANEL_VERSION=null;panelUpdating=false;hubSignature="";
   // Backups, the recovery code and the update entry belong to the computer we leave.
