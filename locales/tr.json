@@ -808,9 +808,9 @@
     "Последняя проверка всех копий: {0}": "Tüm kopyaların son kontrolü: {0}",
     "Файлы": "Dosyalar",
     "Проект": "Proje",
-    "Последний коммит": "Son commit",
     "Ширина боковой панели": "Kenar çubuğu genişliği",
     "Потяните, чтобы изменить ширину; двойной клик — ширина по умолчанию": "Genişliği değiştirmek için sürükleyin; varsayılan için çift tıklayın",
-    "Скрыть или показать панель проекта": "Proje panelini göster veya gizle"
+    "Скрыть или показать панель проекта": "Proje panelini göster veya gizle",
+    "Всё закоммичено · последний коммит": "Hepsi commit edildi · son commit"
   }
 }

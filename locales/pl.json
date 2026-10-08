@@ -808,9 +808,9 @@
     "Последняя проверка всех копий: {0}": "Ostatnie sprawdzenie wszystkich kopii: {0}",
     "Файлы": "Pliki",
     "Проект": "Projekt",
-    "Последний коммит": "Ostatni commit",
     "Ширина боковой панели": "Szerokość panelu bocznego",
     "Потяните, чтобы изменить ширину; двойной клик — ширина по умолчанию": "Przeciągnij, aby zmienić szerokość; dwuklik przywraca domyślną",
-    "Скрыть или показать панель проекта": "Pokaż lub ukryj panel projektu"
+    "Скрыть или показать панель проекта": "Pokaż lub ukryj panel projektu",
+    "Всё закоммичено · последний коммит": "Wszystko zatwierdzone · ostatni commit"
   }
 }

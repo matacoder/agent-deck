@@ -288,7 +288,7 @@ test('on a wide screen the project panel docks on the right, follows the session
   expect(doc.querySelector('dialog[open]:not(.docked)')).toBeNull();
   window.eval('select("beta")');await settle();await settle();
   expect(asked.slice(-1)).toEqual(['beta']);
-  expect(doc.querySelector('#git_body .git-bar code').textContent).toBe('beta');
+  expect(doc.querySelector('#git_body .git-head code').textContent).toBe('beta');
   doc.querySelector('#project_tabs [data-tab="files"]').click();
   expect(doc.getElementById('git_body').hidden).toBe(true);
   expect(doc.getElementById('files_body').hidden).toBe(false);

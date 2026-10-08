@@ -552,6 +552,12 @@ body.resizing iframe{pointer-events:none}
 .git-meta .sep{margin:0 -3px;color:var(--dim)}
 .git-summary{margin:0;color:var(--fg);font-size:13px;line-height:1.5}
 .git-title{margin:4px 0 0;color:var(--fg2);font-size:16px;overflow-wrap:anywhere}
+.git-title.compact{margin:0;font-size:14px;line-height:1.35}
+.git-head{display:flex;align-items:center;gap:6px;min-width:0;color:var(--mut);font-size:12.5px}
+.git-head code{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--fg2);font-family:var(--mono)}
+.git-head .sep{color:var(--dim)}
+.git-refresh{display:inline-flex;align-items:center;justify-content:center;flex:none;width:28px;height:28px;margin-left:auto;border-radius:var(--r-sm);color:var(--mut)}
+@media (hover:hover){.git-refresh:hover{background:var(--side2);color:var(--fg2)}}
 .git-section{margin:8px 0 0;color:var(--mut);font-size:12px;text-transform:uppercase;letter-spacing:.04em}
 .git-message{margin:0;padding:10px 12px;border-radius:10px;background:var(--bg);color:var(--fg);font:13px/1.55 -apple-system,BlinkMacSystemFont,system-ui,sans-serif;white-space:pre-wrap;overflow-wrap:anywhere}
 .git-more{align-self:center;padding:8px 14px;border:1px solid var(--bd);border-radius:var(--r-sm);color:var(--fg2)}
@@ -2559,10 +2565,12 @@ function renderHistoryView(box){
     }));
   }
 }
-function commitDetails(box,c){
+// compact: the last commit under Changes shows only its subject and who/when; the full message is in Commits.
+function commitDetails(box,c,compact){
   const [subject,...rest]=c.message.split("\n");
-  box.append(el("h4","git-title",subject),el("p","git-meta",c.short,el("span","sep","·"),authorLabel(c.author),el("span","sep","·"),new Date(c.time*1000).toLocaleString(DATE_LOCALE)));
-  const body=rest.join("\n").trim();if(body)box.append(el("pre","git-message",body));
+  const when=compact?relativeTime(c.time):new Date(c.time*1000).toLocaleString(DATE_LOCALE);
+  box.append(el("h4","git-title"+(compact?" compact":""),subject),el("p","git-meta",c.short,el("span","sep","·"),authorLabel(c.author),el("span","sep","·"),when));
+  const body=rest.join("\n").trim();if(body&&!compact)box.append(el("pre","git-message",body));
   for(const f of c.files)box.append(fileBlock(f.path,f,true,()=>renderDiff(f.patch,f)));
 }
 // A comment names the file, the line and quotes it, so the agent finds the place without the diff.
@@ -2599,8 +2607,10 @@ function renderChanges(box){
   const data=hist.changes;
   if(hist.changesError){box.append(errorWithRetry(hist.changesError,loadChanges));return}
   if(!data){box.append(el("p","files-empty",tr("Загрузка…")));return}
-  const refresh=fileButton(tr("Обновить"),"git-fetch",loadChanges,"refresh");
-  box.append(el("div","git-bar",el("code","",data.name),el("span","git-meta",data.branch),refresh));
+  // One line for where we are; the refresh button is an icon to keep the first change high on the screen.
+  const refresh=el("button","git-refresh",svgIcon("refresh"));refresh.type="button";refresh.onclick=loadChanges;
+  refresh.setAttribute("aria-label",tr("Обновить"));refresh.title=tr("Обновить");
+  box.append(el("div","git-head",el("code","",data.name),el("span","sep","·"),el("span","",data.branch),refresh));
   if(!data.files.length)return renderLastCommit(box,data.last);
   box.append(el("p","git-meta",tr("Нажмите на строку, чтобы добавить комментарий в сообщение агенту")));
   // Many files stay folded: each diff renders only when opened, which keeps a phone responsive.
@@ -2610,9 +2620,9 @@ function renderChanges(box){
 }
 function renderLastCommit(box,last){
   if(!last){box.append(el("p","files-empty",tr("Незакоммиченных изменений нет")));return}
-  box.append(el("p","git-meta",tr("Незакоммиченных изменений нет")),el("h5","git-section",tr("Последний коммит")));
+  box.append(el("p","git-meta",tr("Всё закоммичено · последний коммит")));
   if(last.error!==undefined)box.append(el("p","diff-note",last.error||tr("Не удалось загрузить")));
-  else commitDetails(box,last);
+  else commitDetails(box,last,true);
 }
 function renderGroups(box){
   const state=hist.groups;

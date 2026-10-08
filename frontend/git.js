@@ -246,10 +246,12 @@ function renderHistoryView(box){
     }));
   }
 }
-function commitDetails(box,c){
+// compact: the last commit under Changes shows only its subject and who/when; the full message is in Commits.
+function commitDetails(box,c,compact){
   const [subject,...rest]=c.message.split("\n");
-  box.append(el("h4","git-title",subject),el("p","git-meta",c.short,el("span","sep","·"),authorLabel(c.author),el("span","sep","·"),new Date(c.time*1000).toLocaleString(DATE_LOCALE)));
-  const body=rest.join("\n").trim();if(body)box.append(el("pre","git-message",body));
+  const when=compact?relativeTime(c.time):new Date(c.time*1000).toLocaleString(DATE_LOCALE);
+  box.append(el("h4","git-title"+(compact?" compact":""),subject),el("p","git-meta",c.short,el("span","sep","·"),authorLabel(c.author),el("span","sep","·"),when));
+  const body=rest.join("\n").trim();if(body&&!compact)box.append(el("pre","git-message",body));
   for(const f of c.files)box.append(fileBlock(f.path,f,true,()=>renderDiff(f.patch,f)));
 }
 // A comment names the file, the line and quotes it, so the agent finds the place without the diff.
@@ -286,8 +288,10 @@ function renderChanges(box){
   const data=hist.changes;
   if(hist.changesError){box.append(errorWithRetry(hist.changesError,loadChanges));return}
   if(!data){box.append(el("p","files-empty",tr("Загрузка…")));return}
-  const refresh=fileButton(tr("Обновить"),"git-fetch",loadChanges,"refresh");
-  box.append(el("div","git-bar",el("code","",data.name),el("span","git-meta",data.branch),refresh));
+  // One line for where we are; the refresh button is an icon to keep the first change high on the screen.
+  const refresh=el("button","git-refresh",svgIcon("refresh"));refresh.type="button";refresh.onclick=loadChanges;
+  refresh.setAttribute("aria-label",tr("Обновить"));refresh.title=tr("Обновить");
+  box.append(el("div","git-head",el("code","",data.name),el("span","sep","·"),el("span","",data.branch),refresh));
   if(!data.files.length)return renderLastCommit(box,data.last);
   box.append(el("p","git-meta",tr("Нажмите на строку, чтобы добавить комментарий в сообщение агенту")));
   // Many files stay folded: each diff renders only when opened, which keeps a phone responsive.
@@ -297,9 +301,9 @@ function renderChanges(box){
 }
 function renderLastCommit(box,last){
   if(!last){box.append(el("p","files-empty",tr("Незакоммиченных изменений нет")));return}
-  box.append(el("p","git-meta",tr("Незакоммиченных изменений нет")),el("h5","git-section",tr("Последний коммит")));
+  box.append(el("p","git-meta",tr("Всё закоммичено · последний коммит")));
   if(last.error!==undefined)box.append(el("p","diff-note",last.error||tr("Не удалось загрузить")));
-  else commitDetails(box,last);
+  else commitDetails(box,last,true);
 }
 function renderGroups(box){
   const state=hist.groups;

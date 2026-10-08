@@ -808,9 +808,9 @@
     "Последняя проверка всех копий: {0}": "Letzte Prüfung aller Kopien: {0}",
     "Файлы": "Dateien",
     "Проект": "Projekt",
-    "Последний коммит": "Letzter Commit",
     "Ширина боковой панели": "Seitenleistenbreite",
     "Потяните, чтобы изменить ширину; двойной клик — ширина по умолчанию": "Ziehen, um die Breite zu ändern; Doppelklick für den Standard",
-    "Скрыть или показать панель проекта": "Projektbereich ein- oder ausblenden"
+    "Скрыть или показать панель проекта": "Projektbereich ein- oder ausblenden",
+    "Всё закоммичено · последний коммит": "Alles committet · letzter Commit"
   }
 }

@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.23.3 — 2026-10-08
+
+- Changes is more compact: repository and branch on one line with an icon refresh button; a clean tree shows one short note and the last commit's subject, author and time (the full message stays in Commits).
+
 ## 1.23.2 — 2026-10-08
 
 - Commit rows are calm again: no coloured background or stripe, a neutral highlight on hover; only the author's name keeps its colour.
