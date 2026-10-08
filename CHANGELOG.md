@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.26.2 — 2026-10-08
+
+- How it works is now a network topology with icons: you and your domain outside, then a private Tailscale network with three computers in different countries (the gateway with two agents, a laptop with its own Agent Deck and three agents, a workstation with LM Studio), links named by protocol and the internet services they call; three lines below explain Tailscale, the domain and several instances. The README shows the same topology. Phones scroll the diagram sideways.
+
 ## 1.26.1 — 2026-10-08
 
 - How it works (the **?** next to search) is now an architecture diagram: your Tailscale network, your computer with the panel, ttyd, tmux, agents, projects and the private settings folder, and the internet services, with the protocol on each link. The README diagram shows the same zones.

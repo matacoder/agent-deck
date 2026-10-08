@@ -19,38 +19,43 @@ after a reboot.
 
 ```mermaid
 flowchart LR
-  subgraph NET["Your network · Tailscale"]
-    B["Browser<br/>phone, tablet, laptop"]
-    O["Other computers<br/>with Agent Deck"]
-    L["LM Studio<br/>local models"]
+  U["You<br/>phone or laptop, anywhere"] -- "HTTPS" --> D["agent.example.com<br/>your domain"]
+  subgraph NET["Private Tailscale network · encrypted, invisible from the internet"]
+    subgraph C1["Server · United Kingdom"]
+      G["Agent Deck · gateway"]
+      G1["Claude Code"]
+      G2["Codex"]
+    end
+    subgraph C2["Laptop · Germany"]
+      H["Agent Deck"]
+      H1["Claude Code"]
+      H2["Codex"]
+      H3["Kimi"]
+    end
+    subgraph C3["Workstation · Netherlands"]
+      L["LM Studio<br/>models on the GPU"]
+    end
   end
-  subgraph HOST["Your computer · Linux, macOS, WSL"]
-    P["Agent Deck panel<br/>password sign-in, API, terminal proxy"]
-    Y["ttyd<br/>live terminal"]
-    X["tmux<br/>keeps sessions running"]
-    A["Agents<br/>Claude Code, Codex, Kimi, shell"]
-    F["Projects<br/>folders and git worktrees"]
-    C[("~/.config/cc-panel<br/>settings and keys, 0600")]
-    P -- "unix socket" --> Y
-    Y -- "tmux attach" --> X
-    X --> A
-    A -- "read and change code" --> F
-    P --- C
-  end
-  subgraph WEB["Internet services"]
-    M["Agent models<br/>Anthropic, OpenAI, Moonshot"]
-    G["GitHub<br/>repositories"]
-    T["Telegram<br/>questions and answer buttons"]
-  end
-  B -- "HTTPS · WebSocket" --> P
-  P -- "gateway" --> O
-  P -- "model relay" --> L
-  A -- "HTTPS" --> M
-  P -- "HTTPS" --> G
-  P -- "HTTPS" --> T
+  S["Internet services<br/>Anthropic · OpenAI · Moonshot<br/>GitHub · Telegram"]
+  D -- "HTTPS" --> G
+  G -- "gateway: one session list" --- H
+  G --> G1
+  G --> G2
+  H --> H1
+  H --> H2
+  H --> H3
+  G -- "local models" --> L
+  H -- "local models" --> L
+  NET -- "HTTPS, outgoing" --> S
 ```
 
-The agents run on your own computer, in your project folders, exactly as if you had opened a terminal
+**Tailscale** is a private encrypted network between your own devices: the computers see each other wherever
+they are (different countries are fine), and nobody on the internet sees them. Your domain leads to one
+computer running Agent Deck as the **gateway**; the other computers run their own Agent Deck and agents and
+connect to it inside the network, so all their sessions show in one list. Any computer can serve LM Studio
+models to the others.
+
+The agents run on your own computers, in your project folders, exactly as if you had opened a terminal
 there. The browser is only a window onto them: close it and the work goes on; open it on a phone and you
 see the same sessions. Nothing is exposed to the internet — the phone reaches the computer over
 Tailscale.

@@ -502,22 +502,28 @@ dialog:focus,dialog:focus-visible{outline:none}
 .inbox-btn b:empty{display:none}
 #inbox_dlg{width:min(560px,calc(100vw - 32px))}
 #project_dlg{width:min(900px,calc(100vw - 32px))}
-/* How it works: zones (dashed) hold components; links between zones name the protocol. Three columns on a
-   wide screen, one column on a phone. */
+/* How it works: a topology drawn in SVG (zone, computers, links named by protocol); phones scroll it sideways
+   rather than shrinking the words. */
 #help_dlg{width:min(1000px,calc(100vw - 32px))}
-.arch{display:grid;grid-template-columns:1fr 92px 1.25fr 92px 1fr;align-items:center;gap:0}
-.arch-zone{display:grid;align-content:start;gap:8px;padding:28px 10px 10px;border:1.5px dashed var(--bd-strong);border-radius:12px;position:relative}
-.arch-zone h5{position:absolute;top:8px;left:12px;margin:0;color:var(--mut);font-size:10.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase}
-.arch-zone.host{border-color:var(--acc);background:color-mix(in srgb,var(--acc-soft) 35%,transparent)}
-.arch-box{display:grid;gap:2px;padding:8px 10px;border:1px solid var(--bd);border-radius:8px;background:var(--bg)}
-.arch-box b{color:var(--fg2);font-size:12.5px}.arch-box span{color:var(--mut);font-size:11.5px;line-height:1.4}
-.arch-box.accent{border-color:var(--acc)}
-.arch-box.store{margin-top:6px;border-style:dashed}.arch-box.store b{font-family:var(--mono)}
-.arch-step{justify-self:center;color:var(--dim);font:11px var(--mono);text-align:center}
-.arch-step::before{content:"↓";display:block;font-family:inherit;font-size:13px}
-.arch-link{display:grid;justify-items:center;gap:2px;padding:0 4px;text-align:center}
-.arch-link::before{content:"⟷";color:var(--acc-text);font-size:22px;line-height:1}
-.arch-link b{color:var(--fg2);font:600 10.5px var(--mono)}.arch-link span{color:var(--mut);font-size:10.5px;line-height:1.3}
+.arch-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.arch-map{display:block;width:100%;min-width:720px;height:auto;font-family:-apple-system,BlinkMacSystemFont,system-ui,sans-serif}
+.arch-map .a-box{fill:var(--bg);stroke:var(--bd-strong)}
+.arch-map .a-box.host{stroke:var(--acc)}
+.arch-map .a-zone{fill:color-mix(in srgb,var(--acc-soft) 30%,transparent);stroke:var(--acc);stroke-width:1.5;stroke-dasharray:7 5}
+.arch-map .a-acc{fill:var(--acc-soft);stroke:var(--acc)}
+.arch-map .a-chip{fill:var(--side2);stroke:var(--bd)}
+.arch-map .a-flag{fill:var(--side2);stroke:var(--bd-strong)}
+.arch-map .a-ic{fill:none;stroke:var(--fg2);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.arch-map .a-ic.acc{stroke:var(--acc-text)}
+.arch-map .a-line{fill:none;stroke:var(--mut);stroke-width:1.4}
+.arch-map .a-head{fill:var(--mut)}
+.arch-map .a-t{fill:var(--fg2);font-size:13px;font-weight:600}
+.arch-map .a-s{fill:var(--mut);font-size:12px}
+.arch-map .a-s.dim{fill:var(--dim)}
+.arch-map .a-c{fill:var(--fg2);font-size:12px}.arch-map .a-c.strong{font-weight:600;fill:var(--acc-text)}
+.arch-map .a-z{fill:var(--acc-text);font-size:11.5px;font-weight:700;letter-spacing:.06em}
+.arch-map .mono{font-family:var(--mono)}
+.arch-note{margin:10px 0 0;color:var(--fg);font-size:13px;line-height:1.55}
 .how-title{margin:18px 0 6px;color:var(--fg2);font-size:14px}
 .how-list{margin:0;padding-left:18px;color:var(--fg);font-size:13px;line-height:1.55}
 .help-side{display:none!important}
@@ -838,7 +844,6 @@ body.resizing iframe{pointer-events:none}
   .acts{padding:12px 16px calc(12px + var(--sab))}
   .acts button{flex:1;min-height:var(--tap);padding:12px;font-size:16px;border-radius:var(--r)}
   #inbox_dlg,#project_dlg,#help_dlg,.palette{width:100vw}
-  .arch{grid-template-columns:1fr;gap:8px}.arch-link{padding:2px 0}.arch-link::before{content:"↕"}
   .help-side{display:flex!important}
   #inbox_dlg .dlg,#project_dlg .dlg,.palette .dlg{padding-top:var(--sat)}
   .palette{margin-top:0}.palette-list{max-height:none;flex:1}
@@ -1080,32 +1085,53 @@ body.resizing iframe{pointer-events:none}
     <nav id="quick_tabs" aria-label="Быстрое переключение сессий"></nav>
   </main>
   <dialog id="help_dlg"><div class="dlg"><div class="hub-heading"><h3 tabindex="-1" autofocus>Как это работает</h3><button type="button" onclick="$('help_dlg').close()" aria-label="Закрыть"><svg class="ui-icon"><use href="#i-x"/></svg></button></div><div class="dlg-body">
-    <div class="arch">
-      <section class="arch-zone"><h5>Ваша сеть · Tailscale</h5>
-        <div class="arch-box"><b>Браузер</b><span>телефон, планшет, ноутбук</span></div>
-        <div class="arch-box"><b>Другие компьютеры с Agent Deck</b><span>их сессии в общем списке</span></div>
-        <div class="arch-box"><b>LM Studio</b><span>локальные модели</span></div>
-      </section>
-      <div class="arch-link"><b>HTTPS · WebSocket</b><span>порты в интернет не открыты</span></div>
-      <section class="arch-zone host"><h5>Ваш компьютер · Linux, macOS, WSL</h5>
-        <div class="arch-box accent"><b>Панель Agent Deck</b><span>вход по паролю, API, прокси терминала</span></div>
-        <div class="arch-step">unix-сокет</div>
-        <div class="arch-box"><b>ttyd</b><span>живой терминал в браузере</span></div>
-        <div class="arch-step">tmux attach</div>
-        <div class="arch-box"><b>tmux</b><span>держит сессии, даже когда браузер закрыт</span></div>
-        <div class="arch-step"></div>
-        <div class="arch-box"><b>Агенты</b><span>Claude Code, Codex, Kimi, терминал</span></div>
-        <div class="arch-step">читают и меняют код</div>
-        <div class="arch-box"><b>Проекты</b><span>папки и рабочие деревья git</span></div>
-        <div class="arch-box store"><b>~/.config/cc-panel</b><span>настройки и ключи, доступ только у вас</span></div>
-      </section>
-      <div class="arch-link"><b>HTTPS</b><span>исходящие запросы</span></div>
-      <section class="arch-zone"><h5>Интернет-сервисы</h5>
-        <div class="arch-box"><b>Модели агентов</b><span>Anthropic, OpenAI, Moonshot</span></div>
-        <div class="arch-box"><b>GitHub</b><span>репозитории и ветки</span></div>
-        <div class="arch-box"><b>Telegram</b><span>вопросы агентов и ответы кнопками</span></div>
-      </section>
-    </div>
+    <div class="arch-scroll"><svg class="arch-map" viewBox="0 0 960 610" role="img" aria-label="Как это работает">
+      <defs><marker id="a-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="a-head"/></marker></defs>
+      <!-- You and your domain, out on the internet -->
+      <g class="a-ic" transform="translate(44 34)"><rect x="0" y="4" width="16" height="26" rx="3"/><path d="M6 26h4"/><rect x="24" y="8" width="30" height="19" rx="2"/><path d="M20 31h38"/></g>
+      <text class="a-t" x="112" y="48">Вы</text><text class="a-s" x="112" y="66">телефон или ноутбук, где угодно</text>
+      <path class="a-line" d="M336 54H372" marker-end="url(#a-arrow)"/>
+      <rect class="a-box" x="380" y="22" width="250" height="64" rx="10"/>
+      <g class="a-ic" transform="translate(396 38)"><circle cx="16" cy="16" r="15"/><ellipse cx="16" cy="16" rx="6.5" ry="15"/><path d="M1 16h30M4 8h24M4 24h24"/></g>
+      <text class="a-t mono" x="440" y="50">agent.example.com</text><text class="a-s" x="440" y="68">ваш домен · HTTPS</text>
+      <!-- Internet services -->
+      <rect class="a-box" x="700" y="22" width="236" height="150" rx="10"/>
+      <g class="a-ic" transform="translate(716 38)"><path d="M8 26h18a7 7 0 0 0 0-14 10 10 0 0 0-19-2A7 7 0 0 0 8 26z"/></g>
+      <text class="a-t" x="756" y="54">Интернет-сервисы</text>
+      <text class="a-s" x="716" y="90">Anthropic · OpenAI · Moonshot</text><text class="a-s" x="716" y="112">GitHub</text><text class="a-s" x="716" y="134">Telegram</text>
+      <text class="a-s dim" x="716" y="156">модели, код, уведомления</text>
+      <!-- The private network -->
+      <rect class="a-zone" x="20" y="150" width="650" height="440" rx="16"/>
+      <g class="a-ic acc" transform="translate(38 166)"><rect x="2" y="8" width="14" height="11" rx="2"/><path d="M5 8V5a4 4 0 0 1 8 0v3"/></g>
+      <text class="a-z" x="62" y="180">ЧАСТНАЯ СЕТЬ TAILSCALE</text><text class="a-s" x="62" y="198">зашифрована, из интернета не видна</text>
+      <path class="a-line" d="M505 86V120H310V222" marker-end="url(#a-arrow)"/><text class="a-s mono" x="400" y="114" text-anchor="middle">HTTPS</text>
+      <!-- Computer 1: the gateway -->
+      <rect class="a-box host" x="40" y="226" width="280" height="190" rx="12"/>
+      <g class="a-ic" transform="translate(56 242)"><rect x="0" y="0" width="22" height="9" rx="2"/><rect x="0" y="12" width="22" height="9" rx="2"/><path d="M4 4.5h1M4 16.5h1M10 4.5h8M10 16.5h8"/></g><text class="a-t" x="88" y="256">Сервер · Великобритания</text><rect class="a-flag" x="278" y="378" width="28" height="18" rx="4"/><text class="a-c mono" x="292" y="391" text-anchor="middle">GB</text>
+      <rect class="a-acc" x="56" y="278" width="248" height="30" rx="7"/><text class="a-c strong" x="180" y="298" text-anchor="middle">Agent Deck · шлюз</text>
+      <rect class="a-chip" x="56" y="326" width="118" height="24" rx="6"/><text class="a-c" x="115.0" y="342" text-anchor="middle">Claude Code</text><rect class="a-chip" x="186" y="326" width="118" height="24" rx="6"/><text class="a-c" x="245.0" y="342" text-anchor="middle">Codex</text>
+      <text class="a-s" x="56" y="392">tmux держит сессии</text>
+      <!-- Computer 2 -->
+      <rect class="a-box" x="370" y="226" width="280" height="190" rx="12"/>
+      <g class="a-ic" transform="translate(385 242)"><rect x="3" y="1" width="18" height="13" rx="2"/><path d="M0 19h24M9 19v-1.5h6V19"/></g><text class="a-t" x="418" y="256">Ноутбук · Германия</text><rect class="a-flag" x="608" y="378" width="28" height="18" rx="4"/><text class="a-c mono" x="622" y="391" text-anchor="middle">DE</text>
+      <rect class="a-acc" x="386" y="278" width="248" height="30" rx="7"/><text class="a-c strong" x="510" y="298" text-anchor="middle">Agent Deck</text>
+      <rect class="a-chip" x="386" y="326" width="76" height="24" rx="6"/><text class="a-c" x="424.0" y="342" text-anchor="middle">Claude</text><rect class="a-chip" x="472" y="326" width="76" height="24" rx="6"/><text class="a-c" x="510.0" y="342" text-anchor="middle">Codex</text><rect class="a-chip" x="558" y="326" width="76" height="24" rx="6"/><text class="a-c" x="596.0" y="342" text-anchor="middle">Kimi</text>
+      <text class="a-s" x="386" y="392">свои проекты и рабочие деревья</text>
+      <path class="a-line" d="M322 293H368" marker-start="url(#a-arrow)" marker-end="url(#a-arrow)"/>
+      <text class="a-s" x="345" y="276" text-anchor="middle">шлюз</text>
+      <!-- Computer 3: local models -->
+      <rect class="a-box" x="180" y="470" width="340" height="100" rx="12"/>
+      <g class="a-ic" transform="translate(196 486)"><rect x="3" y="3" width="18" height="18" rx="3"/><rect x="8" y="8" width="8" height="8" rx="1"/><path d="M8 0v3M16 0v3M8 21v3M16 21v3M0 8h3M0 16h3M21 8h3M21 16h3"/></g>
+      <text class="a-t" x="228" y="502">Рабочая станция · Нидерланды</text><rect class="a-flag" x="478" y="538" width="28" height="18" rx="4"/><text class="a-c mono" x="492" y="551" text-anchor="middle">NL</text>
+      <text class="a-s" x="228" y="526">LM Studio · модели на GPU</text>
+      <path class="a-line" d="M150 418V520H178" marker-end="url(#a-arrow)"/><path class="a-line" d="M560 418V520H522" marker-end="url(#a-arrow)"/>
+      <text class="a-s" x="350" y="452" text-anchor="middle">локальные модели</text>
+      <!-- Outgoing calls -->
+      <path class="a-line" d="M652 270H818V176" marker-end="url(#a-arrow)"/><text class="a-s mono" x="826" y="226">HTTPS, исходящие</text>
+    </svg></div>
+    <p class="arch-note">Tailscale — частная зашифрованная сеть между вашими устройствами: компьютеры видят друг друга, где бы ни находились, а из интернета их не видно.</p>
+    <p class="arch-note">Домен ведёт на один компьютер со шлюзом Agent Deck. Остальные компьютеры подключены к нему внутри сети, и все их сессии видны в одном списке.</p>
+    <p class="arch-note">На каждом компьютере свой Agent Deck и свои агенты; модели LM Studio может отдавать любой компьютер сети.</p>
     <h4 class="how-title">Как проверить результат удалённо</h4>
     <ul class="how-list"><li>Агенты присылают скриншоты: картинки открываются прямо в выводе.</li><li>Сайт, который запустил агент, открывается по адресу компьютера в Tailscale.</li><li>Изменения, коммиты и файлы — в панели справа (на телефоне — иконки сверху).</li></ul>
   </div></div></dialog>
