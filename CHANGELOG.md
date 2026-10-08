@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.23.2 — 2026-10-08
+
+- Commit rows are calm again: no coloured background or stripe, a neutral highlight on hover; only the author's name keeps its colour.
+
 ## 1.23.1 — 2026-10-08
 
 - Desktop: a sidebar button at the right end of the session bar, mirroring the one on the left, shows and hides the project panel on its last tab.

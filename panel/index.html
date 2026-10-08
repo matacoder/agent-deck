@@ -542,9 +542,8 @@ body.resizing iframe{pointer-events:none}
 .git-behind button{padding:4px 10px;border:1px solid var(--bd);border-radius:var(--r-sm);color:var(--fg2)}
 .git-list{display:grid;border:1px solid var(--bd);border-radius:12px;overflow:hidden}
 .git-row,.git-group{display:grid;gap:4px;padding:10px 12px;border-bottom:1px solid var(--bd-soft);text-align:left;color:var(--fg)}
-/* The whole row carries its author's colour, so who did what reads at a glance. */
-.git-row{box-shadow:inset 4px 0 0 var(--author,transparent);background:color-mix(in srgb,var(--author,transparent) 16%,transparent)}
-@media (hover:hover){.git-row:hover{background:color-mix(in srgb,var(--author,var(--side2)) 26%,transparent)}}
+/* Rows stay calm: only the author's name carries their colour. */
+@media (hover:hover){.git-row:hover{background:var(--side2)}}
 .git-author{color:var(--author,inherit);font-weight:600}
 .git-row:last-child{border-bottom:0}@media (hover:hover){.git-group:hover{background:var(--side2)}}
 .git-group{border:1px solid var(--bd);border-radius:12px}
