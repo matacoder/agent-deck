@@ -810,6 +810,7 @@
     "Проект": "Project",
     "Последний коммит": "Last commit",
     "Ширина боковой панели": "Sidebar width",
-    "Потяните, чтобы изменить ширину; двойной клик — ширина по умолчанию": "Drag to change the width; double-click for the default"
+    "Потяните, чтобы изменить ширину; двойной клик — ширина по умолчанию": "Drag to change the width; double-click for the default",
+    "Скрыть или показать панель проекта": "Show or hide the project panel"
   }
 }

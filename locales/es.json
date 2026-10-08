@@ -810,6 +810,7 @@
     "Проект": "Proyecto",
     "Последний коммит": "Último commit",
     "Ширина боковой панели": "Ancho de la barra lateral",
-    "Потяните, чтобы изменить ширину; двойной клик — ширина по умолчанию": "Arrastra para cambiar el ancho; doble clic para el valor predeterminado"
+    "Потяните, чтобы изменить ширину; двойной клик — ширина по умолчанию": "Arrastra para cambiar el ancho; doble clic para el valor predeterminado",
+    "Скрыть или показать панель проекта": "Mostrar u ocultar el panel del proyecto"
   }
 }

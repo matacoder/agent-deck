@@ -9,11 +9,11 @@ function rememberProject(tab){try{localStore.setItem("cc.project",tab)}catch(e){
 
 function openFiles(){openProject("files")}
 function openHistory(){openProject("changes")}
-// The bar buttons hide the sidebar when it already shows their tab.
+// The bar buttons hide the sidebar when it already shows their tab; the sidebar button reopens the last one.
 function toggleProject(tabs){
   const box=$("project_dlg");
   if(box.open&&box.classList.contains("docked")&&tabs.includes(project.tab))return closeProject();
-  openProject(tabs[0]);
+  openProject(tabs.includes(project.tab)?project.tab:tabs[0]);
 }
 function openProject(tab){
   if(!active)return;
@@ -41,6 +41,7 @@ function markProjectTab(){
   const box=$("project_dlg"),shown=box.open&&box.classList.contains("docked");
   $("b_files").setAttribute("aria-pressed",String(shown&&project.tab==="files"));
   $("b_history").setAttribute("aria-pressed",String(shown&&project.tab!=="files"));
+  $("b_project").setAttribute("aria-pressed",String(shown));
 }
 // Opens (or moves) the panel in the form this layout uses: docked beside the session or modal.
 function placeProject(open){

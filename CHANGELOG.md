@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.23.1 — 2026-10-08
+
+- Desktop: a sidebar button at the right end of the session bar, mirroring the one on the left, shows and hides the project panel on its last tab.
+
 ## 1.23.0 — 2026-10-08
 
 - Changes, Commits and Files are one project panel with three tabs. On desktop it is a right sidebar that the folder and git icons show and hide; it stays open across session switches and is remembered in this browser. On a phone the same icons open it full screen. Changes shows the last commit when nothing is uncommitted; Feature groups moved to a button in Commits.

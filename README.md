@@ -301,7 +301,8 @@ Tap a session name to open it, on the right computer.
 ## Project panel: changes, commits, files
 
 Changes, Commits and Files share one panel with three tabs. On a wide screen it is a sidebar on the right:
-the **folder** and **git** icons in the session bar show and hide it, it stays open while you switch sessions
+the sidebar button at the right end of the session bar (like the one on the left) shows and hides it, the
+**folder** and **git** icons open it on their tab, it stays open while you switch sessions
 (showing the open session's project) and is remembered in this browser. Drag the inner edge of either
 sidebar to change its width (double click for the default). On a phone the same icons open it
 full screen. **Changes** shows what is not committed yet, or the last commit when the tree is clean.

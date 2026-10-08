@@ -296,6 +296,13 @@ test('on a wide screen the project panel docks on the right, follows the session
   doc.getElementById('b_files').click();await settle();
   expect(panel.open).toBe(false);
   expect(window.localStorage.getItem('cc.project')).toBe('');
+  // The sidebar button reopens the last tab and hides the panel again.
+  doc.getElementById('b_project').click();await settle();
+  expect(panel.open).toBe(true);
+  expect(doc.querySelector('#project_tabs .on').dataset.tab).toBe('files');
+  expect(doc.getElementById('b_project').getAttribute('aria-pressed')).toBe('true');
+  doc.getElementById('b_project').click();await settle();
+  expect(panel.open).toBe(false);
   }finally{window.close()}
 });
 

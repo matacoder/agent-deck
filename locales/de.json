@@ -810,6 +810,7 @@
     "Проект": "Projekt",
     "Последний коммит": "Letzter Commit",
     "Ширина боковой панели": "Seitenleistenbreite",
-    "Потяните, чтобы изменить ширину; двойной клик — ширина по умолчанию": "Ziehen, um die Breite zu ändern; Doppelklick für den Standard"
+    "Потяните, чтобы изменить ширину; двойной клик — ширина по умолчанию": "Ziehen, um die Breite zu ändern; Doppelklick für den Standard",
+    "Скрыть или показать панель проекта": "Projektbereich ein- oder ausblenden"
   }
 }
