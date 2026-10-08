@@ -123,13 +123,31 @@ __PANEL_STYLE__</style></head><body>
     <nav id="quick_tabs" aria-label="Быстрое переключение сессий"></nav>
   </main>
   <dialog id="help_dlg"><div class="dlg"><div class="hub-heading"><h3 tabindex="-1" autofocus>Как это работает</h3><button type="button" onclick="$('help_dlg').close()" aria-label="Закрыть"><svg class="ui-icon"><use href="#i-x"/></svg></button></div><div class="dlg-body">
-    <div class="howto">
-      <div class="how-node"><b>Телефон или ноутбук</b><span>браузер, откуда угодно</span></div>
-      <div class="how-link">Tailscale: личная сеть без открытых портов</div>
-      <div class="how-node accent"><b>Ваш компьютер · Agent Deck</b><span>сессии работают, даже когда браузер закрыт</span></div>
-      <div class="how-link"></div>
-      <div class="how-row"><div class="how-node"><b>Сессии</b><span>Claude Code, Codex, Kimi или терминал в tmux</span></div><div class="how-node"><b>Проекты</b><span>папки и рабочие деревья git, где агенты меняют код</span></div></div>
-      <div class="how-row"><div class="how-node"><b>Другие компьютеры</b><span>подключаются к этой панели: все сессии в одном списке</span></div><div class="how-node"><b>Telegram и уведомления</b><span>вопросы агентов с кнопками ответа</span></div></div>
+    <div class="arch">
+      <section class="arch-zone"><h5>Ваша сеть · Tailscale</h5>
+        <div class="arch-box"><b>Браузер</b><span>телефон, планшет, ноутбук</span></div>
+        <div class="arch-box"><b>Другие компьютеры с Agent Deck</b><span>их сессии в общем списке</span></div>
+        <div class="arch-box"><b>LM Studio</b><span>локальные модели</span></div>
+      </section>
+      <div class="arch-link"><b>HTTPS · WebSocket</b><span>порты в интернет не открыты</span></div>
+      <section class="arch-zone host"><h5>Ваш компьютер · Linux, macOS, WSL</h5>
+        <div class="arch-box accent"><b>Панель Agent Deck</b><span>вход по паролю, API, прокси терминала</span></div>
+        <div class="arch-step">unix-сокет</div>
+        <div class="arch-box"><b>ttyd</b><span>живой терминал в браузере</span></div>
+        <div class="arch-step">tmux attach</div>
+        <div class="arch-box"><b>tmux</b><span>держит сессии, даже когда браузер закрыт</span></div>
+        <div class="arch-step"></div>
+        <div class="arch-box"><b>Агенты</b><span>Claude Code, Codex, Kimi, терминал</span></div>
+        <div class="arch-step">читают и меняют код</div>
+        <div class="arch-box"><b>Проекты</b><span>папки и рабочие деревья git</span></div>
+        <div class="arch-box store"><b>~/.config/cc-panel</b><span>настройки и ключи, доступ только у вас</span></div>
+      </section>
+      <div class="arch-link"><b>HTTPS</b><span>исходящие запросы</span></div>
+      <section class="arch-zone"><h5>Интернет-сервисы</h5>
+        <div class="arch-box"><b>Модели агентов</b><span>Anthropic, OpenAI, Moonshot</span></div>
+        <div class="arch-box"><b>GitHub</b><span>репозитории и ветки</span></div>
+        <div class="arch-box"><b>Telegram</b><span>вопросы агентов и ответы кнопками</span></div>
+      </section>
     </div>
     <h4 class="how-title">Как проверить результат удалённо</h4>
     <ul class="how-list"><li>Агенты присылают скриншоты: картинки открываются прямо в выводе.</li><li>Сайт, который запустил агент, открывается по адресу компьютера в Tailscale.</li><li>Изменения, коммиты и файлы — в панели справа (на телефоне — иконки сверху).</li></ul>

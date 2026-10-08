@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.26.1 — 2026-10-08
+
+- How it works (the **?** next to search) is now an architecture diagram: your Tailscale network, your computer with the panel, ttyd, tmux, agents, projects and the private settings folder, and the internet services, with the protocol on each link. The README diagram shows the same zones.
+
 ## 1.26.0 — 2026-10-08
 
 - A **?** next to the search field (in the sidebar on a phone) explains how Agent Deck works with a small diagram and how to check results remotely; the README has the same diagram. The search field no longer widens on focus.

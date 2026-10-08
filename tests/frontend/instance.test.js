@@ -450,7 +450,7 @@ test('the ? next to search explains how the panel works',async()=>{
   const doc=window.document;
   doc.getElementById('b_help').click();
   expect(doc.getElementById('help_dlg').open).toBe(true);
-  expect(doc.querySelectorAll('#help_dlg .how-node').length).toBe(6);
+  expect(doc.querySelectorAll('#help_dlg .arch-zone').length).toBe(3);
   }finally{window.close()}
 });
 

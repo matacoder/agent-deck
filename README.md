@@ -18,12 +18,36 @@ after a reboot.
 ## How it works
 
 ```mermaid
-flowchart TD
-  B["Phone or laptop<br/>a browser, from anywhere"] -- "Tailscale: a private network, no open ports" --> P["Your computer running Agent Deck<br/>sessions keep working when the browser is closed"]
-  P --> S["Sessions in tmux<br/>Claude Code · Codex · Kimi · shell"]
-  S --> F["Project folders and git worktrees<br/>where agents change code"]
-  P -- "authenticated gateway" --> O["Other computers with Agent Deck<br/>their sessions in the same list"]
-  P --> T["Telegram and push notifications<br/>agent questions with answer buttons"]
+flowchart LR
+  subgraph NET["Your network · Tailscale"]
+    B["Browser<br/>phone, tablet, laptop"]
+    O["Other computers<br/>with Agent Deck"]
+    L["LM Studio<br/>local models"]
+  end
+  subgraph HOST["Your computer · Linux, macOS, WSL"]
+    P["Agent Deck panel<br/>password sign-in, API, terminal proxy"]
+    Y["ttyd<br/>live terminal"]
+    X["tmux<br/>keeps sessions running"]
+    A["Agents<br/>Claude Code, Codex, Kimi, shell"]
+    F["Projects<br/>folders and git worktrees"]
+    C[("~/.config/cc-panel<br/>settings and keys, 0600")]
+    P -- "unix socket" --> Y
+    Y -- "tmux attach" --> X
+    X --> A
+    A -- "read and change code" --> F
+    P --- C
+  end
+  subgraph WEB["Internet services"]
+    M["Agent models<br/>Anthropic, OpenAI, Moonshot"]
+    G["GitHub<br/>repositories"]
+    T["Telegram<br/>questions and answer buttons"]
+  end
+  B -- "HTTPS · WebSocket" --> P
+  P -- "gateway" --> O
+  P -- "model relay" --> L
+  A -- "HTTPS" --> M
+  P -- "HTTPS" --> G
+  P -- "HTTPS" --> T
 ```
 
 The agents run on your own computer, in your project folders, exactly as if you had opened a terminal

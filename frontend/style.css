@@ -491,15 +491,22 @@ dialog:focus,dialog:focus-visible{outline:none}
 .inbox-btn b:empty{display:none}
 #inbox_dlg{width:min(560px,calc(100vw - 32px))}
 #project_dlg{width:min(900px,calc(100vw - 32px))}
-/* How it works: a top-down flow that reads the same on a phone. */
-#help_dlg{width:min(560px,calc(100vw - 32px))}
-.howto{display:grid;gap:6px}
-.how-row{display:grid;grid-template-columns:1fr 1fr;gap:6px}
-.how-node{display:grid;align-content:start;gap:3px;padding:10px 12px;border:1px solid var(--bd);border-radius:10px;background:var(--bg)}
-.how-node b{color:var(--fg2);font-size:13.5px}.how-node span{color:var(--mut);font-size:12px;line-height:1.45}
-.how-node.accent{border-color:var(--acc);background:var(--acc-soft)}
-.how-link{justify-self:center;color:var(--mut);font-size:12px;text-align:center}
-.how-link::before{content:"↓";display:block;color:var(--dim);font-size:14px}
+/* How it works: zones (dashed) hold components; links between zones name the protocol. Three columns on a
+   wide screen, one column on a phone. */
+#help_dlg{width:min(1000px,calc(100vw - 32px))}
+.arch{display:grid;grid-template-columns:1fr 92px 1.25fr 92px 1fr;align-items:center;gap:0}
+.arch-zone{display:grid;align-content:start;gap:8px;padding:28px 10px 10px;border:1.5px dashed var(--bd-strong);border-radius:12px;position:relative}
+.arch-zone h5{position:absolute;top:8px;left:12px;margin:0;color:var(--mut);font-size:10.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase}
+.arch-zone.host{border-color:var(--acc);background:color-mix(in srgb,var(--acc-soft) 35%,transparent)}
+.arch-box{display:grid;gap:2px;padding:8px 10px;border:1px solid var(--bd);border-radius:8px;background:var(--bg)}
+.arch-box b{color:var(--fg2);font-size:12.5px}.arch-box span{color:var(--mut);font-size:11.5px;line-height:1.4}
+.arch-box.accent{border-color:var(--acc)}
+.arch-box.store{margin-top:6px;border-style:dashed}.arch-box.store b{font-family:var(--mono)}
+.arch-step{justify-self:center;color:var(--dim);font:11px var(--mono);text-align:center}
+.arch-step::before{content:"↓";display:block;font-family:inherit;font-size:13px}
+.arch-link{display:grid;justify-items:center;gap:2px;padding:0 4px;text-align:center}
+.arch-link::before{content:"⟷";color:var(--acc-text);font-size:22px;line-height:1}
+.arch-link b{color:var(--fg2);font:600 10.5px var(--mono)}.arch-link span{color:var(--mut);font-size:10.5px;line-height:1.3}
 .how-title{margin:18px 0 6px;color:var(--fg2);font-size:14px}
 .how-list{margin:0;padding-left:18px;color:var(--fg);font-size:13px;line-height:1.55}
 .help-side{display:none!important}
@@ -820,6 +827,7 @@ body.resizing iframe{pointer-events:none}
   .acts{padding:12px 16px calc(12px + var(--sab))}
   .acts button{flex:1;min-height:var(--tap);padding:12px;font-size:16px;border-radius:var(--r)}
   #inbox_dlg,#project_dlg,#help_dlg,.palette{width:100vw}
+  .arch{grid-template-columns:1fr;gap:8px}.arch-link{padding:2px 0}.arch-link::before{content:"↕"}
   .help-side{display:flex!important}
   #inbox_dlg .dlg,#project_dlg .dlg,.palette .dlg{padding-top:var(--sat)}
   .palette{margin-top:0}.palette-list{max-height:none;flex:1}
