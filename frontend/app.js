@@ -336,7 +336,8 @@ function renderCurrentSessions(box,list){
     t.title=isLocal(s)?s.source.model+" · "+localComputer(s):s.name;
     if(attention.has(s.name))t.append(el("span","bell"));
     else if(i<10)t.append(el("span","k",modKey()+i));
-    t.dataset.session=s.name;t.onclick=()=>select(s.name);
+    // A click (not Enter) leaves the focus free, so the keys go straight to the agent's menu on the screen.
+    t.dataset.session=s.name;t.onclick=e=>{select(s.name);if(e.detail>0&&curMode()==="screen")document.activeElement?.blur()};
     t.tabIndex=0;t.setAttribute("role","button");if(s.name===active)t.setAttribute("aria-current","true");
     t.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();select(s.name)}};
     box.append(t);
@@ -1187,7 +1188,7 @@ $("n_git").addEventListener("input",renderAdvanced);
 
 /* ⌥1..9 — табы, ⌥↑/⌥↓ — пред./след., ⌥T — новая, ⌥K — быстрый переход (работает и внутри терминала) */
 function hotkeys(e){
-  if(!e.altKey&&!e.ctrlKey&&!e.metaKey&&answerByDigit(e))return;
+  if(!e.altKey&&!e.ctrlKey&&!e.metaKey&&(answerByDigit(e)||screenKey(e)))return;
   // Ctrl+K is kill-line in a shell (and in Mac text fields), so inside the terminal only Alt+K opens the
   // switcher, and a Mac uses Cmd+K.
   const commandKey=/Mac|iPhone|iPad/.test(navigator.platform||"")?e.metaKey&&!e.ctrlKey:e.ctrlKey&&!e.metaKey;
@@ -1208,6 +1209,19 @@ function hotkeys(e){
   }
   else return;
   e.preventDefault();e.stopPropagation();if(target)select(target);
+}
+// The text screen has no terminal to type into, so the keys an agent's menu needs (digits, arrows, Enter,
+// Esc, Tab) go to the session, like the on-screen keys, while nothing else has the focus.
+const SCREEN_KEYS={Enter:"Enter",Escape:"Escape",Tab:"Tab",ArrowUp:"Up",ArrowDown:"Down",ArrowLeft:"Left",ArrowRight:"Right"};
+function screenKey(e){
+  if(e.isComposing||!cur()||curMode()!=="screen")return false;
+  const focus=document.activeElement;
+  if(focus&&focus!==document.body&&!$("pre_wrap").contains(focus))return false;
+  if(document.querySelector("dialog[open]:not(.docked)")||$("sheet").classList.contains("on")||!$("search_pop").hidden||!$("viewer").hidden)return false;
+  const digit=/^(Digit|Numpad)[1-9]$/.test(e.code)&&!e.shiftKey?e.code.slice(-1):"";
+  const name=digit||(e.key==="Tab"&&e.shiftKey?"BTab":e.shiftKey?"":SCREEN_KEYS[e.key]);
+  if(!name)return false;
+  e.preventDefault();e.stopPropagation();key(name);return true;
 }
 // The numbers on a question card's options answer it, as they would in the terminal, unless you are typing.
 function answerByDigit(e){

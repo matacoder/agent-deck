@@ -454,6 +454,24 @@ test('the ? next to search explains how the panel works',async()=>{
   }finally{window.close()}
 });
 
+test('on the text screen the keyboard drives the agent menu unless a field has the focus',async()=>{
+  const state={local:()=>({sessions:[session('alpha')]})};
+  const routes=routesFor(state),sent=[];
+  routes['/api/send']=(url,options)=>{sent.push(JSON.parse(options.body).key);return {ok:true}};
+  const window=boot(routes);
+  try{
+  await settle();await settle();
+  const doc=window.document;
+  window.eval('setMode("screen")');await settle();
+  const press=(code,key,extra={})=>doc.body.dispatchEvent(new window.KeyboardEvent('keydown',{code,key,bubbles:true,cancelable:true,...extra}));
+  press('Digit2','2');press('ArrowDown','ArrowDown');press('Enter','Enter');press('Tab','Tab',{shiftKey:true});await settle();
+  expect(sent).toEqual(['2','Down','Enter','BTab']);
+  doc.getElementById('msg').focus();
+  doc.getElementById('msg').dispatchEvent(new window.KeyboardEvent('keydown',{code:'Digit1',key:'1',bubbles:true,cancelable:true}));await settle();
+  expect(sent).toHaveLength(4);  // Typing a message stays typing.
+  }finally{window.close()}
+});
+
 test('a clean working tree shows the last commit in Changes',async()=>{
   const state={local:()=>({sessions:[session('alpha')]})};
   const routes=routesFor(state),head='c'.repeat(40);

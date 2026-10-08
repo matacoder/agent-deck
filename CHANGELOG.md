@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.26.3 — 2026-10-08
+
+- Text screen: the physical keyboard drives an agent's menu again — digits 1–9, Enter, Esc, arrows, Tab and Shift+Tab go to the session (as the on-screen keys do) whenever no field, menu or dialog has the focus, also for prompts the panel does not recognise as a question.
+
 ## 1.26.2 — 2026-10-08
 
 - How it works is now a network topology with icons: you and your domain outside, then a private Tailscale network with three computers in different countries (the gateway with two agents, a laptop with its own Agent Deck and three agents, a workstation with LM Studio), links named by protocol and the internet services they call; three lines below explain Tailscale, the domain and several instances. The README shows the same topology. Phones scroll the diagram sideways.
