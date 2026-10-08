@@ -514,6 +514,43 @@ test('a clean working tree shows the last commit in Changes',async()=>{
   }finally{window.close()}
 });
 
+test('feature groups have their own tab: who works on what, commits not sorted yet and groups, read without waiting',async()=>{
+  const state={local:()=>({sessions:[session('alpha')]})};
+  const routes=routesFor(state),now=Date.now()/1000,refreshed=[];
+  const commit=(sha,author,subject,time)=>({sha:sha.repeat(40),short:sha.repeat(7),author,time,subject,files:1,added:1,removed:0});
+  routes['/api/git/log']=()=>({repo:'/r',name:'r',branch:'main',ref:'HEAD',branches:['main'],remote:'',ahead:0,behind:0,commits:[],more:false});
+  routes['/api/git/changes']=()=>({repo:'/r',name:'r',branch:'main',head:'',skipped:0,files:[]});
+  let groups={phase:'ready',model:'Claude Haiku',at:now-120,error:'',
+    now:[{author:'Denis',time:now-600,subject:'Fix login',group:'g1',title:'Login'},{author:'Pasha',time:now-60,subject:'Draft docs',group:'',title:''}],
+    pending:[commit('d','Pasha','Draft docs',now-60)],
+    groups:[{id:'g1',title:'Login',summary:'Sign in with a code',commits:['a'.repeat(40)],authors:['Denis'],last:now-600}],
+    commits:{['a'.repeat(40)]:commit('a','Denis','Fix login',now-600)}};
+  routes['/api/git/groups']=()=>groups;
+  routes['/api/git_group']=(url,options)=>{refreshed.push(JSON.parse(options.body).name);return {ok:true}};
+  const window=boot(routes);
+  try{
+  await settle();await settle();
+  const doc=window.document;
+  window.eval('openProject("commits")');await settle();await settle();
+  // The groups button left Commits for its own tab.
+  expect([...doc.querySelectorAll('#git_body button')].map(b=>b.textContent)).not.toContain('Группы фич');
+  doc.querySelector('#project_tabs [data-tab="groups"]').click();await settle();await settle();
+  expect([...doc.querySelectorAll('.git-now-row')].map(r=>r.textContent)).toEqual([expect.stringContaining('DenisLogin'),expect.stringContaining('PashaDraft docs')]);
+  expect(doc.querySelector('.git-now-row:last-child').disabled).toBe(true);
+  expect([...doc.querySelectorAll('#git_body .git-section')].map(h=>h.textContent)).toEqual(['Сейчас','Ещё не разобрано','Группы фич']);
+  expect(doc.querySelector('#git_body .git-group .git-subject').textContent).toBe('Login');
+  expect(doc.querySelector('#git_body .git-group .git-meta').textContent).toContain('Denis');
+  doc.querySelector('#git_body .git-foot button').click();await settle();
+  expect(refreshed).toEqual(['alpha']);
+  // The server sorts in the background; the open tab picks it up on the quiet poll.
+  groups={...groups,phase:'ready',now:[{...groups.now[0]},{...groups.now[1],group:'g2',title:'Docs'}],pending:[],
+    groups:[{id:'g2',title:'Docs',summary:'',commits:['d'.repeat(40)],authors:['Pasha'],last:now-60},...groups.groups]};
+  await window.eval('pollChanges()');await settle();
+  expect([...doc.querySelectorAll('#git_body .git-group .git-subject')].map(n=>n.textContent)).toEqual(['Docs','Login']);
+  expect(doc.querySelector('.git-now-row:last-child').textContent).toContain('Docs');
+  }finally{window.close()}
+});
+
 test('Alt+K opens the switcher, words filter it and Enter opens the session',async()=>{
   const state={local:()=>({sessions:[session('alpha'),session('beta')]})};
   const window=boot(routesFor(state));

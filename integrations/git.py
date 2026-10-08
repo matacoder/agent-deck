@@ -1,27 +1,19 @@
-"""Read-only git history and uncommitted changes of a session's repository, and feature groups suggested by a cheap model.
+"""Read-only git history and uncommitted changes of a session's repository (feature groups: feature_groups.py).
 
-git runs without a shell and with explicit arguments; patches are size-limited. Grouping sends only commit
-subjects and file names (never code) to Claude Haiku through the installed `claude` CLI, with no tools and
-an empty working folder; the answer is validated against the real commit list and cached per HEAD.
+git runs without a shell and with explicit arguments; patches are size-limited.
 """
-import hashlib
-import json
 import os
 from pathlib import Path
 import re
-import shutil
 import stat
 import subprocess
-import tempfile
 import threading
-import time
 
 SHA = re.compile(r'[0-9a-f]{7,40}')
 PAGE = 50
 MAX_FILE_PATCH = 120 * 1024
 MAX_PATCH = 600 * 1024
 GROUP_COMMITS = 80
-GROUP_TIMEOUT = 180
 SEP, REC = '\x1f', '\x1e'
 # Reads must not take optional locks: `git status` would otherwise rewrite .git/index and an agent's
 # `git add` running at that moment would fail on index.lock.
@@ -144,15 +136,9 @@ def choose_tree(folder, wanted, output, run=subprocess.run):
     return tree['path'], {'trees': trees, 'tree': tree['path'], 'auto': True}
 
 
-def history(folder, skip=0, run=subprocess.run, ref=None):
-    if not isinstance(skip, int) or skip < 0:
-        raise ValueError('Неверная страница истории')
-    root = git(folder, 'rev-parse', '--show-toplevel', run=run).strip()
-    known = branches(root, run=run)
-    ref = checked_ref(ref, known)
-    branch = known['current'] if ref == 'HEAD' else ref
-    raw = git(root, 'log', f'--skip={skip}', f'-n{PAGE + 1}', '--shortstat',
-              f'--format={REC}%H{SEP}%h{SEP}%an{SEP}%at{SEP}%s', ref, '--', run=run)
+def log_commits(root, selection, run=subprocess.run):
+    """`git log <selection>` as commit rows with their line counts."""
+    raw = git(root, 'log', '--shortstat', f'--format={REC}%H{SEP}%h{SEP}%an{SEP}%at{SEP}%s', *selection, '--', run=run)
     commits = []
     for record in raw.split(REC)[1:]:
         head, _, stats = record.partition('\n')
@@ -161,6 +147,17 @@ def history(folder, skip=0, run=subprocess.run, ref=None):
         commits.append({'sha': sha, 'short': short, 'author': author, 'time': int(at or 0), 'subject': subject,
                         'files': numbers.get('file', 0), 'added': numbers.get('insertion', 0),
                         'removed': numbers.get('deletion', 0)})
+    return commits
+
+
+def history(folder, skip=0, run=subprocess.run, ref=None):
+    if not isinstance(skip, int) or skip < 0:
+        raise ValueError('Неверная страница истории')
+    root = git(folder, 'rev-parse', '--show-toplevel', run=run).strip()
+    known = branches(root, run=run)
+    ref = checked_ref(ref, known)
+    branch = known['current'] if ref == 'HEAD' else ref
+    commits = log_commits(root, [f'--skip={skip}', f'-n{PAGE + 1}', ref], run=run)
     ahead = behind = 0
     if known['remote'] and branch != known['remote']:
         counts = git(root, 'rev-list', '--left-right', '--count', f'{ref}...{known["remote"]}', '--', run=run).split()
@@ -331,129 +328,3 @@ def changes(folder, run=subprocess.run):
         files.append(item)
     return {'repo': root, 'name': os.path.basename(root), 'branch': branch, 'head': head,
             'files': sorted(files, key=lambda f: f['path']), 'skipped': max(0, len(untracked) - MAX_UNTRACKED)}
-
-
-def group_prompt(commits, files, language):
-    lines = [f"{c['sha'][:12]} | {c['subject'][:160]} | {', '.join(files.get(c['sha'], [])[:12])}" for c in commits]
-    return ('Group these git commits into feature groups: commits that implement, fix or polish the same feature or '
-            'change belong together. Use only the information below. Answer with JSON only, no prose: '
-            '{"groups":[{"title":"short feature name","summary":"2-4 sentences: what was done and why",'
-            '"commits":["sha12", ...]}]}. Make 5 to 15 groups; summaries stay short. Every commit belongs to exactly one '
-            'group; keep the given sha prefixes. '
-            f'Write titles and summaries in the language with code "{language}".\n\n'
-            'Commits (newest first): sha | subject | changed files\n' + '\n'.join(lines))
-
-
-def parse_groups(text, commits):
-    """The model's JSON, trusted only for structure: shas must be real commits, each used once."""
-    # Reasoning models (often the local ones) think aloud before the answer; only the answer counts.
-    text = re.sub(r'<think>.*?</think>', '', text or '', flags=re.S)
-    match = re.search(r'\{.*\}', text, re.S)
-    try:
-        data = json.loads(match.group(0)) if match else None
-    except ValueError:
-        data = None
-    if not isinstance(data, dict) or not isinstance(data.get('groups'), list):
-        raise ValueError('Модель вернула ответ не в том формате; попробуйте ещё раз')
-    full = {c['sha'][:12]: c['sha'] for c in commits}
-    used, groups = set(), []
-    for item in data['groups'][:40]:
-        if not isinstance(item, dict):
-            continue
-        shas = []
-        for value in item.get('commits', []) if isinstance(item.get('commits'), list) else []:
-            sha = full.get(value[:12]) if isinstance(value, str) else None
-            if sha and sha not in used:
-                used.add(sha)
-                shas.append(sha)
-        if not shas:
-            continue
-        groups.append({'title': str(item.get('title') or '')[:100] or 'Без названия',
-                       'summary': str(item.get('summary') or '')[:1200], 'commits': shas})
-    rest = [c['sha'] for c in commits if c['sha'] not in used]
-    if rest:
-        groups.append({'title': 'Без группы', 'summary': '', 'commits': rest, 'ungrouped': True})
-    return groups
-
-
-class Grouper:
-    """One grouping job per repository and HEAD; finished results are reused until new commits arrive."""
-
-    def __init__(self, cache, which=shutil.which, run=subprocess.run):
-        self.cache = Path(cache)
-        self.which, self.run = which, run
-        self.lock = threading.Lock()
-        self.jobs = {}
-
-    def key(self, repo, head):
-        return hashlib.sha256(f'{repo}\0{head}'.encode()).hexdigest()[:24]
-
-    def status(self, folder, ref=None):
-        info = history(folder, run=self.run, ref=ref)
-        head = info['commits'][0]['sha'] if info['commits'] else ''
-        key = self.key(info['repo'], head)
-        try:
-            return {'phase': 'done', 'head': head, **json.loads((self.cache / (key + '.json')).read_text())}
-        except (OSError, ValueError):
-            pass
-        with self.lock:
-            return {'phase': 'idle', 'head': head, **self.jobs.get(key, {})}
-
-    def start(self, folder, language='en', ref=None, model=None):
-        """model: None for Claude Haiku through Claude Code, else {'label', 'complete': prompt -> text}
-        (a local LM Studio model or Kimi, prepared by the panel)."""
-        repo = git(folder, 'rev-parse', '--show-toplevel', run=self.run).strip()
-        commits = []
-        while len(commits) < GROUP_COMMITS:
-            page = history(repo, len(commits), run=self.run, ref=ref)
-            commits += page['commits']
-            if not page['more']:
-                break
-        commits = commits[:GROUP_COMMITS]
-        if not commits:
-            raise ValueError('В репозитории ещё нет коммитов')
-        if model is None:
-            claude = self.which('claude') or str(Path.home() / '.local/bin/claude')
-            if not os.access(claude, os.X_OK):
-                raise ValueError('Для группировки нужен Claude Code: войдите в него в настройках агентов')
-            model = {'label': 'Claude Haiku', 'complete': lambda prompt: self.claude(claude, prompt)}
-        key = self.key(repo, commits[0]['sha'])
-        with self.lock:
-            if self.jobs.get(key, {}).get('phase') == 'running':
-                return {'phase': 'running'}
-            self.jobs[key] = {'phase': 'running', 'started': int(time.time())}
-        threading.Thread(target=self.work, args=(key, repo, commits, model, language), daemon=True,
-                         name='agent-deck-git-groups').start()
-        return {'phase': 'running'}
-
-    def claude(self, claude, prompt):
-        with tempfile.TemporaryDirectory(prefix='agent-deck-groups-') as empty:
-            # No tools and an empty folder: commit text can only shape the answer, never act.
-            result = self.run([claude, '-p', '--model', 'haiku', '--tools', '', '--output-format', 'json',
-                               '--no-session-persistence', '--strict-mcp-config', '--setting-sources', ''],
-                              input=prompt.encode(), capture_output=True, timeout=GROUP_TIMEOUT, cwd=empty)
-        if result.returncode:
-            raise ValueError('Claude Code не ответил; проверьте вход в Claude в настройках агентов')
-        answer = json.loads(result.stdout.decode('utf-8', 'replace'))
-        return answer.get('result', '') if isinstance(answer, dict) else ''
-
-    def work(self, key, repo, commits, model, language):
-        try:
-            names = git(repo, 'log', '--no-walk=unsorted', '--name-only', f'--format={REC}%H',
-                        *[c['sha'] for c in commits], '--', run=self.run)
-            files = {}
-            for record in names.split(REC)[1:]:
-                sha, _, rest = record.partition('\n')
-                files[sha.strip()] = [line for line in rest.split('\n') if line.strip()]
-            prompt = group_prompt(commits, files, language if re.fullmatch(r'[a-zA-Z-]{2,10}', language) else 'en')
-            groups = parse_groups(model['complete'](prompt), commits)
-            value = {'groups': groups, 'commits': {c['sha']: c for c in commits}, 'created': int(time.time()),
-                     'model': model['label']}
-            self.cache.mkdir(parents=True, exist_ok=True, mode=0o700)
-            (self.cache / (key + '.json')).write_text(json.dumps(value))
-            with self.lock:
-                self.jobs.pop(key, None)
-        except Exception as error:  # Any failure must end the job, or it shows "running" until a restart.
-            message = str(error) if isinstance(error, ValueError) else 'Группировка не удалась; попробуйте ещё раз'
-            with self.lock:
-                self.jobs[key] = {'phase': 'error', 'error': message[:300]}

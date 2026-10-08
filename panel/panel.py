@@ -1705,17 +1705,25 @@ def action_file_save(d):
     return file_errors(lambda: files.save_text(os.path.expanduser("~"), d.get("path"), d.get("content"), expected))
 
 
-_grouper = None
-_grouper_lock = threading.Lock()
+_feature_groups = None
+_feature_groups_lock = threading.Lock()
 
 
-def git_grouper():
-    global _grouper
-    from integrations.git import Grouper
-    with _grouper_lock:
-        if _grouper is None:
-            _grouper = Grouper(os.path.expanduser("~/.cache/agent-deck/git-groups"))
-        return _grouper
+def feature_groups():
+    global _feature_groups
+    from integrations.feature_groups import FeatureGroups
+    with _feature_groups_lock:
+        if _feature_groups is None:
+            _feature_groups = FeatureGroups(os.path.expanduser("~/.cache/agent-deck/feature-groups"),
+                                            grouping_chain, session_folders)
+        return _feature_groups
+
+
+def session_folders():
+    """Start folders of this computer's sessions: the repositories grouped in the background."""
+    out = tmux("list-sessions", "-F", "#{session_name}\t#{session_path}", check=False)
+    return list(dict.fromkeys(path for name, _, path in (line.partition("\t") for line in out.splitlines())
+                              if name.startswith(PREFIX) and path))
 
 
 def git_tree(name, wanted):
@@ -1727,7 +1735,7 @@ def git_tree(name, wanted):
     return git.choose_tree(folder, wanted if isinstance(wanted, str) else "", output)
 
 
-def git_payload(route, query):
+def git_payload(route, query, language=DEFAULT_LANGUAGE):
     from integrations import git
     folder, trees = git_tree(query.get("name", [""])[0], query.get("tree", [""])[0])
     if route == "/api/git/log":
@@ -1741,38 +1749,35 @@ def git_payload(route, query):
     if route == "/api/git/group_diff":
         return git.group_diff(folder, [s for s in query.get("shas", [""])[0].split(",") if s])
     if route == "/api/git/groups":
-        return git_grouper().status(folder, query.get("ref", [""])[0])
-    if route == "/api/git/models":
-        return grouping_models()
+        return feature_groups().status(folder, language)
     raise ValueError("Agent Deck route not found")
 
 
 LOCAL_GROUP_TIMEOUT = 900  # A local model on a laptop can take minutes; it costs nothing.
 
 
-def grouping_models():
-    """Models on this computer that can group commits, local (free) first."""
-    options = []
+def grouping_chain():
+    """Models that group commits, in order: Claude Haiku and Codex Luna on the subscription, Kimi, then
+    the first local LM Studio model. Each is tried when the one before fails."""
+    from integrations.feature_groups import cli_model
+    chain = []
+    for agent in ("claude", "codex"):
+        if agent_status(agent)["logged_in"] and (model := cli_model(agent)):
+            chain.append(model)
+    if kimi_config.read().get("key"):
+        chain.append(grouping_model("kimi"))
     try:
-        for profile in model_service().status().get("profiles", []):
-            for item in profile.get("models") or []:
-                options.append({"id": f"lmstudio:{profile['id']}:{item['id']}",
-                                "label": f"{item.get('name') or item['id']} · {profile.get('name', 'LM Studio')}", "local": True})
+        local = [f"lmstudio:{p['id']}:{m['id']}" for p in model_service().status().get("profiles", []) for m in p.get("models") or []]
     except (OSError, ValueError, KeyError, TypeError, AttributeError):
-        pass
-    kimi = kimi_config.read()
-    if kimi.get("key"):
-        options.append({"id": "kimi", "label": f"Kimi · {kimi.get('model', 'k3')}", "local": False})
-    if agent_status("claude")["logged_in"]:
-        options.append({"id": "claude", "label": "Claude Haiku", "local": False})
-    return {"models": options}
+        local = []
+    if local:
+        chain.append(grouping_model(local[0]))
+    return chain
 
 
 def grouping_model(choice):
-    """None means Claude Haiku through Claude Code; others answer through their HTTP API, no tools at all."""
+    """Kimi or an LM Studio model answering through its HTTP API, no tools at all."""
     from integrations import lmstudio
-    if not choice or choice == "claude":
-        return None
     if choice == "kimi":
         kimi = kimi_config.read()
         if not kimi.get("key"):
@@ -1803,8 +1808,7 @@ def grouping_model(choice):
 
 
 def action_git_group(d):
-    return git_grouper().start(git_tree(d.get("name"), d.get("tree"))[0], d.get("_language", DEFAULT_LANGUAGE), d.get("ref") or None,
-                               grouping_model(d.get("model")))
+    return feature_groups().refresh(git_tree(d.get("name"), d.get("tree"))[0])
 
 
 def action_git_fetch(d):
@@ -2148,7 +2152,7 @@ class Handler(BaseHTTPRequestHandler):
             return self.serve_session_image(parse_qs(parsed.query))
         if parsed.path.startswith("/api/git/"):
             try:
-                return self.send_json(200, git_payload(parsed.path, parse_qs(parsed.query)))
+                return self.send_json(200, git_payload(parsed.path, parse_qs(parsed.query), self.language()))
             except (ValueError, OSError, subprocess.TimeoutExpired) as error:
                 return self.send_json(400, {"error": str(error) if isinstance(error, ValueError) else "git не ответил"})
         if parsed.path in ("/api/files", "/api/file", "/api/file_preview", "/api/scrollback"):
@@ -2245,7 +2249,7 @@ class Handler(BaseHTTPRequestHandler):
             if not isinstance(data, dict):
                 raise ValueError("неверный запрос")
             action = m.group(1)
-            if action in ('send', 'git_group'):
+            if action == 'send':
                 data['_language'] = self.language()
             with action_lock:
                 if action == "update":
@@ -2592,6 +2596,7 @@ def main():
     auto_update_service().run()
     threading.Thread(target=sync_loop, daemon=True).start()
     threading.Thread(target=backup_loop, name='agent-deck-backups', daemon=True).start()
+    threading.Thread(target=feature_groups().run_forever, name='agent-deck-feature-groups', daemon=True).start()
     try:
         from integrations import dependencies
         dependencies.ensure()  # Downloads pinned cryptography in the background when missing.

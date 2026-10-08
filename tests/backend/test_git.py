@@ -100,45 +100,6 @@ class HistoryTests(unittest.TestCase):
             G.history(tempfile.gettempdir())
 
 
-class GroupingTests(unittest.TestCase):
-    COMMITS = [{'sha': 'a' * 40, 'subject': 'Add login'}, {'sha': 'b' * 40, 'subject': 'Fix login'},
-               {'sha': 'c' * 40, 'subject': 'Docs'}]
-
-    def test_model_answer_is_trusted_only_for_structure(self):
-        answer = 'Sure! {"groups":[{"title":"Login","summary":"Login flow","commits":["aaaaaaaaaaaa","bbbbbbbbbbbb","bbbbbbbbbbbb","deadbeef0000"]},' \
-                 '{"title":"Empty","commits":["ffffffffffff"]}]}'
-        groups = G.parse_groups(answer, self.COMMITS)
-        self.assertEqual(groups[0]['commits'], ['a' * 40, 'b' * 40])  # Unknown and repeated ids are dropped.
-        self.assertEqual(groups[1], {'title': 'Без группы', 'summary': '', 'commits': ['c' * 40], 'ungrouped': True})
-        with self.assertRaisesRegex(ValueError, 'формате'):
-            G.parse_groups('no json here', self.COMMITS)
-
-    def test_grouping_runs_haiku_without_tools_in_an_empty_folder_and_caches_by_head(self):
-        path = repo(self)
-        cache = Path(tempfile.mkdtemp(dir='/tmp'))
-        self.addCleanup(lambda: __import__('shutil').rmtree(cache))
-        calls = []
-        def run(command, **kwargs):
-            if command[0] != '/bin/claude':
-                return subprocess.run(command, **kwargs)
-            calls.append((command, kwargs))
-            shas = [line.split(' | ')[0] for line in kwargs['input'].decode().split('\n') if ' | ' in line and not line.startswith('Commits')]
-            result = json.dumps({'groups': [{'title': 'Демо', 'summary': 'Всё', 'commits': shas}]})
-            return subprocess.CompletedProcess(command, 0, json.dumps({'result': result}).encode(), b'')
-        grouper = G.Grouper(cache, which=lambda name: '/bin/claude', run=run)
-        with patch.object(G.os, 'access', return_value=True), patch.object(G.threading, 'Thread') as thread:
-            grouper.start(path, 'ru')
-            thread.call_args.kwargs['target'](*thread.call_args.kwargs['args'])  # Run the job inline.
-        command, kwargs = calls[0]
-        self.assertEqual(command[1:5], ['-p', '--model', 'haiku', '--tools'])
-        self.assertEqual(command[5], '')
-        self.assertNotIn('a = 1', kwargs['input'].decode())  # Subjects and file names only, never code.
-        self.assertIn('app.py', kwargs['input'].decode())
-        self.assertEqual(list(Path(kwargs['cwd']).parent.glob(Path(kwargs['cwd']).name)), [])  # Temporary, removed.
-        status = grouper.status(path)
-        self.assertEqual((status['phase'], status['groups'][0]['title'], len(status['groups'][0]['commits'])), ('done', 'Демо', 2))
-
-
 class ChangesTests(unittest.TestCase):
     def test_uncommitted_changes_include_staged_unstaged_and_new_files_without_touching_the_index(self):
         path = repo(self)
@@ -278,47 +239,25 @@ class ReviewFixTests(unittest.TestCase):
         self.assertEqual(seen.get('GIT_TERMINAL_PROMPT'), '0')
         self.assertNotIn('BatchMode', seen.get('GIT_SSH_COMMAND', ''))
 
-    def test_an_unexpected_model_answer_ends_the_job_instead_of_running_forever(self):
-        path = repo(self)
-        cache = Path(tempfile.mkdtemp(dir='/tmp'))
-        self.addCleanup(lambda: __import__('shutil').rmtree(cache))
-        def run(command, **kwargs):
-            if command[0] != '/bin/claude':
-                return subprocess.run(command, **kwargs)
-            return subprocess.CompletedProcess(command, 0, b'["not", "an", "object"]', b'')
-        grouper = G.Grouper(cache, which=lambda name: '/bin/claude', run=run)
-        with patch.object(G.os, 'access', return_value=True), patch.object(G.threading, 'Thread') as thread:
-            grouper.start(path)
-            thread.call_args.kwargs['target'](*thread.call_args.kwargs['args'])
-        self.assertEqual(grouper.status(path)['phase'], 'error')
-
-
-class GroupingModelTests(unittest.TestCase):
-    def test_a_thinking_answer_is_read_after_its_reasoning(self):
-        answer = '<think>maybe {"groups": []} ... hmm</think>{"groups":[{"title":"Login","commits":["aaaaaaaaaaaa"]}]}'
-        commits = [{'sha': 'a' * 40, 'subject': 'Add login'}]
-        self.assertEqual(G.parse_groups(answer, commits)[0]['title'], 'Login')
-
 
 class PanelGroupingModelTests(PanelCase):
-    def test_local_models_come_first_and_run_without_reasoning(self):
+    def test_models_are_tried_haiku_luna_kimi_then_local_and_local_runs_without_reasoning(self):
         from unittest.mock import Mock
+        from integrations import feature_groups
         service = Mock()
         service.status.return_value = {'profiles': [{'id': 'p1', 'name': 'RED', 'models': [{'id': 'qwen/q', 'name': 'Qwen'}]}]}
         service.get.return_value = {'id': 'p1', 'name': 'RED', 'url': 'http://100.64.0.5:1234', 'key': '', 'models': [{'id': 'qwen/q'}]}
         self.enterContext(patch.object(self.panel, 'model_service', return_value=service))
-        self.enterContext(patch.object(self.panel.kimi_config, 'read', return_value={}))
+        self.enterContext(patch.object(self.panel.kimi_config, 'read', return_value={'key': 'k', 'model': 'k3'}))
         self.enterContext(patch.object(self.panel, 'agent_status', return_value={'logged_in': True}))
-        models = self.panel.grouping_models()['models']
-        self.assertEqual([m['id'] for m in models], ['lmstudio:p1:qwen/q', 'claude'])
-        self.assertTrue(models[0]['local'])
+        self.enterContext(patch.object(feature_groups, 'cli_model', side_effect=lambda name: {'label': name, 'complete': None}))
+        chain = self.panel.grouping_chain()
+        self.assertEqual([m['label'] for m in chain], ['claude', 'codex', 'Kimi · k3', 'qwen/q · RED'])
         from integrations import lmstudio
-        with patch.object(lmstudio, 'request', return_value={'choices': [{'message': {'content': '{"groups":[]}'}}]}) as request:
-            model = self.panel.grouping_model('lmstudio:p1:qwen/q')
-            self.assertEqual(model['complete']('prompt'), '{"groups":[]}')
+        with patch.object(lmstudio, 'request', return_value={'choices': [{'message': {'content': '{"assign":[]}'}}]}) as request:
+            self.assertEqual(chain[3]['complete']('prompt'), '{"assign":[]}')
         body = request.call_args.args[3]
         self.assertEqual((body['model'], body['reasoning_effort']), ('qwen/q', 'none'))
-        self.assertIsNone(self.panel.grouping_model('claude'))
-        for bad in ('lmstudio:p1:other', 'shell:rm'):
+        for bad in ('lmstudio:p1:other', 'shell:rm', 'claude'):
             with self.subTest(bad=bad), self.assertRaises(ValueError):
                 self.panel.grouping_model(bad)

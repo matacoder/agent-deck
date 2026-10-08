@@ -1,6 +1,6 @@
 // Git history of the open session's repository: uncommitted changes (a tapped line becomes a comment in the
-// message draft; a clean tree shows the last commit), commits with their diffs, and feature groups that a model proposes from commit subjects
-// and file names, each with a combined diff.
+// message draft; a clean tree shows the last commit), commits with their diffs, and feature groups that the
+// server keeps sorting in the background from commit subjects and file names, each with a combined diff.
 // Agent and repository text is rendered with textContent only.
 // tree: the working tree picked by hand, "" while the server follows the one the agent's output names.
 const hist={session:null,ref:"",tree:"",tab:"changes",authors:null,changes:null,changesError:"",changesSeq:0,log:null,commits:[],back:null,view:null,groups:null,timer:null,fetching:false,
@@ -78,8 +78,8 @@ function fileBlock(title,file,open,content){
 }
 
 function startHistory(tab){
-  hist.session=active;hist.ref="";hist.tree="";hist.tab=tab;hist.back=null;hist.models=null;hist.authors=savedAuthorColors();freshList();
-  renderHistory();loadChanges();loadHistoryPage();
+  hist.session=active;hist.ref="";hist.tree="";hist.tab=tab;hist.back=null;hist.authors=savedAuthorColors();freshList();
+  renderHistory();loadChanges();loadHistoryPage();if(tab==="groups")loadGroups();
 }
 async function loadChanges(){
   const seq=++hist.changesSeq;hist.changes=null;hist.changesError="";
@@ -94,10 +94,12 @@ async function loadChanges(){
   }catch(e){if(seq!==hist.changesSeq)return;hist.changesError=e.message===STALE?"":e.message||tr("Не удалось загрузить")}
   if(hist.tab==="changes"&&!hist.view)renderHistory();
 }
+// Feature groups on screen are re-read the same way, so the background sorting shows up by itself.
 // While Changes is on screen it quietly checks again, so a new edit or the agent moving to another worktree
 // shows up without a tap. It redraws only when something changed and never under a comment being typed.
 async function pollChanges(){
   const typing=()=>$("git_body").querySelector(".diff-comment");
+  if(!document.hidden&&$("project_dlg").open&&project.tab==="groups"&&!hist.view&&hist.session===active)return loadGroups(true);
   if(document.hidden||!$("project_dlg").open||project.tab!=="changes"||hist.view||hist.session!==active||!hist.changes||hist.polling||typing())return;
   const seq=hist.changesSeq,old=hist.changes;hist.polling=true;
   try{
@@ -130,7 +132,7 @@ function treePicker(data){
   return [el("code","",data.trees[0].name),el("span","sep","·"),select];
 }
 // Another branch (a worktree's own, the local main, or GitHub's after a fetch) starts the list over.
-function chooseBranch(ref){hist.ref=ref;freshList();renderHistory();loadHistoryPage();if(hist.tab==="groups")loadGroups()}
+function chooseBranch(ref){hist.ref=ref;freshList();renderHistory();loadHistoryPage()}
 async function fetchRemote(){
   if(hist.fetching)return;
   hist.fetching=true;renderHistory();
@@ -143,8 +145,7 @@ function branchBar(){
   for(const name of log.branches){const option=el("option","",name);option.value=name===log.branches[0]?"":name;select.append(option)}
   select.value=hist.ref;select.onchange=()=>chooseBranch(select.value);
   const fetch=fileButton(hist.fetching?tr("Получаю…"):tr("Получить с GitHub"),"git-fetch",fetchRemote,"refresh");fetch.disabled=hist.fetching;
-  const groups=fileButton(tr("Группы фич"),"git-fetch",()=>historyTab("groups"));
-  const bar=el("div","git-bar",el("code","",log.name),select,fetch,groups);
+  const bar=el("div","git-bar",el("code","",log.name),select,fetch);
   const notes=[];
   if(log.behind&&log.remote)notes.push(el("div","git-behind",el("span","",tr("Эта ветка отстаёт от {0} на {1} коммитов",[log.remote,log.behind])),
     fileButton(tr("Показать {0}",[log.remote]),"",()=>chooseBranch(log.remote))));
@@ -173,42 +174,24 @@ async function showGroup(group){
   catch(e){view.error=e.message===STALE?"":e.message}
   if(hist.view===view)renderHistory();
 }
-async function loadGroups(){
-  clearTimeout(hist.timer);
-  const seq=hist.seq;
+// Groups are sorted on the server in the background; the tab only reads them (and re-reads while open).
+async function loadGroups(quiet){
+  const seq=hist.seq,session=hist.session;
   let state;
-  try{state=await api(gitPath("groups"))}catch(e){state=e.message===STALE?null:{phase:"error",error:e.message}}
-  if(seq!==hist.seq||!state)return;
+  try{state=await api(gitPath("groups"),null,false,{timeout:60000})}catch(e){state=e.message===STALE||quiet?null:{error:e.message}}
+  if(seq!==hist.seq||session!==hist.session||!state)return;
+  if(quiet&&JSON.stringify(state)===JSON.stringify(hist.groups))return;
   hist.groups=state;
-  if(state.phase==="running"&&$("project_dlg").open)hist.timer=setTimeout(loadGroups,3000);
   if(hist.tab==="groups"&&!hist.view)renderHistory();
 }
-// Any model this computer can reach groups commits; local ones come first because they cost nothing.
-async function loadGroupModels(){
-  try{hist.models=(await api(gitPath("models"))).models||[]}catch(e){hist.models=[]}
-  if(hist.tab==="groups"&&!hist.view)renderHistory();
-}
-function groupModel(){
-  let saved="";try{saved=deckLocalStorage.getItem("cc.group-model")||""}catch(e){}
-  const models=hist.models||[];
-  return models.some(m=>m.id===saved)?saved:(models[0]?.id||"claude");
-}
-function modelPicker(){
-  const models=hist.models||[];
-  if(!models.length)return null;
-  const select=el("select","git-branch");select.setAttribute("aria-label",tr("Модель для группировки"));
-  for(const m of models){const option=el("option","",m.local?tr("{0} — локально, бесплатно",[m.label]):m.label);option.value=m.id;select.append(option)}
-  select.value=groupModel();
-  select.onchange=()=>{try{deckLocalStorage.setItem("cc.group-model",select.value)}catch(e){}};
-  return el("label","git-model",el("span","",tr("Модель")),select);
-}
-async function startGrouping(){
-  try{hist.groups=await api("/api/git_group",{name:hist.session,ref:hist.ref,tree:shownTree(),model:groupModel()})}catch(e){if(e.message!==STALE)toast(e.message);return}
-  renderHistory();hist.timer=setTimeout(loadGroups,3000);
+async function refreshGroups(){
+  try{await api("/api/git_group",{name:hist.session,tree:shownTree()})}catch(e){if(e.message!==STALE)toast(e.message);return}
+  hist.groups={...hist.groups,phase:"running"};renderHistory();
+  clearTimeout(hist.timer);hist.timer=setTimeout(()=>loadGroups(true),5000);
 }
 function historyTab(tab){
   hist.tab=tab;hist.view=null;
-  if(tab==="groups"){if(!hist.groups)loadGroups();if(!hist.models)loadGroupModels()}
+  if(tab==="groups")loadGroups(Boolean(hist.groups));
   if(tab==="changes")return loadChanges();  // The agent keeps working: always the current state.
   renderHistory();
 }
@@ -350,23 +333,37 @@ function renderLastCommit(box,last){
 }
 function renderGroups(box){
   const state=hist.groups;
-  box.append(backButton(tr("К коммитам"),()=>historyTab("commits")));
   if(!state){box.append(el("p","files-empty",tr("Загрузка…")));return}
-  if(state.phase==="done"){
-    for(const group of state.groups){
-      const card=el("button","git-group",el("span","git-subject",group.ungrouped?tr("Без группы"):group.title),
-        ...(group.summary?[el("span","git-summary",group.summary)]:[]),el("span","git-meta",tr("Коммитов: {0}",[group.commits.length])));
-      card.type="button";card.onclick=()=>showGroup(group);box.append(card);
+  if(state.error&&!state.groups){box.append(errorWithRetry(state.error,()=>loadGroups()));return}
+  // An older Agent Deck on this computer still groups on request only.
+  if(!Array.isArray(state.pending)){box.append(el("p","diff-note",tr("Эта функция недоступна: обновите Agent Deck на этом компьютере")));return}
+  if(state.now.length){
+    box.append(el("h5","git-section",tr("Сейчас")));
+    const list=el("div","git-now");
+    for(const item of state.now){
+      const group=state.groups.find(g=>g.id===item.group);
+      const row=el("button","git-now-row",authorLabel(item.author),el("span","git-now-what",item.title||item.subject),el("span","git-meta",relativeTime(item.time)));
+      row.type="button";row.onclick=()=>group?showGroup(group):null;row.disabled=!group;list.append(row);
     }
-    if(state.model)box.append(el("p","git-meta",tr("Сгруппировано: {0}",[state.model])));
-    const again=el("button","git-more",tr("Сгруппировать заново"));again.type="button";again.onclick=startGrouping;
-    box.append(...[modelPicker(),again].filter(Boolean));
-    return;
+    box.append(list);
   }
-  if(state.phase==="running"){box.append(el("p","files-empty",tr("Модель группирует коммиты по фичам. Локальной модели может понадобиться несколько минут.")));return}
-  box.append(el("p","git-summary",tr("Модель прочитает заголовки последних 80 коммитов и имена изменённых файлов (без кода) и объединит их в группы по фичам. Результат сохраняется до следующего коммита.")));
-  if(state.phase==="error")box.append(el("p","diff-note",state.error));
-  const start=fileButton(tr("Сгруппировать коммиты"),"pri",startGrouping);box.append(...[modelPicker(),el("div","acts",start)].filter(Boolean));
+  if(state.pending.length){
+    box.append(el("h5","git-section",tr("Ещё не разобрано")));
+    const list=el("div","git-list");for(const c of state.pending.slice(0,20))list.append(commitRow(c));box.append(list);
+  }
+  if(state.groups.length&&(state.now.length||state.pending.length))box.append(el("h5","git-section",tr("Группы фич")));
+  for(const group of state.groups){
+    const card=el("button","git-group",el("span","git-subject",group.ungrouped?tr("Без группы"):group.title),
+      ...(group.summary?[el("span","git-summary",group.summary)]:[]),
+      el("span","git-meta",...group.authors.slice(0,4).flatMap(a=>[authorLabel(a),el("span","sep","·")]),tr("Коммитов: {0}",[group.commits.length]),el("span","sep","·"),relativeTime(group.last)));
+    card.type="button";card.onclick=()=>showGroup(group);box.append(card);
+  }
+  if(!state.groups.length&&!state.pending.length)box.append(el("p","files-empty",tr("В репозитории ещё нет коммитов")));
+  if(!state.groups.length&&state.pending.length&&!state.error)box.append(el("p","git-summary",tr("Модель разберёт эти коммиты по фичам в фоне: заголовки, авторов и имена файлов, без кода. Свежие коммиты ждут 10 минут, пока агент закончит серию.")));
+  if(state.error)box.append(el("p","diff-note",state.error));
+  const note=state.phase==="running"?tr("Модель разбирает новые коммиты…"):state.model?tr("Сгруппировано: {0} · {1}",[state.model,relativeTime(state.at)]):"";
+  const again=fileButton(tr("Разобрать сейчас"),"git-fetch",refreshGroups,"refresh");again.disabled=state.phase==="running"||!state.pending.length;
+  box.append(el("div","git-foot",el("span","git-meta",note),again));
 }
 
 if(typeof module!=="undefined")module.exports={diffRows,lineComment,authorColor,AUTHOR_COLORS,filesToOpen};

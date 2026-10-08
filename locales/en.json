@@ -1,6 +1,15 @@
 {
   "name": "English",
   "messages": {
+    "Сейчас": "Now",
+    "Ещё не разобрано": "Not sorted yet",
+    "Модель разберёт эти коммиты по фичам в фоне: заголовки, авторов и имена файлов, без кода. Свежие коммиты ждут 10 минут, пока агент закончит серию.": "A model sorts these commits into features in the background: subjects, authors and file names, no code. Fresh commits wait 10 minutes until the agent finishes its run.",
+    "Модель разбирает новые коммиты…": "The model is sorting new commits…",
+    "Сгруппировано: {0} · {1}": "Grouped with {0} · {1}",
+    "Разобрать сейчас": "Sort now",
+    "Codex не ответил; проверьте вход в Codex в настройках агентов": "Codex did not answer; check the Codex sign-in in the agent settings",
+    "Модель не ответила; группировка повторится позже": "The model did not answer; grouping will retry later",
+    "Нет модели для группировки: войдите в Claude, Codex или Kimi, или подключите LM Studio": "No model for grouping: sign in to Claude, Codex or Kimi, or connect LM Studio",
     "в ссылке на терминал может быть только имя сессии": "a terminal link may only name a session",
     " · {0} готово": " · {0} ready",
     " ГиБ)": " GiB)",

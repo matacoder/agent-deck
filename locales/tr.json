@@ -1,6 +1,15 @@
 {
   "name": "Türkçe",
   "messages": {
+    "Сейчас": "Şimdi",
+    "Ещё не разобрано": "Henüz ayrılmadı",
+    "Модель разберёт эти коммиты по фичам в фоне: заголовки, авторов и имена файлов, без кода. Свежие коммиты ждут 10 минут, пока агент закончит серию.": "Bir model bu commit'leri arka planda özelliklere göre ayırır: başlıklar, yazarlar ve dosya adları, kod yok. Yeni commit'ler ajan işini bitirene kadar 10 dakika bekler.",
+    "Модель разбирает новые коммиты…": "Model yeni commit'leri ayırıyor…",
+    "Сгруппировано: {0} · {1}": "{0} ile gruplandı · {1}",
+    "Разобрать сейчас": "Şimdi ayır",
+    "Codex не ответил; проверьте вход в Codex в настройках агентов": "Codex yanıt vermedi; ajan ayarlarında Codex girişini kontrol et",
+    "Модель не ответила; группировка повторится позже": "Model yanıt vermedi; gruplama daha sonra yeniden denenecek",
+    "Нет модели для группировки: войдите в Claude, Codex или Kimi, или подключите LM Studio": "Gruplama için model yok: Claude, Codex veya Kimi'ye giriş yap ya da LM Studio'yu bağla",
     "в ссылке на терминал может быть только имя сессии": "terminal bağlantısı yalnızca bir oturum adı içerebilir",
     " · {0} готово": " · {0} hazır",
     " ГиБ)": " GiB)",

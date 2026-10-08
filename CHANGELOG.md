@@ -2,6 +2,12 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.28.0 — 2026-10-08
+
+- Feature groups are a tab of their own in the project panel and are always ready: the panel sorts new commits into features in the background, a few at a time, instead of regrouping 80 commits on a button press and dropping the result at the next commit. **Now** on top shows who works on what (each author active in the last 7 days and the feature of their latest commit); commits not sorted yet are listed as plain commits; groups show their authors, commit count and last change. A pass waits until the newest commit is 10 minutes old (or 20 wait); **Sort now** skips the wait.
+- The repositories of this computer's sessions are fetched quietly every 15 minutes, so a collaborator's pushed branches appear without "Fetch from GitHub".
+- Grouping models are tried in a fixed order: Claude Haiku (`claude -p`, no tools) and Codex's light model (`codex exec`, read-only sandbox without network), both on the subscription in an empty folder, then Kimi, then the first LM Studio model. The model picker is gone. Only subjects, authors and file names are sent, never code.
+
 ## 1.27.0 — 2026-10-08
 
 - Switching computers no longer waits for a message to be sent: it keeps going to the computer it was typed on, and once it arrives its text and attachments leave that computer's draft, so nothing comes back on return. If it fails, the draft stays and a notice says so.

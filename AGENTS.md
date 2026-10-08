@@ -11,7 +11,7 @@ Self-hosted panel (Python stdlib + static JS) for tmux sessions running Claude C
 - `panel/panel.py`: HTTP backend (~2200 lines), no unrelated refactors.
 - `panel/updater.py`: update job, release validation (syntax + imports), rollback. `PACKAGES` lists every `integrations/*.py`.
 - `panel/session_hook.py`, `claude/*`: conversation-id hooks; nested agents must not overwrite `@cc_sid`.
-- `integrations/git.py`: read-only history and diffs; grouping (subjects and file names only) by a chosen model: LM Studio (`reasoning_effort: none`), Kimi, or Haiku via `claude -p --tools ""` in an empty folder; never Codex.
+- `integrations/git.py`: read-only history and diffs. `integrations/feature_groups.py`: background, incremental feature groups per repository (subjects, authors, file names only); models in order Haiku via `claude -p --tools ""`, Codex Luna via `codex exec -s read-only --ignore-user-config`, both in an empty folder on the subscription, then Kimi, then LM Studio (`reasoning_effort: none`).
 - `integrations/files.py`: file browser; home only, never `~/.config/cc-panel`, atomic hash-checked saves.
 - `integrations/`: `telegram.py` + `store.py` (claim-before-input outbox, never delete foreign webhooks), `questions.py`, `gateway.py` (parallel deck polling, `get_json`), `backups.py`, `usage.py`, `lmstudio.py`, `relay.py`, `push.py`/`webpush.py`, `images.py`, `dependencies.py`.
 - `frontend/*` bundled into `panel/index.html` by `scripts/build-panel.py`; files before `app.js` must not call `$` at top level.

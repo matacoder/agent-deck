@@ -377,11 +377,22 @@ is not shown. Works for sessions on connected computers too.
 ## Change history
 
 The **Commits** tab of the project panel shows the commits of the session's repository: subject, author, time and line
-counts; tap one for its full message and a diff per file with line numbers. **Feature groups** (a button above the list) asks
-a model of your choice to join the last 80 commits into features: a model from your LM Studio profiles
-(local and free, reasoning turned off), Kimi with a saved key, or Claude Haiku through your signed-in
-Claude Code. The model sees only commit subjects and file names, never code; the panel shows each
-group's summary, its commits and a combined diff collected per file. Groups are kept until the next commit.
+counts; tap one for its full message and a diff per file with line numbers.
+
+The **Feature groups** tab is always ready: the panel sorts new commits into features in the background, a
+few at a time, so nothing has to be started or waited for. On top, **Now** shows who works on what: each
+author with a commit in the last 7 days and the feature of their latest commit (Denis on the terminal
+security, Pasha on the booking card). Commits the model has not sorted yet are listed as plain commits, then
+the groups with their summary, authors, commit count and combined diff collected per file.
+
+- Every 5 minutes the panel looks at the repositories of this computer's sessions (all worktrees share one
+  history) and quietly fetches them every 15 minutes, so a collaborator's pushed branches show up by themselves.
+- A pass starts when the newest new commit is 10 minutes old (an agent committing in a row is sorted once)
+  or 20 commits wait; **Sort now** skips the wait. It sends only the existing group titles and up to 40 new
+  commits: subject, author and file names, never code.
+- Models, tried in this order: Claude Haiku (`claude -p`, no tools) and Codex's light model (`codex exec`,
+  read-only sandbox without network) on your subscription, then Kimi with a saved key, then the first
+  LM Studio model. Both CLIs run in an empty temporary folder; the answer only places real commits.
 
 <img src="docs/screenshots/mobile-commit.png" width="260" alt="A commit with its diff"> <img src="docs/screenshots/mobile-groups.png" width="260" alt="Feature groups">
 

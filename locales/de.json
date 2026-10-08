@@ -1,6 +1,15 @@
 {
   "name": "Deutsch",
   "messages": {
+    "Сейчас": "Jetzt",
+    "Ещё не разобрано": "Noch nicht zugeordnet",
+    "Модель разберёт эти коммиты по фичам в фоне: заголовки, авторов и имена файлов, без кода. Свежие коммиты ждут 10 минут, пока агент закончит серию.": "Ein Modell ordnet diese Commits im Hintergrund Features zu: Betreffzeilen, Autoren und Dateinamen, kein Code. Frische Commits warten 10 Minuten, bis der Agent fertig ist.",
+    "Модель разбирает новые коммиты…": "Das Modell ordnet neue Commits zu…",
+    "Сгруппировано: {0} · {1}": "Gruppiert mit {0} · {1}",
+    "Разобрать сейчас": "Jetzt zuordnen",
+    "Codex не ответил; проверьте вход в Codex в настройках агентов": "Codex hat nicht geantwortet; prüfe die Codex-Anmeldung in den Agent-Einstellungen",
+    "Модель не ответила; группировка повторится позже": "Das Modell hat nicht geantwortet; die Gruppierung wird später wiederholt",
+    "Нет модели для группировки: войдите в Claude, Codex или Kimi, или подключите LM Studio": "Kein Modell zum Gruppieren: melde dich bei Claude, Codex oder Kimi an oder verbinde LM Studio",
     "в ссылке на терминал может быть только имя сессии": "ein Terminal-Link darf nur einen Sitzungsnamen enthalten",
     " · {0} готово": " · {0} bereit",
     " ГиБ)": " GiB)",

@@ -1,7 +1,7 @@
-// Changes, commits and files of the open session in one panel: a right sidebar on wide screens that stays
+// Changes, commits, feature groups and files of the open session in one panel: a right sidebar on wide screens that stays
 // open while sessions switch (remembered in this browser), a full-screen dialog on phones. Each tab keeps
 // its own state and scroll; a tab loads for the open session only when shown.
-const PROJECT_TABS=["changes","commits","files"];
+const PROJECT_TABS=["changes","commits","groups","files"];
 const project={tab:"changes",moving:false};
 const projectDocked=()=>!isMobile();
 function savedProjectTab(){try{const tab=localStore.getItem("cc.project");return PROJECT_TABS.includes(tab)?tab:""}catch(e){return ""}}

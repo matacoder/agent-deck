@@ -1,6 +1,15 @@
 {
   "name": "Bahasa Indonesia",
   "messages": {
+    "Сейчас": "Sekarang",
+    "Ещё не разобрано": "Belum dipilah",
+    "Модель разберёт эти коммиты по фичам в фоне: заголовки, авторов и имена файлов, без кода. Свежие коммиты ждут 10 минут, пока агент закончит серию.": "Sebuah model memilah commit ini per fitur di latar belakang: judul, penulis, dan nama file, tanpa kode. Commit baru menunggu 10 menit sampai agen selesai.",
+    "Модель разбирает новые коммиты…": "Model sedang memilah commit baru…",
+    "Сгруппировано: {0} · {1}": "Dikelompokkan dengan {0} · {1}",
+    "Разобрать сейчас": "Pilah sekarang",
+    "Codex не ответил; проверьте вход в Codex в настройках агентов": "Codex tidak menjawab; periksa login Codex di pengaturan agen",
+    "Модель не ответила; группировка повторится позже": "Model tidak menjawab; pengelompokan akan dicoba lagi nanti",
+    "Нет модели для группировки: войдите в Claude, Codex или Kimi, или подключите LM Studio": "Tidak ada model untuk mengelompokkan: masuk ke Claude, Codex atau Kimi, atau hubungkan LM Studio",
     "в ссылке на терминал может быть только имя сессии": "tautan terminal hanya boleh berisi nama sesi",
     " · {0} готово": " · {0} siap",
     " ГиБ)": " GiB)",

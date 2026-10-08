@@ -567,8 +567,6 @@ body.resizing iframe{pointer-events:none}
 .git-bar code{color:var(--mut);font-family:var(--mono);font-size:12.5px}
 .git-branch{min-width:0;max-width:100%;min-height:34px;padding:4px 28px 4px 10px;border:1px solid var(--bd);border-radius:var(--r-sm);background:var(--side2);color:var(--fg2);font:12.5px var(--mono)}
 .git-bar .git-branch{width:auto;flex:1 1 140px}
-.git-model{display:flex;align-items:center;gap:10px;color:var(--mut);font-size:12.5px}
-.git-model .git-branch{width:auto;flex:1}
 .git-bar code{flex-basis:100%}
 .git-fetch{display:inline-flex;align-items:center;gap:6px;flex:none;padding:6px 10px;border:1px solid var(--bd);border-radius:var(--r-sm);color:var(--fg2)}
 .git-behind{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;border:1px solid var(--bd);border-radius:10px;background:var(--acc-soft);color:var(--fg2);font-size:12.5px}
@@ -593,6 +591,16 @@ body.resizing iframe{pointer-events:none}
 @media (hover:hover){#git_body .git-tree:hover{background:var(--side2)}}
 .git-refresh{display:inline-flex;align-items:center;justify-content:center;flex:none;width:28px;height:28px;margin-left:auto;border-radius:var(--r-sm);color:var(--mut)}
 @media (hover:hover){.git-refresh:hover{background:var(--side2);color:var(--fg2)}}
+/* Who works on what: one line per author, the feature (or the commit not sorted yet) and when. */
+.git-now{display:grid;border:1px solid var(--bd);border-radius:12px;overflow:hidden}
+.git-now-row{display:flex;align-items:baseline;gap:8px;min-width:0;padding:8px 12px;border-bottom:1px solid var(--bd-soft);text-align:left;color:var(--fg)}
+.git-now-row:last-child{border-bottom:0}
+@media (hover:hover){.git-now-row:not(:disabled):hover{background:var(--side2)}}
+.git-now-row:disabled{cursor:default;opacity:1}
+.git-now-row .git-author{flex:none}
+.git-now-what{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--fg2)}
+.git-now-row .git-meta{flex:none}
+.git-foot{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px}
 .git-section{margin:8px 0 0;color:var(--mut);font-size:12px;text-transform:uppercase;letter-spacing:.04em}
 .git-message{margin:0;padding:10px 12px;border-radius:10px;background:var(--bg);color:var(--fg);font:13px/1.55 -apple-system,BlinkMacSystemFont,system-ui,sans-serif;white-space:pre-wrap;overflow-wrap:anywhere}
 .git-more{align-self:center;padding:8px 14px;border:1px solid var(--bd);border-radius:var(--r-sm);color:var(--fg2)}
