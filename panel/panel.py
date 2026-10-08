@@ -27,6 +27,7 @@ import sys
 import threading
 import time
 import uuid
+from html import escape as escape_html
 from urllib.parse import parse_qs, urlencode
 from urllib.parse import urlsplit
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -108,7 +109,7 @@ except ModuleNotFoundError:
     LMStudio = None
 
 from integrations.names import unique_name
-from integrations.decks import RemoteDecks, UnavailableDecks, remote_path
+from integrations.decks import RemoteDecks, UnavailableDecks, remote_path, terminal_query_ok
 from integrations.preferences import ProjectDirectory, NetworkSettings
 project_directory = ProjectDirectory(os.path.expanduser('~'), PROJECTS)
 
@@ -330,7 +331,8 @@ def make_token():
 
 def token_valid(token):
     exp, _, sig = (token or "").partition(".")
-    if not exp.isdigit() or len(exp) > 12 or int(exp) < time.time():
+    # Cookie bytes arrive as latin-1; compare_digest refuses non-ASCII text with a TypeError (a 500).
+    if not exp.isdigit() or len(exp) > 12 or int(exp) < time.time() or not re.fullmatch(r"[0-9a-f]{64}", sig):
         return False
     return hmac.compare_digest(sig, hmac.new(COOKIE_KEY, exp.encode(), hashlib.sha256).hexdigest())
 
@@ -849,7 +851,9 @@ def paste_to_tmux(name, text, bracketed=True):
     # Paste markers inside the text would end the paste early and turn the rest into keystrokes
     # (Esc, Shift+Tab switching the agent's permission mode); they are never content of a paste.
     if bracketed:
-        text = text.replace("\x1b[200~", "").replace("\x1b[201~", "")
+        # Repeated: removing one marker must not join its neighbours into a new one ("\x1b[20\x1b[201~1~").
+        while "\x1b[200~" in text or "\x1b[201~" in text:
+            text = text.replace("\x1b[200~", "").replace("\x1b[201~", "")
     payload = "\x1b[200~" + text + "\x1b[201~" if bracketed else text
     result = subprocess.run([*TMUX_COMMAND, "load-buffer", "-b", buffer, "-"], input=payload,
                             text=True, capture_output=True, timeout=10)
@@ -1925,7 +1929,7 @@ class Handler(BaseHTTPRequestHandler):
             html = login_file.read()
         html = self.localized_page(html)
         error = locales.translate(error, self.language()) if locales is not None else error
-        html = html.replace("{{ERROR}}", error).replace("{{USER}}", PANEL_USER)
+        html = html.replace("{{ERROR}}", escape_html(error)).replace("{{USER}}", escape_html(PANEL_USER))
         self.send_body(200 if not error else 401, html.encode(), "text/html; charset=utf-8")
 
     def do_login(self):
@@ -2056,6 +2060,9 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
         self.send_header("X-Content-Type-Options", "nosniff")
+        if ctype.startswith("text/html"):
+            for name, value in FRAME_HEADERS:
+                self.send_header(name, value)
         self.end_headers()
         self.wfile.write(body)
 
@@ -2394,6 +2401,9 @@ class Handler(BaseHTTPRequestHandler):
         # Origin is still rejected here, and ttyd's own -O re-checks what it receives.
         if upgrade and not self.same_origin():
             return self.send_json(403, {"error": "неверный источник WebSocket"})
+        if not terminal_query_ok(self.path):
+            self.close_connection = True
+            return self.send_json(400, {"error": "в ссылке на терминал может быть только имя сессии"})
         backend = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         try:
             backend.connect(TTYD_SOCK)
@@ -2411,6 +2421,8 @@ class Handler(BaseHTTPRequestHandler):
         self.close_connection = True
         client = self.connection
         socks = [client, backend]
+        # ttyd's page carries no framing policy of its own; the status line arrives first.
+        head = b"" if not upgrade else None
         try:
             while True:
                 readable, _, _ = select.select(socks, [], [], 300)
@@ -2419,12 +2431,31 @@ class Handler(BaseHTTPRequestHandler):
                 for s in readable:
                     data = s.recv(65536)
                     if not data:
+                        if head:
+                            client.sendall(head)
                         return
+                    if s is backend and head is not None:
+                        head += data
+                        if b"\r\n" not in head:
+                            continue
+                        data, head = with_frame_headers(head), None
                     (backend if s is client else client).sendall(data)
         except OSError:
             pass
         finally:
             backend.close()
+
+
+# The panel frames its own terminals; any other page (another port on this host counts as
+# same-site) could hide a terminal in an invisible frame and catch the keystrokes.
+FRAME_HEADERS = (("X-Frame-Options", "SAMEORIGIN"), ("Content-Security-Policy", "frame-ancestors 'self'"))
+
+
+def with_frame_headers(head):
+    """Adds FRAME_HEADERS after the status line of a raw HTTP response head."""
+    line, sep, rest = head.partition(b"\r\n")
+    extra = b"".join(f"{name}: {value}\r\n".encode() for name, value in FRAME_HEADERS)
+    return line + sep + extra + rest if sep else head
 
 
 PAGE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "index.html")

@@ -10,9 +10,10 @@ import secrets
 import shutil
 import socket
 import subprocess
+import time
 import threading
 from pathlib import Path
-from urllib.parse import urlencode, urlsplit, unquote
+from urllib.parse import parse_qsl, urlencode, urlsplit, unquote
 
 from .names import unique_name
 from .relay import private_write, read_json
@@ -39,6 +40,15 @@ def deck_url(raw):
     return f'{parsed.scheme}://{address}:{port}'
 
 
+def terminal_query_ok(path):
+    """ttyd runs with -a: every URL arg becomes an argument of `tmux attach -t`, and a bare `;` there
+    chains any tmux command (run-shell). A link opened while logged in would run it, so the only
+    accepted query is the one the panel builds: a single session target."""
+    pairs = parse_qsl(urlsplit(path).query, keep_blank_values=True)
+    return not pairs or (len(pairs) == 1 and pairs[0][0] == 'arg'
+                         and re.fullmatch(r'=?cc-[A-Za-z0-9_-]{1,32}', pairs[0][1]) is not None)
+
+
 def remote_path(raw):
     if not isinstance(raw, str) or any(ord(c)<32 for c in raw) or '#' in raw:
         raise ValueError('Invalid remote path')
@@ -49,7 +59,14 @@ def remote_path(raw):
         raise ValueError('Only Agent Deck API and terminal paths may be proxied')
     if decoded.startswith('/api/decks') or decoded.startswith('/api/network'):
         raise ValueError('Nested gateway configuration is not supported')
+    if decoded.startswith('/t') and not terminal_query_ok(raw):
+        raise ValueError('A terminal link may only name one session')
     return raw
+
+
+# Largest answers a deck sends: a 25 MB picture, a 10 MB file preview as base64 JSON.
+PROXY_LIMIT = 48 * 1024 * 1024
+POLL_LIMIT = 8 * 1024 * 1024
 
 
 def http_request(url, method, path, body=None, headers=None, timeout=30, limit=300*1024*1024):
@@ -59,10 +76,19 @@ def http_request(url, method, path, body=None, headers=None, timeout=30, limit=3
     try:
         connection.request(method, path, body=body, headers=headers or {})
         response = connection.getresponse()
-        payload = response.read(limit + 1)
-        if len(payload) > limit:
-            raise ValueError('Remote response is too large')
-        return response.status, dict(response.getheaders()), payload
+        # The socket timeout is per read: a deck trickling bytes would hold the caller (and the
+        # parallel poll of every deck) for ever, so the whole body also has a deadline.
+        deadline, chunks, size = time.monotonic() + timeout * 4, [], 0
+        while True:
+            chunk = response.read1(min(65536, limit + 1 - size))
+            if not chunk:
+                break
+            chunks.append(chunk);size += len(chunk)
+            if size > limit:
+                raise ValueError('Remote response is too large')
+            if time.monotonic() > deadline:
+                raise ValueError('Remote Agent Deck answered too slowly')
+        return response.status, dict(response.getheaders()), b''.join(chunks)
     finally:
         connection.close()
 
@@ -194,7 +220,8 @@ class RemoteDecks:
             cookie += '; cc_lang=' + language
         return profile, cookie
 
-    def request(self, identity, method, path, body=None, language='en', timeout=30, content_type='application/json'):
+    def request(self, identity, method, path, body=None, language='en', timeout=30, content_type='application/json',
+                limit=PROXY_LIMIT):
         path = remote_path(path)
         if method not in ('GET','POST'):
             raise ValueError('Unsupported remote method')
@@ -205,7 +232,7 @@ class RemoteDecks:
             try:
                 result = http_request(profile['url'], method, path, body,
                     {'Cookie': cookie, 'Origin': profile['url'], 'Content-Type': content_type, 'Accept-Encoding': 'identity'},
-                    timeout=timeout)
+                    timeout=timeout, limit=limit)
             except (OSError, http.client.HTTPException):
                 # Never retry an ambiguous mutation after a transport failure.
                 raise ValueError('Remote Agent Deck did not respond; reconnect or retry') from None

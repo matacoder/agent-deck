@@ -13,7 +13,8 @@ class AuthenticationTests(PanelCase):
             token = self.panel.make_token()
             self.assertTrue(self.panel.token_valid(token))
             self.assertFalse(self.panel.token_valid(token + "x"))
-            for invalid in (None, "", "garbage", "100.bad", "x.signature"):
+            # A non-ASCII cookie (latin-1 bytes) is a refusal, not a TypeError from compare_digest.
+            for invalid in (None, "", "garbage", "100.bad", "x.signature", token.split(".")[0] + ".\xe9" * 64):
                 self.assertFalse(self.panel.token_valid(invalid))
         with patch.object(self.panel.time, "time", return_value=100 + 91 * 86400):
             self.assertFalse(self.panel.token_valid(token))
@@ -535,7 +536,7 @@ class RemoteQuestionTests(PanelCase):
         [question] = self.panel.remote_questions()
         self.assertEqual((question.deck, question.origin, question.instance, question.session), (self.REMOTE, 'Mac Studio', 'remote-fp', 'api'))
         self.assertEqual(question.options, ('Yes', 'No'))
-        self.decks.request.assert_called_once_with(self.REMOTE, 'GET', '/api/questions', timeout=5)
+        self.decks.request.assert_called_once_with(self.REMOTE, 'GET', '/api/questions', timeout=5, limit=8 * 1024 * 1024)
 
     def test_unreachable_or_older_machine_is_skipped_for_a_while(self):
         self.decks.request.return_value = (404, {}, b'{"error":"not found"}')

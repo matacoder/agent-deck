@@ -17,7 +17,7 @@
 set -euo pipefail
 # Keep this bootstrap check self-contained: never source code from an unchecked checkout.
 require_root_checkout() {
-    python3 - "$1" "${2:-tree}" <<'ROOT_CHECK'
+    python3 -I - "$1" "${2:-tree}" <<'ROOT_CHECK'
 from pathlib import Path
 import stat, sys
 root = Path(sys.argv[1]).absolute()
@@ -109,7 +109,7 @@ apt-get update -q >/dev/null
 apt-get install -y -q sudo tmux git python3 curl ca-certificates >/dev/null
 # Debian has no ttyd package; without it (or with a ttyd too old for -W) the static build below is used.
 apt-get install -y -q ttyd >/dev/null 2>&1 || true
-python3 -c 'import sys; sys.exit(sys.version_info < (3, 10))' \
+python3 -I -c 'import sys; sys.exit(sys.version_info < (3, 10))' \
     || die "Python 3.10+ is required (this system has $(python3 -V 2>&1)); use Ubuntu 22.04+, Debian 12+ or Raspberry Pi OS 12+"
 if ! apt-get install -y -q gh >/dev/null 2>&1; then
     # Older Debian releases have no gh package: use GitHub's own signed repository.
@@ -128,19 +128,26 @@ TTYD_BIN=/usr/bin/ttyd
 if ! ttyd --help 2>&1 | grep -q -- '--writable'; then
     # Ubuntu 22.04 ships ttyd 1.6 (no -W); use the official static build instead
     say "ttyd $TTYD_VERSION (static build)"
-    case "$(uname -m)" in x86_64) arch=x86_64 ;; aarch64|arm64) arch=aarch64 ;; *) die "unsupported arch $(uname -m)" ;; esac
-    curl -fsSL -o /usr/local/bin/ttyd "https://github.com/tsl0922/ttyd/releases/download/$TTYD_VERSION/ttyd.$arch"
-    chmod 755 /usr/local/bin/ttyd
+    # Pinned like docker/Dockerfile: root installs this binary, so TLS alone is not enough.
+    case "$(uname -m)" in
+        x86_64) arch=x86_64 sum=8a217c968aba172e0dbf3f34447218dc015bc4d5e59bf51db2f2cd12b7be4f55 ;;
+        aarch64|arm64) arch=aarch64 sum=b38acadd89d1d396a0f5649aa52c539edbad07f4bc7348b27b4f4b7219dd4165 ;;
+        *) die "unsupported arch $(uname -m)" ;;
+    esac
+    tmp_ttyd=$(mktemp)
+    curl -fsSL -o "$tmp_ttyd" "https://github.com/tsl0922/ttyd/releases/download/$TTYD_VERSION/ttyd.$arch"
+    echo "$sum  $tmp_ttyd" | sha256sum -c - >/dev/null || { rm -f "$tmp_ttyd"; die "ttyd download does not match its pinned SHA-256"; }
+    install -m 755 "$tmp_ttyd" /usr/local/bin/ttyd; rm -f "$tmp_ttyd"
     TTYD_BIN=/usr/local/bin/ttyd
 fi
 
 # A Tailscale re-login can assign a new address. A remembered one that is no longer on this host would
 # leave the panel unable to start (remote lockout), so it is resolved again; an explicit one is only checked.
-bind_is_local() { python3 -c 'import socket,sys; socket.socket().bind((sys.argv[1], 0))' "$1" 2>/dev/null; }
+bind_is_local() { python3 -I -c 'import socket,sys; socket.socket().bind((sys.argv[1], 0))' "$1" 2>/dev/null; }
 if [ -n "$BIND_HOST" ] && ! bind_is_local "$BIND_HOST"; then
     [ -z "$BIND_HOST_EXPLICIT" ] || die "BIND_HOST=$BIND_HOST is not an address of this machine"
     # Only a Tailscale address is looked up again (as the panel does); any other one needs a decision.
-    python3 -c 'import ipaddress,sys; sys.exit(ipaddress.ip_address(sys.argv[1]) not in ipaddress.ip_network("100.64.0.0/10"))' "$BIND_HOST" 2>/dev/null \
+    python3 -I -c 'import ipaddress,sys; sys.exit(ipaddress.ip_address(sys.argv[1]) not in ipaddress.ip_network("100.64.0.0/10"))' "$BIND_HOST" 2>/dev/null \
         || die "remembered BIND_HOST=$BIND_HOST is no longer an address of this machine; rerun with BIND_HOST=<address>, or BIND_HOST= to use Tailscale"
     say "remembered address $BIND_HOST is no longer on this machine; asking Tailscale again"
     BIND_HOST=
@@ -243,7 +250,7 @@ ENV="$H/.config/cc-panel/env"
 NEW_PASS=""
 [ ! -L "$ENV" ] || die "panel env must not be a symbolic link"
 if [ ! -f "$ENV" ]; then
-    NEW_PASS=$(python3 -c 'import secrets; print(secrets.token_urlsafe(18))')
+    NEW_PASS=$(python3 -I -c 'import secrets; print(secrets.token_urlsafe(18))')
     as_user tee "$ENV" >/dev/null <<EOF
 BIND_HOST=$BIND_HOST
 BIND_PORT=$PANEL_PORT

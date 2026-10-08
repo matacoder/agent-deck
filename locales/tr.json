@@ -1,6 +1,7 @@
 {
   "name": "Türkçe",
   "messages": {
+    "в ссылке на терминал может быть только имя сессии": "terminal bağlantısı yalnızca bir oturum adı içerebilir",
     " · {0} готово": " · {0} hazır",
     " ГиБ)": " GiB)",
     " ждёт": " bekliyor",

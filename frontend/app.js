@@ -711,23 +711,36 @@ function renderSendState(){
 async function send(){
   const t=$("msg");if(sending||uploading||panelUpdating||!active||(!t.value.trim()&&!attachmentsFor(active).length))return;
   if(isLocal(cur())&&!cur().running){sendStates.set(active,{text:agentLabel(cur())+tr(" не запущен"),error:true});renderSendState();return}
-  const name=active,text=t.value,images=attachmentsFor(active).slice();
+  // Bound to the computer it was typed on: switching computers meanwhile does not stop or misroute it.
+  const deck=selectedDeck,epoch=deckEpoch,name=active,text=t.value,images=attachmentsFor(active).slice();
+  const sent=new Set(images.map(x=>x.attachment)),store=deckSessionStorage;
   sending=true;renderAttachments();
   sendStates.set(name,{text:tr("Отправляю…"),phase:"pending"});renderSendState();
   try{
-    await api("/api/send",{name,text,attachments:images.map(x=>x.attachment)});
-    imageAttachments.set(name,attachmentsFor(name).filter(x=>!images.includes(x)));
+    await api(instancePath(deck,"/api/send"),{name,text,attachments:[...sent]},true);
     for(const image of images)if(image.preview)URL.revokeObjectURL(image.preview);
+    if(selectedDeck!==deck){forgetStashedSend(store,name,text,sent);return}
+    imageAttachments.set(name,attachmentsFor(name).filter(x=>!sent.has(x.attachment)));
     if(messageDrafts.get(name)===text)messageDrafts.delete(name);
     if(active===name&&t.value===text){t.value="";t.style.height=""}
     sendStates.set(name,{text:tr("Отправлено в ")+agentLabel(sessions.find(s=>s.name===name))+" · "+new Date().toLocaleTimeString(DATE_LOCALE,{hour:"2-digit",minute:"2-digit"}),phase:"success"});
     await load();
     if(active===name)$("pre").scrollTop=$("pre").scrollHeight;
   }catch(e){
-    sendStates.set(name,{text:tr("Не отправлено: ")+e.message,error:true});
+    // The draft stays where it was typed; from another computer only a notice is left.
+    if(epoch===deckEpoch)sendStates.set(name,{text:tr("Не отправлено: ")+e.message,error:true});
+    else toast(tr("Не отправлено: ")+e.message);
   }finally{
     sending=false;renderAttachments();renderSendState();
   }
+}
+// The computer was switched while sending: its draft now sits in that computer's stash, so the
+// message that did arrive is removed there and does not come back when the user returns.
+function forgetStashedSend(store,name,text,sent){
+  const edit=(key,change)=>{try{const raw=store.getItem(key);if(raw)store.setItem(key,JSON.stringify(change(JSON.parse(raw))))}catch(e){}};
+  edit("cc.session-drafts",drafts=>drafts.filter(([n,v])=>!(n===name&&v===text)));
+  edit("cc.reload-draft",draft=>draft&&draft.name===name&&draft.text===text?{name,text:""}:draft);
+  edit("cc.reload-images",list=>list.map(([n,items])=>n===name?[n,items.filter(x=>!sent.has(x.attachment))]:[n,items]));
 }
 $("session_keys").addEventListener("pointerdown",e=>{if(e.target.closest("button"))e.preventDefault()});
 function key(k){if(active&&!sending&&!uploading&&!panelUpdating)post("/api/send",{name:active,key:k})}
@@ -1017,7 +1030,7 @@ setInterval(loadOtherDecks,10000);
 setInterval(pollChanges,15000);
 function switchDeck(identity){
   if(identity===selectedDeck)return;
-  if(sending||uploading||choosingImages||question.busy!==null){$("deck_select").value=selectedDeck;toast(tr("Дождитесь окончания отправки или загрузки"));return}
+  if(uploading||choosingImages||question.busy!==null){$("deck_select").value=selectedDeck;toast(tr("Дождитесь окончания отправки или загрузки"));return}
   try{stashDrafts();localStore.setItem("cc.deck",identity)}catch(e){$("deck_select").value=selectedDeck;toast(tr("Не удалось сохранить черновик. Очистите поле перед обновлением."));return}
   for(const dialog of document.querySelectorAll("dialog[open]"))dialog.close();
   drawer(false);sheet(false);hideToast();closeViewer();

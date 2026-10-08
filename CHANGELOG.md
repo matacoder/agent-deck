@@ -2,6 +2,16 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.27.0 — 2026-10-08
+
+- Switching computers no longer waits for a message to be sent: it keeps going to the computer it was typed on, and once it arrives its text and attachments leave that computer's draft, so nothing comes back on return. If it fails, the draft stays and a notice says so.
+- Security: a terminal link may only name one session. ttyd runs with `-a`, which appends every `arg` of the URL to `tmux attach -t`, and a bare `;` there chains any tmux command such as `run-shell`; a crafted link opened while logged in would have run a command on the machine. The panel and the gateway now refuse terminal URLs with anything but a single `arg=cc-<name>`. Update every computer: the check runs on the deck that owns the terminal.
+- Security: the panel, its login page and the terminal can no longer be framed by another page (`X-Frame-Options: SAMEORIGIN`, `frame-ancestors 'self'`); another service on the same host could otherwise hide a terminal in an invisible frame and catch keystrokes.
+- Security: text sent to an agent cannot end its paste early with a paste marker nested in another one; markers are removed until none is left.
+- Security: the installers run Python as root in isolated mode (`-I`), so a module planted in the current folder is never imported; the static ttyd build is checked against a pinned SHA-256 before it is installed.
+- Security: a connected computer can no longer exhaust the gateway's memory or stall question delivery for all computers: background polls accept at most 8 MB, other answers 48 MB, and every answer has a total deadline, not only a per-read timeout.
+- A malformed login cookie (non-ASCII bytes) is a refusal instead of a server error; the login page escapes the user name and the error text.
+
 ## 1.26.4 — 2026-10-08
 
 - Quieter logs and browser console: idle connections that the browser or proxy leave open no longer log "Request timed out" (hundreds of lines a day), a connection that times out before its first request no longer prints a traceback, and a picture an agent mentions that is not on disk answers the thumbnail with an empty 204 instead of a red 404 (opening it still says it is missing).

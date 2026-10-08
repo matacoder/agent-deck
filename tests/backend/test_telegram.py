@@ -481,7 +481,7 @@ class DuplicateBotTests(PanelCase):
         decks.status.return_value = {'decks': [{'id': 'a' * 24, 'name': 'Mac'}, {'id': 'b' * 24, 'name': 'uk'}, {'id': 'c' * 24, 'name': 'old'}]}
         replies = {'a' * 24: (200, {}, json.dumps({'telegram': {'configured': True, 'enabled': True, 'bot': 'deck_bot'}}).encode()),
                    'b' * 24: (200, {}, json.dumps({'telegram': {'configured': True, 'enabled': True, 'bot': 'other_bot'}}).encode())}
-        def request(deck, method, path, body=None, timeout=30):
+        def request(deck, method, path, body=None, timeout=30, limit=None):
             if deck not in replies:
                 raise ValueError('Remote Agent Deck did not respond')
             return replies[deck]

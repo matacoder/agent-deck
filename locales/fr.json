@@ -1,6 +1,7 @@
 {
   "name": "Français",
   "messages": {
+    "в ссылке на терминал может быть только имя сессии": "un lien de terminal ne peut contenir que le nom d'une session",
     " · {0} готово": " · {0} prêt",
     " ГиБ)": " Gio)",
     " ждёт": " en attente",

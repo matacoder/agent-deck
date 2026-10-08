@@ -83,6 +83,29 @@ test('switching computers keeps each draft on its own machine without reloading'
   }finally{window.close()}
 });
 
+test('a message keeps going after a switch to another computer and its draft does not come back',async()=>{
+  let release;const sent=[];
+  const state={local:()=>({sessions:[session('alpha')]})};
+  const routes=routesFor(state);
+  routes['/api/send']=(url,options)=>new Promise(resolve=>{sent.push(JSON.parse(options.body).text);release=()=>resolve({ok:true})});
+  const window=boot(routes);
+  try{
+  await settle();await settle();
+  const message=window.document.getElementById('msg');
+  message.value='ship it';message.dispatchEvent(new window.Event('input'));
+  window.send();await settle();
+  // No "wait until sending finishes": the switch happens while the message is in flight.
+  window.openDeckSession(DECK,'beta');await settle();await settle();
+  expect(window.document.querySelector('#title b').textContent).toBe('beta');
+  expect(window.document.getElementById('toast').textContent).not.toContain('Дождитесь');
+  release();await settle();
+  expect(sent).toEqual(['ship it']);
+  window.openDeckSession('','alpha');await settle();await settle();
+  expect(window.document.querySelector('#title b').textContent).toBe('alpha');
+  expect(message.value).toBe('');
+  }finally{window.close()}
+});
+
 test('a response from the previous computer that arrives after the switch is rejected',async()=>{
   let release;
   const state={local:()=>({sessions:[session('alpha')]})};
@@ -747,7 +770,7 @@ test('a diff comment goes to the session whose history is open, and New session 
   window.eval('appendToMessage("app.py:1 — fix")');
   expect(window.eval('messageDrafts.get("alpha")')).toBe('app.py:1 — fix');
   expect(window.document.getElementById('msg').value).toBe('');
-  window.eval('sending=true');
+  window.eval('uploading=true');
   window.document.querySelector('#tabs .deck-new').click();await settle();
   expect(window.eval('selectedDeck')).toBe('');
   expect(window.document.getElementById('dlg').open).toBe(false);

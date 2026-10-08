@@ -397,6 +397,25 @@ class HTTPTests(PanelCase):
         self.assertEqual(status, 502)
         self.assertIn("ttyd unavailable", json.loads(body)["error"])
 
+    def test_pages_and_the_terminal_refuse_foreign_frames(self):
+        status, headers, _ = self.request("GET", "/login")
+        self.assertEqual(status, 200)
+        self.assertEqual(headers["X-Frame-Options"], "SAMEORIGIN")
+        self.assertEqual(headers["Content-Security-Policy"], "frame-ancestors 'self'")
+        head = self.panel.with_frame_headers(b"HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n<html>")
+        self.assertTrue(head.startswith(b"HTTP/1.1 200 OK\r\nX-Frame-Options: SAMEORIGIN\r\n"))
+        self.assertTrue(head.endswith(b"Content-Type: text/html\r\n\r\n<html>"))
+
+    def test_terminal_link_with_extra_tmux_arguments_is_refused(self):
+        # ttyd -a appends every arg to `tmux attach -t`; a bare `;` would chain run-shell.
+        cookie = self.login()
+        for path in ("/t/?arg=_keep&arg=%3B&arg=run-shell&arg=touch%20x", "/t/ws?arg=cc-demo&arg=%3B",
+                     "/t/?arg=-x", "/t/?arg=cc-demo%3Brun-shell", "/t/?cmd=cc-demo"):
+            with self.subTest(path=path):
+                status, _, body = self.request("GET", path, headers={"Cookie": cookie})
+                self.assertEqual(status, 400)
+                self.assertIn("error", json.loads(body))
+
     def test_websocket_upgrade_and_bytes_are_proxied_to_isolated_unix_socket(self):
         self.assert_websocket_proxy()
 

@@ -1,6 +1,7 @@
 {
   "name": "Polski",
   "messages": {
+    "в ссылке на терминал может быть только имя сессии": "link do terminala może zawierać tylko nazwę sesji",
     " · {0} готово": " · {0} gotowe",
     " ГиБ)": " GiB)",
     " ждёт": " oczekuje",

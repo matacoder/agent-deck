@@ -10,6 +10,7 @@ import json
 import threading
 import time
 
+from .decks import POLL_LIMIT
 from .questions import Question
 
 FAILURES = (ValueError, KeyError, TypeError, AttributeError, OSError, RuntimeError)
@@ -21,7 +22,7 @@ SESSIONS_EVERY = 10
 def get_json(decks, identity, path, timeout=5, method='GET', body=None):
     """One call to a connected computer -> (status, dict); anything but a JSON object raises ValueError."""
     args = () if body is None else (body,)
-    status, _, raw = decks.request(identity, method, path, *args, timeout=timeout)
+    status, _, raw = decks.request(identity, method, path, *args, timeout=timeout, limit=POLL_LIMIT)
     try:
         data = json.loads(raw)
     except ValueError:

@@ -1,6 +1,7 @@
 {
   "name": "Bahasa Indonesia",
   "messages": {
+    "в ссылке на терминал может быть только имя сессии": "tautan terminal hanya boleh berisi nama sesi",
     " · {0} готово": " · {0} siap",
     " ГиБ)": " GiB)",
     " ждёт": " menunggu",

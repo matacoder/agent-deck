@@ -9,12 +9,44 @@ import threading
 import time
 
 from support import PanelCase, ROOT
-from integrations.decks import RemoteDecks, UnavailableDecks, deck_url, remote_path
+from integrations.decks import RemoteDecks, UnavailableDecks, deck_url, http_request, remote_path
 from integrations.preferences import ProjectDirectory, NetworkSettings
 
 ID = 'a'*24
 URL = 'http://100.68.39.62:8790'
 PROFILE = {'id':ID,'name':'Mac','url':URL,'username':'denis','password':'test-password-only'}
+
+
+class DeckResponseLimitTests(PanelCase):
+    def serve(self, chunks, pause):
+        import socket
+        listener = socket.socket();listener.bind(('127.0.0.1', 0));listener.listen(1)
+        self.addCleanup(listener.close)
+        def answer():
+            connection = listener.accept()[0]
+            try:
+                connection.recv(4096)
+                connection.sendall(b'HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n')
+                for chunk in chunks:
+                    connection.sendall(chunk);time.sleep(pause)
+            except OSError:
+                pass
+            finally:
+                connection.close()
+        threading.Thread(target=answer, daemon=True).start()
+        return 'http://127.0.0.1:%d' % listener.getsockname()[1]
+
+    def test_a_trickling_deck_is_cut_off_by_the_body_deadline(self):
+        url = self.serve([b'x'] * 400, .01)
+        started = time.monotonic()
+        with self.assertRaisesRegex(ValueError, 'too slowly'):
+            http_request(url, 'GET', '/api/sessions', timeout=.5)
+        self.assertLess(time.monotonic() - started, 3.5)
+
+    def test_an_oversized_answer_is_refused(self):
+        url = self.serve([b'x' * 4096] * 4, 0)
+        with self.assertRaisesRegex(ValueError, 'too large'):
+            http_request(url, 'GET', '/api/sessions', timeout=2, limit=10000)
 
 
 class RemoteDeckTests(PanelCase):
@@ -30,7 +62,8 @@ class RemoteDeckTests(PanelCase):
             with self.subTest(url=invalid), self.assertRaises(ValueError):deck_url(invalid)
         for path in ('/api/sessions?preview=demo','/api/github/repos?refresh=1','/t/ws','/t/?arg=%3Dcc-demo'):
             self.assertEqual(remote_path(path),path)
-        for invalid in ('//evil/api/x','https://evil/api/x','/login','/deck/x/api/x','/api/decks','/api/network','/t/../login','/t/%2e%2e/login','/t/ws\r\nHost: evil'):
+        for invalid in ('//evil/api/x','https://evil/api/x','/login','/deck/x/api/x','/api/decks','/api/network','/t/../login','/t/%2e%2e/login','/t/ws\r\nHost: evil',
+                        '/t/?arg=_keep&arg=%3B&arg=run-shell&arg=id','/t/ws?arg=%3Dcc-demo&arg=x','/t/?arg=cc-a%3Bb'):
             with self.subTest(path=invalid), self.assertRaises(ValueError):remote_path(invalid)
         self.transport.assert_not_called()
 

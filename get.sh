@@ -7,7 +7,7 @@
 set -euo pipefail
 # Keep this bootstrap check self-contained: never source code from an unchecked checkout.
 require_root_checkout() {
-    python3 - "$1" "${2:-tree}" <<'ROOT_CHECK'
+    python3 -I - "$1" "${2:-tree}" <<'ROOT_CHECK'
 from pathlib import Path
 import stat, sys
 root = Path(sys.argv[1]).absolute()
