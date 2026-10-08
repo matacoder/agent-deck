@@ -805,6 +805,11 @@
     "Новая сессия на «{0}»": "“{0}” üzerinde yeni oturum",
     "Подключено": "Bağlı",
     "Подключено как «{0}»": "“{0}” olarak bağlı",
-    "Последняя проверка всех копий: {0}": "Tüm kopyaların son kontrolü: {0}"
+    "Последняя проверка всех копий: {0}": "Tüm kopyaların son kontrolü: {0}",
+    "Файлы": "Dosyalar",
+    "Проект": "Proje",
+    "Последний коммит": "Son commit",
+    "Ширина боковой панели": "Kenar çubuğu genişliği",
+    "Потяните, чтобы изменить ширину; двойной клик — ширина по умолчанию": "Genişliği değiştirmek için sürükleyin; varsayılan için çift tıklayın"
   }
 }

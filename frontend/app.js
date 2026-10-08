@@ -123,7 +123,7 @@ function setConnection(next){
 }
 function toast(m,info,action){
   if(m===STALE)return;
-  const t=$("toast"),dialogs=Array.from(document.querySelectorAll("dialog[open]"));
+  const t=$("toast"),dialogs=Array.from(document.querySelectorAll("dialog[open]:not(.docked)"));
   (dialogs[dialogs.length-1]||document.body).append(t);t.className=info==="success"?"success":info?"info":"";t.replaceChildren(el("span","",m));
   if(action){const b=document.createElement("button");b.textContent=action.label;b.onclick=e=>{e.stopPropagation();action.run();hideToast()};t.append(b)}
   t.setAttribute("role",info?"status":"alert");t.setAttribute("aria-live",info?"polite":"assertive");
@@ -208,8 +208,8 @@ function sheet(on){
 }
 for(const item of $("sheet").querySelectorAll(".panel button"))item.setAttribute("role","menuitem");
 // Escape on an edited file asks first instead of dropping the changes.
-$("files_dlg").addEventListener("cancel",e=>{if(filesDirty()){e.preventDefault();leaveFile()}});
-$("files_dlg").addEventListener("close",()=>{dropPreview();files.file=null});  // The preview's blob is freed at once.
+$("project_dlg").addEventListener("cancel",e=>{if(filesDirty()){e.preventDefault();leaveFile()}});
+$("project_dlg").addEventListener("close",projectClosed);
 addEventListener("keydown",e=>{if(e.key==="Escape"&&$("sheet").classList.contains("on"))sheet(false)});
 async function confirmAction(title,{text="",confirm=tr("Продолжить"),danger=false}={}){
   return askConfirm($("confirm_dlg"),{title,text,confirm,danger});
@@ -392,7 +392,7 @@ function show(){
   $("term_loading").hidden=!(s&&m==="term"&&frameFor(active).dataset.loading);
   if(s&&m==="term"){const f=frameFor(active);f.classList.add("on");f.inert=isLocal(s)&&!s.running;if(!isMobile()&&!isTouch()&&!f.inert&&document.activeElement!==$("msg"))setTimeout(()=>{try{f.contentWindow.focus();f.contentWindow.term&&f.contentWindow.term.focus()}catch(e){}},30)}
   if(s&&m==="screen")updateScreen(s,true);
-  updateLink();fitKeys();
+  updateLink();fitKeys();syncProject();
 }
 function reconnectTerminal(){
   if(!active)return;
@@ -1158,7 +1158,7 @@ function hotkeys(e){
 // The numbers on a question card's options answer it, as they would in the terminal, unless you are typing.
 function answerByDigit(e){
   const data=question.name===active?question.data:null,target=e.target;
-  if(!data||!/^Digit[1-9]$/.test(e.code)||question.busy!==null||document.querySelector("dialog[open]"))return false;
+  if(!data||!/^Digit[1-9]$/.test(e.code)||question.busy!==null||document.querySelector("dialog[open]:not(.docked)"))return false;
   if(target&&(target.closest?.("input,textarea,select,[contenteditable]")||target.tagName==="IFRAME"))return false;
   const index=+e.code.slice(5)-1,option=data.options[index];
   if(!option||option.text)return false;
@@ -1172,6 +1172,9 @@ function toggleSidebar(){
   try{localStore.setItem("cc.side-collapsed",on?"1":"")}catch(e){}
 }
 try{if(localStore.getItem("cc.side-collapsed"))document.body.classList.add("side-collapsed")}catch(e){}
+attachResizer($("side_resizer"),"side",()=>document.querySelector("aside"));
+attachResizer($("project_resizer"),"project",()=>$("project_dlg"));
+restorePaneWidths();
 // A notification fallback (or a pasted link) can change only the #session part of the address.
 addEventListener("hashchange",()=>{
   let name="";try{name=decodeURIComponent(location.hash.slice(1))}catch(e){}

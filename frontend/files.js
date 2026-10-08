@@ -22,10 +22,8 @@ function breadcrumbs(listing){
 function homeRelative(path,home){return path===home?"~":path.startsWith(home+"/")?"~/"+path.slice(home.length+1):path}
 function filesDirty(){return Boolean(files.file&&files.file.content!==files.file.saved)}
 
-async function openFiles(){
-  if(!active)return;
+async function startFiles(){
   dropPreview();files.session=active;files.file=null;files.listing=null;files.creating=false;
-  if(!$("files_dlg").open)$("files_dlg").showModal();
   await loadFolder("");
 }
 async function loadFolder(path){
@@ -80,8 +78,6 @@ function newFile(name){
   const folder=files.listing.path;
   files.creating=false;files.file={path:folder+"/"+name,content:"",saved:"",hash:null,isNew:true};renderFiles();
 }
-async function closeFiles(){if(!files.file||await leaveFile())$("files_dlg").close()}
-function fontButton(label,name,step){const b=fileButton(label,"",()=>codeFont(step));b.setAttribute("aria-label",name);return b}
 function fileButton(label,cls,run,icon){
   const b=el("button",cls,...(icon?[svgIcon(icon)]:[]),el("span","",label));b.type="button";b.onclick=run;return b;
 }
@@ -118,8 +114,7 @@ function renderFiles(){
 // layout jumping. Editing is a separate step, and a new file starts in it.
 function renderEditor(box,listing){
   const file=files.file,name=file.path.split("/").pop();
-  const head=el("div","files-path",fileButton(tr("К папке"),"files-up",leaveFile,"arrow-up"),el("code","",homeRelative(file.path,listing.home)),
-    el("span","git-font",fontButton("A−",tr("Уменьшить шрифт"),-1),fontButton("A+",tr("Увеличить шрифт"),1)));
+  const head=el("div","files-path",fileButton(tr("К папке"),"files-up",leaveFile,"arrow-up"),el("code","",homeRelative(file.path,listing.home)));
   applyCodeFont();
   if(file.preview)return renderPreview(box,head,file);
   if(!file.isNew&&!file.editing)return renderReader(box,head,file);

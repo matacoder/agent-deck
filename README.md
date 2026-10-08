@@ -298,6 +298,14 @@ question and every session that finished work, on all connected computers. Answe
 tap right there; options such as *Other* or *Type something* open a text field and send your own answer.
 Tap a session name to open it, on the right computer.
 
+## Project panel: changes, commits, files
+
+Changes, Commits and Files share one panel with three tabs. On a wide screen it is a sidebar on the right:
+the **folder** and **git** icons in the session bar show and hide it, it stays open while you switch sessions
+(showing the open session's project) and is remembered in this browser. Drag the inner edge of either
+sidebar to change its width (double click for the default). On a phone the same icons open it
+full screen. **Changes** shows what is not committed yet, or the last commit when the tree is clean.
+
 ## Project files
 
 The **folder icon** in the session bar (Project files) browses the session's folder and everything else in your home folder. Text files
@@ -310,8 +318,8 @@ is not shown. Works for sessions on connected computers too.
 
 ## Change history
 
-The **git icon** in the session bar (Change history) shows the commits of the session's repository: subject, author, time and line
-counts; tap one for its full message and a diff per file with line numbers. **Feature groups** asks
+The **Commits** tab of the project panel shows the commits of the session's repository: subject, author, time and line
+counts; tap one for its full message and a diff per file with line numbers. **Feature groups** (a button above the list) asks
 a model of your choice to join the last 80 commits into features: a model from your LM Studio profiles
 (local and free, reasoning turned off), Kimi with a saved key, or Claude Haiku through your signed-in
 Claude Code. The model sees only commit subjects and file names, never code; the panel shows each

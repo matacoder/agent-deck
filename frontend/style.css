@@ -35,7 +35,7 @@ input,textarea,select{font:inherit}
 .ag.claude{color:var(--orange)}.ag.codex,.ag.local{color:var(--teal)}.ag.pi{color:var(--fg)}.ag.shell{color:var(--mut)}
 
 /* ---------- sidebar ---------- */
-aside{width:248px;flex:none;background:var(--side);border-right:1px solid var(--bd);display:flex;flex-direction:column;min-height:0}
+aside{position:relative;width:min(var(--side-w,248px),40vw);flex:none;background:var(--side);border-right:1px solid var(--bd);display:flex;flex-direction:column;min-height:0}
 .deck-switch{display:grid;grid-template-columns:minmax(0,1fr) 32px;align-items:center;gap:6px;padding:10px 8px;border-bottom:1px solid var(--bd)}
 .deck-switch label{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 .deck-switch select{min-width:0;min-height:32px;background:var(--side2);color:var(--fg);border:1px solid var(--bd);border-radius:var(--r-sm);padding:6px 8px}
@@ -477,8 +477,25 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 .inbox-btn b{min-width:16px;padding:0 4px;border-radius:8px;background:var(--acc-strong);color:#fff;font:600 10.5px/16px -apple-system,BlinkMacSystemFont,system-ui,sans-serif;text-align:center}
 .inbox-btn b:empty{display:none}
 #inbox_dlg{width:min(560px,calc(100vw - 32px))}
-#files_dlg{width:min(720px,calc(100vw - 32px))}
-#git_dlg{width:min(900px,calc(100vw - 32px))}
+#project_dlg{width:min(900px,calc(100vw - 32px))}
+/* Docked: a right sidebar beside the session instead of a window over it. */
+#project_dlg.docked[open]{position:relative;display:flex;overflow:hidden;flex:none;width:var(--project-w,clamp(400px,36vw,760px));max-width:60vw;height:auto;max-height:none;margin:0;border:0;border-left:1px solid var(--bd);border-radius:0;box-shadow:none}
+#project_dlg.docked .dlg{flex:1;min-width:0;max-height:none}
+#project_dlg.docked .git-tabs{padding:8px 12px}
+#project_dlg.docked .dlg-body{flex:1;padding:14px}
+#project_dlg .dlg-body[hidden]{display:none}
+/* A thin grab strip on the inner edge of each sidebar; it shows on hover and while dragged. */
+.resizer{display:none;position:absolute;top:0;bottom:0;z-index:5;width:7px;cursor:col-resize;touch-action:none}
+aside>.resizer{right:-4px}#project_dlg>.resizer{left:0}
+#project_dlg.docked>.resizer{display:block}
+.resizer:focus-visible,body.resizing .resizer{background:var(--acc-soft);outline:none}
+@media (hover:hover){.resizer:hover{background:var(--acc-soft)}}
+body.resizing{cursor:col-resize;-webkit-user-select:none;user-select:none}
+body.resizing iframe{pointer-events:none}
+.bar .iconbtn[aria-pressed=true]{background:var(--sel);color:var(--fg2)}
+/* The tab row takes the dialog's first focus (no button lights up) and scrolls sideways on narrow phones. */
+#project_tabs:focus{outline:none}
+.project-close{display:inline-flex;align-items:center;justify-content:center;flex:none;width:32px;height:32px;padding:0!important}
 #search_dlg{width:min(820px,calc(100vw - 32px))}
 .search-form{display:flex;gap:8px;padding:12px 22px;border-bottom:1px solid var(--bd)}
 .search-form input{flex:1;min-width:0;padding:9px 12px;border:1px solid var(--bd);border-radius:9px;background:var(--bg);color:var(--fg);font:inherit;font-size:14px;outline:none}
@@ -494,7 +511,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 .palette-row.on{background:var(--sel)}@media (hover:hover){.palette-row:hover{background:var(--side2)}}
 .palette-label{flex:none;max-width:60%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .palette-hint{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--mut);font-size:12px;text-align:right}
-.git-tabs{display:flex;align-items:center;gap:6px;padding:10px 22px;border-bottom:1px solid var(--bd)}
+.git-tabs{display:flex;align-items:center;gap:6px;padding:10px 22px;border-bottom:1px solid var(--bd);overflow-x:auto;scrollbar-width:none}
 .git-font{display:flex;gap:4px;margin-left:auto}
 .git-tabs button{white-space:nowrap}
 .git-tabs .git-font button{min-width:36px;padding:0 6px;font-weight:600}
@@ -550,7 +567,6 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 .diff-comment textarea{width:100%;padding:8px 10px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--fg);font:14px/1.45 -apple-system,BlinkMacSystemFont,system-ui,sans-serif;resize:vertical}
 .diff-comment .acts{padding:8px 0 0;border:0}
 .diff-commit{padding:6px 10px;border-top:1px solid var(--bd);color:var(--mut);font:12px var(--mono);background:var(--side)}
-#files_dlg .hub-heading{border-bottom:1px solid var(--bd)}
 /* A column, not a grid: in a grid the clipped list (overflow:hidden for its corners) shrank to the dialog
    and cut off rows instead of letting the dialog scroll. */
 #files_body{display:flex;flex-direction:column;gap:10px}
@@ -765,11 +781,14 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
   .chk,.dlg label.chk{font-size:15px}
   .acts{padding:12px 16px calc(12px + var(--sab))}
   .acts button{flex:1;min-height:var(--tap);padding:12px;font-size:16px;border-radius:var(--r)}
-  #inbox_dlg,#files_dlg,#git_dlg,#search_dlg,.palette{width:100vw}
-  #inbox_dlg .dlg,#files_dlg .dlg,#git_dlg .dlg,#search_dlg .dlg,.palette .dlg{padding-top:var(--sat)}
+  #inbox_dlg,#project_dlg,#search_dlg,.palette{width:100vw}
+  #inbox_dlg .dlg,#project_dlg .dlg,#search_dlg .dlg,.palette .dlg{padding-top:var(--sat)}
   .palette{margin-top:0}.palette-list{max-height:none;flex:1}.search-form{padding:10px 16px}
   .git-branch{font-size:16px;min-height:var(--tap)}
   .git-tabs{padding:10px 20px}.git-tabs button{min-height:var(--tap);padding:0 14px}
+  #project_tabs{gap:2px;padding:8px 6px}#project_tabs button{padding:0 9px}#project_tabs .git-font button{min-width:36px}
+  /* Close first, so a row wider than the phone scrolls only the font buttons out of view. */
+  .project-close{order:-1;width:var(--tap);height:var(--tap)}
   .dl .ln{width:36px}
   #confirm_dlg{width:calc(100vw - 32px);height:fit-content;margin:auto;border:1px solid var(--bd-soft);border-radius:16px}
   #confirm_dlg .dlg{height:auto;padding-top:0}
@@ -837,12 +856,9 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
   .keys #b_keymore.all-fit{display:none!important}
 }
 @media (min-width:761px){
-  #git_dlg{width:min(1200px,calc(100vw - 64px));height:min(860px,85dvh)}
-  #files_dlg{height:min(640px,80dvh)}
-  #git_dlg>.dlg,#files_dlg>.dlg{height:100%;max-height:none}
-  #git_dlg .dlg-body,#files_dlg .dlg-body{flex:1}
   .settings-hub .hub-card{max-width:760px}
   body.side-collapsed aside{display:none}
+  aside>.resizer{display:block}
 }
 @media (max-width:760px){
   .hub-heading{padding:8px 12px 8px 20px}

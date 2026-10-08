@@ -1,5 +1,5 @@
 // Git history of the open session's repository: uncommitted changes (a tapped line becomes a comment in the
-// message draft), commits with their diffs, and feature groups that a model proposes from commit subjects
+// message draft; a clean tree shows the last commit), commits with their diffs, and feature groups that a model proposes from commit subjects
 // and file names, each with a combined diff.
 // Agent and repository text is rendered with textContent only.
 const hist={session:null,ref:"",tab:"changes",authors:null,changes:null,changesError:"",changesSeq:0,log:null,commits:[],back:null,view:null,groups:null,timer:null,fetching:false,
@@ -67,19 +67,24 @@ function fileBlock(title,file,open,content){
   details.open=open&&!binary;return details;
 }
 
-async function openHistory(){
-  if(!active)return;
-  hist.session=active;hist.ref="";hist.tab="changes";hist.back=null;hist.models=null;hist.authors=savedAuthorColors();freshList();
-  applyCodeFont();
-  if(!$("git_dlg").open)$("git_dlg").showModal();
-  renderHistory();loadChanges();await loadHistoryPage();
+function startHistory(tab){
+  hist.session=active;hist.ref="";hist.tab=tab;hist.back=null;hist.models=null;hist.authors=savedAuthorColors();freshList();
+  renderHistory();loadChanges();loadHistoryPage();
 }
 async function loadChanges(){
   const seq=++hist.changesSeq;hist.changes=null;hist.changesError="";
   if(hist.tab==="changes"&&!hist.view)renderHistory();
-  try{const data=await api(gitPath("changes"),null,false,{timeout:60000});if(seq!==hist.changesSeq)return;hist.changes=data}
-  catch(e){if(seq!==hist.changesSeq)return;hist.changesError=e.message===STALE?"":e.message||tr("Не удалось загрузить")}
+  try{
+    const data=await api(gitPath("changes"),null,false,{timeout:60000});
+    // A clean tree shows the last commit instead, so the tab is never empty right after a commit.
+    if(!data.files.length&&data.head&&seq===hist.changesSeq)data.last=await lastCommit(data.head);
+    if(seq!==hist.changesSeq)return;hist.changes=data;
+  }catch(e){if(seq!==hist.changesSeq)return;hist.changesError=e.message===STALE?"":e.message||tr("Не удалось загрузить")}
   if(hist.tab==="changes"&&!hist.view)renderHistory();
+}
+async function lastCommit(sha){
+  try{return await api(gitPath("commit",{sha}),null,false,{timeout:60000})}
+  catch(e){return {error:e.message===STALE?"":e.message||tr("Не удалось загрузить")}}
 }
 function gitPath(route,params={}){return "/api/git/"+route+"?"+new URLSearchParams({name:hist.session,ref:hist.ref,...params})}
 // Another branch (a worktree's own, the local main, or GitHub's after a fetch) starts the list over.
@@ -96,7 +101,8 @@ function branchBar(){
   for(const name of log.branches){const option=el("option","",name);option.value=name===log.branches[0]?"":name;select.append(option)}
   select.value=hist.ref;select.onchange=()=>chooseBranch(select.value);
   const fetch=fileButton(hist.fetching?tr("Получаю…"):tr("Получить с GitHub"),"git-fetch",fetchRemote,"refresh");fetch.disabled=hist.fetching;
-  const bar=el("div","git-bar",el("code","",log.name),select,fetch);
+  const groups=fileButton(tr("Группы фич"),"git-fetch",()=>historyTab("groups"));
+  const bar=el("div","git-bar",el("code","",log.name),select,fetch,groups);
   const notes=[];
   if(log.behind&&log.remote)notes.push(el("div","git-behind",el("span","",tr("Эта ветка отстаёт от {0} на {1} коммитов",[log.remote,log.behind])),
     fileButton(tr("Показать {0}",[log.remote]),"",()=>chooseBranch(log.remote))));
@@ -132,7 +138,7 @@ async function loadGroups(){
   try{state=await api(gitPath("groups"))}catch(e){state=e.message===STALE?null:{phase:"error",error:e.message}}
   if(seq!==hist.seq||!state)return;
   hist.groups=state;
-  if(state.phase==="running"&&$("git_dlg").open)hist.timer=setTimeout(loadGroups,3000);
+  if(state.phase==="running"&&$("project_dlg").open)hist.timer=setTimeout(loadGroups,3000);
   if(hist.tab==="groups"&&!hist.view)renderHistory();
 }
 // Any model this computer can reach groups commits; local ones come first because they cost nothing.
@@ -193,7 +199,6 @@ function commitRow(c,back){
 }
 function renderHistory(){
   const box=$("git_body");box.replaceChildren();
-  for(const b of $("git_tabs").querySelectorAll("[data-tab]")){b.classList.toggle("on",b.dataset.tab===hist.tab);b.setAttribute("aria-selected",String(b.dataset.tab===hist.tab))}
   if(hist.view)return renderHistoryView(box);
   if(hist.tab==="groups")return renderGroups(box);
   if(hist.tab==="changes")return renderChanges(box);
@@ -221,13 +226,9 @@ function renderHistoryView(box){
     return;
   }
   if(view.kind==="commit"){
-    const c=view.data,[subject,...rest]=c.message.split("\n");
     const back=hist.back;
-    box.append(backButton(back?tr("К группе"):tr("К коммитам"),()=>{hist.view=back?{kind:"group",group:back,diff:null}:null;if(back)showGroup(back);else renderHistory()}),
-      el("h4","git-title",subject),el("p","git-meta",c.short,el("span","sep","·"),authorLabel(c.author),el("span","sep","·"),new Date(c.time*1000).toLocaleString(DATE_LOCALE)));
-    const body=rest.join("\n").trim();if(body)box.append(el("pre","git-message",body));
-    for(const f of c.files)box.append(fileBlock(f.path,f,true,()=>renderDiff(f.patch,f)));
-    return;
+    box.append(backButton(back?tr("К группе"):tr("К коммитам"),()=>{hist.view=back?{kind:"group",group:back,diff:null}:null;if(back)showGroup(back);else renderHistory()}));
+    return commitDetails(box,view.data);
   }
   const group=view.group;
   box.append(backButton(tr("К группам"),()=>{hist.view=null;renderHistory()}),el("h4","git-title",group.ungrouped?tr("Без группы"):group.title));
@@ -244,6 +245,12 @@ function renderHistoryView(box){
       return wrap;
     }));
   }
+}
+function commitDetails(box,c){
+  const [subject,...rest]=c.message.split("\n");
+  box.append(el("h4","git-title",subject),el("p","git-meta",c.short,el("span","sep","·"),authorLabel(c.author),el("span","sep","·"),new Date(c.time*1000).toLocaleString(DATE_LOCALE)));
+  const body=rest.join("\n").trim();if(body)box.append(el("pre","git-message",body));
+  for(const f of c.files)box.append(fileBlock(f.path,f,true,()=>renderDiff(f.patch,f)));
 }
 // A comment names the file, the line and quotes it, so the agent finds the place without the diff.
 function lineComment(path,row,text){
@@ -270,7 +277,7 @@ function commentForm(path,row,line){
     e.preventDefault();
     if(!area.value.trim()){area.focus();return}
     appendToMessage(lineComment(path,row,area.value));form.remove();
-    toast(tr("Комментарий добавлен в сообщение"),"success",{label:tr("К сообщению"),run:()=>{clearTimeout(hist.timer);$("git_dlg").close();$("msg").focus()}});
+    toast(tr("Комментарий добавлен в сообщение"),"success",{label:tr("К сообщению"),run:()=>{if(!projectDocked())closeProject();$("msg").focus()}});
   };
   area.onkeydown=e=>{if(e.key==="Enter"&&(e.metaKey||e.ctrlKey)){e.preventDefault();form.requestSubmit()}};
   line.after(form);area.focus();
@@ -281,15 +288,22 @@ function renderChanges(box){
   if(!data){box.append(el("p","files-empty",tr("Загрузка…")));return}
   const refresh=fileButton(tr("Обновить"),"git-fetch",loadChanges,"refresh");
   box.append(el("div","git-bar",el("code","",data.name),el("span","git-meta",data.branch),refresh));
-  if(!data.files.length){box.append(el("p","files-empty",tr("Незакоммиченных изменений нет")));return}
+  if(!data.files.length)return renderLastCommit(box,data.last);
   box.append(el("p","git-meta",tr("Нажмите на строку, чтобы добавить комментарий в сообщение агенту")));
   // Many files stay folded: each diff renders only when opened, which keeps a phone responsive.
   const open=data.files.length<=5;
   for(const f of data.files)box.append(fileBlock(f.path,f,open,()=>renderDiff(f.patch,f,(row,line)=>commentForm(f.path,row,line))));
   if(data.skipped)box.append(el("p","diff-note",tr("Ещё новых файлов: {0}; они не показаны",[data.skipped])));
 }
+function renderLastCommit(box,last){
+  if(!last){box.append(el("p","files-empty",tr("Незакоммиченных изменений нет")));return}
+  box.append(el("p","git-meta",tr("Незакоммиченных изменений нет")),el("h5","git-section",tr("Последний коммит")));
+  if(last.error!==undefined)box.append(el("p","diff-note",last.error||tr("Не удалось загрузить")));
+  else commitDetails(box,last);
+}
 function renderGroups(box){
   const state=hist.groups;
+  box.append(backButton(tr("К коммитам"),()=>historyTab("commits")));
   if(!state){box.append(el("p","files-empty",tr("Загрузка…")));return}
   if(state.phase==="done"){
     for(const group of state.groups){

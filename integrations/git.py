@@ -244,8 +244,9 @@ def changes(folder, run=subprocess.run):
     except ValueError:
         branch = 'HEAD'  # Detached, e.g. during a rebase.
     try:
-        base = git(root, 'rev-parse', '--verify', '--quiet', 'HEAD^{commit}', run=run).strip()
+        base = head = git(root, 'rev-parse', '--verify', '--quiet', 'HEAD^{commit}', run=run).strip()
     except ValueError:
+        head = ''
         # No commits yet: everything staged is new. The empty tree's id depends on the hash (SHA-1 or SHA-256).
         base = git(root, 'hash-object', '-t', 'tree', '/dev/null', run=run).strip()
     private = private_parts(root)
@@ -270,7 +271,7 @@ def changes(folder, run=subprocess.run):
         if size > MAX_PATCH:
             item.update(patch='', truncated=True)
         files.append(item)
-    return {'repo': root, 'name': os.path.basename(root), 'branch': branch,
+    return {'repo': root, 'name': os.path.basename(root), 'branch': branch, 'head': head,
             'files': sorted(files, key=lambda f: f['path']), 'skipped': max(0, len(untracked) - MAX_UNTRACKED)}
 
 

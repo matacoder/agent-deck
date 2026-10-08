@@ -805,6 +805,11 @@
     "Новая сессия на «{0}»": "New session on “{0}”",
     "Подключено": "Connected",
     "Подключено как «{0}»": "Connected as “{0}”",
-    "Последняя проверка всех копий: {0}": "Last check of all copies: {0}"
+    "Последняя проверка всех копий: {0}": "Last check of all copies: {0}",
+    "Файлы": "Files",
+    "Проект": "Project",
+    "Последний коммит": "Last commit",
+    "Ширина боковой панели": "Sidebar width",
+    "Потяните, чтобы изменить ширину; двойной клик — ширина по умолчанию": "Drag to change the width; double-click for the default"
   }
 }

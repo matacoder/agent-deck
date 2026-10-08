@@ -59,7 +59,7 @@ function paletteItems(){
 }
 function openPalette(){
   if($("palette_dlg").open){$("palette_dlg").close();return}
-  if(document.querySelector("dialog[open]"))return;  // A switch from inside another dialog would leave it behind.
+  if(document.querySelector("dialog[open]:not(.docked)"))return;  // A switch from inside another dialog would leave it behind.
   palette.items=paletteItems();
   const input=$("palette_q");input.value="";filterPalette();
   $("palette_dlg").showModal();setTimeout(()=>input.focus(),0);

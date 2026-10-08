@@ -19,7 +19,7 @@ function showDropZone(target){
   clearTimeout(dropHideTimer);dropHideTimer=setTimeout(hideDropZone,1000);
 }
 function hideDropZone(){clearTimeout(dropHideTimer);$("drop_zone").hidden=true}
-function dropBlocked(){return sending||uploading||panelUpdating||Boolean(document.querySelector("dialog[open]"))}
+function dropBlocked(){return sending||uploading||panelUpdating||Boolean(document.querySelector("dialog[open]:not(.docked)"))}
 function onFileDrag(e){
   if(!dragHasFiles(e))return;
   e.preventDefault();

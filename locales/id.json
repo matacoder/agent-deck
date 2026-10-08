@@ -805,6 +805,11 @@
     "Новая сессия на «{0}»": "Sesi baru di “{0}”",
     "Подключено": "Terhubung",
     "Подключено как «{0}»": "Terhubung sebagai “{0}”",
-    "Последняя проверка всех копий: {0}": "Pemeriksaan terakhir semua salinan: {0}"
+    "Последняя проверка всех копий: {0}": "Pemeriksaan terakhir semua salinan: {0}",
+    "Файлы": "Berkas",
+    "Проект": "Proyek",
+    "Последний коммит": "Commit terakhir",
+    "Ширина боковой панели": "Lebar bilah samping",
+    "Потяните, чтобы изменить ширину; двойной клик — ширина по умолчанию": "Seret untuk mengubah lebar; klik dua kali untuk bawaan"
   }
 }

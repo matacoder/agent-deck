@@ -46,7 +46,7 @@ input,textarea,select{font:inherit}
 .ag.claude{color:var(--orange)}.ag.codex,.ag.local{color:var(--teal)}.ag.pi{color:var(--fg)}.ag.shell{color:var(--mut)}
 
 /* ---------- sidebar ---------- */
-aside{width:248px;flex:none;background:var(--side);border-right:1px solid var(--bd);display:flex;flex-direction:column;min-height:0}
+aside{position:relative;width:min(var(--side-w,248px),40vw);flex:none;background:var(--side);border-right:1px solid var(--bd);display:flex;flex-direction:column;min-height:0}
 .deck-switch{display:grid;grid-template-columns:minmax(0,1fr) 32px;align-items:center;gap:6px;padding:10px 8px;border-bottom:1px solid var(--bd)}
 .deck-switch label{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 .deck-switch select{min-width:0;min-height:32px;background:var(--side2);color:var(--fg);border:1px solid var(--bd);border-radius:var(--r-sm);padding:6px 8px}
@@ -488,8 +488,25 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 .inbox-btn b{min-width:16px;padding:0 4px;border-radius:8px;background:var(--acc-strong);color:#fff;font:600 10.5px/16px -apple-system,BlinkMacSystemFont,system-ui,sans-serif;text-align:center}
 .inbox-btn b:empty{display:none}
 #inbox_dlg{width:min(560px,calc(100vw - 32px))}
-#files_dlg{width:min(720px,calc(100vw - 32px))}
-#git_dlg{width:min(900px,calc(100vw - 32px))}
+#project_dlg{width:min(900px,calc(100vw - 32px))}
+/* Docked: a right sidebar beside the session instead of a window over it. */
+#project_dlg.docked[open]{position:relative;display:flex;overflow:hidden;flex:none;width:var(--project-w,clamp(400px,36vw,760px));max-width:60vw;height:auto;max-height:none;margin:0;border:0;border-left:1px solid var(--bd);border-radius:0;box-shadow:none}
+#project_dlg.docked .dlg{flex:1;min-width:0;max-height:none}
+#project_dlg.docked .git-tabs{padding:8px 12px}
+#project_dlg.docked .dlg-body{flex:1;padding:14px}
+#project_dlg .dlg-body[hidden]{display:none}
+/* A thin grab strip on the inner edge of each sidebar; it shows on hover and while dragged. */
+.resizer{display:none;position:absolute;top:0;bottom:0;z-index:5;width:7px;cursor:col-resize;touch-action:none}
+aside>.resizer{right:-4px}#project_dlg>.resizer{left:0}
+#project_dlg.docked>.resizer{display:block}
+.resizer:focus-visible,body.resizing .resizer{background:var(--acc-soft);outline:none}
+@media (hover:hover){.resizer:hover{background:var(--acc-soft)}}
+body.resizing{cursor:col-resize;-webkit-user-select:none;user-select:none}
+body.resizing iframe{pointer-events:none}
+.bar .iconbtn[aria-pressed=true]{background:var(--sel);color:var(--fg2)}
+/* The tab row takes the dialog's first focus (no button lights up) and scrolls sideways on narrow phones. */
+#project_tabs:focus{outline:none}
+.project-close{display:inline-flex;align-items:center;justify-content:center;flex:none;width:32px;height:32px;padding:0!important}
 #search_dlg{width:min(820px,calc(100vw - 32px))}
 .search-form{display:flex;gap:8px;padding:12px 22px;border-bottom:1px solid var(--bd)}
 .search-form input{flex:1;min-width:0;padding:9px 12px;border:1px solid var(--bd);border-radius:9px;background:var(--bg);color:var(--fg);font:inherit;font-size:14px;outline:none}
@@ -505,7 +522,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 .palette-row.on{background:var(--sel)}@media (hover:hover){.palette-row:hover{background:var(--side2)}}
 .palette-label{flex:none;max-width:60%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .palette-hint{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--mut);font-size:12px;text-align:right}
-.git-tabs{display:flex;align-items:center;gap:6px;padding:10px 22px;border-bottom:1px solid var(--bd)}
+.git-tabs{display:flex;align-items:center;gap:6px;padding:10px 22px;border-bottom:1px solid var(--bd);overflow-x:auto;scrollbar-width:none}
 .git-font{display:flex;gap:4px;margin-left:auto}
 .git-tabs button{white-space:nowrap}
 .git-tabs .git-font button{min-width:36px;padding:0 6px;font-weight:600}
@@ -561,7 +578,6 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 .diff-comment textarea{width:100%;padding:8px 10px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--fg);font:14px/1.45 -apple-system,BlinkMacSystemFont,system-ui,sans-serif;resize:vertical}
 .diff-comment .acts{padding:8px 0 0;border:0}
 .diff-commit{padding:6px 10px;border-top:1px solid var(--bd);color:var(--mut);font:12px var(--mono);background:var(--side)}
-#files_dlg .hub-heading{border-bottom:1px solid var(--bd)}
 /* A column, not a grid: in a grid the clipped list (overflow:hidden for its corners) shrank to the dialog
    and cut off rows instead of letting the dialog scroll. */
 #files_body{display:flex;flex-direction:column;gap:10px}
@@ -776,11 +792,14 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
   .chk,.dlg label.chk{font-size:15px}
   .acts{padding:12px 16px calc(12px + var(--sab))}
   .acts button{flex:1;min-height:var(--tap);padding:12px;font-size:16px;border-radius:var(--r)}
-  #inbox_dlg,#files_dlg,#git_dlg,#search_dlg,.palette{width:100vw}
-  #inbox_dlg .dlg,#files_dlg .dlg,#git_dlg .dlg,#search_dlg .dlg,.palette .dlg{padding-top:var(--sat)}
+  #inbox_dlg,#project_dlg,#search_dlg,.palette{width:100vw}
+  #inbox_dlg .dlg,#project_dlg .dlg,#search_dlg .dlg,.palette .dlg{padding-top:var(--sat)}
   .palette{margin-top:0}.palette-list{max-height:none;flex:1}.search-form{padding:10px 16px}
   .git-branch{font-size:16px;min-height:var(--tap)}
   .git-tabs{padding:10px 20px}.git-tabs button{min-height:var(--tap);padding:0 14px}
+  #project_tabs{gap:2px;padding:8px 6px}#project_tabs button{padding:0 9px}#project_tabs .git-font button{min-width:36px}
+  /* Close first, so a row wider than the phone scrolls only the font buttons out of view. */
+  .project-close{order:-1;width:var(--tap);height:var(--tap)}
   .dl .ln{width:36px}
   #confirm_dlg{width:calc(100vw - 32px);height:fit-content;margin:auto;border:1px solid var(--bd-soft);border-radius:16px}
   #confirm_dlg .dlg{height:auto;padding-top:0}
@@ -848,12 +867,9 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
   .keys #b_keymore.all-fit{display:none!important}
 }
 @media (min-width:761px){
-  #git_dlg{width:min(1200px,calc(100vw - 64px));height:min(860px,85dvh)}
-  #files_dlg{height:min(640px,80dvh)}
-  #git_dlg>.dlg,#files_dlg>.dlg{height:100%;max-height:none}
-  #git_dlg .dlg-body,#files_dlg .dlg-body{flex:1}
   .settings-hub .hub-card{max-width:760px}
   body.side-collapsed aside{display:none}
+  aside>.resizer{display:block}
 }
 @media (max-width:760px){
   .hub-heading{padding:8px 12px 8px 20px}
@@ -933,6 +949,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 </svg>
 <div id="app">
   <aside>
+    <div class="resizer" id="side_resizer" role="separator" aria-orientation="vertical" tabindex="0" aria-label="Ширина боковой панели" title="Потяните, чтобы изменить ширину; двойной клик — ширина по умолчанию"></div>
     <div class="deck-switch" id="deck_switch" hidden><label for="deck_select">Agent Deck</label><select id="deck_select" onchange="switchDeck(this.value)"><option value="">Этот компьютер</option></select><button type="button" onclick="openSettings('network')" aria-label="Подключить Agent Deck" title="Подключить Agent Deck"><svg class="ui-icon"><use href="#i-monitor"/></svg></button></div>
     <div class="srv-row" id="srv_row"><div id="srv"><span class="sk-line srv-skeleton"></span></div><button type="button" id="inbox_btn" class="iconbtn inbox-btn" onclick="openInbox()" title="Ждут ответа" aria-label="Ждут ответа"><svg class="ui-icon"><use href="#i-inbox"/></svg><b id="inbox_count"></b></button></div>
     <div class="side-top">
@@ -949,7 +966,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
       <button class="iconbtn m-only" style="position:relative" onclick="drawer(true)" aria-label="Сессии"><svg class="ui-icon"><use href="#i-menu"/></svg><span id="menuBadge"></span></button>
       <button class="iconbtn d-only" id="b_side" onclick="toggleSidebar()" aria-label="Скрыть или показать список сессий" title="Скрыть или показать список сессий"><svg class="ui-icon"><use href="#i-sidebar"/></svg></button>
       <div id="title">—</div>
-      <span class="bar-tools" id="bar_tools"><button class="iconbtn" id="b_files" onclick="openFiles()" aria-label="Файлы проекта" title="Файлы проекта"><svg class="ui-icon"><use href="#i-folder"/></svg></button><button class="iconbtn" id="b_search" onclick="openOutputSearch()" aria-label="Поиск в выводе" title="Поиск в выводе"><svg class="ui-icon"><use href="#i-search"/></svg></button><button class="iconbtn" id="b_history" onclick="openHistory()" aria-label="История изменений" title="История изменений"><svg class="ui-icon"><use href="#i-history"/></svg></button></span>
+      <span class="bar-tools" id="bar_tools"><button class="iconbtn" id="b_files" onclick="toggleProject(['files'])" aria-pressed="false" aria-label="Файлы проекта" title="Файлы проекта"><svg class="ui-icon"><use href="#i-folder"/></svg></button><button class="iconbtn" id="b_search" onclick="openOutputSearch()" aria-label="Поиск в выводе" title="Поиск в выводе"><svg class="ui-icon"><use href="#i-search"/></svg></button><button class="iconbtn" id="b_history" onclick="toggleProject(['changes','commits'])" aria-pressed="false" aria-label="История изменений" title="История изменений"><svg class="ui-icon"><use href="#i-history"/></svg></button></span>
       <button class="act d-only" id="b_link" title="Открыть последнюю ссылку из терминала" onclick="openLink()" style="display:none"><svg class="ui-icon"><use href="#i-link"/></svg><span>Ссылка</span></button>
       <button class="iconbtn" id="b_actions" onclick="sheet(true)" aria-label="Действия" title="Действия" aria-haspopup="menu"><svg class="ui-icon"><use href="#i-more"/></svg></button>
     </div>
@@ -1000,6 +1017,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
     <div id="terminal_keys" hidden></div>
     <nav id="quick_tabs" aria-label="Быстрое переключение сессий"></nav>
   </main>
+  <dialog id="project_dlg" aria-label="Проект"><div class="resizer" id="project_resizer" role="separator" aria-orientation="vertical" tabindex="0" aria-label="Ширина боковой панели" title="Потяните, чтобы изменить ширину; двойной клик — ширина по умолчанию"></div><div class="dlg"><div class="git-tabs" id="project_tabs" role="tablist" tabindex="-1" autofocus><button type="button" role="tab" data-tab="changes" onclick="projectTab('changes')">Изменения</button><button type="button" role="tab" data-tab="commits" onclick="projectTab('commits')">Коммиты</button><button type="button" role="tab" data-tab="files" onclick="projectTab('files')">Файлы</button><span class="git-font"><button type="button" onclick="codeFont(-1)" aria-label="Уменьшить шрифт">A−</button><button type="button" onclick="codeFont(1)" aria-label="Увеличить шрифт">A+</button></span><button type="button" class="project-close" onclick="closeProject()" aria-label="Закрыть"><svg class="ui-icon"><use href="#i-x"/></svg></button></div><div class="dlg-body" id="git_body"></div><div class="dlg-body" id="files_body" hidden></div></div></dialog>
 </div>
 
 <div id="sheet"><div class="scrim" onclick="sheet(false)"></div><div class="panel" role="menu" aria-labelledby="sheetCap">
@@ -1035,10 +1053,8 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
   <div class="viewer-bar"><span id="viewer_caption"></span><a id="viewer_open" target="_blank" rel="noopener">Открыть оригинал</a></div>
 </div>
 <dialog id="confirm_dlg"><form class="dlg" method="dialog"><div class="dlg-body"><h3 id="confirm_title"></h3><p id="confirm_text"></p></div><div class="acts"><button value="cancel">Отмена</button><button value="ok" class="pri" id="confirm_ok">OK</button></div></form></dialog>
-<dialog id="git_dlg"><div class="dlg"><div class="hub-heading"><h3 tabindex="-1" autofocus>История изменений</h3><button type="button" onclick="clearTimeout(hist.timer);$('git_dlg').close()" aria-label="Закрыть"><svg class="ui-icon"><use href="#i-x"/></svg></button></div><div class="git-tabs" id="git_tabs" role="tablist"><button type="button" role="tab" data-tab="changes" onclick="historyTab('changes')">Изменения</button><button type="button" role="tab" data-tab="commits" onclick="historyTab('commits')">Коммиты</button><button type="button" role="tab" data-tab="groups" onclick="historyTab('groups')">Группы фич</button><span class="git-font"><button type="button" onclick="codeFont(-1)" aria-label="Уменьшить шрифт">A−</button><button type="button" onclick="codeFont(1)" aria-label="Увеличить шрифт">A+</button></span></div><div class="dlg-body" id="git_body"></div></div></dialog>
 <dialog id="search_dlg"><div class="dlg"><div class="hub-heading"><h3>Поиск в выводе</h3><button type="button" onclick="$('search_dlg').close()" aria-label="Закрыть"><svg class="ui-icon"><use href="#i-x"/></svg></button></div><form class="search-form" id="search_form"><input id="search_q" type="search" maxlength="200" placeholder="Текст из вывода" aria-label="Текст из вывода" autocomplete="off" autocapitalize="off" spellcheck="false"><button type="submit" class="pri">Найти</button></form><div class="dlg-body" id="search_body"></div></div></dialog>
 <dialog id="palette_dlg" class="palette"><div class="dlg"><input id="palette_q" type="text" placeholder="Сессия или действие" aria-label="Сессия или действие" autocomplete="off" autocapitalize="off" spellcheck="false" role="combobox" aria-controls="palette_list"><div class="palette-list" id="palette_list" role="listbox"></div></div></dialog>
-<dialog id="files_dlg"><div class="dlg"><div class="hub-heading"><h3 tabindex="-1" autofocus>Файлы проекта</h3><button type="button" onclick="closeFiles()" aria-label="Закрыть"><svg class="ui-icon"><use href="#i-x"/></svg></button></div><div class="dlg-body" id="files_body"></div></div></dialog>
 <dialog id="inbox_dlg"><div class="dlg"><div class="hub-heading"><h3 tabindex="-1" autofocus>Ждут ответа</h3><button type="button" onclick="$('inbox_dlg').close()" aria-label="Закрыть"><svg class="ui-icon"><use href="#i-x"/></svg></button></div><div class="dlg-body" id="inbox_list"></div></div></dialog>
 <dialog id="draft_dlg"><div class="dlg"><div class="dlg-body"><h3>Черновики закрытых сессий</h3><div id="closed_drafts"></div></div><div class="acts"><button type="button" onclick="$('draft_dlg').close()">Закрыть</button></div></div></dialog>
 
@@ -1280,7 +1296,7 @@ function placeSessionKeys({row,composer,screen,terminal,wrap,reconnect,mode,acti
 
 function execCopy(text,doc){
   const ta=doc.createElement("textarea");ta.value=text;ta.setAttribute("readonly","");
-  ta.style.cssText="position:fixed;top:-1000px;left:0;opacity:0";(doc.querySelector("dialog[open]")||doc.body).appendChild(ta);ta.select();
+  ta.style.cssText="position:fixed;top:-1000px;left:0;opacity:0";(doc.querySelector("dialog[open]:not(.docked)")||doc.body).appendChild(ta);ta.select();
   let ok=false;try{ok=doc.execCommand("copy")}catch(e){}
   ta.remove();return ok;
 }
@@ -2158,10 +2174,8 @@ function breadcrumbs(listing){
 function homeRelative(path,home){return path===home?"~":path.startsWith(home+"/")?"~/"+path.slice(home.length+1):path}
 function filesDirty(){return Boolean(files.file&&files.file.content!==files.file.saved)}
 
-async function openFiles(){
-  if(!active)return;
+async function startFiles(){
   dropPreview();files.session=active;files.file=null;files.listing=null;files.creating=false;
-  if(!$("files_dlg").open)$("files_dlg").showModal();
   await loadFolder("");
 }
 async function loadFolder(path){
@@ -2216,8 +2230,6 @@ function newFile(name){
   const folder=files.listing.path;
   files.creating=false;files.file={path:folder+"/"+name,content:"",saved:"",hash:null,isNew:true};renderFiles();
 }
-async function closeFiles(){if(!files.file||await leaveFile())$("files_dlg").close()}
-function fontButton(label,name,step){const b=fileButton(label,"",()=>codeFont(step));b.setAttribute("aria-label",name);return b}
 function fileButton(label,cls,run,icon){
   const b=el("button",cls,...(icon?[svgIcon(icon)]:[]),el("span","",label));b.type="button";b.onclick=run;return b;
 }
@@ -2254,8 +2266,7 @@ function renderFiles(){
 // layout jumping. Editing is a separate step, and a new file starts in it.
 function renderEditor(box,listing){
   const file=files.file,name=file.path.split("/").pop();
-  const head=el("div","files-path",fileButton(tr("К папке"),"files-up",leaveFile,"arrow-up"),el("code","",homeRelative(file.path,listing.home)),
-    el("span","git-font",fontButton("A−",tr("Уменьшить шрифт"),-1),fontButton("A+",tr("Увеличить шрифт"),1)));
+  const head=el("div","files-path",fileButton(tr("К папке"),"files-up",leaveFile,"arrow-up"),el("code","",homeRelative(file.path,listing.home)));
   applyCodeFont();
   if(file.preview)return renderPreview(box,head,file);
   if(!file.isNew&&!file.editing)return renderReader(box,head,file);
@@ -2300,7 +2311,7 @@ async function copyText(text){
 
 if(typeof module!=="undefined")module.exports={formatSize,homeRelative};
 // Git history of the open session's repository: uncommitted changes (a tapped line becomes a comment in the
-// message draft), commits with their diffs, and feature groups that a model proposes from commit subjects
+// message draft; a clean tree shows the last commit), commits with their diffs, and feature groups that a model proposes from commit subjects
 // and file names, each with a combined diff.
 // Agent and repository text is rendered with textContent only.
 const hist={session:null,ref:"",tab:"changes",authors:null,changes:null,changesError:"",changesSeq:0,log:null,commits:[],back:null,view:null,groups:null,timer:null,fetching:false,
@@ -2368,19 +2379,24 @@ function fileBlock(title,file,open,content){
   details.open=open&&!binary;return details;
 }
 
-async function openHistory(){
-  if(!active)return;
-  hist.session=active;hist.ref="";hist.tab="changes";hist.back=null;hist.models=null;hist.authors=savedAuthorColors();freshList();
-  applyCodeFont();
-  if(!$("git_dlg").open)$("git_dlg").showModal();
-  renderHistory();loadChanges();await loadHistoryPage();
+function startHistory(tab){
+  hist.session=active;hist.ref="";hist.tab=tab;hist.back=null;hist.models=null;hist.authors=savedAuthorColors();freshList();
+  renderHistory();loadChanges();loadHistoryPage();
 }
 async function loadChanges(){
   const seq=++hist.changesSeq;hist.changes=null;hist.changesError="";
   if(hist.tab==="changes"&&!hist.view)renderHistory();
-  try{const data=await api(gitPath("changes"),null,false,{timeout:60000});if(seq!==hist.changesSeq)return;hist.changes=data}
-  catch(e){if(seq!==hist.changesSeq)return;hist.changesError=e.message===STALE?"":e.message||tr("Не удалось загрузить")}
+  try{
+    const data=await api(gitPath("changes"),null,false,{timeout:60000});
+    // A clean tree shows the last commit instead, so the tab is never empty right after a commit.
+    if(!data.files.length&&data.head&&seq===hist.changesSeq)data.last=await lastCommit(data.head);
+    if(seq!==hist.changesSeq)return;hist.changes=data;
+  }catch(e){if(seq!==hist.changesSeq)return;hist.changesError=e.message===STALE?"":e.message||tr("Не удалось загрузить")}
   if(hist.tab==="changes"&&!hist.view)renderHistory();
+}
+async function lastCommit(sha){
+  try{return await api(gitPath("commit",{sha}),null,false,{timeout:60000})}
+  catch(e){return {error:e.message===STALE?"":e.message||tr("Не удалось загрузить")}}
 }
 function gitPath(route,params={}){return "/api/git/"+route+"?"+new URLSearchParams({name:hist.session,ref:hist.ref,...params})}
 // Another branch (a worktree's own, the local main, or GitHub's after a fetch) starts the list over.
@@ -2397,7 +2413,8 @@ function branchBar(){
   for(const name of log.branches){const option=el("option","",name);option.value=name===log.branches[0]?"":name;select.append(option)}
   select.value=hist.ref;select.onchange=()=>chooseBranch(select.value);
   const fetch=fileButton(hist.fetching?tr("Получаю…"):tr("Получить с GitHub"),"git-fetch",fetchRemote,"refresh");fetch.disabled=hist.fetching;
-  const bar=el("div","git-bar",el("code","",log.name),select,fetch);
+  const groups=fileButton(tr("Группы фич"),"git-fetch",()=>historyTab("groups"));
+  const bar=el("div","git-bar",el("code","",log.name),select,fetch,groups);
   const notes=[];
   if(log.behind&&log.remote)notes.push(el("div","git-behind",el("span","",tr("Эта ветка отстаёт от {0} на {1} коммитов",[log.remote,log.behind])),
     fileButton(tr("Показать {0}",[log.remote]),"",()=>chooseBranch(log.remote))));
@@ -2433,7 +2450,7 @@ async function loadGroups(){
   try{state=await api(gitPath("groups"))}catch(e){state=e.message===STALE?null:{phase:"error",error:e.message}}
   if(seq!==hist.seq||!state)return;
   hist.groups=state;
-  if(state.phase==="running"&&$("git_dlg").open)hist.timer=setTimeout(loadGroups,3000);
+  if(state.phase==="running"&&$("project_dlg").open)hist.timer=setTimeout(loadGroups,3000);
   if(hist.tab==="groups"&&!hist.view)renderHistory();
 }
 // Any model this computer can reach groups commits; local ones come first because they cost nothing.
@@ -2494,7 +2511,6 @@ function commitRow(c,back){
 }
 function renderHistory(){
   const box=$("git_body");box.replaceChildren();
-  for(const b of $("git_tabs").querySelectorAll("[data-tab]")){b.classList.toggle("on",b.dataset.tab===hist.tab);b.setAttribute("aria-selected",String(b.dataset.tab===hist.tab))}
   if(hist.view)return renderHistoryView(box);
   if(hist.tab==="groups")return renderGroups(box);
   if(hist.tab==="changes")return renderChanges(box);
@@ -2522,13 +2538,9 @@ function renderHistoryView(box){
     return;
   }
   if(view.kind==="commit"){
-    const c=view.data,[subject,...rest]=c.message.split("\n");
     const back=hist.back;
-    box.append(backButton(back?tr("К группе"):tr("К коммитам"),()=>{hist.view=back?{kind:"group",group:back,diff:null}:null;if(back)showGroup(back);else renderHistory()}),
-      el("h4","git-title",subject),el("p","git-meta",c.short,el("span","sep","·"),authorLabel(c.author),el("span","sep","·"),new Date(c.time*1000).toLocaleString(DATE_LOCALE)));
-    const body=rest.join("\n").trim();if(body)box.append(el("pre","git-message",body));
-    for(const f of c.files)box.append(fileBlock(f.path,f,true,()=>renderDiff(f.patch,f)));
-    return;
+    box.append(backButton(back?tr("К группе"):tr("К коммитам"),()=>{hist.view=back?{kind:"group",group:back,diff:null}:null;if(back)showGroup(back);else renderHistory()}));
+    return commitDetails(box,view.data);
   }
   const group=view.group;
   box.append(backButton(tr("К группам"),()=>{hist.view=null;renderHistory()}),el("h4","git-title",group.ungrouped?tr("Без группы"):group.title));
@@ -2545,6 +2557,12 @@ function renderHistoryView(box){
       return wrap;
     }));
   }
+}
+function commitDetails(box,c){
+  const [subject,...rest]=c.message.split("\n");
+  box.append(el("h4","git-title",subject),el("p","git-meta",c.short,el("span","sep","·"),authorLabel(c.author),el("span","sep","·"),new Date(c.time*1000).toLocaleString(DATE_LOCALE)));
+  const body=rest.join("\n").trim();if(body)box.append(el("pre","git-message",body));
+  for(const f of c.files)box.append(fileBlock(f.path,f,true,()=>renderDiff(f.patch,f)));
 }
 // A comment names the file, the line and quotes it, so the agent finds the place without the diff.
 function lineComment(path,row,text){
@@ -2571,7 +2589,7 @@ function commentForm(path,row,line){
     e.preventDefault();
     if(!area.value.trim()){area.focus();return}
     appendToMessage(lineComment(path,row,area.value));form.remove();
-    toast(tr("Комментарий добавлен в сообщение"),"success",{label:tr("К сообщению"),run:()=>{clearTimeout(hist.timer);$("git_dlg").close();$("msg").focus()}});
+    toast(tr("Комментарий добавлен в сообщение"),"success",{label:tr("К сообщению"),run:()=>{if(!projectDocked())closeProject();$("msg").focus()}});
   };
   area.onkeydown=e=>{if(e.key==="Enter"&&(e.metaKey||e.ctrlKey)){e.preventDefault();form.requestSubmit()}};
   line.after(form);area.focus();
@@ -2582,15 +2600,22 @@ function renderChanges(box){
   if(!data){box.append(el("p","files-empty",tr("Загрузка…")));return}
   const refresh=fileButton(tr("Обновить"),"git-fetch",loadChanges,"refresh");
   box.append(el("div","git-bar",el("code","",data.name),el("span","git-meta",data.branch),refresh));
-  if(!data.files.length){box.append(el("p","files-empty",tr("Незакоммиченных изменений нет")));return}
+  if(!data.files.length)return renderLastCommit(box,data.last);
   box.append(el("p","git-meta",tr("Нажмите на строку, чтобы добавить комментарий в сообщение агенту")));
   // Many files stay folded: each diff renders only when opened, which keeps a phone responsive.
   const open=data.files.length<=5;
   for(const f of data.files)box.append(fileBlock(f.path,f,open,()=>renderDiff(f.patch,f,(row,line)=>commentForm(f.path,row,line))));
   if(data.skipped)box.append(el("p","diff-note",tr("Ещё новых файлов: {0}; они не показаны",[data.skipped])));
 }
+function renderLastCommit(box,last){
+  if(!last){box.append(el("p","files-empty",tr("Незакоммиченных изменений нет")));return}
+  box.append(el("p","git-meta",tr("Незакоммиченных изменений нет")),el("h5","git-section",tr("Последний коммит")));
+  if(last.error!==undefined)box.append(el("p","diff-note",last.error||tr("Не удалось загрузить")));
+  else commitDetails(box,last);
+}
 function renderGroups(box){
   const state=hist.groups;
+  box.append(backButton(tr("К коммитам"),()=>historyTab("commits")));
   if(!state){box.append(el("p","files-empty",tr("Загрузка…")));return}
   if(state.phase==="done"){
     for(const group of state.groups){
@@ -2610,6 +2635,125 @@ function renderGroups(box){
 }
 
 if(typeof module!=="undefined")module.exports={diffRows,lineComment,authorColor,AUTHOR_COLORS};
+// Changes, commits and files of the open session in one panel: a right sidebar on wide screens that stays
+// open while sessions switch (remembered in this browser), a full-screen dialog on phones. Each tab keeps
+// its own state and scroll; a tab loads for the open session only when shown.
+const PROJECT_TABS=["changes","commits","files"];
+const project={tab:"changes",moving:false};
+const projectDocked=()=>!isMobile();
+function savedProjectTab(){try{const tab=localStore.getItem("cc.project");return PROJECT_TABS.includes(tab)?tab:""}catch(e){return ""}}
+function rememberProject(tab){try{localStore.setItem("cc.project",tab)}catch(e){}}
+
+function openFiles(){openProject("files")}
+function openHistory(){openProject("changes")}
+// The bar buttons hide the sidebar when it already shows their tab.
+function toggleProject(tabs){
+  const box=$("project_dlg");
+  if(box.open&&box.classList.contains("docked")&&tabs.includes(project.tab))return closeProject();
+  openProject(tabs[0]);
+}
+function openProject(tab){
+  if(!active)return;
+  placeProject(true);
+  projectTab(tab);
+}
+// A tab chosen by hand always shows the current state: the agent keeps working.
+function projectTab(tab){
+  project.tab=tab;
+  if(projectDocked())rememberProject(tab);
+  markProjectTab();
+  if(tab==="files"){if(files.session!==active&&!filesDirty())startFiles();return}
+  if(hist.session!==active)return startHistory(tab);
+  historyTab(tab);
+}
+// Shown for another session (a switch with the sidebar open): load only what is out of date.
+function refreshProject(){
+  markProjectTab();
+  if(project.tab==="files"){if(files.session!==active&&!filesDirty())startFiles();return}
+  if(hist.session!==active)startHistory(project.tab);
+}
+function markProjectTab(){
+  for(const b of $("project_tabs").querySelectorAll("[data-tab]")){const on=b.dataset.tab===project.tab;b.classList.toggle("on",on);b.setAttribute("aria-selected",String(on))}
+  $("git_body").hidden=project.tab==="files";$("files_body").hidden=project.tab!=="files";
+  const box=$("project_dlg"),shown=box.open&&box.classList.contains("docked");
+  $("b_files").setAttribute("aria-pressed",String(shown&&project.tab==="files"));
+  $("b_history").setAttribute("aria-pressed",String(shown&&project.tab!=="files"));
+}
+// Opens (or moves) the panel in the form this layout uses: docked beside the session or modal.
+function placeProject(open){
+  const box=$("project_dlg"),docked=projectDocked();
+  if(box.open&&box.classList.contains("docked")!==docked){project.moving=true;box.close();project.moving=false;open=true}
+  if(!open||box.open)return;
+  applyCodeFont();box.classList.toggle("docked",docked);
+  if(docked)box.open=true;  // Not modal: the terminal and the message field stay usable beside it.
+  else box.showModal();
+}
+// Called after every session or layout change: a wide screen restores the remembered sidebar.
+function syncProject(){
+  const box=$("project_dlg");
+  if(!projectDocked()){
+    if(box.open&&box.classList.contains("docked")){project.moving=true;box.close();project.moving=false}
+    return markProjectTab();
+  }
+  const tab=savedProjectTab();
+  if(!tab||!active||!cur()){if(box.open){project.moving=true;box.close();project.moving=false}return markProjectTab()}
+  if(!box.open)project.tab=tab;
+  placeProject(true);refreshProject();
+}
+async function closeProject(){
+  if(filesDirty()&&!await leaveFile())return;
+  if(projectDocked())rememberProject("");
+  $("project_dlg").close();
+}
+// Closed by hand (not moved between layouts): stop polling and free a previewed file's blob.
+function projectClosed(){
+  if(project.moving)return;
+  clearTimeout(hist.timer);dropPreview();files.file=null;markProjectTab();
+}
+// On a wide screen both sidebars can be dragged wider or narrower (or moved with the arrow keys on their
+// edge); a double click restores the default. Widths are kept in this browser; CSS still caps them by the
+// window, so a width saved on a big monitor never squeezes the terminal on a laptop.
+// edge: which way a drag to the right moves the width (the left sidebar grows, the right one shrinks).
+const PANE_SIZES={side:{prop:"--side-w",key:"cc.side-w",min:200,max:480,edge:1},project:{prop:"--project-w",key:"cc.project-w",min:320,max:1100,edge:-1}};
+function setPaneWidth(name,width){
+  const pane=PANE_SIZES[name];
+  width=Math.round(Math.min(pane.max,Math.max(pane.min,width)));
+  document.documentElement.style.setProperty(pane.prop,width+"px");
+  return width;
+}
+function savePaneWidth(name,width){try{localStore.setItem(PANE_SIZES[name].key,String(width))}catch(e){}}
+function resetPaneWidth(name){
+  document.documentElement.style.removeProperty(PANE_SIZES[name].prop);
+  try{localStore.removeItem(PANE_SIZES[name].key)}catch(e){}
+}
+function restorePaneWidths(){
+  for(const name of Object.keys(PANE_SIZES)){
+    let saved=0;try{saved=+localStore.getItem(PANE_SIZES[name].key)}catch(e){}
+    if(saved>0)setPaneWidth(name,saved);
+  }
+}
+function attachResizer(handle,name,target){
+  const edge=PANE_SIZES[name].edge;
+  handle.addEventListener("pointerdown",e=>{
+    if(e.button!==0)return;
+    e.preventDefault();handle.setPointerCapture(e.pointerId);
+    const startX=e.clientX,start=target().getBoundingClientRect().width;let width=start;
+    // The terminal is an iframe: without this it would swallow the drag once the pointer crosses it.
+    document.body.classList.add("resizing");
+    const move=ev=>{width=setPaneWidth(name,start+(ev.clientX-startX)*edge)};
+    const stop=()=>{
+      document.body.classList.remove("resizing");savePaneWidth(name,width);
+      handle.removeEventListener("pointermove",move);handle.removeEventListener("pointerup",stop);handle.removeEventListener("pointercancel",stop);
+    };
+    handle.addEventListener("pointermove",move);handle.addEventListener("pointerup",stop);handle.addEventListener("pointercancel",stop);
+  });
+  handle.addEventListener("dblclick",()=>resetPaneWidth(name));
+  handle.addEventListener("keydown",e=>{
+    const step=e.key==="ArrowRight"?16:e.key==="ArrowLeft"?-16:0;
+    if(!step)return;
+    e.preventDefault();savePaneWidth(name,setPaneWidth(name,target().getBoundingClientRect().width+step*edge));
+  });
+}
 // Small Markdown reader for project files (plans, READMEs): headings, lists, quotes, code, tables, links.
 // Built from DOM nodes with textContent only; links open just http(s) and mailto, raw HTML stays text.
 // Bundled before app.js; nothing here runs at load time.
@@ -2754,7 +2898,7 @@ function paletteItems(){
 }
 function openPalette(){
   if($("palette_dlg").open){$("palette_dlg").close();return}
-  if(document.querySelector("dialog[open]"))return;  // A switch from inside another dialog would leave it behind.
+  if(document.querySelector("dialog[open]:not(.docked)"))return;  // A switch from inside another dialog would leave it behind.
   palette.items=paletteItems();
   const input=$("palette_q");input.value="";filterPalette();
   $("palette_dlg").showModal();setTimeout(()=>input.focus(),0);
@@ -3358,7 +3502,7 @@ function showDropZone(target){
   clearTimeout(dropHideTimer);dropHideTimer=setTimeout(hideDropZone,1000);
 }
 function hideDropZone(){clearTimeout(dropHideTimer);$("drop_zone").hidden=true}
-function dropBlocked(){return sending||uploading||panelUpdating||Boolean(document.querySelector("dialog[open]"))}
+function dropBlocked(){return sending||uploading||panelUpdating||Boolean(document.querySelector("dialog[open]:not(.docked)"))}
 function onFileDrag(e){
   if(!dragHasFiles(e))return;
   e.preventDefault();
@@ -3507,7 +3651,7 @@ function setConnection(next){
 }
 function toast(m,info,action){
   if(m===STALE)return;
-  const t=$("toast"),dialogs=Array.from(document.querySelectorAll("dialog[open]"));
+  const t=$("toast"),dialogs=Array.from(document.querySelectorAll("dialog[open]:not(.docked)"));
   (dialogs[dialogs.length-1]||document.body).append(t);t.className=info==="success"?"success":info?"info":"";t.replaceChildren(el("span","",m));
   if(action){const b=document.createElement("button");b.textContent=action.label;b.onclick=e=>{e.stopPropagation();action.run();hideToast()};t.append(b)}
   t.setAttribute("role",info?"status":"alert");t.setAttribute("aria-live",info?"polite":"assertive");
@@ -3592,8 +3736,8 @@ function sheet(on){
 }
 for(const item of $("sheet").querySelectorAll(".panel button"))item.setAttribute("role","menuitem");
 // Escape on an edited file asks first instead of dropping the changes.
-$("files_dlg").addEventListener("cancel",e=>{if(filesDirty()){e.preventDefault();leaveFile()}});
-$("files_dlg").addEventListener("close",()=>{dropPreview();files.file=null});  // The preview's blob is freed at once.
+$("project_dlg").addEventListener("cancel",e=>{if(filesDirty()){e.preventDefault();leaveFile()}});
+$("project_dlg").addEventListener("close",projectClosed);
 addEventListener("keydown",e=>{if(e.key==="Escape"&&$("sheet").classList.contains("on"))sheet(false)});
 async function confirmAction(title,{text="",confirm=tr("Продолжить"),danger=false}={}){
   return askConfirm($("confirm_dlg"),{title,text,confirm,danger});
@@ -3776,7 +3920,7 @@ function show(){
   $("term_loading").hidden=!(s&&m==="term"&&frameFor(active).dataset.loading);
   if(s&&m==="term"){const f=frameFor(active);f.classList.add("on");f.inert=isLocal(s)&&!s.running;if(!isMobile()&&!isTouch()&&!f.inert&&document.activeElement!==$("msg"))setTimeout(()=>{try{f.contentWindow.focus();f.contentWindow.term&&f.contentWindow.term.focus()}catch(e){}},30)}
   if(s&&m==="screen")updateScreen(s,true);
-  updateLink();fitKeys();
+  updateLink();fitKeys();syncProject();
 }
 function reconnectTerminal(){
   if(!active)return;
@@ -4542,7 +4686,7 @@ function hotkeys(e){
 // The numbers on a question card's options answer it, as they would in the terminal, unless you are typing.
 function answerByDigit(e){
   const data=question.name===active?question.data:null,target=e.target;
-  if(!data||!/^Digit[1-9]$/.test(e.code)||question.busy!==null||document.querySelector("dialog[open]"))return false;
+  if(!data||!/^Digit[1-9]$/.test(e.code)||question.busy!==null||document.querySelector("dialog[open]:not(.docked)"))return false;
   if(target&&(target.closest?.("input,textarea,select,[contenteditable]")||target.tagName==="IFRAME"))return false;
   const index=+e.code.slice(5)-1,option=data.options[index];
   if(!option||option.text)return false;
@@ -4556,6 +4700,9 @@ function toggleSidebar(){
   try{localStore.setItem("cc.side-collapsed",on?"1":"")}catch(e){}
 }
 try{if(localStore.getItem("cc.side-collapsed"))document.body.classList.add("side-collapsed")}catch(e){}
+attachResizer($("side_resizer"),"side",()=>document.querySelector("aside"));
+attachResizer($("project_resizer"),"project",()=>$("project_dlg"));
+restorePaneWidths();
 // A notification fallback (or a pasted link) can change only the #session part of the address.
 addEventListener("hashchange",()=>{
   let name="";try{name=decodeURIComponent(location.hash.slice(1))}catch(e){}

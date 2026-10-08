@@ -29,7 +29,7 @@ function placeSessionKeys({row,composer,screen,terminal,wrap,reconnect,mode,acti
 
 function execCopy(text,doc){
   const ta=doc.createElement("textarea");ta.value=text;ta.setAttribute("readonly","");
-  ta.style.cssText="position:fixed;top:-1000px;left:0;opacity:0";(doc.querySelector("dialog[open]")||doc.body).appendChild(ta);ta.select();
+  ta.style.cssText="position:fixed;top:-1000px;left:0;opacity:0";(doc.querySelector("dialog[open]:not(.docked)")||doc.body).appendChild(ta);ta.select();
   let ok=false;try{ok=doc.execCommand("copy")}catch(e){}
   ta.remove();return ok;
 }

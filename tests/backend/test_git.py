@@ -119,7 +119,12 @@ class ChangesTests(unittest.TestCase):
         self.assertEqual((path / '.git' / 'index').read_bytes(), index)
 
     def test_a_clean_tree_has_no_changes_and_a_repository_without_commits_still_works(self):
-        self.assertEqual(G.changes(repo(self))['files'], [])
+        clean = repo(self)
+        data = G.changes(clean)
+        self.assertEqual(data['files'], [])
+        # A clean tree names its last commit, which the panel shows instead.
+        last = subprocess.run(['git', '-C', str(clean), 'rev-parse', 'HEAD'], capture_output=True, text=True, check=True).stdout.strip()
+        self.assertEqual(data['head'], last)
         tmp = tempfile.TemporaryDirectory(dir='/tmp')
         self.addCleanup(tmp.cleanup)
         fresh = Path(tmp.name)
@@ -128,6 +133,7 @@ class ChangesTests(unittest.TestCase):
         subprocess.run(['git', '-C', str(fresh), 'add', 'a.txt'], check=True)
         (fresh / 'b.txt').write_text('b\n')
         self.assertEqual([f['path'] for f in G.changes(fresh)['files']], ['a.txt', 'b.txt'])
+        self.assertEqual(G.changes(fresh)['head'], '')
 
     def test_new_symlinks_are_not_read_and_big_new_files_have_no_patch(self):
         path = repo(self)

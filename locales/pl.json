@@ -805,6 +805,11 @@
     "Новая сессия на «{0}»": "Nowa sesja na „{0}”",
     "Подключено": "Połączono",
     "Подключено как «{0}»": "Połączono jako „{0}”",
-    "Последняя проверка всех копий: {0}": "Ostatnie sprawdzenie wszystkich kopii: {0}"
+    "Последняя проверка всех копий: {0}": "Ostatnie sprawdzenie wszystkich kopii: {0}",
+    "Файлы": "Pliki",
+    "Проект": "Projekt",
+    "Последний коммит": "Ostatni commit",
+    "Ширина боковой панели": "Szerokość panelu bocznego",
+    "Потяните, чтобы изменить ширину; двойной клик — ширина по умолчанию": "Przeciągnij, aby zmienić szerokość; dwuklik przywraca domyślną"
   }
 }

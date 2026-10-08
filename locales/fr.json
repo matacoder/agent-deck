@@ -805,6 +805,11 @@
     "Новая сессия на «{0}»": "Nouvelle session sur « {0} »",
     "Подключено": "Connecté",
     "Подключено как «{0}»": "Connecté en tant que « {0} »",
-    "Последняя проверка всех копий: {0}": "Dernière vérification de toutes les copies : {0}"
+    "Последняя проверка всех копий: {0}": "Dernière vérification de toutes les copies : {0}",
+    "Файлы": "Fichiers",
+    "Проект": "Projet",
+    "Последний коммит": "Dernier commit",
+    "Ширина боковой панели": "Largeur de la barre latérale",
+    "Потяните, чтобы изменить ширину; двойной клик — ширина по умолчанию": "Faites glisser pour changer la largeur ; double-clic pour la valeur par défaut"
   }
 }

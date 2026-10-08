@@ -265,7 +265,76 @@ test('a tapped line of an uncommitted change becomes a comment in the session dr
   expect(message.value).toBe('Please check:\napp.py:2 `b = 3` — use a constant');
   expect(doc.querySelector('.diff-comment')).toBeNull();
   // The commits page answered meanwhile; the open Changes tab was not redrawn under the user.
-  expect(doc.querySelector('#git_tabs .on').dataset.tab).toBe('changes');
+  expect(doc.querySelector('#project_tabs .on').dataset.tab).toBe('changes');
+  }finally{window.close()}
+});
+
+test('on a wide screen the project panel docks on the right, follows the session and is remembered',async()=>{
+  const state={local:()=>({sessions:[session('alpha'),session('beta')]})};
+  const routes=routesFor(state),asked=[];
+  routes['/api/git/log']=()=>({repo:'/r',name:'r',branch:'main',ref:'HEAD',branches:['main'],remote:'',ahead:0,behind:0,commits:[],more:false});
+  routes['/api/files']=()=>({path:'/home/demo/p',home:'/home/demo',parent:'/home/demo',entries:[]});
+  routes['/api/git/changes']=url=>{asked.push(url.searchParams.get('name'));return {repo:'/r',name:url.searchParams.get('name'),branch:'main',head:'',skipped:0,files:[]}};
+  const window=boot(routes);
+  try{
+  await settle();await settle();
+  const doc=window.document,panel=doc.getElementById('project_dlg');
+  doc.getElementById('b_history').click();await settle();
+  expect(panel.open).toBe(true);
+  expect(panel.classList.contains('docked')).toBe(true);
+  expect(doc.getElementById('b_history').getAttribute('aria-pressed')).toBe('true');
+  expect(window.localStorage.getItem('cc.project')).toBe('changes');
+  // The terminal stays usable: a docked panel does not count as an open dialog.
+  expect(doc.querySelector('dialog[open]:not(.docked)')).toBeNull();
+  window.eval('select("beta")');await settle();await settle();
+  expect(asked.slice(-1)).toEqual(['beta']);
+  expect(doc.querySelector('#git_body .git-bar code').textContent).toBe('beta');
+  doc.querySelector('#project_tabs [data-tab="files"]').click();
+  expect(doc.getElementById('git_body').hidden).toBe(true);
+  expect(doc.getElementById('files_body').hidden).toBe(false);
+  expect(window.localStorage.getItem('cc.project')).toBe('files');
+  doc.getElementById('b_files').click();await settle();
+  expect(panel.open).toBe(false);
+  expect(window.localStorage.getItem('cc.project')).toBe('');
+  }finally{window.close()}
+});
+
+test('sidebar widths change from their edge, are remembered and reset with a double click',async()=>{
+  const state={local:()=>({sessions:[session('alpha')]})};
+  const window=boot(routesFor(state));
+  try{
+  await settle();
+  const doc=window.document,root=doc.documentElement.style,handle=doc.getElementById('side_resizer');
+  doc.querySelector('aside').getBoundingClientRect=()=>({width:300});
+  handle.dispatchEvent(new window.KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true}));
+  expect(root.getPropertyValue('--side-w')).toBe('316px');
+  expect(window.localStorage.getItem('cc.side-w')).toBe('316');
+  // The right sidebar grows when its edge moves left, and never below its minimum.
+  doc.getElementById('project_dlg').getBoundingClientRect=()=>({width:330});
+  doc.getElementById('project_resizer').dispatchEvent(new window.KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true}));
+  expect(root.getPropertyValue('--project-w')).toBe('320px');
+  handle.dispatchEvent(new window.MouseEvent('dblclick',{bubbles:true}));
+  expect(root.getPropertyValue('--side-w')).toBe('');
+  expect(window.localStorage.getItem('cc.side-w')).toBeNull();
+  }finally{window.close()}
+});
+
+test('a clean working tree shows the last commit in Changes',async()=>{
+  const state={local:()=>({sessions:[session('alpha')]})};
+  const routes=routesFor(state),head='c'.repeat(40);
+  routes['/api/git/log']=()=>({repo:'/r',name:'r',branch:'main',ref:'HEAD',branches:['main'],remote:'',ahead:0,behind:0,commits:[],more:false});
+  routes['/api/git/changes']=()=>({repo:'/r',name:'r',branch:'main',head,skipped:0,files:[]});
+  routes['/api/git/commit']=url=>({sha:url.searchParams.get('sha'),short:'ccccccc',author:'a',email:'',time:1,parents:[],message:'Ship it',
+    files:[{path:'app.py',old_path:'app.py',status:'modified',added:1,removed:0,binary:false,truncated:false,patch:'@@ -1 +1,2 @@\n a\n+b\n'}]});
+  const window=boot(routes);
+  try{
+  await settle();await settle();
+  const doc=window.document;
+  window.eval('openHistory()');await settle();await settle();
+  expect(doc.querySelector('#git_body .git-title').textContent).toBe('Ship it');
+  expect(doc.querySelector('#git_body .diff-path').textContent).toBe('app.py');
+  // Lines of a committed change are not comments for the agent.
+  expect(doc.querySelector('#git_body .dl.commentable')).toBeNull();
   }finally{window.close()}
 });
 
