@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.28.1 — 2026-10-08
+
+- Feature groups are written in the panel's language: a repository nobody opened yet uses the language last seen in the panel instead of English, and groups written in another language are sorted again in the current one.
+
 ## 1.28.0 — 2026-10-08
 
 - Feature groups are a tab of their own in the project panel and are always ready: the panel sorts new commits into features in the background, a few at a time, instead of regrouping 80 commits on a button press and dropping the result at the next commit. **Now** on top shows who works on what (each author active in the last 7 days and the feature of their latest commit); commits not sorted yet are listed as plain commits; groups show their authors, commit count and last change. A pass waits until the newest commit is 10 minutes old (or 20 wait); **Sort now** skips the wait.

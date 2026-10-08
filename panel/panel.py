@@ -1715,7 +1715,7 @@ def feature_groups():
     with _feature_groups_lock:
         if _feature_groups is None:
             _feature_groups = FeatureGroups(os.path.expanduser("~/.cache/agent-deck/feature-groups"),
-                                            grouping_chain, session_folders)
+                                            grouping_chain, session_folders, language=DEFAULT_LANGUAGE)
         return _feature_groups
 
 

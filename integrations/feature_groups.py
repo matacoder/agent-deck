@@ -137,11 +137,16 @@ def apply_answer(store, text, commits):
     return placed
 
 
+def empty_store():
+    return {'groups': [], 'commits': {}, 'tries': {}, 'model': '', 'at': 0, 'error': '', 'language': ''}
+
+
 class FeatureGroups:
     """One store per repository; a background thread groups new commits and fetches remote branches."""
 
-    def __init__(self, cache, models, folders, run=subprocess.run, clock=time.time):
+    def __init__(self, cache, models, folders, run=subprocess.run, clock=time.time, language='en'):
         self.cache = Path(cache)
+        self.language = language  # the panel language last seen; repositories nobody opened use it
         self.models, self.folders = models, folders   # callables: model chain, session folders
         self.run, self.clock = run, clock
         self.lock = threading.Lock()
@@ -160,7 +165,7 @@ class FeatureGroups:
                 return store
         except (OSError, ValueError):
             pass
-        return {'groups': [], 'commits': {}, 'tries': {}, 'model': '', 'at': 0, 'error': ''}
+        return empty_store()
 
     def save(self, key, store):
         self.cache.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -173,6 +178,7 @@ class FeatureGroups:
         key, root = self.locate(folder)
         recent = log_commits(root, ['--branches', '--remotes', f'-n{SEED}'], run=self.run)
         with self.lock:
+            self.language = language
             first = 'language' not in self.state.get(key, {})
             state = self.state.setdefault(key, {})
             state.update(language=language, folder=root)
@@ -228,7 +234,7 @@ class FeatureGroups:
             self.state[key].update(running=True, forced=False)
         try:
             for _ in range(PASSES_PER_TICK):
-                if not self.one_pass(key, state['folder'], state.get('language', 'en'), state.get('forced')):
+                if not self.one_pass(key, state['folder'], state.get('language') or self.language, state.get('forced')):
                     break
                 state['forced'] = False
         finally:
@@ -236,7 +242,11 @@ class FeatureGroups:
                 self.state[key]['running'] = False
 
     def one_pass(self, key, root, language, forced):
+        language = language if re.fullmatch(r'[a-zA-Z-]{2,10}', language) else 'en'
         store = self.load(key)
+        if store['groups'] and store.get('language') != language:
+            # Titles and summaries are written in one language; another panel language sorts again.
+            store = empty_store()
         grouped = {sha for g in store['groups'] for sha in g['commits']}
         pending = [c for c in log_commits(root, ['--branches', '--remotes', f'-n{SEED}'], run=self.run)
                    if c['sha'] not in grouped][::-1]
@@ -244,8 +254,7 @@ class FeatureGroups:
         if not pending or not (forced or len(pending) >= BACKLOG or now - pending[-1]['time'] >= SETTLE):
             return False
         batch = pending[:BATCH]
-        prompt = pass_prompt(store['groups'], batch, commit_files(root, [c['sha'] for c in batch], run=self.run),
-                             language if re.fullmatch(r'[a-zA-Z-]{2,10}', language) else 'en')
+        prompt = pass_prompt(store['groups'], batch, commit_files(root, [c['sha'] for c in batch], run=self.run), language)
         errors = []
         for model in self.models():
             try:
@@ -259,6 +268,7 @@ class FeatureGroups:
                               'Нет модели для группировки: войдите в Claude, Codex или Kimi, или подключите LM Studio')[:300]
             self.save(key, store)
             return False
+        store['language'] = language
         self.record(store, batch, placed, model['label'], now)
         self.save(key, store)
         return True

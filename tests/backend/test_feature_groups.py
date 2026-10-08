@@ -99,6 +99,22 @@ class FeatureGroupTests(unittest.TestCase):
             groups.tick()
         self.assertEqual(groups.status(str(path))['error'], 'offline')
 
+    def test_groups_are_written_in_the_panel_language_and_sorted_again_when_it_changes(self):
+        path = repo(self, [('Denis', 'Add login', 'login.py', self.NOW - 3600)])
+        calls = []
+        groups = self.service(path, [{'label': 'Fake', 'complete': sorter(calls)}])
+        groups.language = 'ru'  # Last seen in the panel; nobody opened this repository yet.
+        with patch.object(F, 'fetch'):
+            groups.tick()
+        self.assertIn('language with code "ru"', calls[0])
+        groups.status(str(path), 'de')
+        with patch.object(F, 'fetch'):
+            groups.tick()
+        self.assertEqual(len(calls), 2)
+        self.assertIn('language with code "de"', calls[1])
+        self.assertIn('(none yet)', calls[1])  # Started over: no Russian titles carried into German.
+        self.assertEqual(len(groups.status(str(path), 'de')['groups']), 1)
+
     def test_background_fetch_runs_every_fifteen_minutes_per_repository(self):
         path = repo(self, [('Denis', 'Add login', 'login.py', self.NOW - 3600)])
         groups = self.service(path, [{'label': 'Fake', 'complete': sorter([])}])
