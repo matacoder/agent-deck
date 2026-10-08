@@ -2,6 +2,11 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.26.0 — 2026-10-08
+
+- A **?** next to the search field (in the sidebar on a phone) explains how Agent Deck works with a small diagram and how to check results remotely; the README has the same diagram. The search field no longer widens on focus.
+- Sidebar: every computer heading and project heading has a **+** (on hover; always shown on touch screens). It opens the new session form on that computer, and for a project with its folder already chosen.
+
 ## 1.25.1 — 2026-10-08
 
 - Desktop: the **⋯** menu opens under its button again instead of at the window's right edge over the project sidebar.

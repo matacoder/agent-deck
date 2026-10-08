@@ -15,9 +15,35 @@ after a reboot.
 
 <sub>Screenshots use demo data.</sub>
 
+## How it works
+
+```mermaid
+flowchart TD
+  B["Phone or laptop<br/>a browser, from anywhere"] -- "Tailscale: a private network, no open ports" --> P["Your computer running Agent Deck<br/>sessions keep working when the browser is closed"]
+  P --> S["Sessions in tmux<br/>Claude Code · Codex · Kimi · shell"]
+  S --> F["Project folders and git worktrees<br/>where agents change code"]
+  P -- "authenticated gateway" --> O["Other computers with Agent Deck<br/>their sessions in the same list"]
+  P --> T["Telegram and push notifications<br/>agent questions with answer buttons"]
+```
+
+The agents run on your own computer, in your project folders, exactly as if you had opened a terminal
+there. The browser is only a window onto them: close it and the work goes on; open it on a phone and you
+see the same sessions. Nothing is exposed to the internet — the phone reaches the computer over
+Tailscale.
+
+**Checking results while away from the computer:**
+
+- Agents send screenshots of what they built; the pictures open right in the session output.
+- A site an agent starts (a dev server) opens in the phone's browser at the computer's Tailscale address.
+- Changes, commits and files are in the panel on the right (the icons at the top on a phone); tap a changed
+  line to comment on it in your next message.
+
+The **?** next to the search field in the session bar shows the same picture inside the panel.
+
 ## Features
 
 - Tabs for all your sessions, grouped by project, with live terminals and "working / waiting / done" status.
+- A **+** on each computer and project heading starts a new session there, with the folder already chosen.
 - Claude Code, Codex, Claude through Kimi, native Kimi Code or a plain terminal per tab; the **⋯** menu restarts an agent with a new or the same conversation, duplicates a session with a fresh conversation, renames or closes it.
 - Pick a GitHub repo and start working; optional git worktree per session (one branch per agent).
 - Change history with uncommitted changes: tap a line of the agent's diff to add a `file:line` comment to your message.

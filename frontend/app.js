@@ -325,7 +325,7 @@ function deckName(id){return id?deckDirectory.decks.find(d=>d.id===id)?.name||"A
 function renderCurrentSessions(box,list){
   let grp=null,i=0;
   for(const s of list){
-    if(s.group!==grp){grp=s.group;box.append(el("div","grp",grp))}
+    if(s.group!==grp){grp=s.group;box.append(groupHeader(selectedDeck,grp,list))}
     i++;const st=state(s);
     const t=el("div","tab"+(s.name===active?" on":""));
     const dot=el("span","dot "+st);dot.title=stateText(s);
@@ -438,6 +438,7 @@ function select(name){
   if(name===active){drawer(false);return}
   activate(name);drawer(false);renderTabs();show();load();
 }
+function openHelp(){if(!$("help_dlg").open)$("help_dlg").showModal()}
 function showClosedDrafts(){
   drawer(false);sheet(false);
   renderClosedDraftList({box:$("closed_drafts"),drafts:closedDrafts,copy:text=>copyToClipboard(text,window),remove:name=>{closedDrafts.delete(name);saveClosedDrafts();showClosedDrafts()},translate:tr});
@@ -955,7 +956,29 @@ function deckHeader(deck,current){
     head.type="button";head.dataset.deck=key;head.setAttribute("aria-expanded",String(open));head.append(svgIcon(open?"chevron-down":"chevron-right"));
     head.onclick=()=>{deckOpen[key]=!open;try{localStore.setItem("cc.deck-open",JSON.stringify(deckOpen))}catch(e){}renderTabs()};
   }
-  return head;
+  if(deck.error)return head;
+  return el("div","head-row",head,addButton(tr("Новая сессия на «{0}»",[deck.name]),()=>newSessionOn(deck.id,{})));
+}
+// A project heading with its own "+": a new session in that folder, on that computer.
+function groupHeader(deckId,group,list){
+  const folder=groupFolder(list.find(s=>s.group===group)?.path||"",group);
+  if(!folder)return el("div","grp",group);
+  return el("div","head-row grp-row",el("div","grp",group),addButton(tr("Новая сессия в «{0}»",[group]),()=>newSessionOn(deckId,{path:folder,project:group})));
+}
+// The project folder is the path component named like the group (a "<name>.worktrees" sibling counts as it).
+function groupFolder(path,group){
+  const parts=path.split("/");
+  for(let i=parts.length-1;i>0;i--)if(parts[i]===group||parts[i]===group+".worktrees")return [...parts.slice(0,i),group].join("/");
+  return "";
+}
+function addButton(label,run){
+  const b=el("button","row-add",svgIcon("plus"));b.type="button";b.setAttribute("aria-label",label);b.title=label;
+  b.onclick=e=>{e.stopPropagation();run()};return b;
+}
+// The form opens on the right computer; a refused switch (a send in progress) never opens it on the wrong one.
+function newSessionOn(deckId,preset){
+  if(deckId!==selectedDeck){switchDeck(deckId);if(selectedDeck!==deckId)return}
+  openNew(preset);
 }
 function renderDeckSection(box,deck,q){
   const list=deck.sessions.filter(s=>matchesSessionQuery(s,q));
@@ -973,7 +996,7 @@ function renderDeckSection(box,deck,q){
   let grp=null;
   for(const s of list){
     // Project headings as on this computer, so a session reads the same wherever you look from.
-    if(s.group&&s.group!==grp){grp=s.group;box.append(el("div","grp",grp))}
+    if(s.group&&s.group!==grp){grp=s.group;box.append(groupHeader(deck.id,grp,list))}
     const st=state(s),word=waitingFor(deck.id,s.name)?["ask",tr("ждёт ответа")]:st==="busy"?["busy",tr("работает")]:st==="off"?["off",tr("остановлен")]:null;
     const t=el("div","tab remote",el("span","dot "+st),agentIcon(s),el("div","t",el("div","n",sessionTitle(s)),
       el("div","s",...(word?[el("span","state "+word[0],word[1])," · "]:[]),shortPath(s.path))));
@@ -1138,17 +1161,22 @@ function pickAgent(a){
   $("n_skip_row").style.display=["shell","pi"].includes(a)?"none":"";
   if(!["shell","pi"].includes(a))$("n_skip_flag").textContent=AGENTS[a].skip;renderSources();
 }
-async function openNew(){
+// preset: {path, project} from a project heading; the folder is used as is while its name stays in the field.
+let newPreset=null;
+async function openNew(preset){
   returnToNew=false;if($("settings_dlg").open)$("settings_dlg").close();drawer(false);
+  newPreset=typeof preset?.path==="string"?preset:null;
+  if(newPreset){$("n_proj").value=newPreset.project;if(!$("n_name").value||$("n_name").dataset.auto){$("n_name").value=newPreset.project.replace(/[^A-Za-z0-9_-]/g,"-").slice(0,32);$("n_name").dataset.auto="1"}}
   try{const{projects}=await api("/api/projects");$("projlist").replaceChildren(...projects.map(p=>{const o=document.createElement("option");o.value=p;return o}))}catch(e){}
-  $("dlg").showModal();loadGithub();await refreshLMModels();renderSources();
+  if(!$("dlg").open)$("dlg").showModal();loadGithub();await refreshLMModels();renderSources();
 }
 async function createSession(){
   const name=$("n_name").value.trim();$("n_go").disabled=true;$("n_go").textContent=tr("Создаю…");
-  const ok=await post("/api/new",{name,project:$("n_proj").value.trim()||name,git:$("n_git").value.trim(),
+  const project=$("n_proj").value.trim()||name,path=newPreset&&project===newPreset.project&&!$("n_git").value.trim()?newPreset.path:undefined;
+  const ok=await post("/api/new",{name,path,project,git:$("n_git").value.trim(),
     worktree:$("n_wt").checked,branch:$("n_branch").value.trim(),skip:$("n_skip").checked,agent:newAgent,source:["claude","kimi","pi"].includes(newAgent)&&$("n_source").value?JSON.parse($("n_source").value):undefined});
   $("n_go").disabled=false;$("n_go").textContent=tr("Создать");
-  if(ok){$("dlg").close();for(const i of["n_name","n_proj","n_git","n_branch"])$(i).value="";$("n_wt").checked=false;$("n_adv").open=false;renderAdvanced();select(ok.name||name)}
+  if(ok){$("dlg").close();newPreset=null;for(const i of["n_name","n_proj","n_git","n_branch"])$(i).value="";$("n_wt").checked=false;$("n_adv").open=false;renderAdvanced();select(ok.name||name)}
 }
 function renderAdvanced(){
   $("n_branch_row").hidden=!$("n_wt").checked;

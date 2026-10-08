@@ -423,6 +423,37 @@ test('the same Telegram bot on another computer can be turned off there from her
   }finally{window.close()}
 });
 
+test('the + of a project heading opens the new session form for that folder',async()=>{
+  const state={local:()=>({sessions:[session('alpha',{group:'alpha',path:'/home/demo/projects/alpha/.claude/worktrees/w1'})]})};
+  const routes=routesFor(state),created=[];
+  routes['/api/projects']=()=>({projects:['alpha']});
+  routes['/api/new']=(url,options)=>{created.push(JSON.parse(options.body));return {name:'alpha-2'}};
+  const window=boot(routes);
+  try{
+  await settle();await settle();
+  const doc=window.document;
+  doc.querySelector('#tabs .grp-row .row-add').click();await settle();
+  expect(doc.getElementById('dlg').open).toBe(true);
+  expect(doc.getElementById('n_proj').value).toBe('alpha');
+  window.eval('createSession()');await settle();
+  expect(created[0]).toMatchObject({name:'alpha',project:'alpha',path:'/home/demo/projects/alpha'});
+  // Every computer heading offers one too.
+  expect(doc.querySelector('#tabs .head-row .deck-head + .row-add')).not.toBeNull();
+  }finally{window.close()}
+});
+
+test('the ? next to search explains how the panel works',async()=>{
+  const state={local:()=>({sessions:[session('alpha')]})};
+  const window=boot(routesFor(state));
+  try{
+  await settle();await settle();
+  const doc=window.document;
+  doc.getElementById('b_help').click();
+  expect(doc.getElementById('help_dlg').open).toBe(true);
+  expect(doc.querySelectorAll('#help_dlg .how-node').length).toBe(6);
+  }finally{window.close()}
+});
+
 test('a clean working tree shows the last commit in Changes',async()=>{
   const state={local:()=>({sessions:[session('alpha')]})};
   const routes=routesFor(state),head='c'.repeat(40);

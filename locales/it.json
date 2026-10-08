@@ -824,6 +824,23 @@
     "Отключить на {0}": "Disattiva su {0}",
     "Отключить Telegram на {0}?": "Disattivare Telegram su {0}?",
     "Токен бота там будет удалён; здесь Telegram продолжит работать.": "Lì il token del bot verrà rimosso; qui Telegram continua a funzionare.",
-    "Telegram отключён на {0}": "Telegram disattivato su {0}"
+    "Telegram отключён на {0}": "Telegram disattivato su {0}",
+    "Новая сессия в «{0}»": "Nuova sessione in «{0}»",
+    "Как это работает": "Come funziona",
+    "Телефон или ноутбук": "Telefono o portatile",
+    "браузер, откуда угодно": "un browser, ovunque",
+    "Tailscale: личная сеть без открытых портов": "Tailscale: rete privata, nessuna porta aperta",
+    "Ваш компьютер · Agent Deck": "Il tuo computer · Agent Deck",
+    "сессии работают, даже когда браузер закрыт": "le sessioni continuano a browser chiuso",
+    "Claude Code, Codex, Kimi или терминал в tmux": "Claude Code, Codex, Kimi o un terminale in tmux",
+    "Проекты": "Progetti",
+    "папки и рабочие деревья git, где агенты меняют код": "cartelle e worktree git in cui gli agenti modificano il codice",
+    "подключаются к этой панели: все сессии в одном списке": "si collegano a questo pannello: tutte le sessioni in un elenco",
+    "Telegram и уведомления": "Telegram e notifiche",
+    "вопросы агентов с кнопками ответа": "domande degli agenti con pulsanti di risposta",
+    "Как проверить результат удалённо": "Controllare il risultato da remoto",
+    "Агенты присылают скриншоты: картинки открываются прямо в выводе.": "Gli agenti inviano screenshot: le immagini si aprono nell'output.",
+    "Сайт, который запустил агент, открывается по адресу компьютера в Tailscale.": "Un sito avviato dall'agente si apre all'indirizzo Tailscale del computer.",
+    "Изменения, коммиты и файлы — в панели справа (на телефоне — иконки сверху).": "Modifiche, commit e file sono nel pannello a destra (icone in alto sul telefono)."
   }
 }

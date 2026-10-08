@@ -824,6 +824,23 @@
     "Отключить на {0}": "Matikan di {0}",
     "Отключить Telegram на {0}?": "Matikan Telegram di {0}?",
     "Токен бота там будет удалён; здесь Telegram продолжит работать.": "Token bot di sana akan dihapus; Telegram di sini tetap berjalan.",
-    "Telegram отключён на {0}": "Telegram dimatikan di {0}"
+    "Telegram отключён на {0}": "Telegram dimatikan di {0}",
+    "Новая сессия в «{0}»": "Sesi baru di “{0}”",
+    "Как это работает": "Cara kerjanya",
+    "Телефон или ноутбук": "Ponsel atau laptop",
+    "браузер, откуда угодно": "peramban, dari mana saja",
+    "Tailscale: личная сеть без открытых портов": "Tailscale: jaringan pribadi tanpa port terbuka",
+    "Ваш компьютер · Agent Deck": "Komputer Anda · Agent Deck",
+    "сессии работают, даже когда браузер закрыт": "sesi tetap berjalan saat peramban ditutup",
+    "Claude Code, Codex, Kimi или терминал в tmux": "Claude Code, Codex, Kimi, atau terminal di tmux",
+    "Проекты": "Proyek",
+    "папки и рабочие деревья git, где агенты меняют код": "folder dan worktree git tempat agen mengubah kode",
+    "подключаются к этой панели: все сессии в одном списке": "terhubung ke panel ini: semua sesi dalam satu daftar",
+    "Telegram и уведомления": "Telegram dan notifikasi",
+    "вопросы агентов с кнопками ответа": "pertanyaan agen dengan tombol jawaban",
+    "Как проверить результат удалённо": "Memeriksa hasil dari jauh",
+    "Агенты присылают скриншоты: картинки открываются прямо в выводе.": "Agen mengirim tangkapan layar: gambar terbuka langsung di keluaran.",
+    "Сайт, который запустил агент, открывается по адресу компьютера в Tailscale.": "Situs yang dijalankan agen terbuka di alamat Tailscale komputer.",
+    "Изменения, коммиты и файлы — в панели справа (на телефоне — иконки сверху).": "Perubahan, commit, dan berkas ada di panel kanan (ikon di atas pada ponsel)."
   }
 }
