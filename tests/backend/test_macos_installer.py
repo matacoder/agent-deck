@@ -10,7 +10,7 @@ FAKE = {
     'uname': 'echo Darwin',
     'id': '[ "$1" = -u ] && echo 501 || echo tata',
     'stat': 'echo admin',
-    'brew': 'echo "brew $*" >> "$LOG"; [ "$1" = --prefix ] && echo "$PREFIX"; exit 0',
+    'brew': 'echo "brew $*" >> "$LOG"; case "$1" in --prefix) echo "$PREFIX";; --repository) echo "$REPO";; esac; exit 0',
     'python3': 'echo "python3 $*" >> "$LOG"; exit 0',
 }
 
@@ -18,7 +18,7 @@ FAKE = {
 class MacInstallerTests(unittest.TestCase):
     """install-macos.sh with stand-ins for macOS tools: which Homebrew commands it would run."""
 
-    def run_installer(self, present, writable=True):
+    def run_installer(self, present, writable=True, intel=False):
         tmp = tempfile.TemporaryDirectory(dir='/tmp')
         self.addCleanup(tmp.cleanup)
         root = Path(tmp.name)
@@ -36,7 +36,12 @@ class MacInstallerTests(unittest.TestCase):
         if not writable:
             prefix.chmod(0o555)
             self.addCleanup(prefix.chmod, 0o755)
-        env = {'PATH': str(bin_dir), 'HOME': str(home), 'LOG': str(log), 'PREFIX': str(prefix)}
+        repo = prefix / 'Homebrew' if intel else prefix
+        repo.mkdir(exist_ok=True)
+        if intel:
+            prefix.chmod(0o555)  # /usr/local stays root-owned on Intel Macs even for Homebrew's own account.
+            self.addCleanup(prefix.chmod, 0o755)
+        env = {'PATH': str(bin_dir), 'HOME': str(home), 'LOG': str(log), 'PREFIX': str(prefix), 'REPO': str(repo)}
         result = subprocess.run([subprocess.run(['which', 'bash'], capture_output=True, text=True).stdout.strip(), str(ROOT / 'install-macos.sh')], env=env, capture_output=True, text=True,
                                 input='', timeout=30)
         calls = log.read_text().splitlines() if log.exists() else []
@@ -58,6 +63,10 @@ class MacInstallerTests(unittest.TestCase):
         self.assertIn('belongs to "admin"', result.stderr)
         self.assertIn('brew install ttyd', result.stderr)
         self.assertIn('sudo chown -R "tata"', result.stderr)
+
+    def test_an_intel_mac_with_a_root_owned_usr_local_still_installs(self):
+        result, installs = self.run_installer({'tmux', 'gh', 'claude', 'codex'}, intel=True)
+        self.assertEqual(installs, ['brew install ttyd'], result.stderr)
 
 
 if __name__ == '__main__':

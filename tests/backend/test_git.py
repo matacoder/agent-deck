@@ -142,6 +142,30 @@ class ChangesTests(unittest.TestCase):
         self.assertNotIn('PANEL_PASSWORD', json.dumps(files))
 
 
+class ChangesPrivacyTests(unittest.TestCase):
+    def test_a_home_folder_kept_in_git_never_shows_the_panel_secrets(self):
+        tmp = tempfile.TemporaryDirectory(dir='/tmp')
+        self.addCleanup(tmp.cleanup)
+        home = Path(tmp.name)
+        env = ['-c', 'user.name=Dev', '-c', 'user.email=dev@example.test', '-c', 'commit.gpgsign=false']
+        run = lambda *args: subprocess.run(['git', *env, '-C', str(home), *args], check=True, capture_output=True)
+        run('init', '-q')
+        (home / '.config/cc-panel').mkdir(parents=True)
+        (home / '.config/cc-panel/env').write_text('PANEL_PASSWORD=tracked\n')
+        (home / 'notes.txt').write_text('a\n')
+        run('add', '.'); run('commit', '-q', '-m', 'dotfiles')
+        (home / '.config/cc-panel/env').write_text('PANEL_PASSWORD=changed\n')
+        (home / '.config/cc-panel/new-key').write_text('SECRET=new\n')
+        (home / 'notes.txt').write_text('b\n')
+        index = (home / '.git/index').stat().st_mtime_ns
+        with patch.dict('os.environ', {'HOME': str(home)}):
+            data = G.changes(home)
+        self.assertEqual([f['path'] for f in data['files']], ['notes.txt'])
+        self.assertNotIn('PANEL_PASSWORD', json.dumps(data))
+        self.assertNotIn('SECRET', json.dumps(data))
+        self.assertEqual((home / '.git/index').stat().st_mtime_ns, index)  # Read-only: no index refresh.
+
+
 class PanelGitTests(PanelCase):
     def test_git_routes_need_a_real_session(self):
         with self.assertRaisesRegex(ValueError, 'сессия не найдена'):

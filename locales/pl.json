@@ -804,6 +804,7 @@
     "Ждут ответа: {0}": "Czekają na ciebie: {0}",
     "Новая сессия на «{0}»": "Nowa sesja na „{0}”",
     "Подключено": "Połączono",
-    "Подключено как «{0}»": "Połączono jako „{0}”"
+    "Подключено как «{0}»": "Połączono jako „{0}”",
+    "Последняя проверка всех копий: {0}": "Ostatnie sprawdzenie wszystkich kopii: {0}"
   }
 }

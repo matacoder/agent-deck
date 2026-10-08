@@ -52,7 +52,20 @@ function placeEditor(cards,key,editor){
 // After an editor closes, focus returns to the card it came from instead of the page body.
 function focusCard(key){
   if(!key)return;
-  requestAnimationFrame(()=>document.querySelector(`#settings_dlg [data-card="${key}"] .card-tools button, #settings_dlg [data-card="${key}"] .card-tools summary`)?.focus({preventScroll:true}));
+  const card=`#settings_dlg [data-card="${key}"]`;
+  requestAnimationFrame(()=>document.querySelector(`${card} .card-tools button, ${card} .card-tools summary, ${card} .hub-row-actions button, ${card} .hub-row-actions summary`)?.focus({preventScroll:true}));
+}
+// Someone is typing in this editor: a background refresh must not move it (focus and the phone keyboard
+// would be lost) and must not overwrite what was typed.
+function editorInUse(editor){return !editor.hidden&&editor.contains(document.activeElement)}
+// Each editor remembers its values when it opens; only a difference from that counts as unsaved.
+function editorValues(editor){return JSON.stringify([...editor.querySelectorAll("input,select,textarea")].map(i=>i.type==="checkbox"?i.checked:i.value))}
+function snapshotEditor(editor){editor.dataset.initial=editorValues(editor)}
+// A loaded value replaces a field only while the user has not changed it since the last load.
+function syncField(input,value){
+  value=value??"";
+  if(input.dataset.loaded===undefined||input.value===input.dataset.loaded)input.value=value;
+  input.dataset.loaded=value;
 }
 
 /* ---------- sections ---------- */
@@ -89,19 +102,22 @@ function hubNavKey(e){
 }
 async function openSettings(section="agents"){
   drawer(false);sheet(false);settingsSection(section);
+  // Already open (an editor button, a link between sections): switching is enough, a reload would
+  // overwrite fields being edited elsewhere.
+  if($("settings_dlg").open){renderHub();return}
   $("hub_title").textContent=deckDirectory.decks.length?tr("Настройки · {0}",[currentDeckName()]):tr("Настройки");
   if(!$("settings_dlg").open)$("settings_dlg").showModal();updateHubNavFade();
   renderHub();
   // Push and backup state feed the getting-started card and the section dots.
-  await Promise.allSettled([loadDeckSettings(),loadPush(),loadBackups(),(async()=>{const data=await api("/api/project_directory");$("project_directory").value=data.directory})(),refreshLMModels(),loadIntegrations(),checkGithubFoot(),(async()=>{const data=await api("/api/locales");$("ui_language").replaceChildren(...data.languages.map(x=>{const o=el("option","",x.name);o.value=x.code;return o}));$("ui_language").value=I18N.language})()]);
+  await Promise.allSettled([loadDeckSettings(),loadPush(),loadBackups(),(async()=>{const data=await api("/api/project_directory");syncField($("project_directory"),data.directory)})(),refreshLMModels(),loadIntegrations(),checkGithubFoot(),(async()=>{const data=await api("/api/locales");$("ui_language").replaceChildren(...data.languages.map(x=>{const o=el("option","",x.name);o.value=x.code;return o}));$("ui_language").value=I18N.language})()]);
+  if(!$("settings_dlg").open)return;  // Closed while loading (e.g. an agent sign-in started).
   renderHub();
   clearInterval(lmTimer);lmTimer=setInterval(()=>{if(!document.hidden&&$("settings_dlg").open){if(lmData.discovery?.phase==="running")loadLM(false);if(hubSection==="models"&&Date.now()-lmModelsChecked>30000)refreshLMModels()}},2000);
 }
-function openHubEditor(){return ["kimi_dlg","integrations_dlg","lm_editor","deck_editor","backup_join_card"].map($).find(e=>!e.hidden)}
-function hubEditorDirty(){
-  return Boolean($("kimi_key").value||telegramDirty||$("lm_key").value||$("deck_password").value||$("backup_join_code").value||
-    (!$("lm_editor").hidden&&!$("lm_id").value&&$("lm_url").value)||(!$("deck_editor").hidden&&!$("deck_id").value&&$("deck_url").value));
-}
+const HUB_EDITORS=["kimi_dlg","integrations_dlg","lm_editor","deck_editor","backup_join_card"];
+// The open editor of the section on screen; one left open in another section is not what Escape means.
+function openHubEditor(){return HUB_EDITORS.map($).find(e=>!e.hidden&&$("hub_"+hubSection).contains(e))}
+function hubEditorDirty(editor){return Boolean(editor&&!editor.hidden&&editor.dataset.initial!==undefined&&editorValues(editor)!==editor.dataset.initial)}
 function closeHubEditor(editor){
   ({kimi_dlg:closeKimi,integrations_dlg:closeIntegrations,lm_editor:resetLM,deck_editor:closeDeckEditor,backup_join_card:closeBackupJoin})[editor.id]();
 }
@@ -109,16 +125,17 @@ function closeHubEditor(editor){
 async function settingsCancel(e){
   const editor=openHubEditor();if(!editor)return;
   e.preventDefault();
-  if(hubEditorDirty()&&!await confirmAction(tr("Изменения не сохранены. Закрыть без сохранения?"),{confirm:tr("Закрыть без сохранения"),danger:true}))return;
+  if(hubEditorDirty(editor)&&!await confirmAction(tr("Изменения не сохранены. Закрыть без сохранения?"),{confirm:tr("Закрыть без сохранения"),danger:true}))return;
   closeHubEditor(editor);
 }
 async function closeSettings(){
-  if(openHubEditor()&&hubEditorDirty()&&!await confirmAction(tr("Изменения не сохранены. Закрыть без сохранения?"),{confirm:tr("Закрыть без сохранения"),danger:true}))return;
+  if(HUB_EDITORS.some(id=>hubEditorDirty($(id)))&&!await confirmAction(tr("Изменения не сохранены. Закрыть без сохранения?"),{confirm:tr("Закрыть без сохранения"),danger:true}))return;
   $("settings_dlg").close();
 }
 function settingsClosed(){
   if($("settings_dlg").open)return;
-  clearInterval(lmTimer);clearInterval(deckTimer);closeKimi();closeIntegrations();resetLM();closeDeckEditor();
+  clearInterval(lmTimer);clearInterval(deckTimer);clearTimeout(pushTimer);pushUnavailableSince=0;
+  closeKimi();closeIntegrations();resetLM();closeDeckEditor();closeBackupJoin();
   if(returnToNew){returnToNew=false;$("dlg").showModal();renderSources()}
 }
 function hubInit(){
@@ -136,9 +153,12 @@ function pushReadyHere(){
   if(!Array.isArray(pushState?.devices))return null;
   return pushState.devices.some(d=>d.id===localStore.getItem("cc.push-id"));
 }
+// null: not known yet, or cannot be done here (no HTTPS, an iPhone outside the home screen); such a step
+// neither keeps the card open nor counts as done.
 function setupSteps(){
-  return [[tr("Войдите в Claude или Codex"),["claude","codex"].some(a=>lastAg[a]?.logged_in),"agents"],
-    [tr("Включите уведомления на этом устройстве"),pushReadyHere(),"notifications"],
+  const pushPossible=pushState?.available&&!pushBlocker(pushEnvironment());
+  return [[tr("Войдите в Claude или Codex"),lastAg.claude?["claude","codex"].some(a=>lastAg[a]?.logged_in):null,"agents"],
+    [tr("Включите уведомления на этом устройстве"),pushPossible?pushReadyHere():null,"notifications"],
     [tr("Включите бэкапы"),backupStatus?Boolean(backupStatus.configured):null,"backups"]];
 }
 function renderSetupCard(){

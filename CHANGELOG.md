@@ -2,6 +2,17 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.22.10 — 2026-10-08
+
+Fixes from a four-way review (backend and installers, settings, the rest of the interface, security) of everything released on 2026-10-07.
+
+- **Security:** Changes in history never shows the panel's own folder (`~/.config/cc-panel`) when the home folder is a git repository. A diff line quoted into a comment loses hidden control characters, and paste markers inside sent text are removed, so repository content cannot end a paste early and act as keys (Esc, Shift+Tab) in an agent. Git reads take no optional locks (an agent's `git add` no longer fails on `index.lock`) and never start a repository's `core.fsmonitor`.
+- Images named without a folder are searched only inside a project folder under home, never in the home folder itself, hidden or personal folders (`Documents`, `Library`, …), reading folders lazily.
+- Output search cuts multi-megabyte lines around the match; a stuck tmux is a clear error. The working-tree diff has a time limit; repositories using SHA-256 without commits work.
+- macOS installer: Intel Macs (Homebrew in `/usr/local`) install again; the fix-up hint names only Homebrew's own folders. Windows installer: a host that refuses UTF-8 output (PowerShell ISE) no longer aborts the installation.
+- Settings: a background refresh no longer steals focus or the phone keyboard from an editor being typed in, and never overwrites fields being edited; opening the Kimi or Telegram editor no longer reloads the dialog. Unsaved changes are judged per editor (no false "unsaved" prompts, no silently dropped edits), and Escape closes the editor of the section on screen. Backups, a recovery code and an update entry no longer carry over to another computer; backup errors toast only in Backups. Getting started ignores steps that cannot be done here (no HTTPS). The Telegram switch is not undone by polling; notification events can be set from any device; the "encryption components" state refreshes by itself.
+- Desktop and iPad with a keyboard keep the typing focus when switching tabs (the iOS keyboard fix now applies to touch devices only). Option+K types "˚" on a Mac again (Cmd+K opens the switcher). New session on another computer never opens on the current one when the switch is refused. A diff comment always goes to the session whose history is open. Output search drops a late answer from the previous session. Large Markdown headings with long runs of spaces render at once; a 10 MB preview decodes without freezing; preview memory is freed when Files closes. The drop frame no longer blinks during a held drag and ignores pictures dragged from the page. A failed thumbnail is retried after a minute, per computer, and not after an offline moment. The message field stays correct when it is off screen or loses lines.
+
 ## 1.22.9 — 2026-10-07
 
 - The message field no longer creeps while typing (seen in desktop Safari): its height now includes the border, so it never ends up 2 px short and scrolled, and it is re-measured only when a line is added or text is removed instead of collapsing on every key.

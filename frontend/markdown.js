@@ -43,8 +43,10 @@ function renderMarkdown(text,doc=document){
       while(i<lines.length&&!lines[i].trim().startsWith(fence[1]))code.push(lines[i++]);
       i++;root.append(mdNode(doc,"pre",mdNode(doc,"code",code.join("\n"))));continue;
     }
-    const heading=line.match(/^(#{1,6})\s+(.*?)\s*#*\s*$/);
-    if(heading){root.append(mdNode(doc,"h"+heading[1].length,...mdInline(doc,heading[2])));i++;continue}
+    // One greedy group, trimmed afterwards: a lazy group between optional spaces backtracks for seconds
+    // on a long run of spaces.
+    const heading=line.match(/^(#{1,6})\s+(.*)$/);
+    if(heading){root.append(mdNode(doc,"h"+heading[1].length,...mdInline(doc,heading[2].trimEnd().replace(/(^|\s)#+$/,"").trimEnd())));i++;continue}
     if(/^\s*([-*_]\s*){3,}$/.test(line)){root.append(doc.createElement("hr"));i++;continue}
     if(line.includes("|")&&/^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?\s*$/.test(lines[i+1]||"")){
       const rows=[line,lines[i+1]];i+=2;

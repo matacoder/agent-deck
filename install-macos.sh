@@ -25,16 +25,22 @@ for tool in tmux ttyd gh; do command -v "$tool" >/dev/null || formulae+=("$tool"
 [ "${WITH_CLAUDE:-1}" != 1 ] || command -v claude >/dev/null || casks+=(claude-code)
 [ "${WITH_CODEX:-1}" != 1 ] || command -v codex >/dev/null || casks+=(codex)
 prefix=$(brew --prefix)
-if [ $((${#formulae[@]} + ${#casks[@]})) -gt 0 ] && [ ! -w "$prefix" ]; then
-    owner=$(stat -f %Su "$prefix" 2>/dev/null || echo 'another user')
+# What Homebrew itself writes to. On Intel Macs the prefix is /usr/local, which stays root-owned even for
+# the account that owns Homebrew, so the prefix itself is not checked.
+locked=()
+for dir in "$(brew --repository)" "$prefix/bin" "$prefix/Cellar" "$prefix/Caskroom"; do
+    [ ! -e "$dir" ] || [ -w "$dir" ] || locked+=("$dir")
+done
+if [ $((${#formulae[@]} + ${#casks[@]})) -gt 0 ] && [ ${#locked[@]} -gt 0 ]; then
+    owner=$(stat -f %Su "${locked[0]}" 2>/dev/null || echo 'another user')
     cat >&2 <<MESSAGE
-Homebrew at $prefix belongs to "$owner", so "$(id -un)" cannot install with it.
+Homebrew on this Mac belongs to "$owner", so "$(id -un)" cannot install with it.
 Missing here: ${formulae[*]:-} ${casks[*]:-}
 Choose one:
   - run this installer from the "$owner" account, or install the missing tools there:
       brew install ${formulae[*]:-} ${casks[*]:+--cask ${casks[*]}}
   - or take Homebrew over for this account (the "$owner" account loses write access to it):
-      sudo chown -R "$(id -un)" "$prefix"
+      sudo chown -R "$(id -un)" ${locked[*]}
 Then run the installer again.
 MESSAGE
     exit 1

@@ -37,9 +37,9 @@ function imageLink(session,path,runs,from,to){
 }
 // A path that did not load is not tried again for a while: the screen redraws often, and each new
 // attempt would show an empty thumbnail that then disappears (a blink).
-const missingImages=new Map(),MISSING_FOR=5*60*1000;
+const missingImages=new Map(),MISSING_FOR=60*1000;
 function imageMissing(session,path,now=Date.now()){
-  const key=session+"\n"+path,at=missingImages.get(key);
+  const key=selectedDeck+"\n"+session+"\n"+path,at=missingImages.get(key);
   if(at&&now-at<MISSING_FOR)return true;
   missingImages.delete(key);return false;
 }
@@ -51,7 +51,8 @@ function imageStrip(session,paths){
     thumb.type="button";thumb.title=path;thumb.setAttribute("aria-label",tr("Открыть картинку {0}",[path.split("/").pop()]));
     img.loading="lazy";img.decoding="async";img.alt="";img.src=imageUrl(session,path,true);
     // Missing files, or paths no longer on screen, simply leave the text without a preview.
-    img.onerror=()=>{missingImages.set(session+"\n"+path,Date.now());thumb.remove()};
+    // Offline or a restarting panel is no reason to stop trying this picture.
+    img.onerror=()=>{if(connection==="online")missingImages.set(selectedDeck+"\n"+session+"\n"+path,Date.now());thumb.remove()};
     thumb.append(img);thumb.onclick=()=>openViewer(path);strip.append(thumb);
   }
   return strip;

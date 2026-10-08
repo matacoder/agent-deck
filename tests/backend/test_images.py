@@ -56,24 +56,32 @@ class ImageTests(unittest.TestCase):
             self.read('notes.png', screen)
 
     def test_a_bare_file_name_is_found_inside_the_session_folder_newest_first(self):
-        old, new = self.root / 'project/test-results/a', self.root / 'project/test-results/b'
+        project = self.root / 'home/dev/app'
+        old, new = project / 'test-results/a', project / 'test-results/b'
         old.mkdir(parents=True); new.mkdir()
         (old / 'chromium-1440.png').write_bytes(PNG)
         (new / 'chromium-1440.png').write_bytes(PNG + b'new')
         os.utime(old / 'chromium-1440.png', (1, 1))
         screen = SCREEN + '\n• Viewed image chromium-1440.png'
-        self.assertEqual(self.read('chromium-1440.png', screen)[1], PNG + b'new')
+        found = I.read_image('chromium-1440.png', project, self.root / 'home', screen)
+        self.assertEqual(found[1], PNG + b'new')
 
-    def test_name_search_skips_dependencies_links_and_stops_early(self):
-        (self.root / 'project/node_modules/pkg').mkdir(parents=True)
-        (self.root / 'project/node_modules/pkg/only.png').write_bytes(PNG)
+    def test_name_search_skips_dependencies_links_personal_folders_and_stops_early(self):
+        home, project = self.root / 'home', self.root / 'home/dev/app'
+        (project / 'node_modules/pkg').mkdir(parents=True)
+        (project / 'node_modules/pkg/only.png').write_bytes(PNG)
+        (project / 'Documents').mkdir()
+        (project / 'Documents/private.png').write_bytes(PNG)
         (self.root / 'outside.png').write_bytes(PNG)
-        (self.root / 'project/link').symlink_to(self.root)
-        self.assertIsNone(I.find_by_name('only.png', self.root / 'project'))
-        self.assertIsNone(I.find_by_name('outside.png', self.root / 'project'))
-        with self.assertRaises(FileNotFoundError):
-            self.read('only.png', SCREEN + ' only.png')
-        self.assertIsNone(I.find_by_name('home.png', self.root / 'project', limit=1))
+        (project / 'link').symlink_to(self.root)
+        (project / 'shot.png').write_bytes(PNG)
+        for name in ('only.png', 'outside.png', 'private.png'):
+            self.assertIsNone(I.find_by_name(name, project, home), name)
+        self.assertIsNone(I.find_by_name('shot.png', project, home, limit=0))
+        self.assertIsNotNone(I.find_by_name('shot.png', project, home))
+        # A session in the home folder itself, or outside it, is never searched.
+        self.assertIsNone(I.find_by_name('report.jpg', home, home))
+        self.assertIsNone(I.find_by_name('shot.png', self.root / 'project', home))
 
     def test_large_files_are_refused(self):
         with patch.object(I, 'MAX_BYTES', 10):

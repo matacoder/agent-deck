@@ -5,7 +5,8 @@ const outputSearch={session:null,query:"",seq:0,result:null,error:"",busy:false}
 
 function openOutputSearch(){
   if(!active)return;
-  if(outputSearch.session!==active)Object.assign(outputSearch,{session:active,query:"",result:null,error:""});
+  // A new number drops an answer still on its way for the previous session.
+  if(outputSearch.session!==active)Object.assign(outputSearch,{session:active,query:"",result:null,error:"",busy:false,seq:outputSearch.seq+1});
   if(!$("search_dlg").open)$("search_dlg").showModal();
   const input=$("search_q");input.value=outputSearch.query;renderOutputSearch();
   setTimeout(()=>{input.focus();input.select()},0);

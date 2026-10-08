@@ -6,6 +6,15 @@ make the panel spin. Results are capped; each match carries a few lines around i
 MAX_QUERY = 200
 MAX_MATCHES = 200
 CONTEXT = 2
+MAX_LINE = 2000  # tmux joins wrapped rows: one minified file can be a multi-megabyte line.
+
+
+def clip(line, at=0):
+    """A window of a long line, around the match when there is one."""
+    if len(line) <= MAX_LINE:
+        return line
+    start = max(0, min(at - MAX_LINE // 4, len(line) - MAX_LINE))
+    return ('…' if start else '') + line[start:start + MAX_LINE] + ('…' if start + MAX_LINE < len(line) else '')
 
 
 def search(text, query, limit=MAX_MATCHES, context=CONTEXT):
@@ -21,6 +30,7 @@ def search(text, query, limit=MAX_MATCHES, context=CONTEXT):
             continue
         total += 1
         if len(matches) < limit:
-            matches.append({'line': index + 1, 'text': lines[index],
-                            'before': lines[max(0, index - context):index], 'after': lines[index + 1:index + 1 + context]})
+            matches.append({'line': index + 1, 'text': clip(lines[index], lines[index].casefold().find(needle)),
+                            'before': [clip(line) for line in lines[max(0, index - context):index]],
+                            'after': [clip(line) for line in lines[index + 1:index + 1 + context]]})
     return {'query': query.strip(), 'lines': len(lines), 'total': total, 'matches': matches}

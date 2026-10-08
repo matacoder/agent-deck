@@ -174,7 +174,8 @@ function authorColor(name,taken){
     const used=new Set(taken.values());
     const free=AUTHOR_COLORS.findIndex((_,index)=>!used.has(index));
     taken.set(name,free>=0?free:taken.size%AUTHOR_COLORS.length);
-    try{localStore.setItem("cc.author-colors",JSON.stringify([...taken]))}catch(e){}
+    // Only the most recent authors are remembered; the list must not grow forever.
+    try{localStore.setItem("cc.author-colors",JSON.stringify([...taken].slice(-200)))}catch(e){}
   }
   return AUTHOR_COLORS[taken.get(name)];
 }
@@ -247,12 +248,15 @@ function renderHistoryView(box){
 // A comment names the file, the line and quotes it, so the agent finds the place without the diff.
 function lineComment(path,row,text){
   const where=row.new!==""?path+":"+row.new:path+":"+row.old+" ("+tr("удалённая строка")+")";
-  const code=row.text.trim();
+  // Repository text can hide control characters (escape sequences) that would act as keys in the agent.
+  const code=row.text.replace(/[\u0000-\u0008\u000b-\u001f\u007f-\u009f]/g,"").trim();
   return where+(code?" `"+(code.length>120?code.slice(0,120)+"…":code).replace(/`/g,"'")+"`":"")+" — "+text.trim();
 }
 function appendToMessage(text){
-  const box=$("msg"),current=box.value.replace(/\s+$/,"");
-  box.value=(current?current+"\n":"")+text;
+  const join=current=>{current=current.replace(/\s+$/,"");return (current?current+"\n":"")+text};
+  // The comment belongs to the session whose history is open, even if another one became active meanwhile.
+  if(active!==hist.session){messageDrafts.set(hist.session,join(messageDrafts.get(hist.session)||""));return}
+  const box=$("msg");box.value=join(box.value);
   box.dispatchEvent(new Event("input"));  // Saves the draft for this session and resizes the field.
 }
 function commentForm(path,row,line){

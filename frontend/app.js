@@ -68,7 +68,8 @@ function blurForBackground(){
   try{if(a.tagName==="IFRAME")a.contentDocument?.activeElement?.blur()}catch(e){}
   a.blur();
 }
-document.addEventListener("visibilitychange",()=>{if(document.hidden)blurForBackground();else refitViewport()});
+// Only touch devices have the on-screen keyboard; on a desktop a tab switch must keep the typing focus.
+document.addEventListener("visibilitychange",()=>{if(document.hidden){if(isMobile()||isTouch())blurForBackground()}else refitViewport()});
 addEventListener("focus",refitViewport);
 if(window.visualViewport){visualViewport.addEventListener("resize",fitViewport);visualViewport.addEventListener("scroll",fitViewport);fitViewport()}
 addEventListener("pageshow",refitViewport);
@@ -208,6 +209,7 @@ function sheet(on){
 for(const item of $("sheet").querySelectorAll(".panel button"))item.setAttribute("role","menuitem");
 // Escape on an edited file asks first instead of dropping the changes.
 $("files_dlg").addEventListener("cancel",e=>{if(filesDirty()){e.preventDefault();leaveFile()}});
+$("files_dlg").addEventListener("close",()=>{dropPreview();files.file=null});  // The preview's blob is freed at once.
 addEventListener("keydown",e=>{if(e.key==="Escape"&&$("sheet").classList.contains("on"))sheet(false)});
 async function confirmAction(title,{text="",confirm=tr("Продолжить"),danger=false}={}){
   return askConfirm($("confirm_dlg"),{title,text,confirm,danger});
@@ -752,10 +754,12 @@ $("msg").addEventListener("blur",()=>document.body.classList.remove("message-foc
 // The field grows with its text. Its height includes the border (border-box), otherwise it stays 2 px
 // short and Safari scrolls it on every key. It is collapsed and measured again only when the text got
 // shorter: typing forward changes the height only when a line is added.
-let msgLength=0;
+let msgLength=0,msgLines=1;
 function fitMessage(box){
-  if(box.value.length<msgLength||!box.value)box.style.height="";
-  msgLength=box.value.length;
+  if(!box.offsetParent)return;  // Not on screen: nothing to measure; the next input sizes it.
+  const lines=box.value.split("\n").length;
+  if(box.value.length<msgLength||lines<msgLines||!box.value)box.style.height="";
+  msgLength=box.value.length;msgLines=lines;
   const border=box.offsetHeight-box.clientHeight,next=Math.min(box.scrollHeight+border,160)+"px";
   if(box.style.height!==next&&(box.scrollHeight>box.clientHeight||!box.style.height))box.style.height=next;
 }
@@ -937,7 +941,8 @@ function renderDeckSection(box,deck,q){
   if(!deck.sessions.length&&!deck.error){
     const start=el("button","empty-new deck-new",svgIcon("plus"),el("span","",tr("Новая сессия")));start.type="button";
     start.setAttribute("aria-label",tr("Новая сессия на «{0}»",[deck.name]));
-    start.onclick=()=>{switchDeck(deck.id);openNew()};
+    // The switch can be refused (a send in progress); then no session may start on the wrong computer.
+    start.onclick=()=>{switchDeck(deck.id);if(selectedDeck===deck.id)openNew()};
     box.append(start);return;
   }
   let grp=null;
@@ -991,6 +996,10 @@ function resetInstanceState(known){
   lastAg={};usageData={};ghLogin=null;lastGh=0;repos=[];
   lmData={profiles:[],discovery:{}};lmRefreshPending=null;openLocalModels.clear();
   telegramConfig={};panelVersion=null;UI_PANEL_VERSION=null;panelUpdating=false;hubSignature="";
+  // Backups, the recovery code and the update entry belong to the computer we leave.
+  backupStatus=null;backupSources=new Map();$("backup_code").textContent="";$("backup_code_card").hidden=true;$("backup_join_card").hidden=true;
+  for(const id of ["backup_state","backup_status","backup_meta","version_status","version_meta","hub_version"])$(id).replaceChildren();
+  $("s_update").style.display="none";
   $("pre").dataset.raw="";$("pre").replaceChildren();$("ver").replaceChildren();
   $("metric_cpu").textContent=$("metric_ram").textContent="—";
 }
@@ -1139,7 +1148,10 @@ function hotkeys(e){
   }
   else if(e.code==="ArrowUp"||e.code==="ArrowDown"){const i=vis.indexOf(active);target=vis[(i+(e.code==="ArrowUp"?-1:1)+vis.length)%vis.length]}
   else if(e.code==="KeyT"){e.preventDefault();e.stopPropagation();openNew();return}
-  else if(e.code==="KeyK"){e.preventDefault();e.stopPropagation();openPalette();return}
+  else if(e.code==="KeyK"){
+    if(/^[^\x00-\x7f]$/.test(e.key))return;  // Option+K types "˚" on a Mac; that keeps working, Cmd+K opens the switcher there.
+    e.preventDefault();e.stopPropagation();openPalette();return;
+  }
   else return;
   e.preventDefault();e.stopPropagation();if(target)select(target);
 }

@@ -23,8 +23,12 @@ test('does not glue ordinary lines',()=>{
 
 test('an image that failed to load is not retried on every redraw for a while',()=>{
   const {imageMissing,missingImages}=require('../../frontend/images');
-  missingImages.set('s\nshot.png',1000);
-  expect(imageMissing('s','shot.png',1000+60*1000)).toBe(true);
-  expect(imageMissing('other','shot.png',1000+60*1000)).toBe(false);
-  expect(imageMissing('s','shot.png',1000+6*60*1000)).toBe(false);  // Tried again after five minutes.
+  global.selectedDeck='';
+  missingImages.set('\ns\nshot.png',1000);
+  expect(imageMissing('s','shot.png',1000+30*1000)).toBe(true);
+  expect(imageMissing('other','shot.png',1000+30*1000)).toBe(false);
+  global.selectedDeck='a'.repeat(24);
+  expect(imageMissing('s','shot.png',1000+30*1000)).toBe(false);  // Another computer's session of the same name.
+  global.selectedDeck='';
+  expect(imageMissing('s','shot.png',1000+2*60*1000)).toBe(false);  // Tried again after a minute.
 });

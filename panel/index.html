@@ -1408,7 +1408,9 @@ function backupLabel(meta,locale){
 }
 
 async function loadBackups(){
-  try{backupStatus=await api("/api/backups")}catch(e){toast(e.message);return}
+  // A computer whose backups cannot be read shows nothing of the previous one; the error is only worth a
+  // toast where backups are being looked at.
+  try{backupStatus=await api("/api/backups")}catch(e){backupStatus=null;backupSources=new Map();if(hubSection==="backups"&&e.message!==STALE)toast(e.message);return}
   backupSources=new Map([["",backupStatus.stored]]);
   // Copies kept by connected machines are reachable only from the gateway that holds their logins.
   if(!selectedDeck)await Promise.all(deckDirectory.decks.map(async d=>{
@@ -1447,7 +1449,7 @@ function renderBackups(){
 }
 function openBackupRestore(){backupRestoreOpen=true;renderBackups()}
 function openBackupJoin(){
-  $("backup_join_card").hidden=false;$("backup_state").after($("backup_join_card"));renderBackups();
+  $("backup_join_card").hidden=false;$("backup_state").after($("backup_join_card"));snapshotEditor($("backup_join_card"));renderBackups();
   if(!isMobile())$("backup_join_code").focus();
 }
 function closeBackupJoin(){$("backup_join_card").hidden=true;$("backup_join_code").value="";renderBackups()}
@@ -1554,7 +1556,7 @@ async function loadPush(){
   renderPush();
 }
 // Encryption parts download in the background; if that never finishes, say so instead of waiting forever.
-let pushUnavailableSince=0;
+let pushUnavailableSince=0,pushTimer=null;
 function pushStatus(s,blocker,subscribed){
   if(blocker)return [tr(blocker[0],blocker[1]),"warn"];
   if(!s.available){
@@ -1577,7 +1579,11 @@ function renderPush(){
   if(!blocker&&s.available)actions.push(...(subscribed?[btn(tr("Выключить"),"",disablePush),btn(tr("Отправить тест"),"pri",()=>testPush(mine))]:[btn(tr("Включить уведомления"),"pri",enablePush)]));
   $("push_actions").replaceChildren(...(actions.length?[el("div","acts",...actions)]:[]));
   $("push_questions").checked=s.events.questions;$("push_finished").checked=s.events.finished;
-  $("push_questions").disabled=$("push_finished").disabled=Boolean(blocker)||!s.available;
+  // The events are shared by every device, so a browser that cannot receive pushes may still set them.
+  $("push_questions").disabled=$("push_finished").disabled=!s.available;
+  // While the components download, look again so the state (or its failure) shows without reopening.
+  clearTimeout(pushTimer);
+  if(!s.available&&!s.error&&$("settings_dlg").open)pushTimer=setTimeout(loadPush,5000);
   $("push_devices_title").hidden=!s.devices.length;
   $("push_devices").replaceChildren(...s.devices.map(d=>{
     const name=d.label+(d.id===mine?" · "+tr("это устройство"):"");
@@ -1704,9 +1710,9 @@ function imageLink(session,path,runs,from,to){
 }
 // A path that did not load is not tried again for a while: the screen redraws often, and each new
 // attempt would show an empty thumbnail that then disappears (a blink).
-const missingImages=new Map(),MISSING_FOR=5*60*1000;
+const missingImages=new Map(),MISSING_FOR=60*1000;
 function imageMissing(session,path,now=Date.now()){
-  const key=session+"\n"+path,at=missingImages.get(key);
+  const key=selectedDeck+"\n"+session+"\n"+path,at=missingImages.get(key);
   if(at&&now-at<MISSING_FOR)return true;
   missingImages.delete(key);return false;
 }
@@ -1718,7 +1724,8 @@ function imageStrip(session,paths){
     thumb.type="button";thumb.title=path;thumb.setAttribute("aria-label",tr("Открыть картинку {0}",[path.split("/").pop()]));
     img.loading="lazy";img.decoding="async";img.alt="";img.src=imageUrl(session,path,true);
     // Missing files, or paths no longer on screen, simply leave the text without a preview.
-    img.onerror=()=>{missingImages.set(session+"\n"+path,Date.now());thumb.remove()};
+    // Offline or a restarting panel is no reason to stop trying this picture.
+    img.onerror=()=>{if(connection==="online")missingImages.set(selectedDeck+"\n"+session+"\n"+path,Date.now());thumb.remove()};
     thumb.append(img);thumb.onclick=()=>openViewer(path);strip.append(thumb);
   }
   return strip;
@@ -2180,7 +2187,9 @@ async function openFile(path){
 // The server checked the content; the Blob gets that type and nothing else (never HTML or SVG).
 function previewBlob(data){
   const type=["application/pdf","image/png","image/jpeg","image/gif","image/webp"].includes(data.type)?data.type:"application/octet-stream";
-  const bytes=Uint8Array.from(atob(data.data),c=>c.charCodeAt(0));
+  // A plain loop: a callback per byte freezes a phone for seconds on a 10 MB file.
+  const raw=atob(data.data),bytes=new Uint8Array(raw.length);
+  for(let i=0;i<raw.length;i++)bytes[i]=raw.charCodeAt(i);
   return {type,size:data.size,url:URL.createObjectURL(new Blob([bytes],{type}))};
 }
 function dropPreview(){if(files.file?.preview)URL.revokeObjectURL(files.file.preview.url)}
@@ -2466,7 +2475,8 @@ function authorColor(name,taken){
     const used=new Set(taken.values());
     const free=AUTHOR_COLORS.findIndex((_,index)=>!used.has(index));
     taken.set(name,free>=0?free:taken.size%AUTHOR_COLORS.length);
-    try{localStore.setItem("cc.author-colors",JSON.stringify([...taken]))}catch(e){}
+    // Only the most recent authors are remembered; the list must not grow forever.
+    try{localStore.setItem("cc.author-colors",JSON.stringify([...taken].slice(-200)))}catch(e){}
   }
   return AUTHOR_COLORS[taken.get(name)];
 }
@@ -2539,12 +2549,15 @@ function renderHistoryView(box){
 // A comment names the file, the line and quotes it, so the agent finds the place without the diff.
 function lineComment(path,row,text){
   const where=row.new!==""?path+":"+row.new:path+":"+row.old+" ("+tr("удалённая строка")+")";
-  const code=row.text.trim();
+  // Repository text can hide control characters (escape sequences) that would act as keys in the agent.
+  const code=row.text.replace(/[\u0000-\u0008\u000b-\u001f\u007f-\u009f]/g,"").trim();
   return where+(code?" `"+(code.length>120?code.slice(0,120)+"…":code).replace(/`/g,"'")+"`":"")+" — "+text.trim();
 }
 function appendToMessage(text){
-  const box=$("msg"),current=box.value.replace(/\s+$/,"");
-  box.value=(current?current+"\n":"")+text;
+  const join=current=>{current=current.replace(/\s+$/,"");return (current?current+"\n":"")+text};
+  // The comment belongs to the session whose history is open, even if another one became active meanwhile.
+  if(active!==hist.session){messageDrafts.set(hist.session,join(messageDrafts.get(hist.session)||""));return}
+  const box=$("msg");box.value=join(box.value);
   box.dispatchEvent(new Event("input"));  // Saves the draft for this session and resizes the field.
 }
 function commentForm(path,row,line){
@@ -2642,8 +2655,10 @@ function renderMarkdown(text,doc=document){
       while(i<lines.length&&!lines[i].trim().startsWith(fence[1]))code.push(lines[i++]);
       i++;root.append(mdNode(doc,"pre",mdNode(doc,"code",code.join("\n"))));continue;
     }
-    const heading=line.match(/^(#{1,6})\s+(.*?)\s*#*\s*$/);
-    if(heading){root.append(mdNode(doc,"h"+heading[1].length,...mdInline(doc,heading[2])));i++;continue}
+    // One greedy group, trimmed afterwards: a lazy group between optional spaces backtracks for seconds
+    // on a long run of spaces.
+    const heading=line.match(/^(#{1,6})\s+(.*)$/);
+    if(heading){root.append(mdNode(doc,"h"+heading[1].length,...mdInline(doc,heading[2].trimEnd().replace(/(^|\s)#+$/,"").trimEnd())));i++;continue}
     if(/^\s*([-*_]\s*){3,}$/.test(line)){root.append(doc.createElement("hr"));i++;continue}
     if(line.includes("|")&&/^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?\s*$/.test(lines[i+1]||"")){
       const rows=[line,lines[i+1]];i+=2;
@@ -2685,7 +2700,8 @@ const outputSearch={session:null,query:"",seq:0,result:null,error:"",busy:false}
 
 function openOutputSearch(){
   if(!active)return;
-  if(outputSearch.session!==active)Object.assign(outputSearch,{session:active,query:"",result:null,error:""});
+  // A new number drops an answer still on its way for the previous session.
+  if(outputSearch.session!==active)Object.assign(outputSearch,{session:active,query:"",result:null,error:"",busy:false,seq:outputSearch.seq+1});
   if(!$("search_dlg").open)$("search_dlg").showModal();
   const input=$("search_q");input.value=outputSearch.query;renderOutputSearch();
   setTimeout(()=>{input.focus();input.select()},0);
@@ -2817,7 +2833,20 @@ function placeEditor(cards,key,editor){
 // After an editor closes, focus returns to the card it came from instead of the page body.
 function focusCard(key){
   if(!key)return;
-  requestAnimationFrame(()=>document.querySelector(`#settings_dlg [data-card="${key}"] .card-tools button, #settings_dlg [data-card="${key}"] .card-tools summary`)?.focus({preventScroll:true}));
+  const card=`#settings_dlg [data-card="${key}"]`;
+  requestAnimationFrame(()=>document.querySelector(`${card} .card-tools button, ${card} .card-tools summary, ${card} .hub-row-actions button, ${card} .hub-row-actions summary`)?.focus({preventScroll:true}));
+}
+// Someone is typing in this editor: a background refresh must not move it (focus and the phone keyboard
+// would be lost) and must not overwrite what was typed.
+function editorInUse(editor){return !editor.hidden&&editor.contains(document.activeElement)}
+// Each editor remembers its values when it opens; only a difference from that counts as unsaved.
+function editorValues(editor){return JSON.stringify([...editor.querySelectorAll("input,select,textarea")].map(i=>i.type==="checkbox"?i.checked:i.value))}
+function snapshotEditor(editor){editor.dataset.initial=editorValues(editor)}
+// A loaded value replaces a field only while the user has not changed it since the last load.
+function syncField(input,value){
+  value=value??"";
+  if(input.dataset.loaded===undefined||input.value===input.dataset.loaded)input.value=value;
+  input.dataset.loaded=value;
 }
 
 /* ---------- sections ---------- */
@@ -2854,19 +2883,22 @@ function hubNavKey(e){
 }
 async function openSettings(section="agents"){
   drawer(false);sheet(false);settingsSection(section);
+  // Already open (an editor button, a link between sections): switching is enough, a reload would
+  // overwrite fields being edited elsewhere.
+  if($("settings_dlg").open){renderHub();return}
   $("hub_title").textContent=deckDirectory.decks.length?tr("Настройки · {0}",[currentDeckName()]):tr("Настройки");
   if(!$("settings_dlg").open)$("settings_dlg").showModal();updateHubNavFade();
   renderHub();
   // Push and backup state feed the getting-started card and the section dots.
-  await Promise.allSettled([loadDeckSettings(),loadPush(),loadBackups(),(async()=>{const data=await api("/api/project_directory");$("project_directory").value=data.directory})(),refreshLMModels(),loadIntegrations(),checkGithubFoot(),(async()=>{const data=await api("/api/locales");$("ui_language").replaceChildren(...data.languages.map(x=>{const o=el("option","",x.name);o.value=x.code;return o}));$("ui_language").value=I18N.language})()]);
+  await Promise.allSettled([loadDeckSettings(),loadPush(),loadBackups(),(async()=>{const data=await api("/api/project_directory");syncField($("project_directory"),data.directory)})(),refreshLMModels(),loadIntegrations(),checkGithubFoot(),(async()=>{const data=await api("/api/locales");$("ui_language").replaceChildren(...data.languages.map(x=>{const o=el("option","",x.name);o.value=x.code;return o}));$("ui_language").value=I18N.language})()]);
+  if(!$("settings_dlg").open)return;  // Closed while loading (e.g. an agent sign-in started).
   renderHub();
   clearInterval(lmTimer);lmTimer=setInterval(()=>{if(!document.hidden&&$("settings_dlg").open){if(lmData.discovery?.phase==="running")loadLM(false);if(hubSection==="models"&&Date.now()-lmModelsChecked>30000)refreshLMModels()}},2000);
 }
-function openHubEditor(){return ["kimi_dlg","integrations_dlg","lm_editor","deck_editor","backup_join_card"].map($).find(e=>!e.hidden)}
-function hubEditorDirty(){
-  return Boolean($("kimi_key").value||telegramDirty||$("lm_key").value||$("deck_password").value||$("backup_join_code").value||
-    (!$("lm_editor").hidden&&!$("lm_id").value&&$("lm_url").value)||(!$("deck_editor").hidden&&!$("deck_id").value&&$("deck_url").value));
-}
+const HUB_EDITORS=["kimi_dlg","integrations_dlg","lm_editor","deck_editor","backup_join_card"];
+// The open editor of the section on screen; one left open in another section is not what Escape means.
+function openHubEditor(){return HUB_EDITORS.map($).find(e=>!e.hidden&&$("hub_"+hubSection).contains(e))}
+function hubEditorDirty(editor){return Boolean(editor&&!editor.hidden&&editor.dataset.initial!==undefined&&editorValues(editor)!==editor.dataset.initial)}
 function closeHubEditor(editor){
   ({kimi_dlg:closeKimi,integrations_dlg:closeIntegrations,lm_editor:resetLM,deck_editor:closeDeckEditor,backup_join_card:closeBackupJoin})[editor.id]();
 }
@@ -2874,16 +2906,17 @@ function closeHubEditor(editor){
 async function settingsCancel(e){
   const editor=openHubEditor();if(!editor)return;
   e.preventDefault();
-  if(hubEditorDirty()&&!await confirmAction(tr("Изменения не сохранены. Закрыть без сохранения?"),{confirm:tr("Закрыть без сохранения"),danger:true}))return;
+  if(hubEditorDirty(editor)&&!await confirmAction(tr("Изменения не сохранены. Закрыть без сохранения?"),{confirm:tr("Закрыть без сохранения"),danger:true}))return;
   closeHubEditor(editor);
 }
 async function closeSettings(){
-  if(openHubEditor()&&hubEditorDirty()&&!await confirmAction(tr("Изменения не сохранены. Закрыть без сохранения?"),{confirm:tr("Закрыть без сохранения"),danger:true}))return;
+  if(HUB_EDITORS.some(id=>hubEditorDirty($(id)))&&!await confirmAction(tr("Изменения не сохранены. Закрыть без сохранения?"),{confirm:tr("Закрыть без сохранения"),danger:true}))return;
   $("settings_dlg").close();
 }
 function settingsClosed(){
   if($("settings_dlg").open)return;
-  clearInterval(lmTimer);clearInterval(deckTimer);closeKimi();closeIntegrations();resetLM();closeDeckEditor();
+  clearInterval(lmTimer);clearInterval(deckTimer);clearTimeout(pushTimer);pushUnavailableSince=0;
+  closeKimi();closeIntegrations();resetLM();closeDeckEditor();closeBackupJoin();
   if(returnToNew){returnToNew=false;$("dlg").showModal();renderSources()}
 }
 function hubInit(){
@@ -2901,9 +2934,12 @@ function pushReadyHere(){
   if(!Array.isArray(pushState?.devices))return null;
   return pushState.devices.some(d=>d.id===localStore.getItem("cc.push-id"));
 }
+// null: not known yet, or cannot be done here (no HTTPS, an iPhone outside the home screen); such a step
+// neither keeps the card open nor counts as done.
 function setupSteps(){
-  return [[tr("Войдите в Claude или Codex"),["claude","codex"].some(a=>lastAg[a]?.logged_in),"agents"],
-    [tr("Включите уведомления на этом устройстве"),pushReadyHere(),"notifications"],
+  const pushPossible=pushState?.available&&!pushBlocker(pushEnvironment());
+  return [[tr("Войдите в Claude или Codex"),lastAg.claude?["claude","codex"].some(a=>lastAg[a]?.logged_in):null,"agents"],
+    [tr("Включите уведомления на этом устройстве"),pushPossible?pushReadyHere():null,"notifications"],
     [tr("Включите бэкапы"),backupStatus?Boolean(backupStatus.configured):null,"backups"]];
 }
 function renderSetupCard(){
@@ -2977,6 +3013,7 @@ function githubCard(){
   return hubCard({key:"github",icon,title:"GitHub",status:"@"+ghLogin,tone:"ok",more:[[tr("Новая сессия из репозитория"),leave(openNew)]]});
 }
 function renderAgentCards(){
+  if(editorInUse($("kimi_dlg")))return;
   const cards=[agentCard("claude"),agentCard("codex"),kimiCard(),piCard(),githubCard()];
   $("agent_cards").replaceChildren(...placeEditor(cards,"kimi",$("kimi_dlg")));
 }
@@ -2986,7 +3023,7 @@ function openKimi(){
   $("kimi_state").textContent=config.configured?tr("Ключ сохранён на сервере"):tr("Ключ ещё не указан");
   $("kimi_state").className="card-status "+(config.configured?"ok":"idle");
   $("kimi_clear").hidden=!config.configured;
-  $("kimi_dlg").hidden=false;openSettings("agents");$("kimi_dlg").scrollIntoView({block:"nearest"});
+  $("kimi_dlg").hidden=false;snapshotEditor($("kimi_dlg"));openSettings("agents");$("kimi_dlg").scrollIntoView({block:"nearest"});
   // On a phone the keyboard would cover the explanation and the Save button.
   if(!isMobile()&&lastPointer!=="touch")$("kimi_key").focus({preventScroll:true});
 }
@@ -3018,6 +3055,7 @@ function telegramSummary(c){
   return [tr("Не настроен"),"idle"];
 }
 function renderTelegramCard(){
+  if(editorInUse($("integrations_dlg")))return;
   const [status,tone]=telegramSummary(telegramConfig);
   const card=hubCard({key:"telegram",icon:el("span","telegram-glyph",svgIcon("telegram")),title:"Telegram",status,tone,
     primary:{label:tr("Настроить"),run:openIntegrations,quiet:Boolean(telegramConfig.paired)},
@@ -3035,7 +3073,7 @@ function renderTelegram(config){
   state.className="card-status "+tone;
   $("telegram_duplicates").hidden=!c.duplicates?.length;
   if(c.duplicates?.length)$("telegram_duplicates").textContent=tr("Этот бот также включён на: {0}. Вопросы будут приходить дважды; отключите Telegram там.",[c.duplicates.join(", ")]);
-  $("telegram_enabled").checked=c.enabled!==false;
+  if(!telegramDirty)$("telegram_enabled").checked=c.enabled!==false;  // A poll must not undo the user's switch.
   $("telegram_clear").hidden=!c.configured;
   $("telegram_pair").hidden=!(c.configured&&!c.pair_url);
   $("telegram_pair").textContent=c.paired?tr("Привязать другой аккаунт"):tr("Получить ссылку привязки");
@@ -3049,6 +3087,7 @@ async function loadIntegrations(){
 }
 function openIntegrations(){
   telegramDirty=false;$("telegram_token").value="";$("telegram_credentials").open=!telegramConfig.configured;$("integrations_dlg").hidden=false;
+  $("telegram_enabled").checked=telegramConfig.enabled!==false;snapshotEditor($("integrations_dlg"));
   openSettings("notifications");loadIntegrations();$("integrations_dlg").scrollIntoView({block:"nearest"});
   clearInterval(integrationTimer);integrationTimer=setInterval(()=>{if(!document.hidden&&!telegramDirty)loadIntegrations()},3000);
 }
@@ -3156,6 +3195,7 @@ function lmCard(p,selection){
     more:[[tr("Обновить список моделей"),()=>lmAction("probe",{id:p.id})],[tr("Изменить"),()=>editLM(p)],[tr("Удалить"),()=>removeLM(p),true]],body});
 }
 function renderModelCards(){
+  if(editorInUse($("lm_editor")))return;
   const selections=new Map([...$("model_cards").querySelectorAll("select")].map(x=>[x.dataset.profile,x.value]));
   const cards=(lmData.profiles||[]).map(p=>lmCard(p,selections.get(p.id)));
   if(!cards.length&&$("lm_editor").hidden)cards.push(el("p","hub-empty",tr("Серверов пока нет. Добавьте адрес LM Studio или найдите его в Tailscale ниже.")));
@@ -3173,7 +3213,7 @@ function editLM(p={}){
   $("lm_id").value=p.id||"";$("lm_name").value=p.name||"";$("lm_url").value=p.url||"";$("lm_key").value="";$("lm_clear_key").checked=false;
   $("lm_clear_row").hidden=!p.id;
   $("lm_editor_title").textContent=p.id?tr("Изменить · {0}",[p.name]):tr("Новый сервер LM Studio");
-  $("lm_editor").hidden=false;if(hubSection!=="models")settingsSection("models");
+  $("lm_editor").hidden=false;snapshotEditor($("lm_editor"));if(hubSection!=="models")settingsSection("models");
   renderModelCards();$("lm_editor").scrollIntoView({block:"nearest"});
   if(!isMobile()&&lastPointer!=="touch")$(p.id&&p.status==="needs_key"?"lm_key":"lm_name").focus({preventScroll:true});
 }
@@ -3215,13 +3255,15 @@ function configureSource(){returnToNew=true;$("dlg").close();openSettings("model
 
 /* ---------- computers ---------- */
 function renderComputers(data,network){
-  $("network_name").value=network.name;$("network_public_url").value=network.public_url;$("network_isolate").checked=network.isolate_terminals===true;
+  syncField($("network_name"),network.name);syncField($("network_public_url"),network.public_url);$("network_isolate").checked=network.isolate_terminals===true;
   $("network_bind").textContent="http://"+network.bind_host+":"+network.bind_port;
   $("network_browser").textContent=location.origin;
   const count=data.decks.length;
   $("deck_summary").textContent=count?tr("Подключено: {0}",[count]):tr("Пока не подключены");
   $("deck_summary").className="card-status "+(count?"ok":"idle");
   $("network_isolate_row").hidden=$("network_isolate_hint").hidden=!count;
+  renderDeckDiscovery(data.discovery);
+  if(editorInUse($("deck_editor")))return;
   const rows=data.decks.map(deck=>{
     const row=hubRow({title:deck.name,meta:deck.url,status:"…",
       actions:[deck.id===selectedDeck?el("span","card-meta",tr("открыт")):labelledButton(tr("Открыть"),"",()=>switchDeck(deck.id),deck.name),
@@ -3229,13 +3271,13 @@ function renderComputers(data,network){
     row.querySelector(".card-status").dataset.deckVersion=deck.id;row.dataset.card="deck:"+deck.id;return row;
   });
   $("deck_connections").replaceChildren(...placeEditor(rows,"deck:"+$("deck_id").value,$("deck_editor")));
-  renderDeckDiscovery(data.discovery);
 }
 function editDeck(deck={}){
   $("deck_id").value=deck.id||"";$("deck_name").value=deck.name||"";$("deck_url").value=deck.url||"";$("deck_username").value=deck.username||"";$("deck_password").value="";
   $("deck_editor_title").textContent=deck.id?tr("Изменить · {0}",[deck.name]):tr("Подключить другой Agent Deck");
   $("deck_save").textContent=deck.id?tr("Сохранить"):tr("Подключить");
-  $("deck_editor").hidden=false;
+  $("deck_editor").hidden=false;snapshotEditor($("deck_editor"));
+  for(const hidden of $("deck_connections").querySelectorAll(".hub-row[hidden]"))hidden.hidden=false;  // Another computer's row.
   const row=deck.id&&$("deck_connections").querySelector(`[data-card="deck:${deck.id}"]`);
   if(row){row.hidden=true;row.after($("deck_editor"))}else $("deck_connections").prepend($("deck_editor"));
   $("deck_editor").scrollIntoView({block:"nearest"});
@@ -3298,8 +3340,9 @@ if(typeof module!=="undefined")module.exports={lmMetrics,deckAddress};
 // Files dragged onto the window (desktop, iPad Split View) are attached to the open session, the same
 // way as the paperclip and paste. The terminal is a frame with its own document, so it is watched too.
 // Bundled before app.js; nothing here runs at load time.
-let dropHideTimer=null;
-function dragHasFiles(e){return Array.from(e.dataTransfer?.types||[]).includes("Files")}
+let dropHideTimer=null,dragFromPage=false;
+// A picture dragged from the page itself (a thumbnail) is not a file from outside.
+function dragHasFiles(e){return !dragFromPage&&Array.from(e.dataTransfer?.types||[]).includes("Files")}
 // Where a drop would land, or why it cannot; pure for tests.
 function dropTarget(session,blocked){
   if(blocked)return {ok:false,text:"Дождитесь окончания отправки или загрузки"};
@@ -3311,8 +3354,8 @@ function showDropZone(target){
   const zone=$("drop_zone");
   $("drop_title").textContent=tr(target.text,target.args||[]);
   zone.classList.toggle("blocked",!target.ok);zone.hidden=false;
-  // dragover repeats while the pointer is over the window; when it stops, the drag has left.
-  clearTimeout(dropHideTimer);dropHideTimer=setTimeout(hideDropZone,250);
+  // A held-still drag repeats dragover rarely; leaving the window is caught by dragleave.
+  clearTimeout(dropHideTimer);dropHideTimer=setTimeout(hideDropZone,1000);
 }
 function hideDropZone(){clearTimeout(dropHideTimer);$("drop_zone").hidden=true}
 function dropBlocked(){return sending||uploading||panelUpdating||Boolean(document.querySelector("dialog[open]"))}
@@ -3333,6 +3376,9 @@ function onFileDrop(e){
 function watchFileDrops(win){
   win.addEventListener("dragenter",onFileDrag);win.addEventListener("dragover",onFileDrag);
   win.addEventListener("drop",onFileDrop);
+  win.addEventListener("dragleave",e=>{if(!e.relatedTarget)hideDropZone()});
+  win.addEventListener("dragstart",()=>{dragFromPage=true});
+  win.addEventListener("dragend",()=>{dragFromPage=false;hideDropZone()});
 }
 
 if(typeof module!=="undefined")module.exports={dropTarget,dragHasFiles};
@@ -3406,7 +3452,8 @@ function blurForBackground(){
   try{if(a.tagName==="IFRAME")a.contentDocument?.activeElement?.blur()}catch(e){}
   a.blur();
 }
-document.addEventListener("visibilitychange",()=>{if(document.hidden)blurForBackground();else refitViewport()});
+// Only touch devices have the on-screen keyboard; on a desktop a tab switch must keep the typing focus.
+document.addEventListener("visibilitychange",()=>{if(document.hidden){if(isMobile()||isTouch())blurForBackground()}else refitViewport()});
 addEventListener("focus",refitViewport);
 if(window.visualViewport){visualViewport.addEventListener("resize",fitViewport);visualViewport.addEventListener("scroll",fitViewport);fitViewport()}
 addEventListener("pageshow",refitViewport);
@@ -3546,6 +3593,7 @@ function sheet(on){
 for(const item of $("sheet").querySelectorAll(".panel button"))item.setAttribute("role","menuitem");
 // Escape on an edited file asks first instead of dropping the changes.
 $("files_dlg").addEventListener("cancel",e=>{if(filesDirty()){e.preventDefault();leaveFile()}});
+$("files_dlg").addEventListener("close",()=>{dropPreview();files.file=null});  // The preview's blob is freed at once.
 addEventListener("keydown",e=>{if(e.key==="Escape"&&$("sheet").classList.contains("on"))sheet(false)});
 async function confirmAction(title,{text="",confirm=tr("Продолжить"),danger=false}={}){
   return askConfirm($("confirm_dlg"),{title,text,confirm,danger});
@@ -4090,10 +4138,12 @@ $("msg").addEventListener("blur",()=>document.body.classList.remove("message-foc
 // The field grows with its text. Its height includes the border (border-box), otherwise it stays 2 px
 // short and Safari scrolls it on every key. It is collapsed and measured again only when the text got
 // shorter: typing forward changes the height only when a line is added.
-let msgLength=0;
+let msgLength=0,msgLines=1;
 function fitMessage(box){
-  if(box.value.length<msgLength||!box.value)box.style.height="";
-  msgLength=box.value.length;
+  if(!box.offsetParent)return;  // Not on screen: nothing to measure; the next input sizes it.
+  const lines=box.value.split("\n").length;
+  if(box.value.length<msgLength||lines<msgLines||!box.value)box.style.height="";
+  msgLength=box.value.length;msgLines=lines;
   const border=box.offsetHeight-box.clientHeight,next=Math.min(box.scrollHeight+border,160)+"px";
   if(box.style.height!==next&&(box.scrollHeight>box.clientHeight||!box.style.height))box.style.height=next;
 }
@@ -4275,7 +4325,8 @@ function renderDeckSection(box,deck,q){
   if(!deck.sessions.length&&!deck.error){
     const start=el("button","empty-new deck-new",svgIcon("plus"),el("span","",tr("Новая сессия")));start.type="button";
     start.setAttribute("aria-label",tr("Новая сессия на «{0}»",[deck.name]));
-    start.onclick=()=>{switchDeck(deck.id);openNew()};
+    // The switch can be refused (a send in progress); then no session may start on the wrong computer.
+    start.onclick=()=>{switchDeck(deck.id);if(selectedDeck===deck.id)openNew()};
     box.append(start);return;
   }
   let grp=null;
@@ -4329,6 +4380,10 @@ function resetInstanceState(known){
   lastAg={};usageData={};ghLogin=null;lastGh=0;repos=[];
   lmData={profiles:[],discovery:{}};lmRefreshPending=null;openLocalModels.clear();
   telegramConfig={};panelVersion=null;UI_PANEL_VERSION=null;panelUpdating=false;hubSignature="";
+  // Backups, the recovery code and the update entry belong to the computer we leave.
+  backupStatus=null;backupSources=new Map();$("backup_code").textContent="";$("backup_code_card").hidden=true;$("backup_join_card").hidden=true;
+  for(const id of ["backup_state","backup_status","backup_meta","version_status","version_meta","hub_version"])$(id).replaceChildren();
+  $("s_update").style.display="none";
   $("pre").dataset.raw="";$("pre").replaceChildren();$("ver").replaceChildren();
   $("metric_cpu").textContent=$("metric_ram").textContent="—";
 }
@@ -4477,7 +4532,10 @@ function hotkeys(e){
   }
   else if(e.code==="ArrowUp"||e.code==="ArrowDown"){const i=vis.indexOf(active);target=vis[(i+(e.code==="ArrowUp"?-1:1)+vis.length)%vis.length]}
   else if(e.code==="KeyT"){e.preventDefault();e.stopPropagation();openNew();return}
-  else if(e.code==="KeyK"){e.preventDefault();e.stopPropagation();openPalette();return}
+  else if(e.code==="KeyK"){
+    if(/^[^\x00-\x7f]$/.test(e.key))return;  // Option+K types "˚" on a Mac; that keeps working, Cmd+K opens the switcher there.
+    e.preventDefault();e.stopPropagation();openPalette();return;
+  }
   else return;
   e.preventDefault();e.stopPropagation();if(target)select(target);
 }

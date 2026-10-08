@@ -51,7 +51,9 @@ async function openFile(path){
 // The server checked the content; the Blob gets that type and nothing else (never HTML or SVG).
 function previewBlob(data){
   const type=["application/pdf","image/png","image/jpeg","image/gif","image/webp"].includes(data.type)?data.type:"application/octet-stream";
-  const bytes=Uint8Array.from(atob(data.data),c=>c.charCodeAt(0));
+  // A plain loop: a callback per byte freezes a phone for seconds on a 10 MB file.
+  const raw=atob(data.data),bytes=new Uint8Array(raw.length);
+  for(let i=0;i<raw.length;i++)bytes[i]=raw.charCodeAt(i);
   return {type,size:data.size,url:URL.createObjectURL(new Blob([bytes],{type}))};
 }
 function dropPreview(){if(files.file?.preview)URL.revokeObjectURL(files.file.preview.url)}

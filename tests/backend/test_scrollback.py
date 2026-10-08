@@ -16,6 +16,13 @@ class ScrollbackTests(unittest.TestCase):
         self.assertEqual(data['matches'][0]['before'], ['ok', 'middle'])
         self.assertEqual(data['matches'][0]['after'], ['end'])
 
+    def test_a_huge_line_is_cut_around_the_match(self):
+        line = 'x' * 50000 + 'NEEDLE' + 'y' * 50000
+        hit = S.search(line + '\n' + 'z' * 10000, 'needle')['matches'][0]
+        self.assertIn('NEEDLE', hit['text'])
+        self.assertLessEqual(len(hit['text']), S.MAX_LINE + 2)
+        self.assertLessEqual(len(hit['after'][0]), S.MAX_LINE + 2)
+
     def test_query_is_plain_text_and_results_are_capped(self):
         self.assertEqual(S.search('a.*b\naxxb\n', 'a.*b')['total'], 1)
         data = S.search('hit\n' * 500, 'hit')
@@ -39,6 +46,14 @@ class PanelScrollbackTests(PanelCase):
         self.assertEqual(calls[0][:3], ('capture-pane', '-p', '-J'))
         self.assertIn('-S', calls[0])
         self.assertEqual(calls[0][calls[0].index('-S') + 1], '-')
+
+    def test_a_stuck_tmux_is_a_clear_error_not_a_server_error(self):
+        import subprocess
+        def stuck(*args, check=True):
+            raise subprocess.TimeoutExpired('tmux', 10)
+        with patch.object(self.panel, 'session_exists', return_value=True), patch.object(self.panel, 'tmux', stuck):
+            with self.assertRaisesRegex(ValueError, 'tmux не ответил'):
+                self.panel.scrollback_payload({'name': ['work'], 'q': ['x']})
 
 
 if __name__ == '__main__':

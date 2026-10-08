@@ -27,7 +27,7 @@ async function loadPush(){
   renderPush();
 }
 // Encryption parts download in the background; if that never finishes, say so instead of waiting forever.
-let pushUnavailableSince=0;
+let pushUnavailableSince=0,pushTimer=null;
 function pushStatus(s,blocker,subscribed){
   if(blocker)return [tr(blocker[0],blocker[1]),"warn"];
   if(!s.available){
@@ -50,7 +50,11 @@ function renderPush(){
   if(!blocker&&s.available)actions.push(...(subscribed?[btn(tr("Выключить"),"",disablePush),btn(tr("Отправить тест"),"pri",()=>testPush(mine))]:[btn(tr("Включить уведомления"),"pri",enablePush)]));
   $("push_actions").replaceChildren(...(actions.length?[el("div","acts",...actions)]:[]));
   $("push_questions").checked=s.events.questions;$("push_finished").checked=s.events.finished;
-  $("push_questions").disabled=$("push_finished").disabled=Boolean(blocker)||!s.available;
+  // The events are shared by every device, so a browser that cannot receive pushes may still set them.
+  $("push_questions").disabled=$("push_finished").disabled=!s.available;
+  // While the components download, look again so the state (or its failure) shows without reopening.
+  clearTimeout(pushTimer);
+  if(!s.available&&!s.error&&$("settings_dlg").open)pushTimer=setTimeout(loadPush,5000);
   $("push_devices_title").hidden=!s.devices.length;
   $("push_devices").replaceChildren(...s.devices.map(d=>{
     const name=d.label+(d.id===mine?" · "+tr("это устройство"):"");

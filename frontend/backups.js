@@ -16,7 +16,9 @@ function backupLabel(meta,locale){
 }
 
 async function loadBackups(){
-  try{backupStatus=await api("/api/backups")}catch(e){toast(e.message);return}
+  // A computer whose backups cannot be read shows nothing of the previous one; the error is only worth a
+  // toast where backups are being looked at.
+  try{backupStatus=await api("/api/backups")}catch(e){backupStatus=null;backupSources=new Map();if(hubSection==="backups"&&e.message!==STALE)toast(e.message);return}
   backupSources=new Map([["",backupStatus.stored]]);
   // Copies kept by connected machines are reachable only from the gateway that holds their logins.
   if(!selectedDeck)await Promise.all(deckDirectory.decks.map(async d=>{
@@ -55,7 +57,7 @@ function renderBackups(){
 }
 function openBackupRestore(){backupRestoreOpen=true;renderBackups()}
 function openBackupJoin(){
-  $("backup_join_card").hidden=false;$("backup_state").after($("backup_join_card"));renderBackups();
+  $("backup_join_card").hidden=false;$("backup_state").after($("backup_join_card"));snapshotEditor($("backup_join_card"));renderBackups();
   if(!isMobile())$("backup_join_code").focus();
 }
 function closeBackupJoin(){$("backup_join_card").hidden=true;$("backup_join_code").value="";renderBackups()}

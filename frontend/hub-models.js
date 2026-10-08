@@ -31,6 +31,7 @@ function lmCard(p,selection){
     more:[[tr("Обновить список моделей"),()=>lmAction("probe",{id:p.id})],[tr("Изменить"),()=>editLM(p)],[tr("Удалить"),()=>removeLM(p),true]],body});
 }
 function renderModelCards(){
+  if(editorInUse($("lm_editor")))return;
   const selections=new Map([...$("model_cards").querySelectorAll("select")].map(x=>[x.dataset.profile,x.value]));
   const cards=(lmData.profiles||[]).map(p=>lmCard(p,selections.get(p.id)));
   if(!cards.length&&$("lm_editor").hidden)cards.push(el("p","hub-empty",tr("Серверов пока нет. Добавьте адрес LM Studio или найдите его в Tailscale ниже.")));
@@ -48,7 +49,7 @@ function editLM(p={}){
   $("lm_id").value=p.id||"";$("lm_name").value=p.name||"";$("lm_url").value=p.url||"";$("lm_key").value="";$("lm_clear_key").checked=false;
   $("lm_clear_row").hidden=!p.id;
   $("lm_editor_title").textContent=p.id?tr("Изменить · {0}",[p.name]):tr("Новый сервер LM Studio");
-  $("lm_editor").hidden=false;if(hubSection!=="models")settingsSection("models");
+  $("lm_editor").hidden=false;snapshotEditor($("lm_editor"));if(hubSection!=="models")settingsSection("models");
   renderModelCards();$("lm_editor").scrollIntoView({block:"nearest"});
   if(!isMobile()&&lastPointer!=="touch")$(p.id&&p.status==="needs_key"?"lm_key":"lm_name").focus({preventScroll:true});
 }
@@ -90,13 +91,15 @@ function configureSource(){returnToNew=true;$("dlg").close();openSettings("model
 
 /* ---------- computers ---------- */
 function renderComputers(data,network){
-  $("network_name").value=network.name;$("network_public_url").value=network.public_url;$("network_isolate").checked=network.isolate_terminals===true;
+  syncField($("network_name"),network.name);syncField($("network_public_url"),network.public_url);$("network_isolate").checked=network.isolate_terminals===true;
   $("network_bind").textContent="http://"+network.bind_host+":"+network.bind_port;
   $("network_browser").textContent=location.origin;
   const count=data.decks.length;
   $("deck_summary").textContent=count?tr("Подключено: {0}",[count]):tr("Пока не подключены");
   $("deck_summary").className="card-status "+(count?"ok":"idle");
   $("network_isolate_row").hidden=$("network_isolate_hint").hidden=!count;
+  renderDeckDiscovery(data.discovery);
+  if(editorInUse($("deck_editor")))return;
   const rows=data.decks.map(deck=>{
     const row=hubRow({title:deck.name,meta:deck.url,status:"…",
       actions:[deck.id===selectedDeck?el("span","card-meta",tr("открыт")):labelledButton(tr("Открыть"),"",()=>switchDeck(deck.id),deck.name),
@@ -104,13 +107,13 @@ function renderComputers(data,network){
     row.querySelector(".card-status").dataset.deckVersion=deck.id;row.dataset.card="deck:"+deck.id;return row;
   });
   $("deck_connections").replaceChildren(...placeEditor(rows,"deck:"+$("deck_id").value,$("deck_editor")));
-  renderDeckDiscovery(data.discovery);
 }
 function editDeck(deck={}){
   $("deck_id").value=deck.id||"";$("deck_name").value=deck.name||"";$("deck_url").value=deck.url||"";$("deck_username").value=deck.username||"";$("deck_password").value="";
   $("deck_editor_title").textContent=deck.id?tr("Изменить · {0}",[deck.name]):tr("Подключить другой Agent Deck");
   $("deck_save").textContent=deck.id?tr("Сохранить"):tr("Подключить");
-  $("deck_editor").hidden=false;
+  $("deck_editor").hidden=false;snapshotEditor($("deck_editor"));
+  for(const hidden of $("deck_connections").querySelectorAll(".hub-row[hidden]"))hidden.hidden=false;  // Another computer's row.
   const row=deck.id&&$("deck_connections").querySelector(`[data-card="deck:${deck.id}"]`);
   if(row){row.hidden=true;row.after($("deck_editor"))}else $("deck_connections").prepend($("deck_editor"));
   $("deck_editor").scrollIntoView({block:"nearest"});

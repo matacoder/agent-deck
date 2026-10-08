@@ -32,6 +32,7 @@ function githubCard(){
   return hubCard({key:"github",icon,title:"GitHub",status:"@"+ghLogin,tone:"ok",more:[[tr("Новая сессия из репозитория"),leave(openNew)]]});
 }
 function renderAgentCards(){
+  if(editorInUse($("kimi_dlg")))return;
   const cards=[agentCard("claude"),agentCard("codex"),kimiCard(),piCard(),githubCard()];
   $("agent_cards").replaceChildren(...placeEditor(cards,"kimi",$("kimi_dlg")));
 }
@@ -41,7 +42,7 @@ function openKimi(){
   $("kimi_state").textContent=config.configured?tr("Ключ сохранён на сервере"):tr("Ключ ещё не указан");
   $("kimi_state").className="card-status "+(config.configured?"ok":"idle");
   $("kimi_clear").hidden=!config.configured;
-  $("kimi_dlg").hidden=false;openSettings("agents");$("kimi_dlg").scrollIntoView({block:"nearest"});
+  $("kimi_dlg").hidden=false;snapshotEditor($("kimi_dlg"));openSettings("agents");$("kimi_dlg").scrollIntoView({block:"nearest"});
   // On a phone the keyboard would cover the explanation and the Save button.
   if(!isMobile()&&lastPointer!=="touch")$("kimi_key").focus({preventScroll:true});
 }
@@ -73,6 +74,7 @@ function telegramSummary(c){
   return [tr("Не настроен"),"idle"];
 }
 function renderTelegramCard(){
+  if(editorInUse($("integrations_dlg")))return;
   const [status,tone]=telegramSummary(telegramConfig);
   const card=hubCard({key:"telegram",icon:el("span","telegram-glyph",svgIcon("telegram")),title:"Telegram",status,tone,
     primary:{label:tr("Настроить"),run:openIntegrations,quiet:Boolean(telegramConfig.paired)},
@@ -90,7 +92,7 @@ function renderTelegram(config){
   state.className="card-status "+tone;
   $("telegram_duplicates").hidden=!c.duplicates?.length;
   if(c.duplicates?.length)$("telegram_duplicates").textContent=tr("Этот бот также включён на: {0}. Вопросы будут приходить дважды; отключите Telegram там.",[c.duplicates.join(", ")]);
-  $("telegram_enabled").checked=c.enabled!==false;
+  if(!telegramDirty)$("telegram_enabled").checked=c.enabled!==false;  // A poll must not undo the user's switch.
   $("telegram_clear").hidden=!c.configured;
   $("telegram_pair").hidden=!(c.configured&&!c.pair_url);
   $("telegram_pair").textContent=c.paired?tr("Привязать другой аккаунт"):tr("Получить ссылку привязки");
@@ -104,6 +106,7 @@ async function loadIntegrations(){
 }
 function openIntegrations(){
   telegramDirty=false;$("telegram_token").value="";$("telegram_credentials").open=!telegramConfig.configured;$("integrations_dlg").hidden=false;
+  $("telegram_enabled").checked=telegramConfig.enabled!==false;snapshotEditor($("integrations_dlg"));
   openSettings("notifications");loadIntegrations();$("integrations_dlg").scrollIntoView({block:"nearest"});
   clearInterval(integrationTimer);integrationTimer=setInterval(()=>{if(!document.hidden&&!telegramDirty)loadIntegrations()},3000);
 }

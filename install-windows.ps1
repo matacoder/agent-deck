@@ -256,12 +256,11 @@ function Install-AgentDeck($Options) {
 
 if (-not $env:AGENT_DECK_NO_MAIN) {
     # wsl.exe and Ubuntu print UTF-8; the console's legacy code page would turn it into garbage.
-    $consoleEncoding = [Console]::OutputEncoding
-    try {
-        [Console]::OutputEncoding = [Text.Encoding]::UTF8
-        $env:WSL_UTF8 = '1'
-        Install-AgentDeck $AgentDeck
-    }
+    # Hosts without a real console (PowerShell ISE) refuse the change: then output stays as it was.
+    $consoleEncoding = $null
+    try { $consoleEncoding = [Console]::OutputEncoding; [Console]::OutputEncoding = [Text.Encoding]::UTF8 } catch { }
+    $env:WSL_UTF8 = '1'
+    try { Install-AgentDeck $AgentDeck }
     catch { Write-Host "xx $($_.Exception.Message)" -ForegroundColor Red }
-    finally { [Console]::OutputEncoding = $consoleEncoding }
+    finally { if ($consoleEncoding) { try { [Console]::OutputEncoding = $consoleEncoding } catch { } } }
 }

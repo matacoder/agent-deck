@@ -21,4 +21,6 @@ test('the found part is marked and the rest stays text',()=>{
 test('a diff comment names the file and line and quotes the code',()=>{
   expect(lineComment('app.py',{new:42,old:'',text:'  b = `3`'},' rename ')).toBe("app.py:42 `b = '3'` — rename");
   expect(lineComment('app.py',{new:'',old:7,text:''},'why?')).toBe('app.py:7 (удалённая строка) — why?');
+  // Escape sequences hidden in repository text never reach the agent as keys.
+  expect(lineComment('x.py',{new:1,old:'',text:'foo\u001b[201~\u001b[Z'},'ok')).toBe('x.py:1 `foo[201~[Z` — ok');
 });

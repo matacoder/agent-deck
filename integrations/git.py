@@ -23,10 +23,14 @@ MAX_PATCH = 600 * 1024
 GROUP_COMMITS = 80
 GROUP_TIMEOUT = 180
 SEP, REC = '\x1f', '\x1e'
+# Reads must not take optional locks: `git status` would otherwise rewrite .git/index and an agent's
+# `git add` running at that moment would fail on index.lock.
+# A repository's own config must not start programs just because the panel looked at it.
+BASE = ('--no-optional-locks', '-c', 'core.quotepath=off', '-c', 'core.fsmonitor=false', '--no-pager')
 
 
 def git(folder, *args, run=subprocess.run, timeout=20, env=None):
-    result = run(['git', '-C', str(folder), '-c', 'core.quotepath=off', '--no-pager', *args],
+    result = run(['git', '-C', str(folder), *BASE, *args],
                  input=b'', capture_output=True, timeout=timeout, **({'env': env} if env else {}))
     if result.returncode:
         message = result.stderr.decode('utf-8', 'replace').strip().splitlines()
@@ -36,13 +40,17 @@ def git(folder, *args, run=subprocess.run, timeout=20, env=None):
     return result.stdout.decode('utf-8', 'replace')
 
 
-def capped(folder, args, limit):
-    """git output read up to a size limit: one huge generated commit must not fill the panel's memory."""
-    process = subprocess.Popen(['git', '-C', str(folder), '-c', 'core.quotepath=off', '--no-pager', *args],
+def capped(folder, args, limit, timeout=60):
+    """git output read up to a size limit: one huge generated commit must not fill the panel's memory. A stalled
+    working tree (a hung network folder) must not hold a server thread forever either."""
+    process = subprocess.Popen(['git', '-C', str(folder), *BASE, *args],
                                stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+    watchdog = threading.Timer(timeout, process.kill)
+    watchdog.start()
     try:
         data = process.stdout.read(limit)
     finally:
+        watchdog.cancel()
         process.kill()
         process.stdout.close()
         process.wait(timeout=10)
@@ -186,8 +194,26 @@ def group_diff(folder, shas, run=subprocess.run):
     return {'files': sorted(by_path.values(), key=lambda f: f['path'])}
 
 
-EMPTY_TREE = '4b825dc642cb6eb9a060e54bf8d69288fbee4904'
 MAX_UNTRACKED = 50
+
+
+def private_parts(root):
+    """The panel's own folder (passwords, keys) when it lies inside this repository: a home folder kept in git
+    would otherwise show its secrets as changes."""
+    from integrations.files import _private
+    home, real_root = os.path.realpath(os.path.expanduser('~')), os.path.realpath(root)
+    parts = set()
+    for folder in _private(Path(home)):
+        folder = os.path.realpath(folder)
+        if folder == real_root or folder.startswith(real_root + os.sep):
+            parts.add(os.path.relpath(folder, real_root))
+    return parts
+
+
+def is_private(root, path, parts):
+    real = os.path.realpath(os.path.join(root, path))
+    return any(real == os.path.join(os.path.realpath(root), p) or real.startswith(os.path.join(os.path.realpath(root), p) + os.sep)
+               for p in parts) or any(path == p or path.startswith(p + '/') for p in parts)
 
 
 def untracked_patch(root, path, run=subprocess.run):
@@ -201,7 +227,7 @@ def untracked_patch(root, path, run=subprocess.run):
     if info.st_size > MAX_FILE_PATCH:
         return {'path': path, 'old_path': path, 'status': 'added', 'added': 0, 'removed': 0, 'binary': False,
                 'truncated': True, 'patch': ''}
-    result = run(['git', '-C', str(root), '-c', 'core.quotepath=off', '--no-pager', 'diff', '--no-index', '--no-color',
+    result = run(['git', '-C', str(root), *BASE, 'diff', '--no-index', '--no-color',
                   '--no-ext-diff', '--no-textconv', '--', '/dev/null', path], input=b'', capture_output=True, timeout=20)
     if result.returncode not in (0, 1):
         return None
@@ -220,17 +246,22 @@ def changes(folder, run=subprocess.run):
     try:
         base = git(root, 'rev-parse', '--verify', '--quiet', 'HEAD^{commit}', run=run).strip()
     except ValueError:
-        base = EMPTY_TREE  # No commits yet: everything staged is new.
-    args = ['diff', base, '--patch', '--find-renames', '--no-color', '--no-ext-diff', '--no-textconv', '--']
+        # No commits yet: everything staged is new. The empty tree's id depends on the hash (SHA-1 or SHA-256).
+        base = git(root, 'hash-object', '-t', 'tree', '/dev/null', run=run).strip()
+    private = private_parts(root)
+    exclude = [f':(exclude,top){p}' for p in sorted(private)]
+    args = ['diff', base, '--patch', '--find-renames', '--no-color', '--no-ext-diff', '--no-textconv', '--', *exclude]
     patch = capped(root, args, MAX_PATCH * 2) if run is subprocess.run else git(root, *args, run=run)
     files, size = [], 0
     for item in split_patch(patch):
+        if is_private(root, item['path'], private) or is_private(root, item['old_path'], private):
+            continue
         size += len(item['patch'])
         if size > MAX_PATCH:
             item.update(patch='', truncated=True)
         files.append(item)
-    status = git(root, 'status', '--porcelain=v1', '-z', '--untracked-files=all', run=run)
-    untracked = [entry[3:] for entry in status.split('\0') if entry.startswith('?? ')]
+    status = git(root, 'status', '--porcelain=v1', '-z', '--untracked-files=all', '--', *exclude, run=run)
+    untracked = [entry[3:] for entry in status.split('\0') if entry.startswith('?? ') and not is_private(root, entry[3:], private)]
     for path in untracked[:MAX_UNTRACKED]:
         item = untracked_patch(root, path, run=run)
         if not item:

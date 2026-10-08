@@ -846,6 +846,10 @@ def paste_to_tmux(name, text, bracketed=True):
         _paste_raw_supported = bool(re.search(r"^paste-buffer[^\n]*\[[^]\n]*S", commands, re.M))
     # stdin avoids tmux's option and command-separator parsing of user text.
     buffer = "cc-input-" + uuid.uuid4().hex
+    # Paste markers inside the text would end the paste early and turn the rest into keystrokes
+    # (Esc, Shift+Tab switching the agent's permission mode); they are never content of a paste.
+    if bracketed:
+        text = text.replace("\x1b[200~", "").replace("\x1b[201~", "")
     payload = "\x1b[200~" + text + "\x1b[201~" if bracketed else text
     result = subprocess.run([*TMUX_COMMAND, "load-buffer", "-b", buffer, "-"], input=payload,
                             text=True, capture_output=True, timeout=10)
@@ -1681,7 +1685,10 @@ def scrollback_payload(query):
     name = query.get("name", [""])[0]
     if not NAME_RE.fullmatch(name) or not session_exists(name):
         raise ValueError("сессия не найдена")
-    text = tmux("capture-pane", "-p", "-J", "-t", f"={PREFIX}{name}:", "-S", "-", "-E", "-", check=False)
+    try:
+        text = tmux("capture-pane", "-p", "-J", "-t", f"={PREFIX}{name}:", "-S", "-", "-E", "-", check=False)
+    except subprocess.TimeoutExpired:
+        raise ValueError("tmux не ответил за 10 секунд; попробуйте ещё раз") from None
     return scrollback.search(text, query.get("q", [""])[0])
 
 

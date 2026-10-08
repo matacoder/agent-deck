@@ -26,3 +26,11 @@ test('raw HTML stays text and only web links are clickable',()=>{
 test('markdown files are recognised by extension',()=>{
   expect(['README.md','plan.MARKDOWN','a.txt'].map(isMarkdown)).toEqual([true,true,false]);
 });
+
+test('a heading with a long run of spaces renders at once and keeps its text',()=>{
+  const started=Date.now();
+  const root=renderMarkdown('# Title'+' '.repeat(20000)+'end ##');
+  expect(Date.now()-started).toBeLessThan(500);
+  expect(root.querySelector('h1').textContent).toBe('Title'+' '.repeat(20000)+'end');
+  expect(renderMarkdown('## C# notes').querySelector('h2').textContent).toBe('C# notes');
+});

@@ -104,6 +104,15 @@ class TmuxIntegration(PanelCase):
             time.sleep(0.01)
         self.assertEqual(self.input_file.read_bytes(), expected)
 
+    def test_paste_markers_inside_text_cannot_end_the_paste_early(self):
+        # Text copied from a repository could carry the end-of-paste marker followed by keys (Shift+Tab).
+        self.panel.action_send({"name": "demo", "text": "foo\x1b[201~\x1b[Z bar"})
+        expected = ("\x1b[200~foo\x1b[Z bar\x1b[201~\r").encode()
+        deadline = time.monotonic() + 5
+        while (not self.input_file.exists() or self.input_file.stat().st_size < len(expected)) and time.monotonic() < deadline:
+            time.sleep(0.01)
+        self.assertEqual(self.input_file.read_bytes(), expected)
+
     def test_shell_input_is_literal_without_agent_bracket_markers(self):
         self.panel.tmux("set-option", "-t", "=cc-demo:", "@cc_agent", "shell")
         self.panel.action_send({"name": "demo", "text": "printf hello;"})

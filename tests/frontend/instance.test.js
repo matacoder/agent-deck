@@ -457,6 +457,81 @@ test('a found computer that is already connected says so instead of offering to 
   }finally{window.close()}
 });
 
+test('background refreshes never move an editor being typed in or overwrite unsaved fields',async()=>{
+  const state={local:()=>({sessions:[session('alpha')]})};
+  const routes=settingsRoutes(state,{claude:{installed:true,logged_in:true},kimi:{installed:true},kimi_config:{configured:false}});
+  routes['/api/project_directory']=()=>({directory:'/home/demo/projects'});
+  const window=boot(routes);
+  try{
+  await settle();await settle();
+  const doc=window.document;
+  await window.eval('openSettings("general")');await settle();
+  const folder=doc.getElementById('project_directory');
+  expect(folder.value).toBe('/home/demo/projects');
+  folder.value='/home/demo/typed-but-not-saved';
+  window.eval('openKimi()');await settle();
+  expect(folder.value).toBe('/home/demo/typed-but-not-saved');  // Opening the Kimi editor did not reload the form.
+  const key=doc.getElementById('kimi_key');key.focus();key.value='sk-half';
+  window.eval('renderHub()');
+  expect(doc.activeElement).toBe(key);
+  expect(key.value).toBe('sk-half');
+  }finally{window.close()}
+});
+
+test('a computer switch does not carry backups or a recovery code to the next computer',async()=>{
+  const state={local:()=>({sessions:[session('alpha')]})};
+  const routes=settingsRoutes(state,{claude:{installed:true,logged_in:true}});
+  routes['/api/backups']=()=>({configured:true,key_id:'abcd1234',last:1,stored:[],report:null});
+  routes['/deck/'+DECK+'/api/backups']=()=>({__status:404,error:'not found'});
+  const window=boot(routes);
+  try{
+  await settle();await settle();
+  const doc=window.document;
+  await window.eval('openSettings("backups")');await settle();
+  expect(doc.getElementById('backup_status').textContent).toBe('Включены');
+  doc.getElementById('backup_code').textContent='AD1-SECRET';doc.getElementById('backup_code_card').hidden=false;
+  window.openDeckSession(DECK,'beta');await settle();
+  expect(window.eval('backupStatus')).toBeNull();
+  expect(doc.getElementById('backup_status').textContent).toBe('');
+  expect(doc.getElementById('backup_code').textContent).toBe('');
+  expect(doc.getElementById('backup_code_card').hidden).toBe(true);
+  }finally{window.close()}
+});
+
+test('desktop keeps the typing focus across a tab switch, and Option+K on a Mac still types',async()=>{
+  const state={local:()=>({sessions:[session('alpha')]})};
+  const window=boot(routesFor(state),null,w=>Object.defineProperty(w.navigator,'platform',{value:'MacIntel'}));
+  try{
+  await settle();await settle();
+  const doc=window.document,msg=doc.getElementById('msg');
+  msg.focus();
+  Object.defineProperty(doc,'hidden',{configurable:true,get:()=>true});doc.dispatchEvent(new window.Event('visibilitychange'));
+  expect(doc.activeElement).toBe(msg);
+  Object.defineProperty(doc,'hidden',{configurable:true,get:()=>false});
+  const option=new window.KeyboardEvent('keydown',{code:'KeyK',key:'˚',altKey:true,bubbles:true,cancelable:true});
+  msg.dispatchEvent(option);
+  expect(option.defaultPrevented).toBe(false);
+  expect(doc.getElementById('palette_dlg').open).toBe(false);
+  }finally{window.close()}
+});
+
+test('a diff comment goes to the session whose history is open, and New session never lands on the wrong computer',async()=>{
+  const state={local:()=>({sessions:[session('alpha'),session('beta')]})};
+  const routes=routesFor(state);routes['/deck/'+DECK+'/api/sessions']=()=>({sessions:[]});
+  const window=boot(routes);
+  try{
+  await settle();await settle();
+  window.eval('hist.session="alpha";select("beta")');
+  window.eval('appendToMessage("app.py:1 — fix")');
+  expect(window.eval('messageDrafts.get("alpha")')).toBe('app.py:1 — fix');
+  expect(window.document.getElementById('msg').value).toBe('');
+  window.eval('sending=true');
+  window.document.querySelector('#tabs .deck-new').click();await settle();
+  expect(window.eval('selectedDeck')).toBe('');
+  expect(window.document.getElementById('dlg').open).toBe(false);
+  }finally{window.close()}
+});
+
 test('a folder that cannot be listed offers a retry instead of loading forever',async()=>{
   const state={local:()=>({sessions:[session('alpha')]})};
   const routes=routesFor(state);let fail=true;
