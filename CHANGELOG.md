@@ -2,6 +2,11 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.24.0 — 2026-10-08
+
+- Changes and Commits follow the worktree the agent works in: the panel looks for the last worktree the agent named in its output (its path or its branch) and shows that tree, marked "auto"; with several worktrees a quiet picker in the Changes header lets you choose one by hand. The output itself never leaves the server.
+- A dialog no longer gets a blue outline around the whole window after a button inside it disappears (Update all in Settings → Computers).
+
 ## 1.23.3 — 2026-10-08
 
 - Changes is more compact: repository and branch on one line with an icon refresh button; a clean tree shows one short note and the last commit's subject, author and time (the full message stays in Commits).

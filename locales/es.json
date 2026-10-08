@@ -811,6 +811,9 @@
     "Ширина боковой панели": "Ancho de la barra lateral",
     "Потяните, чтобы изменить ширину; двойной клик — ширина по умолчанию": "Arrastra para cambiar el ancho; doble clic para el valor predeterminado",
     "Скрыть или показать панель проекта": "Mostrar u ocultar el panel del proyecto",
-    "Всё закоммичено · последний коммит": "Todo confirmado · último commit"
+    "Всё закоммичено · последний коммит": "Todo confirmado · último commit",
+    "Рабочее дерево": "Árbol de trabajo",
+    "Авто": "Automático",
+    "{0} · авто": "{0} · automático"
   }
 }

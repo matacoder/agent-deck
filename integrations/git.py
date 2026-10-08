@@ -86,6 +86,64 @@ def checked_ref(ref, known):
     return ref
 
 
+def worktrees(folder, run=subprocess.run):
+    """Every working tree of the session's repository, the main one first: path, folder name and branch."""
+    trees, current = [], None
+    for line in git(folder, 'worktree', 'list', '--porcelain', run=run).splitlines() + ['']:
+        if line.startswith('worktree '):
+            current = {'path': line[9:], 'name': os.path.basename(line[9:]), 'branch': 'HEAD'}
+        elif line.startswith('branch ') and current:
+            current['branch'] = line[7:].removeprefix('refs/heads/')
+        elif not line and current:
+            if os.path.isdir(current['path']):  # A deleted folder git has not pruned yet.
+                trees.append(current)
+            current = None
+    return trees
+
+
+def mentioned_tree(trees, text, home):
+    """The worktree the agent named last in its output: absolute, ~ or repository-relative path, its last
+    two parts (`worktrees/w2`) or its own branch as a separate word ("branch: w2"). The main tree is left
+    out: every prompt line names it."""
+    main, best, found = trees[0]['path'], -1, None
+    common = {'HEAD', 'main', 'master', trees[0]['branch']}
+    for tree in trees[1:]:
+        path = tree['path']
+        forms = {path, '/'.join(path.split('/')[-2:])} | ({tree['branch']} if tree['branch'] not in common else set())
+        if path.startswith(main + '/'):
+            forms.add(path[len(main) + 1:])
+        if home and path.startswith(home + '/'):
+            forms.add('~' + path[len(home):])
+        for form in forms:
+            for match in re.finditer(r'(?<![\w./-])' * (form[0] not in '/~') + re.escape(form) + r'(?![\w.-])', text):
+                if match.start() > best:
+                    best, found = match.start(), tree
+    return found
+
+
+def choose_tree(folder, wanted, output, run=subprocess.run):
+    """Which working tree to show: the one asked for, else the one the agent's output names, else the main one.
+    output() is called only when there is a choice to make."""
+    try:
+        trees = worktrees(folder, run=run)
+    except ValueError:
+        return folder, None
+    if not trees:
+        return folder, None
+    if wanted:
+        tree = next((t for t in trees if t['path'] == wanted), None)
+        if not tree:
+            raise ValueError('Такого рабочего дерева нет в репозитории')
+        return tree['path'], {'trees': trees, 'tree': tree['path'], 'auto': False}
+    tree = (mentioned_tree(trees, output(), os.path.expanduser('~')) if len(trees) > 1 else None) or trees[0]
+    # A session opened inside one worktree keeps showing it unless the output names another.
+    real = os.path.realpath(folder)
+    if tree is trees[0]:
+        inside = [t for t in trees if real == t['path'] or real.startswith(t['path'] + '/')]
+        tree = max(inside, key=lambda t: len(t['path']), default=trees[0])  # Worktrees often sit inside the main one.
+    return tree['path'], {'trees': trees, 'tree': tree['path'], 'auto': True}
+
+
 def history(folder, skip=0, run=subprocess.run, ref=None):
     if not isinstance(skip, int) or skip < 0:
         raise ValueError('Неверная страница истории')

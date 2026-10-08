@@ -811,6 +811,9 @@
     "Ширина боковой панели": "Lebar bilah samping",
     "Потяните, чтобы изменить ширину; двойной клик — ширина по умолчанию": "Seret untuk mengubah lebar; klik dua kali untuk bawaan",
     "Скрыть или показать панель проекта": "Tampilkan atau sembunyikan panel proyek",
-    "Всё закоммичено · последний коммит": "Semua sudah di-commit · commit terakhir"
+    "Всё закоммичено · последний коммит": "Semua sudah di-commit · commit terakhir",
+    "Рабочее дерево": "Pohon kerja",
+    "Авто": "Otomatis",
+    "{0} · авто": "{0} · otomatis"
   }
 }

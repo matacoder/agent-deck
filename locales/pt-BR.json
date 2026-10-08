@@ -811,6 +811,9 @@
     "Ширина боковой панели": "Largura da barra lateral",
     "Потяните, чтобы изменить ширину; двойной клик — ширина по умолчанию": "Arraste para mudar a largura; clique duas vezes para o padrão",
     "Скрыть или показать панель проекта": "Mostrar ou ocultar o painel do projeto",
-    "Всё закоммичено · последний коммит": "Tudo commitado · último commit"
+    "Всё закоммичено · последний коммит": "Tudo commitado · último commit",
+    "Рабочее дерево": "Árvore de trabalho",
+    "Авто": "Automático",
+    "{0} · авто": "{0} · automático"
   }
 }

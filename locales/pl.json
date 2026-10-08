@@ -811,6 +811,9 @@
     "Ширина боковой панели": "Szerokość panelu bocznego",
     "Потяните, чтобы изменить ширину; двойной клик — ширина по умолчанию": "Przeciągnij, aby zmienić szerokość; dwuklik przywraca domyślną",
     "Скрыть или показать панель проекта": "Pokaż lub ukryj panel projektu",
-    "Всё закоммичено · последний коммит": "Wszystko zatwierdzone · ostatni commit"
+    "Всё закоммичено · последний коммит": "Wszystko zatwierdzone · ostatni commit",
+    "Рабочее дерево": "Drzewo robocze",
+    "Авто": "Automatycznie",
+    "{0} · авто": "{0} · automatycznie"
   }
 }

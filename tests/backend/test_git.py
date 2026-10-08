@@ -27,6 +27,46 @@ def repo(test):
     return path
 
 
+class WorktreeTests(unittest.TestCase):
+    def setUp(self):
+        self.main = repo(self)
+        for name in ('w1', 'w2', 'w20'):
+            subprocess.run(['git', '-C', str(self.main), 'worktree', 'add', '-q', '-b', 'worktree-' + name,
+                            str(self.main / '.claude/worktrees' / name)], check=True, capture_output=True)
+        self.tree = lambda name: str((self.main / '.claude/worktrees' / name).resolve())
+
+    def test_worktrees_list_the_main_tree_first_with_branches(self):
+        trees = G.worktrees(self.main)
+        self.assertEqual([(t['name'], t['branch']) for t in trees][:2], [(self.main.name, 'main'), ('w1', 'worktree-w1')])
+
+    def test_the_tree_the_agent_named_last_is_shown_and_w2_is_not_w20(self):
+        output = lambda: ('Ran cd .claude/worktrees/w1 && just test\n'
+                          f'Ran git -C {self.tree("w20")} status\nRan cd .claude/worktrees/w2 && git status\n'
+                          f'~/dev/{self.main.name} · main [default]')
+        path, info = G.choose_tree(self.main, '', output)
+        self.assertEqual((path, info['auto']), (self.tree('w2'), True))
+        trees = G.worktrees(self.main)
+        self.assertEqual(G.mentioned_tree(trees, 'see worktrees/w20/app.py', '')['name'], 'w20')
+        # Its branch named as a word counts; the same letters inside a longer name or path do not.
+        self.assertEqual(G.mentioned_tree(trees, 'branch: worktree-w1 (0 own commits)', '')['name'], 'w1')
+        self.assertIsNone(G.mentioned_tree(trees, 'my-worktree-w1x and old/worktree-w1', ''))
+
+    def test_no_mention_keeps_the_session_folder_and_a_choice_wins(self):
+        path, info = G.choose_tree(self.main, '', lambda: 'nothing here')
+        self.assertEqual(Path(path).resolve(), self.main.resolve())
+        path, _ = G.choose_tree(self.main / '.claude/worktrees/w1', '', lambda: 'nothing here')
+        self.assertEqual(path, self.tree('w1'))
+        path, info = G.choose_tree(self.main, self.tree('w20'), lambda: self.fail('output is not read for a choice'))
+        self.assertEqual((path, info['auto']), (self.tree('w20'), False))
+        with self.assertRaises(ValueError):
+            G.choose_tree(self.main, '/etc', lambda: '')
+
+    def test_a_folder_outside_git_has_no_trees(self):
+        tmp = tempfile.TemporaryDirectory(dir='/tmp')
+        self.addCleanup(tmp.cleanup)
+        self.assertEqual(G.choose_tree(tmp.name, '', lambda: ''), (tmp.name, None))
+
+
 class HistoryTests(unittest.TestCase):
     def test_history_lists_commits_with_their_change_counts(self):
         path = repo(self)

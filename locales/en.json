@@ -811,6 +811,9 @@
     "Ширина боковой панели": "Sidebar width",
     "Потяните, чтобы изменить ширину; двойной клик — ширина по умолчанию": "Drag to change the width; double-click for the default",
     "Скрыть или показать панель проекта": "Show or hide the project panel",
-    "Всё закоммичено · последний коммит": "All committed · last commit"
+    "Всё закоммичено · последний коммит": "All committed · last commit",
+    "Рабочее дерево": "Working tree",
+    "Авто": "Auto",
+    "{0} · авто": "{0} · auto"
   }
 }

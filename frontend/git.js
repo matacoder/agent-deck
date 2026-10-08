@@ -2,7 +2,8 @@
 // message draft; a clean tree shows the last commit), commits with their diffs, and feature groups that a model proposes from commit subjects
 // and file names, each with a combined diff.
 // Agent and repository text is rendered with textContent only.
-const hist={session:null,ref:"",tab:"changes",authors:null,changes:null,changesError:"",changesSeq:0,log:null,commits:[],back:null,view:null,groups:null,timer:null,fetching:false,
+// tree: the working tree picked by hand, "" while the server follows the one the agent's output names.
+const hist={session:null,ref:"",tree:"",tab:"changes",authors:null,changes:null,changesError:"",changesSeq:0,log:null,commits:[],back:null,view:null,groups:null,timer:null,fetching:false,
   seq:0,loadingPage:false,error:""};
 // Every list (session, branch) gets a new number; an answer for an older one is dropped instead of being
 // mixed into the list that is on screen now.
@@ -68,17 +69,19 @@ function fileBlock(title,file,open,content){
 }
 
 function startHistory(tab){
-  hist.session=active;hist.ref="";hist.tab=tab;hist.back=null;hist.models=null;hist.authors=savedAuthorColors();freshList();
+  hist.session=active;hist.ref="";hist.tree="";hist.tab=tab;hist.back=null;hist.models=null;hist.authors=savedAuthorColors();freshList();
   renderHistory();loadChanges();loadHistoryPage();
 }
 async function loadChanges(){
   const seq=++hist.changesSeq;hist.changes=null;hist.changesError="";
   if(hist.tab==="changes"&&!hist.view)renderHistory();
   try{
-    const data=await api(gitPath("changes"),null,false,{timeout:60000});
+    const data=await api(gitPath("changes",{tree:hist.tree}),null,false,{timeout:60000});
     // A clean tree shows the last commit instead, so the tab is never empty right after a commit.
     if(!data.files.length&&data.head&&seq===hist.changesSeq)data.last=await lastCommit(data.head);
     if(seq!==hist.changesSeq)return;hist.changes=data;
+    // The agent moved to another worktree: the commit list follows it.
+    if(data.tree&&hist.log?.tree&&hist.log.tree!==data.tree){freshList();loadHistoryPage()}
   }catch(e){if(seq!==hist.changesSeq)return;hist.changesError=e.message===STALE?"":e.message||tr("Не удалось загрузить")}
   if(hist.tab==="changes"&&!hist.view)renderHistory();
 }
@@ -86,7 +89,21 @@ async function lastCommit(sha){
   try{return await api(gitPath("commit",{sha}),null,false,{timeout:60000})}
   catch(e){return {error:e.message===STALE?"":e.message||tr("Не удалось загрузить")}}
 }
-function gitPath(route,params={}){return "/api/git/"+route+"?"+new URLSearchParams({name:hist.session,ref:hist.ref,...params})}
+// Later pages, commits and groups stay on the tree the list was made for.
+const shownTree=()=>hist.tree||hist.log?.tree||hist.changes?.tree||"";
+function gitPath(route,params={}){return "/api/git/"+route+"?"+new URLSearchParams({name:hist.session,ref:hist.ref,tree:shownTree(),...params})}
+function chooseTree(tree){hist.tree=tree;freshList();renderHistory();loadChanges();loadHistoryPage()}
+function treeLabel(tree){return tree.name+" · "+tree.branch}
+// Several worktrees: a quiet picker whose first entry follows the agent; one tree: just where we are.
+function treePicker(data){
+  if(!(data.trees?.length>1))return [el("code","",data.name),el("span","sep","·"),el("span","",data.branch)];
+  const current=data.trees.find(t=>t.path===data.tree)||data.trees[0];
+  const select=el("select","git-tree");select.setAttribute("aria-label",tr("Рабочее дерево"));
+  const auto=el("option","",data.auto?tr("{0} · авто",[treeLabel(current)]):tr("Авто"));auto.value="";select.append(auto);
+  for(const tree of data.trees){const option=el("option","",treeLabel(tree));option.value=tree.path;select.append(option)}
+  select.value=hist.tree;select.onchange=()=>chooseTree(select.value);
+  return [el("code","",data.trees[0].name),el("span","sep","·"),select];
+}
 // Another branch (a worktree's own, the local main, or GitHub's after a fetch) starts the list over.
 function chooseBranch(ref){hist.ref=ref;freshList();renderHistory();loadHistoryPage();if(hist.tab==="groups")loadGroups()}
 async function fetchRemote(){
@@ -161,7 +178,7 @@ function modelPicker(){
   return el("label","git-model",el("span","",tr("Модель")),select);
 }
 async function startGrouping(){
-  try{hist.groups=await api("/api/git_group",{name:hist.session,ref:hist.ref,model:groupModel()})}catch(e){if(e.message!==STALE)toast(e.message);return}
+  try{hist.groups=await api("/api/git_group",{name:hist.session,ref:hist.ref,tree:shownTree(),model:groupModel()})}catch(e){if(e.message!==STALE)toast(e.message);return}
   renderHistory();hist.timer=setTimeout(loadGroups,3000);
 }
 function historyTab(tab){
@@ -291,7 +308,7 @@ function renderChanges(box){
   // One line for where we are; the refresh button is an icon to keep the first change high on the screen.
   const refresh=el("button","git-refresh",svgIcon("refresh"));refresh.type="button";refresh.onclick=loadChanges;
   refresh.setAttribute("aria-label",tr("Обновить"));refresh.title=tr("Обновить");
-  box.append(el("div","git-head",el("code","",data.name),el("span","sep","·"),el("span","",data.branch),refresh));
+  box.append(el("div","git-head",...treePicker(data),refresh));
   if(!data.files.length)return renderLastCommit(box,data.last);
   box.append(el("p","git-meta",tr("Нажмите на строку, чтобы добавить комментарий в сообщение агенту")));
   // Many files stay folded: each diff renders only when opened, which keeps a phone responsive.

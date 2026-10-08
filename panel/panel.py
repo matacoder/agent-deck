@@ -1713,16 +1713,26 @@ def git_grouper():
         return _grouper
 
 
+def git_tree(name, wanted):
+    """The working tree to show for a session: the one asked for or the one its agent's output names.
+    The output stays on the server; only the chosen tree's path is returned."""
+    from integrations import git
+    folder = session_folder(name)
+    output = lambda: tmux("capture-pane", "-p", "-J", "-t", f"={PREFIX}{name}:", "-S", "-3000", check=False)
+    return git.choose_tree(folder, wanted if isinstance(wanted, str) else "", output)
+
+
 def git_payload(route, query):
     from integrations import git
-    folder = session_folder(query.get("name", [""])[0])
+    folder, trees = git_tree(query.get("name", [""])[0], query.get("tree", [""])[0])
     if route == "/api/git/log":
         skip = query.get("skip", ["0"])[0]
-        return git.history(folder, int(skip) if skip.isdigit() else -1, ref=query.get("ref", [""])[0])
+        page = git.history(folder, int(skip) if skip.isdigit() else -1, ref=query.get("ref", [""])[0])
+        return {**page, **(trees or {})}
     if route == "/api/git/commit":
         return git.commit(folder, query.get("sha", [""])[0])
     if route == "/api/git/changes":
-        return git.changes(folder)
+        return {**git.changes(folder), **(trees or {})}
     if route == "/api/git/group_diff":
         return git.group_diff(folder, [s for s in query.get("shas", [""])[0].split(",") if s])
     if route == "/api/git/groups":
@@ -1788,7 +1798,7 @@ def grouping_model(choice):
 
 
 def action_git_group(d):
-    return git_grouper().start(session_folder(d.get("name")), d.get("_language", DEFAULT_LANGUAGE), d.get("ref") or None,
+    return git_grouper().start(git_tree(d.get("name"), d.get("tree"))[0], d.get("_language", DEFAULT_LANGUAGE), d.get("ref") or None,
                                grouping_model(d.get("model")))
 
 

@@ -90,3 +90,8 @@ test('dialog bodies can scroll: flex children shrink and the file list is not a 
   expect(css).toMatch(/\.dlg-body\{[^}]*overflow-y:auto[^}]*min-height:0/);
   expect(css).toMatch(/#files_body\{display:flex;flex-direction:column/);
 });
+
+test('a dialog that takes focus itself draws no ring around the whole window',()=>{
+  const css=fs.readFileSync(path.resolve(__dirname,'../../frontend/style.css'),'utf8');
+  expect(css).toMatch(/dialog:focus,dialog:focus-visible\{outline:none\}/);
+});

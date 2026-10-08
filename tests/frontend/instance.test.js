@@ -326,6 +326,28 @@ test('sidebar widths change from their edge, are remembered and reset with a dou
   }finally{window.close()}
 });
 
+test('Changes follows the worktree the agent works in and a picked tree wins',async()=>{
+  const state={local:()=>({sessions:[session('alpha')]})};
+  const routes=routesFor(state),asked=[];
+  const trees=[{path:'/r',name:'r',branch:'HEAD'},{path:'/r/.claude/worktrees/w2',name:'w2',branch:'worktree-w2'},{path:'/r/.claude/worktrees/w3',name:'w3',branch:'worktree-w3'}];
+  const pick=url=>url.searchParams.get('tree')||'/r/.claude/worktrees/w2';
+  routes['/api/git/log']=url=>{asked.push('log:'+url.searchParams.get('tree'));return {repo:pick(url),name:'w',branch:'b',ref:'HEAD',branches:['b'],remote:'',ahead:0,behind:0,commits:[],more:false,trees,tree:pick(url),auto:!url.searchParams.get('tree')}};
+  routes['/api/git/changes']=url=>{asked.push('changes:'+url.searchParams.get('tree'));return {repo:pick(url),name:'w',branch:'b',head:'',skipped:0,files:[],trees,tree:pick(url),auto:!url.searchParams.get('tree')}};
+  const window=boot(routes);
+  try{
+  await settle();await settle();
+  const doc=window.document;
+  window.eval('openHistory()');await settle();await settle();
+  const select=()=>doc.querySelector('#git_body .git-tree');
+  expect(doc.querySelector('#git_body .git-head code').textContent).toBe('r');
+  expect(select().value).toBe('');
+  expect(select().options[0].textContent).toMatch(/^w2 · worktree-w2 · /);
+  select().value='/r/.claude/worktrees/w3';select().dispatchEvent(new window.Event('change'));await settle();await settle();
+  expect(asked.slice(-2).sort()).toEqual(['changes:/r/.claude/worktrees/w3','log:/r/.claude/worktrees/w3']);
+  expect(select().value).toBe('/r/.claude/worktrees/w3');
+  }finally{window.close()}
+});
+
 test('a clean working tree shows the last commit in Changes',async()=>{
   const state={local:()=>({sessions:[session('alpha')]})};
   const routes=routesFor(state),head='c'.repeat(40);

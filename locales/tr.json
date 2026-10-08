@@ -811,6 +811,9 @@
     "Ширина боковой панели": "Kenar çubuğu genişliği",
     "Потяните, чтобы изменить ширину; двойной клик — ширина по умолчанию": "Genişliği değiştirmek için sürükleyin; varsayılan için çift tıklayın",
     "Скрыть или показать панель проекта": "Proje panelini göster veya gizle",
-    "Всё закоммичено · последний коммит": "Hepsi commit edildi · son commit"
+    "Всё закоммичено · последний коммит": "Hepsi commit edildi · son commit",
+    "Рабочее дерево": "Çalışma ağacı",
+    "Авто": "Otomatik",
+    "{0} · авто": "{0} · otomatik"
   }
 }

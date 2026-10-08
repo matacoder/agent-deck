@@ -811,6 +811,9 @@
     "Ширина боковой панели": "Seitenleistenbreite",
     "Потяните, чтобы изменить ширину; двойной клик — ширина по умолчанию": "Ziehen, um die Breite zu ändern; Doppelklick für den Standard",
     "Скрыть или показать панель проекта": "Projektbereich ein- oder ausblenden",
-    "Всё закоммичено · последний коммит": "Alles committet · letzter Commit"
+    "Всё закоммичено · последний коммит": "Alles committet · letzter Commit",
+    "Рабочее дерево": "Arbeitsverzeichnis",
+    "Авто": "Automatisch",
+    "{0} · авто": "{0} · automatisch"
   }
 }

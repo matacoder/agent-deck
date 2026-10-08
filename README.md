@@ -306,6 +306,8 @@ the sidebar button at the right end of the session bar (like the one on the left
 (showing the open session's project) and is remembered in this browser. Drag the inner edge of either
 sidebar to change its width (double click for the default). On a phone the same icons open it
 full screen. **Changes** shows what is not committed yet, or the last commit when the tree is clean.
+With several git worktrees the panel shows the one the agent last named in its output (its path or branch),
+marked "auto"; the picker next to the repository name chooses another.
 
 ## Project files
 
