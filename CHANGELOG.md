@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.26.4 — 2026-10-08
+
+- Quieter logs and browser console: idle connections that the browser or proxy leave open no longer log "Request timed out" (hundreds of lines a day), a connection that times out before its first request no longer prints a traceback, and a picture an agent mentions that is not on disk answers the thumbnail with an empty 204 instead of a red 404 (opening it still says it is missing).
+
 ## 1.26.3 — 2026-10-08
 
 - Text screen: the physical keyboard drives an agent's menu again — digits 1–9, Enter, Esc, arrows, Tab and Shift+Tab go to the session (as the on-screen keys do) whenever no field, menu or dialog has the focus, also for prompts the panel does not recognise as a question.

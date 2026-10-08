@@ -112,6 +112,16 @@ class ImageEndpointTests(PanelCase):
         handler.serve_session_image({'name': ['demo'], 'path': ['other.png']})
         self.assertEqual(handler.send_json.call_args.args[0], 400)
 
+    def test_missing_thumbnail_is_an_empty_answer_and_the_full_image_a_404(self):
+        self.panel.session_exists = Mock(return_value=True)
+        self.panel.tmux = Mock(side_effect=lambda *args, **kw: 'saved gone.png' if args[0] == 'capture-pane' else str(self.home))
+        handler = object.__new__(self.panel.Handler)
+        handler.send_json, handler.send_body = Mock(), Mock()
+        handler.serve_session_image({'name': ['demo'], 'path': ['gone.png'], 'thumb': ['1']})
+        handler.send_body.assert_called_once_with(204, b'', 'application/json')
+        handler.serve_session_image({'name': ['demo'], 'path': ['gone.png']})
+        self.assertEqual(handler.send_json.call_args.args[0], 404)
+
 
 class ThumbnailTests(unittest.TestCase):
     def setUp(self):

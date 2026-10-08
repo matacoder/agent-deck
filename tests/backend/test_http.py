@@ -484,6 +484,15 @@ class ProxyTrustTests(PanelCase):
         self.assertEqual(handler.client_ip(), "203.0.113.1")
         self.assertFalse(handler.is_https())
 
+    def test_idle_timeout_is_not_logged_and_needs_no_headers(self):
+        handler = self.panel.Handler.__new__(self.panel.Handler)
+        handler.client_address = ("172.18.0.2", 1234)
+        with patch("builtins.print") as printed:
+            handler.log_error("Request timed out: %r", TimeoutError("timed out"))
+            printed.assert_not_called()
+            handler.log_error("code %d, message %s", 400, "Bad request")
+        self.assertIn("172.18.0.2 code 400", printed.call_args.args[0])
+
     def test_trusted_proxy_uses_rightmost_ip_and_https(self):
         handler = self.handler("172.18.0.2", {"X-Forwarded-For": "spoof, 203.0.113.2", "X-Forwarded-Proto": "https"})
         self.assertEqual(handler.client_ip(), "203.0.113.2")

@@ -1840,6 +1840,11 @@ class Handler(BaseHTTPRequestHandler):
         super().setup()
         self.connection.settimeout(30)
 
+    def log_error(self, fmt, *args):
+        # Browsers and the proxy keep idle connections open; their 30 s timeout is routine, not an error.
+        if not fmt.startswith("Request timed out"):
+            super().log_error(fmt, *args)
+
     def log_message(self, fmt, *args):
         # The isolated terminal path is a credential; logs keep the route, never the signature.
         print(f"{self.client_ip()} {CAPABILITY_IN_LOG.sub('/c/***/', fmt % args)}", flush=True)
@@ -1854,7 +1859,9 @@ class Handler(BaseHTTPRequestHandler):
 
     def client_ip(self):
         """Real client IP; behind a trusted proxy take the address the proxy appended (rightmost XFF)."""
-        xff = self.headers.get("X-Forwarded-For", "") if self.via_proxy() else ""
+        # A connection can fail before any request line, when there are no headers yet.
+        headers = getattr(self, "headers", None) or {}
+        xff = headers.get("X-Forwarded-For", "") if self.via_proxy() else ""
         return xff.split(",")[-1].strip() or self.client_address[0]
 
     def is_https(self):
@@ -2002,6 +2009,10 @@ class Handler(BaseHTTPRequestHandler):
             cache = os.path.expanduser("~/.cache/agent-deck/thumbnails") if query.get("thumb") == ["1"] else None
             kind, data = read_image(path, cwd or os.path.expanduser("~"), os.path.expanduser("~"), screen, cache)
         except FileNotFoundError as error:
+            if cache:
+                # Agents mention files that are not there; a thumbnail miss is expected, and an empty
+                # answer lets the browser drop it without a red 404 in the console.
+                return self.send_body(204, b"", "application/json")
             return self.send_json(404, {"error": str(error)})
         except (ValueError, OSError) as error:
             return self.send_json(400, {"error": str(error)})
