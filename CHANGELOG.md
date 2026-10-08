@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.25.1 — 2026-10-08
+
+- Desktop: the **⋯** menu opens under its button again instead of at the window's right edge over the project sidebar.
+
 ## 1.25.0 — 2026-10-08
 
 - Session bar, tidied: the Link button is gone (links in the output open on a tap); on desktop the Files and History icons give way to the project sidebar, whose tabs are now icons. Output search is a field in the bar on desktop (the search icon opens it on a phone) with results in a card under it instead of a dimmed full-screen dialog.

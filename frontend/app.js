@@ -193,6 +193,10 @@ attachDrawerSwipe(document,drawerSwipe);
 function sheet(on){
   if(on){
     const s=cur();
+    // On a wide screen the menu hangs under its button, wherever the right sidebar has moved it.
+    const anchor=$("b_actions").getBoundingClientRect(),panel=$("sheet");
+    panel.style.setProperty("--sheet-top",Math.round(anchor.bottom+4)+"px");
+    panel.style.setProperty("--sheet-right",Math.max(8,Math.round(innerWidth-anchor.right))+"px");
     $("sheetCap").textContent=s?sessionTitle(s):"Agent Deck";
     $("s_session").hidden=$("s_manage").hidden=!s;
     // Update and closed drafts appear only when there is something to do; an empty group would be a stray line.
