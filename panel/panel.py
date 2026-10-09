@@ -28,7 +28,7 @@ import threading
 import time
 import uuid
 from html import escape as escape_html
-from urllib.parse import parse_qs, urlencode
+from urllib.parse import parse_qs, quote, urlencode
 from urllib.parse import urlsplit
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from socketserver import TCPServer
@@ -1685,6 +1685,17 @@ def file_preview_payload(query):
     return file_errors(lambda: files.read_preview(os.path.expanduser("~"), query.get("path", [""])[0]))
 
 
+def download_file(query):
+    """A path from the session screen may be relative to where its agent works."""
+    from integrations import files
+    name, path = query.get("name", [""])[0], query.get("path", [""])[0]
+    if name and isinstance(path, str) and path and not path.startswith(("/", "~")):
+        session_folder(name)  # Checks the session exists.
+        cwd = tmux("display-message", "-p", "-t", f"={PREFIX}{name}:", "#{pane_current_path}", check=False).strip()
+        path = os.path.join(cwd or os.path.expanduser("~"), path)
+    return file_errors(lambda: files.read_download(os.path.expanduser("~"), path))
+
+
 def scrollback_payload(query):
     from integrations import scrollback
     name = query.get("name", [""])[0]
@@ -2037,6 +2048,17 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(data)
 
+    def send_download(self, filename, data):
+        self.send_response(200)
+        self.send_header("Content-Type", "application/octet-stream")
+        self.send_header("Content-Length", str(len(data)))
+        self.send_header("Content-Disposition", "attachment; filename*=UTF-8''" + quote(filename, safe=""))
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("Content-Security-Policy", "default-src 'none'; sandbox")
+        self.end_headers()
+        self.wfile.write(data)
+
     def serve_service_worker(self):
         # Kept inside a Python module: a new file under panel/ would be rejected by older updaters.
         from integrations.webpush import SERVICE_WORKER
@@ -2150,6 +2172,11 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_json(200, {"sessions": list_sessions(preview_name)})
         if parsed.path == "/api/image":
             return self.serve_session_image(parse_qs(parsed.query))
+        if parsed.path == "/api/download":
+            try:
+                return self.send_download(*download_file(parse_qs(parsed.query)))
+            except ValueError as error:
+                return self.send_json(400, {"error": str(error)})
         if parsed.path.startswith("/api/git/"):
             try:
                 return self.send_json(200, git_payload(parsed.path, parse_qs(parsed.query), self.language()))
@@ -2319,6 +2346,10 @@ class Handler(BaseHTTPRequestHandler):
             base = ctype.split(';',1)[0].strip().lower()
             if urlsplit(path).path == '/api/image' and status == 200 and base in IMAGE_TYPES:
                 return self.send_image(payload, base)
+            if urlsplit(path).path == '/api/download' and status == 200 and base == 'application/octet-stream':
+                # The name comes from the request, not from the remote's headers.
+                wanted = parse_qs(urlsplit(path).query).get('path', [''])[0]
+                return self.send_download(os.path.basename(wanted.rstrip('/')) or 'download', payload)
             if path.startswith('/api/') and base != 'application/json':
                 raise ValueError('Remote Agent Deck returned a non-JSON API response')
             # ttyd's absolute base path must stay on the gateway, including its WebSocket URL.

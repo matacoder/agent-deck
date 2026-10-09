@@ -1,6 +1,9 @@
 {
   "name": "Türkçe",
   "messages": {
+    "Скачать файл {0}": "{0} dosyasını indir",
+    "Не удалось скачать файл": "Dosya indirilemedi",
+    "Файл больше 40 МБ; скачайте его другим способом": "Dosya 40 MB'tan büyük; başka bir yolla indirin",
     "Сейчас": "Şimdi",
     "Ещё не разобрано": "Henüz ayrılmadı",
     "Модель разберёт эти коммиты по фичам в фоне: заголовки, авторов и имена файлов, без кода. Свежие коммиты ждут 10 минут, пока агент закончит серию.": "Bir model bu commit'leri arka planda özelliklere göre ayırır: başlıklar, yazarlar ve dosya adları, kod yok. Yeni commit'ler ajan işini bitirene kadar 10 dakika bekler.",

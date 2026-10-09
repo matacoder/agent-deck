@@ -1,6 +1,9 @@
 {
   "name": "English",
   "messages": {
+    "Скачать файл {0}": "Download {0}",
+    "Не удалось скачать файл": "Could not download the file",
+    "Файл больше 40 МБ; скачайте его другим способом": "The file is larger than 40 MB; download it another way",
     "Сейчас": "Now",
     "Ещё не разобрано": "Not sorted yet",
     "Модель разберёт эти коммиты по фичам в фоне: заголовки, авторов и имена файлов, без кода. Свежие коммиты ждут 10 минут, пока агент закончит серию.": "A model sorts these commits into features in the background: subjects, authors and file names, no code. Fresh commits wait 10 minutes until the agent finishes its run.",

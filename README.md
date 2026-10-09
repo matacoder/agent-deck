@@ -370,7 +370,8 @@ The **folder icon** in the session bar (Project files) browses the session's fol
 up to 1 MB (including `.env`) open in an editor: copy from them, paste a secret in and save, or create a
 new file — new files are private (`0600`), existing ones keep their permissions, and a file that changed
 on disk after you opened it is never overwritten. The panel's own settings folder (`~/.config/cc-panel`)
-is not shown. Works for sessions on connected computers too.
+is not shown. Any other file (an archive, a spreadsheet, a PDF) can be downloaded, up to 40 MB. Works for
+sessions on connected computers too.
 
 <img src="docs/screenshots/mobile-file.png" width="260" alt="Editing .env in Project files">
 
@@ -407,6 +408,10 @@ screenshots of the same screen, **Open original** for full size. A file is serve
 visible in that session's recent output, only as a real raster image (never SVG), up to 25 MB.
 Thumbnails are scaled down to 480 px with `sips` on macOS or ImageMagick on Linux when available
 (cached until the file changes); otherwise the original image is used.
+
+Paths to other files with a folder in them (`/home/me/trip/plan.pdf`, `src/app.py`) are links too: a tap
+downloads the file, with the same rules as Project files (inside your home folder, never the panel's
+settings, up to 40 MB).
 
 ## Notifications
 

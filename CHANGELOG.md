@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.29.0 — 2026-10-09
+
+- Any file can be downloaded: a file path an agent prints on the Screen (`/home/me/trip/plan.pdf`, `src/app.py`) is a link that downloads the file, and Project files offers **Download** for text files and for files it cannot show (archives, spreadsheets). Inside the home folder only, never the panel's settings, up to 40 MB; also for sessions on connected computers (they need this version too).
+
 ## 1.28.1 — 2026-10-08
 
 - Feature groups are written in the panel's language: a repository nobody opened yet uses the language last seen in the panel instead of English, and groups written in another language are sorted again in the current one.

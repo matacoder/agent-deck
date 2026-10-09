@@ -1,6 +1,9 @@
 {
   "name": "Bahasa Indonesia",
   "messages": {
+    "Скачать файл {0}": "Unduh {0}",
+    "Не удалось скачать файл": "Berkas tidak dapat diunduh",
+    "Файл больше 40 МБ; скачайте его другим способом": "Berkas lebih dari 40 MB; unduh dengan cara lain",
     "Сейчас": "Sekarang",
     "Ещё не разобрано": "Belum dipilah",
     "Модель разберёт эти коммиты по фичам в фоне: заголовки, авторов и имена файлов, без кода. Свежие коммиты ждут 10 минут, пока агент закончит серию.": "Sebuah model memilah commit ini per fitur di latar belakang: judul, penulis, dan nama file, tanpa kode. Commit baru menunggu 10 menit sampai agen selesai.",

@@ -41,6 +41,7 @@ function boot(routes,opened,setup){
       const body=handler?await handler(target,options):{};
       if(body&&body.__network)throw new TypeError('Load failed');
       if(body&&body.__html)return {ok:true,status:200,headers:{get:()=>null},json:async()=>{throw new SyntaxError('Unexpected token <')}};
+      if(body&&body.__blob)return {ok:true,status:200,headers:{get:()=>null},blob:async()=>new window.Blob([body.__blob])};
       if(body&&body.__status)return {ok:false,status:body.__status,headers:{get:()=>null},json:async()=>({error:body.error})};
       return {ok:true,status:200,headers:{get:()=>null},json:async()=>body};
     };
@@ -591,6 +592,51 @@ test('Markdown opens rendered with a switch to text, and images preview from che
   rows()[1].click();await settle();
   expect(previews).toEqual(['/home/demo/p/shot.png']);
   expect(doc.querySelector('#files_body img.files-image').getAttribute('src')).toBe('blob:https://panel.test/1');
+  }finally{window.close()}
+});
+
+test('a file path on the screen downloads the file; a missing one says why',async()=>{
+  const state={local:()=>({sessions:[session('alpha',{preview:'Отправил PDF: /home/demo/suzdal/plan.pdf. Код в src/app.py:12, сайт https://x.test/a.pdf'})]})};
+  const routes=routesFor(state),asked=[];
+  routes['/api/download']=url=>{asked.push([url.searchParams.get('name'),url.searchParams.get('path')]);
+    return url.searchParams.get('path')==='src/app.py'?{__status:400,error:'Файл не найден'}:{__blob:'%PDF'}};
+  const window=boot(routes),saved=[];
+  window.URL.createObjectURL=()=>'blob:https://panel.test/f';window.URL.revokeObjectURL=()=>{};
+  window.HTMLAnchorElement.prototype.click=function(){saved.push([this.download,this.href])};
+  try{
+  const pre=window.document.getElementById('pre');
+  await settle();window.eval('setMode("screen")');
+  for(let i=0;i<20&&!pre.querySelector('a.file-link');i++)await settle();
+  const links=[...pre.querySelectorAll('a.file-link')];
+  expect(links.map(a=>a.textContent)).toEqual(['/home/demo/suzdal/plan.pdf','src/app.py']);
+  const tap=a=>a.dispatchEvent(new window.MouseEvent('click',{bubbles:true,cancelable:true}));
+  tap(links[0]);await settle();
+  expect(saved).toEqual([['plan.pdf','blob:https://panel.test/f']]);
+  tap(links[1]);await settle();
+  expect(asked).toEqual([['alpha','/home/demo/suzdal/plan.pdf'],['alpha','src/app.py']]);
+  expect(saved.length).toBe(1);
+  expect(window.document.body.textContent).toContain('Файл не найден');
+  }finally{window.close()}
+});
+
+test('a file that cannot be shown still offers a download in the file browser',async()=>{
+  const state={local:()=>({sessions:[session('alpha')]})};
+  const routes=routesFor(state),asked=[];
+  routes['/api/files']=()=>({path:'/home/demo/p',home:'/home/demo',parent:'/home/demo',entries:[{name:'data.zip',dir:false,size:9}]});
+  routes['/api/file']=()=>({__status:400,error:'Это не текстовый файл'});
+  routes['/api/download']=url=>{asked.push([url.searchParams.get('name'),url.searchParams.get('path')]);return {__blob:'PK'}};
+  const window=boot(routes),saved=[];
+  window.URL.createObjectURL=()=>'blob:https://panel.test/z';window.URL.revokeObjectURL=()=>{};
+  window.HTMLAnchorElement.prototype.click=function(){saved.push(this.download)};
+  try{
+  await settle();await settle();
+  const doc=window.document;
+  await window.eval('openFiles()');await settle();
+  doc.querySelector('.files-row').click();await settle();
+  expect(doc.querySelector('#files_body').textContent).toContain('Это не текстовый файл');
+  [...doc.querySelectorAll('#files_body button')].find(b=>/Скачать|Download/.test(b.textContent)).click();await settle();
+  expect(asked).toEqual([[null,'/home/demo/p/data.zip']]);
+  expect(saved).toEqual(['data.zip']);
   }finally{window.close()}
 });
 

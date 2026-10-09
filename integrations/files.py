@@ -1,5 +1,5 @@
 """Small file browser for project folders: list, read and save text files (e.g. moving a secret into .env),
-and preview images and PDF documents.
+preview images and PDF documents, and download any file.
 
 Everything stays inside the user's home. The panel's own folder (~/.config/cc-panel: password, keys,
 integration tokens) is never listed, read or written. Saves are atomic, keep the file's mode, create new
@@ -15,6 +15,8 @@ import tempfile
 MAX_TEXT = 1024 * 1024
 MAX_ENTRIES = 2000
 MAX_PREVIEW = 10 * 1024 * 1024
+# Fits under the gateway's relay limit, so a file on another computer downloads the same way.
+MAX_DOWNLOAD = 40 * 1024 * 1024
 PRIVATE = ('.config/cc-panel',)
 
 
@@ -103,6 +105,20 @@ def read_preview(home, path):
     if not kind:
         raise ValueError('Просмотр доступен для PNG, JPEG, WebP, GIF и PDF')
     return {'path': str(real), 'type': kind, 'size': len(data), 'data': base64.b64encode(data).decode('ascii')}
+
+
+def read_download(home, path):
+    """Any file inside home, as bytes for a download (served as an attachment, never shown inline)."""
+    _, real = _resolve(home, path)
+    if not real.is_file():
+        raise FileNotFoundError('Файл не найден')
+    if real.stat().st_size > MAX_DOWNLOAD:
+        raise ValueError('Файл больше 40 МБ; скачайте его другим способом')
+    with open(real, 'rb') as stream:
+        data = stream.read(MAX_DOWNLOAD + 1)
+    if len(data) > MAX_DOWNLOAD:
+        raise ValueError('Файл больше 40 МБ; скачайте его другим способом')
+    return real.name, data
 
 
 def save_text(home, path, content, expected):

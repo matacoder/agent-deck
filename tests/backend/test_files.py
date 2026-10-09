@@ -2,6 +2,7 @@ from pathlib import Path
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from support import ROOT, PanelCase
 sys.path.insert(0, str(ROOT))
@@ -61,6 +62,16 @@ class FileBrowserTests(unittest.TestCase):
         (self.project / 'huge.pdf').write_bytes(b'%PDF-' + b'0' * F.MAX_PREVIEW)
         with self.assertRaisesRegex(ValueError, '10 МБ'):
             F.read_preview(self.home, str(self.project / 'huge.pdf'))
+
+    def test_any_file_downloads_except_the_panel_settings_files_outside_home_and_huge_ones(self):
+        (self.project / 'plan.zip').write_bytes(b'PK\x03\x04\x00')
+        self.assertEqual(F.read_download(self.home, str(self.project / 'plan.zip')), ('plan.zip', b'PK\x03\x04\x00'))
+        (self.project / 'escape').symlink_to('/etc')
+        for path in (str(self.home / '.config/cc-panel/env'), '/etc/passwd', str(self.project / 'escape/passwd'), str(self.project)):
+            with self.subTest(path=path), self.assertRaises((ValueError, FileNotFoundError)):
+                F.read_download(self.home, path)
+        with patch.object(F, 'MAX_DOWNLOAD', 4), self.assertRaisesRegex(ValueError, '40 МБ'):
+            F.read_download(self.home, str(self.project / 'plan.zip'))
 
     def test_save_keeps_mode_and_refuses_to_overwrite_a_file_that_changed(self):
         env = self.project / '.env'

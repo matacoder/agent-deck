@@ -1,6 +1,9 @@
 {
   "name": "Français",
   "messages": {
+    "Скачать файл {0}": "Télécharger {0}",
+    "Не удалось скачать файл": "Impossible de télécharger le fichier",
+    "Файл больше 40 МБ; скачайте его другим способом": "Le fichier dépasse 40 Mo ; téléchargez-le autrement",
     "Сейчас": "Maintenant",
     "Ещё не разобрано": "Pas encore classés",
     "Модель разберёт эти коммиты по фичам в фоне: заголовки, авторов и имена файлов, без кода. Свежие коммиты ждут 10 минут, пока агент закончит серию.": "Un modèle classe ces commits par fonctionnalité en arrière-plan : titres, auteurs et noms de fichiers, sans code. Les commits récents attendent 10 minutes que l'agent ait fini.",

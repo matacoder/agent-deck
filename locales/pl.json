@@ -1,6 +1,9 @@
 {
   "name": "Polski",
   "messages": {
+    "Скачать файл {0}": "Pobierz {0}",
+    "Не удалось скачать файл": "Nie udało się pobrać pliku",
+    "Файл больше 40 МБ; скачайте его другим способом": "Plik jest większy niż 40 MB; pobierz go w inny sposób",
     "Сейчас": "Teraz",
     "Ещё не разобрано": "Jeszcze nieposortowane",
     "Модель разберёт эти коммиты по фичам в фоне: заголовки, авторов и имена файлов, без кода. Свежие коммиты ждут 10 минут, пока агент закончит серию.": "Model sortuje te commity według funkcji w tle: tytuły, autorzy i nazwy plików, bez kodu. Świeże commity czekają 10 minut, aż agent skończy.",

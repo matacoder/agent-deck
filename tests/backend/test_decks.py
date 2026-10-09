@@ -370,6 +370,35 @@ class RemoteDeckTests(PanelCase):
         self.assertEqual(handler.connection.sendall.call_count,1)
         backend.close.assert_called_once()
 
+    def test_gateway_relays_downloads_as_attachments_named_by_the_request(self):
+        service=self.enterContext(patch.object(self.panel,'remote_decks'))
+        service.request.return_value=(200,{'Content-Type':'application/octet-stream','Content-Disposition':'inline; filename=x.html'},b'%PDF-1.7')
+        handler=self.handler();handler.path='/deck/'+ID+'/api/download?name=demo&path=%2Fhome%2Fd%2Fplan.pdf';handler.send_download=Mock()
+        handler.get_request()
+        handler.send_download.assert_called_once_with('plan.pdf',b'%PDF-1.7')
+        service.request.return_value=(200,{'Content-Type':'text/html'},b'<script>')
+        handler=self.handler();handler.path='/deck/'+ID+'/api/download?path=%2Fa.html';handler.send_download=Mock()
+        handler.get_request()
+        handler.send_download.assert_not_called();self.assertEqual(handler.send_json.call_args.args[0],502)
+
+    def test_local_download_resolves_screen_paths_from_the_agent_folder(self):
+        handler=self.handler();handler.path='/api/download?name=demo&path=docs%2Fplan.pdf';handler.send_download=Mock()
+        tmux=lambda *args,**kw:'/home/demo/project\n' if 'display-message' in args else ''
+        with patch.object(self.panel,'session_exists',return_value=True),patch.object(self.panel,'tmux',side_effect=tmux),\
+             patch('integrations.files.read_download',return_value=('plan.pdf',b'%PDF')) as read:
+            handler.get_request()
+        self.assertEqual(read.call_args.args[1],'/home/demo/project/docs/plan.pdf')
+        handler.send_download.assert_called_once_with('plan.pdf',b'%PDF')
+        with patch('integrations.files.read_download',side_effect=FileNotFoundError('Файл не найден')):
+            handler=self.handler();handler.path='/api/download?path=%2Fnope.pdf';handler.get_request()
+        handler.send_json.assert_called_once_with(400,{'error':'Файл не найден'})
+        handler=object.__new__(self.panel.Handler);handler.send_response=Mock();handler.send_header=Mock();handler.end_headers=Mock();handler.wfile=io.BytesIO()
+        handler.send_download('план <1>.pdf',b'%PDF')
+        headers=dict(c.args for c in handler.send_header.call_args_list)
+        self.assertEqual(headers['Content-Disposition'],"attachment; filename*=UTF-8''%D0%BF%D0%BB%D0%B0%D0%BD%20%3C1%3E.pdf")
+        self.assertEqual((headers['Content-Type'],headers['X-Content-Type-Options']),('application/octet-stream','nosniff'))
+        self.assertIn('sandbox',headers['Content-Security-Policy'])
+
     def test_gateway_passes_raster_images_only_from_the_image_endpoint(self):
         service=self.enterContext(patch.object(self.panel,'remote_decks'))
         png=b'\x89PNG\r\n\x1a\n'+b'x'*10

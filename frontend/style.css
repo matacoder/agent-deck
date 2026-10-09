@@ -180,6 +180,7 @@ iframe[inert]{pointer-events:none}
 #pre .hrl::before{content:"";flex:1;height:1px;background:var(--bd)}
 #pre a{color:var(--link);text-decoration:underline;word-break:break-all}
 #pre a.img-link{color:var(--link);text-decoration:underline dotted;text-underline-offset:3px;word-break:break-all;cursor:zoom-in}
+#pre a.file-link{color:var(--link);text-decoration:underline dotted;text-underline-offset:3px;word-break:break-all;cursor:pointer}
 .img-strip{display:flex;gap:8px;overflow-x:auto;padding:6px 0 10px;white-space:normal;scrollbar-width:thin}
 .img-thumb{flex:none;display:block;height:120px;max-width:240px;padding:0;border:1px solid var(--bd);border-radius:8px;overflow:hidden;background:var(--side2);cursor:zoom-in}
 .img-thumb img{display:block;height:100%;width:auto;max-width:240px;object-fit:cover}

@@ -43,7 +43,12 @@ async function openFile(path){
     const data=await api((preview?"/api/file_preview?path=":"/api/file?path=")+encodeURIComponent(path),null,false,{timeout:60000});
     if(seq!==files.seq)return;
     files.file=preview?{path:data.path,preview:previewBlob(data)}:{...data,saved:data.content,isNew:false,rendered:isMarkdown(data.path)};
-  }catch(e){if(seq===files.seq&&e.message!==STALE)toast(e.message);return}
+  }catch(e){
+    if(seq!==files.seq||e.message===STALE)return;
+    // Not text and not a picture or PDF (an archive, a spreadsheet): it can still be downloaded.
+    if(!preview&&!(e instanceof OfflineError)){files.file={path,download:true,error:e.message};renderFiles()}else toast(e.message);
+    return;
+  }
   renderFiles();
 }
 // The server checked the content; the Blob gets that type and nothing else (never HTML or SVG).
@@ -117,6 +122,7 @@ function renderEditor(box,listing){
   const head=el("div","files-path",fileButton(tr("К папке"),"files-up",leaveFile,"arrow-up"),el("code","",homeRelative(file.path,listing.home)));
   applyCodeFont();
   if(file.preview)return renderPreview(box,head,file);
+  if(file.download){box.append(head,el("p","files-empty",file.error),el("div","acts",fileButton(tr("Скачать"),"pri",()=>downloadFile(null,file.path))));return}
   if(!file.isNew&&!file.editing)return renderReader(box,head,file);
   const area=el("textarea","files-text");area.value=file.content;area.spellcheck=false;
   area.setAttribute("autocapitalize","none");area.setAttribute("autocorrect","off");area.setAttribute("aria-label",name);
@@ -141,7 +147,8 @@ function renderReader(box,head,file){
     copyText(selected&&view.contains(getSelection().anchorNode)?selected:file.content);
   });
   const change=fileButton(tr("Изменить"),"pri",()=>{file.editing=true;renderFiles()});
-  box.append(head,view,el("div","acts",copy,change));
+  const download=fileButton(tr("Скачать"),"",()=>downloadFile(null,file.path));
+  box.append(head,view,el("div","acts",copy,download,change));
 }
 // Images show here; a PDF opens from a link, a direct tap, so no popup blocker stands in the way.
 function renderPreview(box,head,file){
@@ -152,9 +159,33 @@ function renderPreview(box,head,file){
   const link=(label,cls,download)=>{const a=el("a","btn "+cls,label);a.href=url;if(download)a.download=name;else{a.target="_blank";a.rel="noopener"}return a};
   box.append(el("div","acts",link(tr("Скачать"),"",true),...(type==="application/pdf"?[link(tr("Открыть"),"pri",false)]:[])));
 }
+// Paths to any file that agents print ("/home/me/plan.pdf", "docs/notes.md"): a tap downloads it.
+// A folder in the path keeps ordinary words ("v1.2", "e.g.") from turning into links.
+const FILE_PATH_RE=/(?<![\w/.~@+-])(?:~\/|\/|\.\.?\/)?(?:[\w.@+-]+\/)+[\w.@+-]*\w\.[A-Za-z0-9]{1,10}(?![\w-]|\.\w)/g;
+function fileMatches(text,taken=[]){
+  return [...text.matchAll(FILE_PATH_RE)].map(m=>({index:m.index,file:m[0]}))
+    .filter(({index,file})=>!taken.some(([a,b])=>index<b&&index+file.length>a));
+}
+function fileLink(session,path,runs,from,to){
+  const link=el("a","file-link");link.href="#";link.title=tr("Скачать файл {0}",[path.split("/").pop()]);
+  appendStyledRange(link,runs,from,to);
+  link.onclick=event=>{event.preventDefault();downloadFile(session,path)};
+  return link;
+}
+// Fetched first, so a missing or too large file is a message here, not an error page in its place.
+async function downloadFile(session,path){
+  const url=activePath("/api/download?"+(session?"name="+encodeURIComponent(session)+"&":"")+"path="+encodeURIComponent(path));
+  try{
+    const r=await fetch(url,{cache:"no-store"});
+    if(!r.ok){let message="";try{message=(await r.json()).error}catch(e){}toast(message||tr("Не удалось скачать файл"));return}
+    const a=document.createElement("a");a.href=URL.createObjectURL(await r.blob());a.download=path.split("/").pop();
+    document.body.append(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(a.href),60000);
+  }catch(e){toast(tr("Не удалось скачать файл"))}
+}
 async function copyText(text){
   try{if(navigator.clipboard&&window.isSecureContext){await navigator.clipboard.writeText(text);toast(tr("Скопировано: {0} симв.",[text.length]),"success");return}}catch(e){}
   if(execCopy(text,document))toast(tr("Скопировано: {0} симв.",[text.length]),"success");else toast(tr("Браузер запретил копирование"));
 }
 
-if(typeof module!=="undefined")module.exports={formatSize,homeRelative};
+if(typeof module!=="undefined")module.exports={formatSize,homeRelative,fileMatches};

@@ -1,6 +1,9 @@
 {
   "name": "Deutsch",
   "messages": {
+    "Скачать файл {0}": "{0} herunterladen",
+    "Не удалось скачать файл": "Die Datei konnte nicht heruntergeladen werden",
+    "Файл больше 40 МБ; скачайте его другим способом": "Die Datei ist größer als 40 MB; laden Sie sie auf anderem Weg herunter",
     "Сейчас": "Jetzt",
     "Ещё не разобрано": "Noch nicht zugeordnet",
     "Модель разберёт эти коммиты по фичам в фоне: заголовки, авторов и имена файлов, без кода. Свежие коммиты ждут 10 минут, пока агент закончит серию.": "Ein Modell ordnet diese Commits im Hintergrund Features zu: Betreffzeilen, Autoren und Dateinamen, kein Code. Frische Commits warten 10 Minuten, bis der Agent fertig ist.",
