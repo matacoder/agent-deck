@@ -399,6 +399,44 @@ class RemoteDeckTests(PanelCase):
         self.assertEqual((headers['Content-Type'],headers['X-Content-Type-Options']),('application/octet-stream','nosniff'))
         self.assertIn('sandbox',headers['Content-Security-Policy'])
 
+    def test_gateway_passes_gallery_pictures_like_screenshots(self):
+        service=self.enterContext(patch.object(self.panel,'remote_decks'))
+        png=b'\x89PNG\r\n\x1a\n'+b'x'*10
+        service.request.return_value=(200,{'Content-Type':'image/png'},png)
+        handler=self.handler();handler.path='/deck/'+ID+'/api/gallery_image?name=demo&id='+'a'*24;handler.send_image=Mock()
+        handler.get_request()
+        handler.send_image.assert_called_once_with(png,'image/png')
+        service.request.return_value=(200,{'Content-Type':'image/svg+xml'},b'<svg>')
+        handler=self.handler();handler.path='/deck/'+ID+'/api/gallery_image?name=demo&id='+'a'*24;handler.send_image=Mock()
+        handler.get_request()
+        handler.send_image.assert_not_called();self.assertEqual(handler.send_json.call_args.args[0],502)
+
+    def test_a_screenshot_that_left_the_screen_is_served_from_the_gallery(self):
+        import tempfile
+        from pathlib import Path
+        from integrations.gallery import Gallery
+        tmp=tempfile.TemporaryDirectory(dir='/tmp');self.addCleanup(tmp.cleanup)
+        home=Path(tmp.name);shot=home/'shot.png';shot.write_bytes(b'\x89PNG\r\n\x1a\n'+b'1'*10)
+        kept=Gallery(home/'gallery');kept.collect('demo','saved '+str(shot),str(home),str(home));shot.unlink()
+        tmux=lambda *args,**kw:str(home) if 'display-message' in args else 'other output'
+        with patch.object(self.panel,'session_exists',return_value=True),patch.object(self.panel,'tmux',side_effect=tmux),\
+             patch.object(self.panel,'gallery',return_value=kept):
+            handler=self.handler();handler.path='/api/image?name=demo&path='+str(shot);handler.send_image=Mock()
+            handler.get_request()
+            handler.send_image.assert_called_once_with(b'\x89PNG\r\n\x1a\n'+b'1'*10,'image/png')
+            handler=self.handler();handler.path='/api/image?name=demo&path=%2Ftmp%2Fnever.png';handler.send_image=Mock()
+            handler.get_request()
+            handler.send_image.assert_not_called();self.assertEqual(handler.send_json.call_args.args[0],400)
+            ident=kept.items('demo')[0]['id']
+            handler=self.handler();handler.path='/api/gallery?name=demo';handler.get_request()
+            self.assertEqual(handler.send_json.call_args.args[1]['items'][0]['id'],ident)
+            handler=self.handler();handler.path='/api/gallery_image?name=demo&id='+ident;handler.send_image=Mock()
+            handler.get_request()
+            handler.send_image.assert_called_once()
+            handler=self.handler();handler.path='/api/gallery_image?name=demo&id=..%2F..%2Fetc';handler.send_image=Mock()
+            handler.get_request()
+            handler.send_image.assert_not_called();self.assertEqual(handler.send_json.call_args.args[0],400)
+
     def test_gateway_passes_raster_images_only_from_the_image_endpoint(self):
         service=self.enterContext(patch.object(self.panel,'remote_decks'))
         png=b'\x89PNG\r\n\x1a\n'+b'x'*10

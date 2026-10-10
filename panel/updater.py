@@ -19,7 +19,7 @@ REPO_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]*/[A-Za-z0-9][A-Za-z0-9_.-]*")
 TAG_RE = re.compile(r"v?(\d+)\.(\d+)\.(\d+)")
 REQUIRED = {"panel.py", "index.html", "login.html", "VERSION", "updater.py", "session_hook.py"}
 PACKAGES = {"integrations/" + name for name in ("__init__.py", "questions.py", "store.py", "telegram.py", "lmstudio.py", "relay.py", "pi.py", "preferences.py", "names.py", "decks.py", "updates.py", "backups.py",
-                                                              "dependencies.py", "dependency_lock.py", "push.py", "webpush.py", "images.py", "gateway.py", "usage.py", "files.py", "git.py", "feature_groups.py", "scrollback.py")}
+                                                              "dependencies.py", "dependency_lock.py", "push.py", "webpush.py", "images.py", "gateway.py", "usage.py", "files.py", "git.py", "feature_groups.py", "gallery.py", "scrollback.py")}
 LOCALES = {"locales/__init__.py", "locales/en.json", "locales/ru.json"}
 REQUIRED |= PACKAGES | LOCALES
 ALLOWED = REQUIRED | {"icon-180.png", "icon-192.png", "icon-512.png", "manifest.webmanifest", "make_icons.py"}

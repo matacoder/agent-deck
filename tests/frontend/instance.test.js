@@ -640,6 +640,44 @@ test('a file that cannot be shown still offers a download in the file browser',a
   }finally{window.close()}
 });
 
+test('the gallery tab shows every kept picture, newest first, and walks through them in the viewer',async()=>{
+  const state={local:()=>({sessions:[session('alpha')]})};
+  const routes=routesFor(state),asked=[];
+  routes['/api/gallery']=url=>{asked.push(url.searchParams.get('name'));return {items:[
+    {id:'b'.repeat(24),name:'after.png',path:'/tmp/after.png',kind:'image/png',size:9,at:1800000000},
+    {id:'a'.repeat(24),name:'before.png',path:'/tmp/before.png',kind:'image/png',size:9,at:1799990000}]}};
+  const window=boot(routes);
+  try{
+  await settle();await settle();
+  const doc=window.document;
+  window.eval('openProject("gallery")');await settle();
+  expect(asked).toEqual(['alpha']);
+  expect(doc.getElementById('git_body').hidden).toBe(true);
+  const cells=[...doc.querySelectorAll('#gallery_body .gallery-cell')];
+  expect(cells.map(c=>c.title)).toEqual(['after.png','before.png']);
+  expect(cells[0].querySelector('img').getAttribute('src')).toBe('/api/gallery_image?name=alpha&id='+'b'.repeat(24)+'&thumb=1');
+  cells[1].click();
+  expect(doc.getElementById('viewer').hidden).toBe(false);
+  expect(doc.getElementById('viewer_caption').textContent).toBe('2 / 2  ·  before.png');
+  window.eval('stepViewer(1)');
+  expect(doc.getElementById('viewer_img').getAttribute('src')).toBe('/api/gallery_image?name=alpha&id='+'b'.repeat(24));
+  }finally{window.close()}
+});
+
+test('an empty gallery explains what will appear, and an older computer asks for an update',async()=>{
+  const state={local:()=>({sessions:[session('alpha')]})};
+  const routes=routesFor(state);let old=false;
+  routes['/api/gallery']=()=>old?{__status:404,error:'not found'}:{items:[]};
+  const window=boot(routes);
+  try{
+  await settle();await settle();
+  window.eval('openProject("gallery")');await settle();
+  expect(window.document.getElementById('gallery_body').textContent).toMatch(/Здесь появятся картинки|Pictures the agents/);
+  old=true;window.eval('gallery.session=null;loadGallery()');await settle();
+  expect(window.document.getElementById('gallery_body').textContent).toMatch(/обновите Agent Deck|update Agent Deck/i);
+  }finally{window.close()}
+});
+
 function settingsRoutes(state,agents){
   const routes=routesFor(state);
   routes['/api/agents']=()=>agents;

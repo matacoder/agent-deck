@@ -410,6 +410,12 @@ visible in that session's recent output, only as a real raster image (never SVG)
 Thumbnails are scaled down to 480 px with `sips` on macOS or ImageMagick on Linux when available
 (cached until the file changes); otherwise the original image is used.
 
+Every picture a session showed is also kept in its **Gallery** (the picture icon in the project panel):
+square thumbnails, newest first, opening in the same viewer. The panel copies each picture when it appears
+(`~/.cache/agent-deck/gallery`, private), so it stays after the path scrolls away, the agent overwrites
+`/tmp/shot.png` with a new one or deletes the file; the Screen view falls back to that copy too. Up to 200
+pictures and 300 MB per session, each kept for 30 days.
+
 Paths to other files with a folder in them (`/home/me/trip/plan.pdf`, `src/app.py`) are links too: a tap
 downloads the file, with the same rules as Project files (inside your home folder, never the panel's
 settings, up to 40 MB).

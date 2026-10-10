@@ -58,20 +58,28 @@ function imageStrip(session,paths){
   return strip;
 }
 
+// The viewer walks a list of pictures: the screenshots on the screen, or the session's gallery.
+let viewerItems=[];
 function openViewer(path){
-  viewerIndex=Math.max(0,screenImages.indexOf(path));
   if(!screenImages.includes(path))screenImages=[path];
+  showViewer(screenImages.map(p=>({url:imageUrl(active,p),name:p.split("/").pop(),title:p})),screenImages.indexOf(path));
+}
+function showViewer(items,index){
+  viewerItems=items;viewerIndex=Math.max(0,index);
   viewerReturn=document.activeElement;
+  // A modal dialog (the project panel on a phone) covers everything outside it: the viewer opens inside.
+  const modal=[...document.querySelectorAll("dialog[open]")].find(d=>{try{return d.matches(":modal")}catch(e){return false}});
+  (modal||document.body).append($("viewer"));
   renderViewer();$("viewer").hidden=false;$("viewer_close").focus();
 }
 function renderViewer(){
-  const path=screenImages[viewerIndex],url=imageUrl(active,path);
-  $("viewer_img").src=url;$("viewer_open").href=url;
-  $("viewer_caption").textContent=(screenImages.length>1?(viewerIndex+1)+" / "+screenImages.length+"  ·  ":"")+path.split("/").pop();
-  $("viewer_caption").title=path;
-  $("viewer_prev").hidden=$("viewer_next").hidden=screenImages.length<2;
+  const item=viewerItems[viewerIndex];
+  $("viewer_img").src=item.url;$("viewer_open").href=item.url;
+  $("viewer_caption").textContent=(viewerItems.length>1?(viewerIndex+1)+" / "+viewerItems.length+"  ·  ":"")+item.name;
+  $("viewer_caption").title=item.title;
+  $("viewer_prev").hidden=$("viewer_next").hidden=viewerItems.length<2;
 }
-function stepViewer(delta){viewerIndex=(viewerIndex+delta+screenImages.length)%screenImages.length;renderViewer()}
+function stepViewer(delta){viewerIndex=(viewerIndex+delta+viewerItems.length)%viewerItems.length;renderViewer()}
 let viewerReturn=null;
 function closeViewer(){
   if($("viewer").hidden)return;
@@ -95,7 +103,7 @@ if(typeof document!=="undefined"&&document.getElementById("viewer")){
   const viewer=document.getElementById("viewer");let touchX=null;
   viewer.addEventListener("touchstart",e=>{touchX=e.touches.length===1?e.touches[0].clientX:null},{passive:true});
   viewer.addEventListener("touchend",e=>{
-    if(touchX===null||screenImages.length<2)return;
+    if(touchX===null||viewerItems.length<2)return;
     const dx=e.changedTouches[0].clientX-touchX;touchX=null;
     if(Math.abs(dx)>60)stepViewer(dx<0?1:-1);
   },{passive:true});

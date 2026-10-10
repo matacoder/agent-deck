@@ -1730,6 +1730,40 @@ def feature_groups():
         return _feature_groups
 
 
+_gallery = None
+_gallery_lock = threading.Lock()
+
+
+def gallery():
+    global _gallery
+    from integrations.gallery import Gallery
+    with _gallery_lock:
+        if _gallery is None:
+            _gallery = Gallery(os.path.expanduser("~/.cache/agent-deck/gallery"))
+        return _gallery
+
+
+def gallery_loop():
+    """Keeps every picture a session shows: screens are read again only after they changed."""
+    seen, expire_at = {}, 0
+    while True:
+        try:
+            out = tmux("list-sessions", "-F", "#{session_name}\t#{session_activity}\t#{pane_current_path}", check=False)
+            for line in out.splitlines():
+                full, activity, cwd = (line.split("\t") + ["", ""])[:3]
+                if not full.startswith(PREFIX) or seen.get(full) == activity:
+                    continue
+                seen[full] = activity
+                screen = tmux("capture-pane", "-p", "-J", "-t", f"={full}:", "-S", "-2000", check=False)
+                gallery().collect(full[len(PREFIX):], screen, cwd or os.path.expanduser("~"), os.path.expanduser("~"))
+            if time.time() >= expire_at:
+                gallery().expire()
+                expire_at = time.time() + 3600
+        except Exception as error:  # keep the loop alive whatever happens
+            print(f"Gallery: {type(error).__name__}", flush=True)
+        time.sleep(5)
+
+
 def session_folders():
     """Start folders of this computer's sessions: the repositories grouped in the background."""
     out = tmux("list-sessions", "-F", "#{session_name}\t#{session_path}", check=False)
@@ -2024,18 +2058,43 @@ class Handler(BaseHTTPRequestHandler):
         target = f"={PREFIX}{name}:"
         screen = tmux("capture-pane", "-p", "-J", "-t", target, "-S", "-2000", check=False)
         cwd = tmux("display-message", "-p", "-t", target, "#{pane_current_path}", check=False).strip()
+        cache = os.path.expanduser("~/.cache/agent-deck/thumbnails") if query.get("thumb") == ["1"] else None
         try:
-            cache = os.path.expanduser("~/.cache/agent-deck/thumbnails") if query.get("thumb") == ["1"] else None
             kind, data = read_image(path, cwd or os.path.expanduser("~"), os.path.expanduser("~"), screen, cache)
-        except FileNotFoundError as error:
+        except (ValueError, OSError) as error:
+            # Off the screen now, or deleted or replaced on disk: the copy the gallery kept still shows.
+            kept = gallery().latest(name, path, cwd or os.path.expanduser("~"), os.path.expanduser("~"))
+            if kept:
+                return self.send_kept_picture(*kept, cache)
+            return self.image_error(error, cache)
+        return self.send_image(data, kind)
+
+    def image_error(self, error, cache):
+        if isinstance(error, FileNotFoundError):
             if cache:
                 # Agents mention files that are not there; a thumbnail miss is expected, and an empty
                 # answer lets the browser drop it without a red 404 in the console.
                 return self.send_body(204, b"", "application/json")
             return self.send_json(404, {"error": str(error)})
-        except (ValueError, OSError) as error:
-            return self.send_json(400, {"error": str(error)})
-        return self.send_image(data, kind)
+        return self.send_json(400, {"error": str(error) if isinstance(error, ValueError) else "Картинка недоступна"})
+
+    def send_kept_picture(self, kind, path, cache=None):
+        from integrations.images import thumbnail
+        small = thumbnail(path, cache, kind) if cache else None
+        return self.send_image(small, "image/jpeg") if small else self.send_image(path.read_bytes(), kind)
+
+    def serve_gallery_picture(self, query):
+        name, ident = query.get("name", [""])[0], query.get("id", [""])[0]
+        if not re.fullmatch(r"[0-9a-f]{24}", ident):
+            return self.send_json(400, {"error": "Картинки нет в галерее"})
+        try:
+            kind, path = gallery().picture(name, ident)
+            cache = os.path.expanduser("~/.cache/agent-deck/thumbnails") if query.get("thumb") == ["1"] else None
+            return self.send_kept_picture(kind, path, cache)
+        except FileNotFoundError as error:
+            return self.send_json(404, {"error": str(error)})
+        except (ValueError, OSError):
+            return self.send_json(400, {"error": "Картинка недоступна"})
 
     def send_image(self, data, kind):
         self.send_response(200)
@@ -2172,6 +2231,13 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_json(200, {"sessions": list_sessions(preview_name)})
         if parsed.path == "/api/image":
             return self.serve_session_image(parse_qs(parsed.query))
+        if parsed.path == "/api/gallery":
+            try:
+                return self.send_json(200, {"items": gallery().items(parse_qs(parsed.query).get("name", [""])[0])})
+            except ValueError as error:
+                return self.send_json(400, {"error": str(error)})
+        if parsed.path == "/api/gallery_image":
+            return self.serve_gallery_picture(parse_qs(parsed.query))
         if parsed.path == "/api/download":
             try:
                 return self.send_download(*download_file(parse_qs(parsed.query)))
@@ -2344,7 +2410,7 @@ class Handler(BaseHTTPRequestHandler):
             # Remote HTML/JS under /api/* would run with the gateway origin; only JSON, and raster
             # images from the screenshot endpoint, are passed through.
             base = ctype.split(';',1)[0].strip().lower()
-            if urlsplit(path).path == '/api/image' and status == 200 and base in IMAGE_TYPES:
+            if urlsplit(path).path in ('/api/image', '/api/gallery_image') and status == 200 and base in IMAGE_TYPES:
                 return self.send_image(payload, base)
             if urlsplit(path).path == '/api/download' and status == 200 and base == 'application/octet-stream':
                 # The name comes from the request, not from the remote's headers.
@@ -2663,6 +2729,7 @@ def main():
     threading.Thread(target=sync_loop, daemon=True).start()
     threading.Thread(target=backup_loop, name='agent-deck-backups', daemon=True).start()
     threading.Thread(target=feature_groups().run_forever, name='agent-deck-feature-groups', daemon=True).start()
+    threading.Thread(target=gallery_loop, name='agent-deck-gallery', daemon=True).start()
     try:
         from integrations import dependencies
         dependencies.ensure()  # Downloads pinned cryptography in the background when missing.

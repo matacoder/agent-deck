@@ -1,6 +1,11 @@
 {
   "name": "Bahasa Indonesia",
   "messages": {
+    "Галерея": "Galeri",
+    "Картинок: {0}": "Gambar: {0}",
+    "Картинки нет в галерее": "Gambar ini tidak ada di galeri",
+    "Картинка недоступна": "Gambar tidak tersedia",
+    "Здесь появятся картинки, которые агенты этой сессии покажут на экране: скриншоты, превью, графики. Они остаются, даже когда уходят с экрана.": "Gambar yang ditampilkan agen sesi ini di layar muncul di sini: tangkapan layar, pratinjau, grafik. Gambar tetap ada meski sudah hilang dari layar.",
     "Скачать файл {0}": "Unduh {0}",
     "Не удалось скачать файл": "Berkas tidak dapat diunduh",
     "Файл больше 40 МБ; скачайте его другим способом": "Berkas lebih dari 40 MB; unduh dengan cara lain",

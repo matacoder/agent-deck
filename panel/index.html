@@ -655,6 +655,10 @@ body.resizing iframe{pointer-events:none}
 .files-row.dir svg{color:var(--acc-text)}
 .files-size{flex:none;color:var(--mut);font-size:12px;font-variant-numeric:tabular-nums}
 .files-empty{margin:0;padding:12px;color:var(--mut)}
+.gallery-count{margin:0;padding:10px 12px 6px;color:var(--mut);font-size:13px}
+.gallery-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;padding:0 0 12px}
+.gallery-cell{aspect-ratio:1;padding:0;border:0;border-radius:0;background:var(--side2);overflow:hidden;cursor:zoom-in}
+.gallery-cell img{width:100%;height:100%;object-fit:cover;display:block}
 .files-text{width:100%;min-height:min(60vh,520px);resize:vertical;padding:12px;border:1px solid var(--bd);border-radius:10px;background:var(--bg);color:var(--fg2);font:var(--code-font,13px)/1.5 var(--mono);outline:none;white-space:pre-wrap;overflow-wrap:anywhere}
 .files-view{padding:8px 0;border:1px solid var(--bd);border-radius:10px;background:var(--bg);font:var(--code-font,13px)/1.5 var(--mono);-webkit-user-select:text;user-select:text}
 .files-view .fl{display:flex}
@@ -1006,6 +1010,7 @@ body.resizing iframe{pointer-events:none}
   <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/></symbol>
   <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6v.6M12 17.2v.1"/></symbol>
   <symbol id="i-sidebar-right" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16"/></symbol>
+  <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></symbol>
   <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
   <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></symbol>
   <symbol id="i-arrow-down" viewBox="0 0 24 24"><path d="M12 5v14M6 13l6 6 6-6"/></symbol>
@@ -1145,7 +1150,7 @@ body.resizing iframe{pointer-events:none}
     <h4 class="how-title">Как проверить результат удалённо</h4>
     <ul class="how-list"><li>Агенты присылают скриншоты: картинки открываются прямо в выводе.</li><li>Сайт, который запустил агент, открывается по адресу компьютера в Tailscale.</li><li>Изменения, коммиты и файлы — в панели справа (на телефоне — иконки сверху).</li></ul>
   </div></div></dialog>
-  <dialog id="project_dlg" aria-label="Проект"><div class="resizer" id="project_resizer" role="separator" aria-orientation="vertical" tabindex="0" aria-label="Ширина боковой панели" title="Потяните, чтобы изменить ширину; двойной клик — ширина по умолчанию"></div><div class="dlg"><div class="git-tabs" id="project_tabs" role="tablist" tabindex="-1" autofocus><button type="button" role="tab" data-tab="changes" onclick="projectTab('changes')" aria-label="Изменения" title="Изменения"><svg class="ui-icon"><use href="#i-diff"/></svg></button><button type="button" role="tab" data-tab="commits" onclick="projectTab('commits')" aria-label="Коммиты" title="Коммиты"><svg class="ui-icon"><use href="#i-commit"/></svg></button><button type="button" role="tab" data-tab="groups" onclick="projectTab('groups')" aria-label="Группы фич" title="Группы фич"><svg class="ui-icon"><use href="#i-layers"/></svg></button><button type="button" role="tab" data-tab="files" onclick="projectTab('files')" aria-label="Файлы" title="Файлы"><svg class="ui-icon"><use href="#i-folder"/></svg></button><span class="git-font"><button type="button" onclick="codeFont(-1)" aria-label="Уменьшить шрифт">A−</button><button type="button" onclick="codeFont(1)" aria-label="Увеличить шрифт">A+</button></span><button type="button" class="project-close" onclick="closeProject()" aria-label="Закрыть"><svg class="ui-icon"><use href="#i-x"/></svg></button></div><div class="dlg-body" id="git_body"></div><div class="dlg-body" id="files_body" hidden></div></div></dialog>
+  <dialog id="project_dlg" aria-label="Проект"><div class="resizer" id="project_resizer" role="separator" aria-orientation="vertical" tabindex="0" aria-label="Ширина боковой панели" title="Потяните, чтобы изменить ширину; двойной клик — ширина по умолчанию"></div><div class="dlg"><div class="git-tabs" id="project_tabs" role="tablist" tabindex="-1" autofocus><button type="button" role="tab" data-tab="changes" onclick="projectTab('changes')" aria-label="Изменения" title="Изменения"><svg class="ui-icon"><use href="#i-diff"/></svg></button><button type="button" role="tab" data-tab="commits" onclick="projectTab('commits')" aria-label="Коммиты" title="Коммиты"><svg class="ui-icon"><use href="#i-commit"/></svg></button><button type="button" role="tab" data-tab="groups" onclick="projectTab('groups')" aria-label="Группы фич" title="Группы фич"><svg class="ui-icon"><use href="#i-layers"/></svg></button><button type="button" role="tab" data-tab="files" onclick="projectTab('files')" aria-label="Файлы" title="Файлы"><svg class="ui-icon"><use href="#i-folder"/></svg></button><button type="button" role="tab" data-tab="gallery" onclick="projectTab('gallery')" aria-label="Галерея" title="Галерея"><svg class="ui-icon"><use href="#i-image"/></svg></button><span class="git-font"><button type="button" onclick="codeFont(-1)" aria-label="Уменьшить шрифт">A−</button><button type="button" onclick="codeFont(1)" aria-label="Увеличить шрифт">A+</button></span><button type="button" class="project-close" onclick="closeProject()" aria-label="Закрыть"><svg class="ui-icon"><use href="#i-x"/></svg></button></div><div class="dlg-body" id="git_body"></div><div class="dlg-body" id="files_body" hidden></div><div class="dlg-body" id="gallery_body" hidden></div></div></dialog>
 </div>
 
 <div id="sheet"><div class="scrim" onclick="sheet(false)"></div><div class="panel" role="menu" aria-labelledby="sheetCap">
@@ -1866,20 +1871,28 @@ function imageStrip(session,paths){
   return strip;
 }
 
+// The viewer walks a list of pictures: the screenshots on the screen, or the session's gallery.
+let viewerItems=[];
 function openViewer(path){
-  viewerIndex=Math.max(0,screenImages.indexOf(path));
   if(!screenImages.includes(path))screenImages=[path];
+  showViewer(screenImages.map(p=>({url:imageUrl(active,p),name:p.split("/").pop(),title:p})),screenImages.indexOf(path));
+}
+function showViewer(items,index){
+  viewerItems=items;viewerIndex=Math.max(0,index);
   viewerReturn=document.activeElement;
+  // A modal dialog (the project panel on a phone) covers everything outside it: the viewer opens inside.
+  const modal=[...document.querySelectorAll("dialog[open]")].find(d=>{try{return d.matches(":modal")}catch(e){return false}});
+  (modal||document.body).append($("viewer"));
   renderViewer();$("viewer").hidden=false;$("viewer_close").focus();
 }
 function renderViewer(){
-  const path=screenImages[viewerIndex],url=imageUrl(active,path);
-  $("viewer_img").src=url;$("viewer_open").href=url;
-  $("viewer_caption").textContent=(screenImages.length>1?(viewerIndex+1)+" / "+screenImages.length+"  ·  ":"")+path.split("/").pop();
-  $("viewer_caption").title=path;
-  $("viewer_prev").hidden=$("viewer_next").hidden=screenImages.length<2;
+  const item=viewerItems[viewerIndex];
+  $("viewer_img").src=item.url;$("viewer_open").href=item.url;
+  $("viewer_caption").textContent=(viewerItems.length>1?(viewerIndex+1)+" / "+viewerItems.length+"  ·  ":"")+item.name;
+  $("viewer_caption").title=item.title;
+  $("viewer_prev").hidden=$("viewer_next").hidden=viewerItems.length<2;
 }
-function stepViewer(delta){viewerIndex=(viewerIndex+delta+screenImages.length)%screenImages.length;renderViewer()}
+function stepViewer(delta){viewerIndex=(viewerIndex+delta+viewerItems.length)%viewerItems.length;renderViewer()}
 let viewerReturn=null;
 function closeViewer(){
   if($("viewer").hidden)return;
@@ -1903,7 +1916,7 @@ if(typeof document!=="undefined"&&document.getElementById("viewer")){
   const viewer=document.getElementById("viewer");let touchX=null;
   viewer.addEventListener("touchstart",e=>{touchX=e.touches.length===1?e.touches[0].clientX:null},{passive:true});
   viewer.addEventListener("touchend",e=>{
-    if(touchX===null||screenImages.length<2)return;
+    if(touchX===null||viewerItems.length<2)return;
     const dx=e.changedTouches[0].clientX-touchX;touchX=null;
     if(Math.abs(dx)>60)stepViewer(dx<0?1:-1);
   },{passive:true});
@@ -2459,6 +2472,54 @@ async function copyText(text){
 }
 
 if(typeof module!=="undefined")module.exports={formatSize,homeRelative,fileMatches};
+// Every picture the open session showed, kept by the panel after it left the screen: a grid of square
+// thumbnails, newest first, opening in the full-screen viewer. Reloaded while the tab is open and visible.
+const gallery={session:null,items:null,raw:"",error:"",timer:null};
+const GALLERY_POLL=15000;
+
+function galleryUrl(session,id,thumb){
+  return activePath("/api/gallery_image?name="+encodeURIComponent(session)+"&id="+encodeURIComponent(id)+(thumb?"&thumb=1":""));
+}
+function galleryShown(){
+  const box=$("project_dlg");
+  return box.open&&project.tab==="gallery"&&!document.hidden;
+}
+async function loadGallery(){
+  const session=active;clearTimeout(gallery.timer);
+  if(gallery.session!==session){Object.assign(gallery,{session,items:null,raw:"",error:""});renderGallery()}
+  try{
+    const data=await api("/api/gallery?name="+encodeURIComponent(session));
+    if(gallery.session!==session)return;
+    const raw=JSON.stringify(data.items||[]);
+    // The same answer leaves the grid alone: no thumbnail reloads, no lost scroll.
+    if(raw!==gallery.raw||gallery.error){Object.assign(gallery,{raw,items:data.items||[],error:""});renderGallery()}
+  }catch(e){
+    if(gallery.session!==session||e.message===STALE)return;
+    gallery.error=e.message;if(!gallery.items)renderGallery();
+  }
+  if(galleryShown())gallery.timer=setTimeout(()=>{if(galleryShown())loadGallery()},GALLERY_POLL);
+}
+function renderGallery(){
+  const box=$("gallery_body");box.replaceChildren();
+  if(gallery.error&&!gallery.items){box.append(errorWithRetry(gallery.error,loadGallery));return}
+  if(!gallery.items){box.append(el("p","files-empty",tr("Загрузка…")));return}
+  const items=gallery.items,session=gallery.session;
+  if(!items.length){box.append(el("p","files-empty",tr("Здесь появятся картинки, которые агенты этой сессии покажут на экране: скриншоты, превью, графики. Они остаются, даже когда уходят с экрана.")));return}
+  box.append(el("p","gallery-count",tr("Картинок: {0}",[items.length])));
+  const grid=el("div","gallery-grid");
+  const viewer=()=>items.map(item=>({url:galleryUrl(session,item.id),name:item.name,title:item.path+" · "+formatTime(item.at)}));
+  items.forEach((item,i)=>{
+    const cell=el("button","gallery-cell"),img=document.createElement("img");
+    cell.type="button";cell.title=item.name;cell.setAttribute("aria-label",tr("Открыть картинку {0}",[item.name]));
+    img.loading="lazy";img.decoding="async";img.alt="";img.src=galleryUrl(session,item.id,true);
+    cell.append(img);cell.onclick=()=>showViewer(viewer(),i);grid.append(cell);
+  });
+  box.append(grid);
+}
+function formatTime(at){
+  return new Intl.DateTimeFormat(DATE_LOCALE,{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}).format(new Date(at*1000));
+}
+if(typeof document!=="undefined")document.addEventListener("visibilitychange",()=>{if(!document.hidden&&gallery.session&&galleryShown())loadGallery()});
 // Git history of the open session's repository: uncommitted changes (a tapped line becomes a comment in the
 // message draft; a clean tree shows the last commit), commits with their diffs, and feature groups that the
 // server keeps sorting in the background from commit subjects and file names, each with a combined diff.
@@ -2828,10 +2889,10 @@ function renderGroups(box){
 }
 
 if(typeof module!=="undefined")module.exports={diffRows,lineComment,authorColor,AUTHOR_COLORS,filesToOpen};
-// Changes, commits, feature groups and files of the open session in one panel: a right sidebar on wide screens that stays
+// Changes, commits, feature groups, files and pictures of the open session in one panel: a right sidebar on wide screens that stays
 // open while sessions switch (remembered in this browser), a full-screen dialog on phones. Each tab keeps
 // its own state and scroll; a tab loads for the open session only when shown.
-const PROJECT_TABS=["changes","commits","groups","files"];
+const PROJECT_TABS=["changes","commits","groups","files","gallery"];
 const project={tab:"changes",moving:false};
 const projectDocked=()=>!isMobile();
 function savedProjectTab(){try{const tab=localStore.getItem("cc.project");return PROJECT_TABS.includes(tab)?tab:""}catch(e){return ""}}
@@ -2856,6 +2917,7 @@ function projectTab(tab){
   if(projectDocked())rememberProject(tab);
   markProjectTab();
   if(tab==="files"){if(files.session!==active&&!filesDirty())startFiles();return}
+  if(tab==="gallery")return loadGallery();
   if(hist.session!==active)return startHistory(tab);
   historyTab(tab);
 }
@@ -2863,14 +2925,15 @@ function projectTab(tab){
 function refreshProject(){
   markProjectTab();
   if(project.tab==="files"){if(files.session!==active&&!filesDirty())startFiles();return}
+  if(project.tab==="gallery"){if(gallery.session!==active)loadGallery();return}
   if(hist.session!==active)startHistory(project.tab);
 }
 function markProjectTab(){
   for(const b of $("project_tabs").querySelectorAll("[data-tab]")){const on=b.dataset.tab===project.tab;b.classList.toggle("on",on);b.setAttribute("aria-selected",String(on))}
-  $("git_body").hidden=project.tab==="files";$("files_body").hidden=project.tab!=="files";
+  $("git_body").hidden=["files","gallery"].includes(project.tab);$("files_body").hidden=project.tab!=="files";$("gallery_body").hidden=project.tab!=="gallery";
   const box=$("project_dlg"),shown=box.open&&box.classList.contains("docked");
   $("b_files").setAttribute("aria-pressed",String(shown&&project.tab==="files"));
-  $("b_history").setAttribute("aria-pressed",String(shown&&project.tab!=="files"));
+  $("b_history").setAttribute("aria-pressed",String(shown&&!["files","gallery"].includes(project.tab)));
   $("b_project").setAttribute("aria-pressed",String(shown));
 }
 // Opens (or moves) the panel in the form this layout uses: docked beside the session or modal.
@@ -2902,7 +2965,7 @@ async function closeProject(){
 // Closed by hand (not moved between layouts): stop polling and free a previewed file's blob.
 function projectClosed(){
   if(project.moving)return;
-  clearTimeout(hist.timer);dropPreview();files.file=null;markProjectTab();
+  clearTimeout(hist.timer);clearTimeout(gallery.timer);dropPreview();files.file=null;markProjectTab();
 }
 // On a wide screen both sidebars can be dragged wider or narrower (or moved with the arrow keys on their
 // edge); a double click restores the default. Widths are kept in this browser; CSS still caps them by the

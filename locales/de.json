@@ -1,6 +1,11 @@
 {
   "name": "Deutsch",
   "messages": {
+    "Галерея": "Galerie",
+    "Картинок: {0}": "Bilder: {0}",
+    "Картинки нет в галерее": "Dieses Bild ist nicht in der Galerie",
+    "Картинка недоступна": "Das Bild ist nicht verfügbar",
+    "Здесь появятся картинки, которые агенты этой сессии покажут на экране: скриншоты, превью, графики. Они остаются, даже когда уходят с экрана.": "Hier erscheinen Bilder, die die Agenten dieser Sitzung auf dem Bildschirm zeigen: Screenshots, Vorschauen, Diagramme. Sie bleiben, auch wenn sie vom Bildschirm verschwinden.",
     "Скачать файл {0}": "{0} herunterladen",
     "Не удалось скачать файл": "Die Datei konnte nicht heruntergeladen werden",
     "Файл больше 40 МБ; скачайте его другим способом": "Die Datei ist größer als 40 MB; laden Sie sie auf anderem Weg herunter",

@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.30.0 — 2026-10-10
+
+- Gallery: a fifth tab in the project panel shows every picture the session's agents showed on screen, newest first, three per row, with the full-screen viewer to swipe through them. The panel keeps a private copy of each picture as it appears, so screenshots no longer vanish when the path scrolls away, the screen is redrawn, or the agent overwrites or deletes the file; the thumbnails under the output use that copy too. Up to 200 pictures and 300 MB per session, kept 30 days. Connected computers need this version for their gallery.
+
 ## 1.29.1 — 2026-10-10
 
 - A session no longer disappears when the computer runs out of memory (Linux). systemd stopped the whole tmux session, shell included, when the kernel killed one of its processes, so a heavy agent with subagents and test stands could take its tab with it. The panel now tells systemd to end only the killed process (`OOMPolicy=continue` for tmux sessions and `cc-tmux.service`); the session stays and the agent can be started again with its conversation.

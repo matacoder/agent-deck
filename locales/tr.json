@@ -1,6 +1,11 @@
 {
   "name": "Türkçe",
   "messages": {
+    "Галерея": "Galeri",
+    "Картинок: {0}": "Görseller: {0}",
+    "Картинки нет в галерее": "Bu görsel galeride yok",
+    "Картинка недоступна": "Görsel kullanılamıyor",
+    "Здесь появятся картинки, которые агенты этой сессии покажут на экране: скриншоты, превью, графики. Они остаются, даже когда уходят с экрана.": "Bu oturumun ajanlarının ekranda gösterdiği görseller burada görünür: ekran görüntüleri, önizlemeler, grafikler. Ekrandan çıksalar da kalırlar.",
     "Скачать файл {0}": "{0} dosyasını indir",
     "Не удалось скачать файл": "Dosya indirilemedi",
     "Файл больше 40 МБ; скачайте его другим способом": "Dosya 40 MB'tan büyük; başka bir yolla indirin",
