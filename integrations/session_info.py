@@ -4,6 +4,7 @@ Claude Code (also on Kimi or LM Studio) and Codex write every turn to a JSONL fi
 because these files grow to tens of megabytes. The summary is written by a model of the same provider as
 the session (the caller picks it), in the background, at most every few minutes while someone looks.
 """
+from datetime import datetime
 import json
 import os
 from pathlib import Path
@@ -11,6 +12,7 @@ import threading
 import time
 
 TAIL = 4 * 1024 * 1024
+HEAD = 256 * 1024
 SUMMARY_EVERY = 300
 SUMMARY_CHARS = 12000
 TURN_CHARS = 600
@@ -32,6 +34,18 @@ def tail_records(path, size=TAIL):
             if isinstance(record, dict):
                 records.append(record)
         return records
+
+
+def started(path, size=HEAD):
+    """When the conversation began, epoch seconds: the first timestamp in the file (its first records have none)."""
+    with Path(path).open('rb') as stream:
+        for line in stream.read(size).splitlines():
+            try:
+                stamp = json.loads(line).get('timestamp')
+                return int(datetime.fromisoformat(stamp.replace('Z', '+00:00')).timestamp())  # 3.10 rejects "Z".
+            except (ValueError, AttributeError, TypeError):
+                continue
+    return None
 
 
 def context(agent, records):

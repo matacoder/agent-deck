@@ -764,9 +764,11 @@ function fmtReset(ts){
 }
 function compactReset(ts){
   if(!ts)return "↻ —";
-  const minutes=Math.max(0,Math.round((ts*1000-Date.now())/60000)),days=Math.floor(minutes/1440),hours=Math.floor(minutes%1440/60);
-  const duration=days?tr("{0}д {1}ч",[days,hours]):hours?tr("{0}ч {1}м",[hours,minutes%60]):tr("{0}м",[minutes]);
-  return "↻ "+duration;
+  return "↻ "+compactDuration(Math.max(0,Math.round((ts*1000-Date.now())/60000)));
+}
+function compactDuration(minutes){
+  const days=Math.floor(minutes/1440),hours=Math.floor(minutes%1440/60);
+  return days?tr("{0}д {1}ч",[days,hours]):hours?tr("{0}ч {1}м",[hours,minutes%60]):tr("{0}м",[minutes]);
 }
 // labelled: outside the sidebar (which has "Left / Plan" headings) the plan value says what it is.
 function quotaValues(w,labelled=false){

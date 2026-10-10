@@ -443,7 +443,7 @@ class RemoteDeckTests(PanelCase):
         from integrations.session_info import Summaries
         tmp=tempfile.TemporaryDirectory(dir='/tmp');self.addCleanup(tmp.cleanup)
         transcript=Path(tmp.name)/'t.jsonl'
-        transcript.write_text(json.dumps({'type':'user','message':{'role':'user','content':'Fix payments'}})+'\n'+
+        transcript.write_text(json.dumps({'type':'user','timestamp':'2026-10-10T08:30:00.000Z','message':{'role':'user','content':'Fix payments'}})+'\n'+
                               json.dumps({'type':'assistant','message':{'role':'assistant','content':[{'type':'text','text':'On it'}],'usage':{'input_tokens':170000}}})+'\n')
         options={'@cc_agent':'claude','@cc_sid':'2dafd88e-8570-4bee-a975-471fca0133ec','@cc_source':''}
         jobs=[];store=Summaries(Path(tmp.name)/'s',start=jobs.append)
@@ -458,6 +458,7 @@ class RemoteDeckTests(PanelCase):
             handler=self.handler();handler.path='/api/session_info?name=demo';handler.get_request()
             data=handler.send_json.call_args.args[1]
             self.assertEqual((data['context']['tokens'],data['context']['level'],data['summary']['updating']),(170000,'full',True))
+            self.assertEqual(data['started'],1791621000)
             jobs.pop()()
             handler=self.handler();handler.path='/api/session_info?name=demo';handler.get_request()
             self.assertEqual(handler.send_json.call_args.args[1]['summary']['line'],'Payments')

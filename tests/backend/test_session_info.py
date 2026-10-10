@@ -45,6 +45,14 @@ class SessionInfoTests(unittest.TestCase):
         self.assertEqual(S.dialogue('codex', records), [('user', 'Add a gallery'), ('assistant', 'Done.')])
         self.assertIsNone(S.context('claude', []))
 
+    def test_the_conversation_start_is_the_first_timestamp_in_the_head(self):
+        records = [{'type': 'custom-title'}, ['not a record'], {'type': 'user', 'timestamp': '2026-10-10T08:30:00.123Z'},
+                   {'type': 'assistant', 'timestamp': '2026-10-10T09:00:00.000Z'}]
+        path = jsonl(self.dir / 's.jsonl', records)
+        self.assertEqual(S.started(path), 1791621000)
+        self.assertIsNone(S.started(path, size=30))  # Only the head is read.
+        self.assertIsNone(S.started(jsonl(self.dir / 'n.jsonl', [{'timestamp': 'yesterday'}, {'timestamp': 5}])))
+
     def test_only_the_tail_is_read_and_a_cut_line_is_skipped(self):
         path = jsonl(self.dir / 'big.jsonl', [{'type': 'user', 'message': {'role': 'user', 'content': 'x' * 500}}] * 50 + CLAUDE)
         records = S.tail_records(path, size=2000)

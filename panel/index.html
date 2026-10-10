@@ -735,22 +735,28 @@ body.resizing iframe{pointer-events:none}
 /* Any touch screen (an iPad too): iOS zooms the page when an input below 16px gets focus. */
 /* Session strip: a quiet summary under the bar, the context and restarts where the session tabs were. */
 .session-hint{flex:none;border-bottom:1px solid var(--bd);background:var(--bg)}
-.session-hint>button{display:flex;align-items:center;gap:6px;width:100%;padding:5px 14px;color:var(--dim);font-size:12.5px;text-align:left}
-#hint_line{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.session-hint .ui-icon{flex:none;width:14px;height:14px;transition:transform .15s}
+.session-hint>button{display:flex;align-items:flex-start;gap:6px;width:100%;padding:5px 14px;color:var(--dim);font-size:12.5px;text-align:left}
+.hint-body{flex:1;min-width:0;display:grid;gap:1px;line-height:1.4}
+#hint_line{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#hint_lead{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;font-size:12px}
+.session-hint .ui-icon{flex:none;width:14px;height:14px;margin-top:2px;transition:transform .15s}
 .session-hint.open .ui-icon{transform:rotate(180deg)}
 .session-hint.open #hint_line{white-space:normal;color:var(--mut)}
 #hint_more{max-height:40dvh;overflow-y:auto;padding:0 14px 8px;font-size:13px;line-height:1.45;color:var(--mut)}
 #hint_more p{margin:0 0 4px}
 #hint_meta{font-size:11.5px;color:var(--dim)}
-.session-meta{flex:none;display:flex;align-items:center;gap:2px;padding:2px 8px 2px 14px;border-top:1px solid var(--bd);background:var(--side)}
-.ctx{flex:1;min-width:0;display:flex;align-items:center;gap:8px;font-size:12px;color:var(--dim);font-variant-numeric:tabular-nums}
-.ctx-bar{flex:none;width:56px;height:4px;border-radius:2px;background:var(--bd);overflow:hidden}
+.session-meta{flex:none;display:flex;align-items:center;gap:10px;padding:2px 14px 2px 8px;border-top:1px solid var(--bd);background:var(--side)}
+.ctx{flex:1;min-width:0;display:flex;align-items:center;justify-content:flex-end;gap:8px;font-size:12px;color:var(--dim);font-variant-numeric:tabular-nums}
+#ctx_text{flex:none;white-space:nowrap}
+.ctx-age{flex:none;display:flex;align-items:center;gap:4px;margin-right:6px;color:var(--dim)}
+.ctx-age .ui-icon{width:13px;height:13px}
+.ctx-bar{flex:0 1 56px;min-width:16px;height:4px;border-radius:2px;background:var(--bd);overflow:hidden}
 .ctx-bar i{display:block;width:0;height:100%;border-radius:2px;background:var(--ok)}
 .ctx[data-level=heavy] .ctx-bar i{background:#ff9f0a}
 .ctx[data-level=full] .ctx-bar i{background:var(--bad-text)}
 .ctx[data-level=full]{color:var(--bad-text)}
-.session-meta .iconbtn{width:36px;height:36px;color:var(--mut)}
+.session-meta .iconbtn{width:40px;height:40px;color:var(--mut)}
+.session-meta .iconbtn .ui-icon{width:22px;height:22px}
 @media (pointer:coarse){.q-text textarea,.files-new input,.git-branch,.git-tree,.diff-comment textarea,.palette input,.bar-search input{font-size:16px}.files-text{font-size:max(16px,var(--code-font,16px))}}
 /* ---------- mobile (phones, including landscape) ----------
    Keep in sync with MOBILE_QUERY in app.js. */
@@ -828,7 +834,7 @@ body.resizing iframe{pointer-events:none}
 
   /* While typing, the conversation gets the space: no tab strip, no status line, compact header. */
   body.keyboard-open #session_meta,body.keyboard-open .composer-status{display:none!important}
-  .session-meta{padding:2px 8px max(2px,var(--sab)) 14px}.session-meta .iconbtn{width:var(--tap);height:var(--tap)}
+  .session-meta{padding:2px 14px max(2px,var(--sab)) 8px}.session-meta .iconbtn{width:var(--tap);height:var(--tap)}
   main:has(#session_meta:not([hidden])) .composer{padding-bottom:8px}
   body.keyboard-open .composer{padding-bottom:8px}
   body.keyboard-open .bar{height:calc(48px + var(--sat));padding-top:calc(var(--sat) + 4px)}
@@ -1020,6 +1026,7 @@ body.resizing iframe{pointer-events:none}
   <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></symbol>
   <symbol id="i-terminal" viewBox="0 0 24 24"><path d="m4 17 6-6-6-6M12 19h8"/></symbol>
   <symbol id="i-restart" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
   <symbol id="i-chat-plus" viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.4A8 8 0 1 1 21 12z"/><path d="M12 9v6M9 12h6"/></symbol>
   <symbol id="i-external" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></symbol>
   <symbol id="i-x" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
@@ -1078,7 +1085,7 @@ body.resizing iframe{pointer-events:none}
       <div id="search_pop" class="search-pop" hidden><div id="search_body" role="region" aria-label="Поиск в выводе"></div></div>
       <button class="iconbtn" id="b_project" onclick="toggleProject(PROJECT_TABS)" aria-pressed="false" aria-label="Скрыть или показать панель проекта" title="Скрыть или показать панель проекта"><svg class="ui-icon"><use href="#i-sidebar-right"/></svg></button>
     </div>
-    <div id="session_hint" class="session-hint" hidden><button type="button" id="hint_toggle" onclick="toggleSummary()" aria-expanded="false" aria-controls="hint_more"><span id="hint_line"></span><svg class="ui-icon"><use href="#i-chevron-down"/></svg></button><div id="hint_more" hidden><p id="hint_text"></p><p id="hint_meta"></p></div></div>
+    <div id="session_hint" class="session-hint" hidden><button type="button" id="hint_toggle" onclick="toggleSummary()" aria-expanded="false" aria-controls="hint_more"><span class="hint-body"><span id="hint_line"></span><span id="hint_lead" hidden></span></span><svg class="ui-icon"><use href="#i-chevron-down"/></svg></button><div id="hint_more" hidden><p id="hint_text"></p><p id="hint_meta"></p></div></div>
     <div id="stage">
       <div id="conn" class="conn" role="status" aria-live="polite" hidden></div>
       <div id="drop_zone" class="drop-zone" hidden><div class="drop-card"><svg class="ui-icon"><use href="#i-paperclip"/></svg><b id="drop_title"></b><span>До 4 файлов, до 200 МБ каждый</span></div></div>
@@ -1125,7 +1132,7 @@ body.resizing iframe{pointer-events:none}
       </div>
     </div>
     <div id="terminal_keys" hidden></div>
-    <div id="session_meta" class="session-meta" hidden><span class="ctx" id="ctx" role="img"><span class="ctx-bar"><i id="ctx_fill"></i></span><span id="ctx_text"></span></span><button type="button" class="iconbtn" onclick="restart('new')" aria-label="Перезапустить — новый разговор" title="Перезапустить — новый разговор"><svg class="ui-icon"><use href="#i-chat-plus"/></svg></button><button type="button" class="iconbtn" onclick="restart('continue')" aria-label="Перезапустить — продолжить разговор" title="Перезапустить — продолжить разговор"><svg class="ui-icon"><use href="#i-restart"/></svg></button></div>
+    <div id="session_meta" class="session-meta" hidden><button type="button" class="iconbtn" onclick="restart('new')" aria-label="Перезапустить — новый разговор" title="Перезапустить — новый разговор"><svg class="ui-icon"><use href="#i-chat-plus"/></svg></button><button type="button" class="iconbtn" onclick="restart('continue')" aria-label="Перезапустить — продолжить разговор" title="Перезапустить — продолжить разговор"><svg class="ui-icon"><use href="#i-restart"/></svg></button><span class="ctx" id="ctx" role="img"><span class="ctx-age" id="ctx_age_box" hidden><svg class="ui-icon"><use href="#i-clock"/></svg><span id="ctx_age"></span></span><span class="ctx-bar"><i id="ctx_fill"></i></span><span id="ctx_text"></span></span></div>
   </main>
   <dialog id="help_dlg"><div class="dlg"><div class="hub-heading"><h3 tabindex="-1" autofocus>Как это работает</h3><button type="button" onclick="$('help_dlg').close()" aria-label="Закрыть"><svg class="ui-icon"><use href="#i-x"/></svg></button></div><div class="dlg-body">
     <div class="arch-scroll"><svg class="arch-map" viewBox="0 0 960 610" role="img" aria-label="Как это работает">
@@ -2945,8 +2952,8 @@ function renderGroups(box){
 
 if(typeof module!=="undefined")module.exports={diffRows,lineComment,authorColor,AUTHOR_COLORS,filesToOpen};
 // The open session's conversation at a glance, read by the panel from the agent's own conversation file: a
-// quiet one-line summary under the bar (a tap shows all of it) and, at the bottom, how full the context is
-// next to the two restarts. Shells, other agents and computers without this version show neither.
+// quiet summary under the bar (its headline and first sentence; a tap shows all of it) and, at the bottom,
+// the two restarts, how long the conversation has run and how full the context is. Shells, other agents and computers without this version show neither.
 const sessionInfo={session:null,data:null,timer:null,seq:0};
 const SESSION_INFO_POLL=30000;
 const CONTEXT_SCALE=200000;  // A full bar for Claude, whose window the conversation file does not state.
@@ -2994,29 +3001,40 @@ async function loadSessionInfo(){
   if(!document.hidden)sessionInfo.timer=setTimeout(loadSessionInfo,data?.summary?.updating?8000:SESSION_INFO_POLL);
 }
 function formatTokens(n){return n>=1000?Math.round(n/1000)+"k":String(n)}
+// The summary's first sentence; CJK full stops are followed by no space.
+function firstSentence(text){
+  const found=/^[\s\S]*?(?:[.!?…]+(?=\s|$)|[。！？])/.exec((text||"").trim());
+  return found?found[0]:(text||"").trim();
+}
 function renderSessionInfo(){
   const data=sessionInfo.data?.supported?sessionInfo.data:null;
   $("session_meta").hidden=!data;
-  renderContext(data?.context);
+  renderContext(data?.context,data?.started);
   const summary=data?.summary,hint=$("session_hint");
   hint.hidden=!summary||!(summary.line||summary.updating);
   if(hint.hidden)return;
   const open=summaryOpen()&&Boolean(summary.line);
   $("hint_line").textContent=summary.line||tr("Составляю пересказ…");
+  // Closed: the headline and the first sentence, two or three lines; open: all of it below.
+  const lead=open?"":firstSentence(summary.text);
+  $("hint_lead").textContent=lead;$("hint_lead").hidden=!lead;
   $("hint_toggle").setAttribute("aria-expanded",String(open));
   hint.classList.toggle("open",open);
   $("hint_more").hidden=!open;
   $("hint_text").textContent=summary.text||"";
   $("hint_meta").textContent=summary.at?tr("Пересказ: {0} · {1}",[summary.model,relativeTime(summary.at)]):"";
 }
-function renderContext(context){
+function renderContext(context,started){
   const box=$("ctx"),fill=$("ctx_fill");
   const level=context?contextLevel(context.tokens):"";
   box.dataset.level=level;
   fill.style.width=context?Math.min(100,Math.round(context.tokens/(context.window||CONTEXT_SCALE)*100))+"%":"0";
   const text=context?tr("Контекст {0}",[formatTokens(context.tokens)+(context.window?" / "+formatTokens(context.window):"")]):tr("Контекст: нет данных");
   $("ctx_text").textContent=text;
-  const hint=context?text+" · "+tr(CONTEXT_LEVELS[level]):text;
+  // Age matters next to size: a long conversation has drifted from its start even when compaction keeps it small.
+  const age=started?compactDuration(Math.max(0,Math.floor((Date.now()/1000-started)/60))):"";
+  $("ctx_age").textContent=age;$("ctx_age_box").hidden=!age;
+  const hint=(context?text+" · "+tr(CONTEXT_LEVELS[level]):text)+(age?" · "+tr("Разговор идёт {0}",[age]):"");
   box.title=hint;box.setAttribute("aria-label",hint);
 }
 if(typeof document!=="undefined")document.addEventListener("visibilitychange",()=>{if(!document.hidden&&sessionInfo.session)loadSessionInfo()});
@@ -4754,9 +4772,11 @@ function fmtReset(ts){
 }
 function compactReset(ts){
   if(!ts)return "↻ —";
-  const minutes=Math.max(0,Math.round((ts*1000-Date.now())/60000)),days=Math.floor(minutes/1440),hours=Math.floor(minutes%1440/60);
-  const duration=days?tr("{0}д {1}ч",[days,hours]):hours?tr("{0}ч {1}м",[hours,minutes%60]):tr("{0}м",[minutes]);
-  return "↻ "+duration;
+  return "↻ "+compactDuration(Math.max(0,Math.round((ts*1000-Date.now())/60000)));
+}
+function compactDuration(minutes){
+  const days=Math.floor(minutes/1440),hours=Math.floor(minutes%1440/60);
+  return days?tr("{0}д {1}ч",[days,hours]):hours?tr("{0}ч {1}м",[hours,minutes%60]):tr("{0}м",[minutes]);
 }
 // labelled: outside the sidebar (which has "Left / Plan" headings) the plan value says what it is.
 function quotaValues(w,labelled=false){

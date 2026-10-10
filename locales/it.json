@@ -9,6 +9,7 @@
     "Пересказ: {0} · {1}": "Riassunto: {0} · {1}",
     "Контекст {0}": "Contesto {0}",
     "Контекст: нет данных": "Contesto: nessun dato",
+    "Разговор идёт {0}": "Conversazione in corso da {0}",
     "Разговор свежий": "La conversazione è recente",
     "Разговор разросся: агент начинает хуже держать детали": "La conversazione è cresciuta: l’agente inizia a perdere dettagli",
     "Пора начать новый разговор: контекст переполнен": "È ora di una nuova conversazione: il contesto è sovraccarico",

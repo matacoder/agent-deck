@@ -1779,7 +1779,7 @@ def summary_model(name, agent):
 
 def session_info(name, language):
     """How full the open conversation is and its summary; parsed again only when the file changed."""
-    from integrations.session_info import context, dialogue, tail_records
+    from integrations.session_info import context, dialogue, started, tail_records
     agent = opt(name, "@cc_agent") or "claude"
     sid = opt(name, "@cc_sid")
     if agent not in ("claude", "claude-kimi", "codex") or not valid_sid(sid):
@@ -1787,20 +1787,20 @@ def session_info(name, language):
     kind = "codex" if agent == "codex" else "claude"
     path = transcript_path(agent, sid)
     if not path:
-        return {"supported": True, "context": None, "summary": None}
+        return {"supported": True, "context": None, "summary": None, "started": None}
     stat = path.stat()
     stamp = (stat.st_mtime_ns, stat.st_size)
     with _session_reads_lock:
         cached = _session_reads.get(path)
     if not cached or cached[0] != stamp:
         records = tail_records(path)
-        cached = (stamp, context(kind, records), dialogue(kind, records))
+        cached = (stamp, context(kind, records), dialogue(kind, records), started(path))
         with _session_reads_lock:
             if len(_session_reads) > 200:
                 _session_reads.clear()
             _session_reads[path] = cached
     summary = summaries().get(sid, language, stat.st_size, cached[2], lambda: summary_model(name, agent))
-    return {"supported": True, "context": cached[1], "summary": summary}
+    return {"supported": True, "context": cached[1], "summary": summary, "started": cached[3]}
 
 
 def gallery_loop():

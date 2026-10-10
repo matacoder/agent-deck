@@ -1,6 +1,6 @@
 // The open session's conversation at a glance, read by the panel from the agent's own conversation file: a
-// quiet one-line summary under the bar (a tap shows all of it) and, at the bottom, how full the context is
-// next to the two restarts. Shells, other agents and computers without this version show neither.
+// quiet summary under the bar (its headline and first sentence; a tap shows all of it) and, at the bottom,
+// the two restarts, how long the conversation has run and how full the context is. Shells, other agents and computers without this version show neither.
 const sessionInfo={session:null,data:null,timer:null,seq:0};
 const SESSION_INFO_POLL=30000;
 const CONTEXT_SCALE=200000;  // A full bar for Claude, whose window the conversation file does not state.
@@ -48,29 +48,40 @@ async function loadSessionInfo(){
   if(!document.hidden)sessionInfo.timer=setTimeout(loadSessionInfo,data?.summary?.updating?8000:SESSION_INFO_POLL);
 }
 function formatTokens(n){return n>=1000?Math.round(n/1000)+"k":String(n)}
+// The summary's first sentence; CJK full stops are followed by no space.
+function firstSentence(text){
+  const found=/^[\s\S]*?(?:[.!?…]+(?=\s|$)|[。！？])/.exec((text||"").trim());
+  return found?found[0]:(text||"").trim();
+}
 function renderSessionInfo(){
   const data=sessionInfo.data?.supported?sessionInfo.data:null;
   $("session_meta").hidden=!data;
-  renderContext(data?.context);
+  renderContext(data?.context,data?.started);
   const summary=data?.summary,hint=$("session_hint");
   hint.hidden=!summary||!(summary.line||summary.updating);
   if(hint.hidden)return;
   const open=summaryOpen()&&Boolean(summary.line);
   $("hint_line").textContent=summary.line||tr("Составляю пересказ…");
+  // Closed: the headline and the first sentence, two or three lines; open: all of it below.
+  const lead=open?"":firstSentence(summary.text);
+  $("hint_lead").textContent=lead;$("hint_lead").hidden=!lead;
   $("hint_toggle").setAttribute("aria-expanded",String(open));
   hint.classList.toggle("open",open);
   $("hint_more").hidden=!open;
   $("hint_text").textContent=summary.text||"";
   $("hint_meta").textContent=summary.at?tr("Пересказ: {0} · {1}",[summary.model,relativeTime(summary.at)]):"";
 }
-function renderContext(context){
+function renderContext(context,started){
   const box=$("ctx"),fill=$("ctx_fill");
   const level=context?contextLevel(context.tokens):"";
   box.dataset.level=level;
   fill.style.width=context?Math.min(100,Math.round(context.tokens/(context.window||CONTEXT_SCALE)*100))+"%":"0";
   const text=context?tr("Контекст {0}",[formatTokens(context.tokens)+(context.window?" / "+formatTokens(context.window):"")]):tr("Контекст: нет данных");
   $("ctx_text").textContent=text;
-  const hint=context?text+" · "+tr(CONTEXT_LEVELS[level]):text;
+  // Age matters next to size: a long conversation has drifted from its start even when compaction keeps it small.
+  const age=started?compactDuration(Math.max(0,Math.floor((Date.now()/1000-started)/60))):"";
+  $("ctx_age").textContent=age;$("ctx_age_box").hidden=!age;
+  const hint=(context?text+" · "+tr(CONTEXT_LEVELS[level]):text)+(age?" · "+tr("Разговор идёт {0}",[age]):"");
   box.title=hint;box.setAttribute("aria-label",hint);
 }
 if(typeof document!=="undefined")document.addEventListener("visibilitychange",()=>{if(!document.hidden&&sessionInfo.session)loadSessionInfo()});

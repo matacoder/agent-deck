@@ -300,7 +300,7 @@ test('the session strip shows a quiet summary under the bar and the context with
   const state={local:()=>({sessions:[session('alpha'),session('beta')]})};
   const routes=routesFor(state),asked=[];
   routes['/api/session_info']=url=>{const name=url.searchParams.get('name');asked.push(name);
-    return name==='alpha'?{supported:true,context:{tokens:171390,window:258400,level:'full'},summary:{line:'Payments webhook',text:'Moving payments to Stripe.',at:Math.floor(Date.now()/1000)-120,model:'Claude Haiku',updating:false}}:{supported:false}};
+    return name==='alpha'?{supported:true,context:{tokens:171390,window:258400,level:'full'},summary:{line:'Payments webhook',text:'Moving payments to Stripe. Tests are next.',at:Math.floor(Date.now()/1000)-120,model:'Claude Haiku',updating:false},started:Math.floor(Date.now()/1000)-3*3600-12*60}:{supported:false}};
   const window=boot(routes);
   try{
   await settle();await settle();
@@ -308,12 +308,19 @@ test('the session strip shows a quiet summary under the bar and the context with
   expect(asked).toContain('alpha');
   expect([$('session_hint').hidden,$('session_meta').hidden]).toEqual([false,false]);
   expect($('hint_line').textContent).toBe('Payments webhook');
-  expect($('hint_more').hidden).toBe(true);
+  // Closed: the headline and the first sentence only.
+  expect([$('hint_more').hidden,$('hint_lead').hidden,$('hint_lead').textContent]).toEqual([true,false,'Moving payments to Stripe.']);
+  // Restarts on the left, then how long the conversation has run and the context.
+  expect([...$('session_meta').children].map(node=>node.id||node.tagName)).toEqual(['BUTTON','BUTTON','ctx']);
+  expect([$('ctx_age_box').hidden,$('ctx_age').textContent]).toEqual([false,'3ч 12м']);
+  expect($('ctx').getAttribute('aria-label')).toContain('Разговор идёт 3ч 12м');
   expect($('ctx_text').textContent).toBe('Контекст 171k / 258k');
   expect($('ctx').dataset.level).toBe('full');
   expect($('ctx_fill').style.width).toBe('66%');
   $('hint_toggle').click();
-  expect([$('hint_more').hidden,$('hint_text').textContent,$('hint_toggle').getAttribute('aria-expanded')]).toEqual([false,'Moving payments to Stripe.','true']);
+  expect([$('hint_more').hidden,$('hint_text').textContent,$('hint_toggle').getAttribute('aria-expanded')]).toEqual([false,'Moving payments to Stripe. Tests are next.','true']);
+  expect($('hint_lead').hidden).toBe(true);
+  expect(['One. Two.','v1.2 is out! Next','第一句。第二句。','no stop',''].map(window.firstSentence)).toEqual(['One.','v1.2 is out!','第一句。','no stop','']);
   expect($('hint_meta').textContent).toMatch(/^Пересказ: Claude Haiku · /);
   // Limits from Settings colour the bar in this browser.
   $('context_heavy').value='100';$('context_full').value='200';$('context_full').dispatchEvent(new window.Event('change'));

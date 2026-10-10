@@ -2,6 +2,11 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.36.0 — 2026-10-10
+
+- Session strip, bottom row: **new conversation** and **restart** moved to the left, slightly larger and further apart; the context bar moved to the right, and before it a clock shows how long the conversation has been running (from the first timestamp in the agent's conversation file). `/api/session_info` returns it as `started`.
+- The closed summary under the session bar takes two or three lines: its headline and the first sentence of the description; a tap still shows all of it.
+
 ## 1.35.0 — 2026-10-10
 
 - The context bar's limits are set in **Settings → General** (this browser): yellow from 80k and red from 150k tokens by default (red was 160k). No official number exists; Claude Code users most often report the quality drop around 150k.

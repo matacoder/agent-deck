@@ -342,8 +342,9 @@ from the icon. It runs full screen, keeps drafts and supports one-tap answers to
 **Android.** Open the panel in Chrome, tap **⋮ → Add to Home screen** (or **Install app**).
 
 Sessions are in the menu (☰); its badge counts what is waiting for you. Under the session bar a quiet line
-says what the conversation is about (tap it for a few sentences); at the bottom a short bar shows how full
-the context is, next to **new conversation** and **restart** buttons. Files are uploaded as a raw stream with
+says what the conversation is about (its headline and first sentence; tap it for the rest); at the bottom
+are the **new conversation** and **restart** buttons, how long the conversation has been running and a short
+bar showing how full the context is. Files are uploaded as a raw stream with
 progress, so a large video does not have to fit into the phone's browser memory twice.
 
 ## Session summary and context
@@ -352,7 +353,8 @@ For Claude Code (also on Kimi or LM Studio) and Codex sessions the panel reads t
 file. The bar at the bottom shows how many tokens the latest request carried: green while the conversation
 is fresh, orange from 80k (the agent starts losing details), red from 150k (time for a new conversation);
 both limits are set in **Settings → General** for this browser;
-Codex also shows its context window. The summary under the session bar is written by a model of the same
+Codex also shows its context window. The clock before the bar is the time since the first record of the
+conversation file: a long conversation has drifted from its start even when compaction keeps it small. The summary under the session bar is written by a model of the same
 provider as the session, so the conversation goes nowhere new: Claude Haiku for Claude on the subscription,
 Codex's light model for Codex, Kimi for Claude on Kimi, the same local model for LM Studio. It is rewritten
 in the background at most every 5 minutes, only while the session is open and only after it changed, and
