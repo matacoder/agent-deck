@@ -2612,7 +2612,42 @@ def sync_loop():
         time.sleep(5)
 
 
+# systemd stops a whole unit when the kernel kills one of its processes for memory: one heavy agent
+# (or its tests) running out of RAM would end its tmux session, shell and all, and the tab vanishes.
+# With "continue" only the killed process ends; the session stays and the agent can be resumed.
+OOM_DROP_INS = (("tmux-spawn-.scope.d", "Scope"), ("cc-tmux.service.d", "Service"))
+
+
+def keep_sessions_on_oom(home=None, run=subprocess.run):
+    if sys.platform != "linux" or not os.path.isdir(f"/run/user/{os.getuid()}/systemd"):
+        return  # No systemd user manager here (Docker, macOS).
+    units, changed = os.path.join(home or os.path.expanduser("~"), ".config", "systemd", "user"), False
+    for folder, section in OOM_DROP_INS:
+        path = os.path.join(units, folder, "agent-deck-oom.conf")
+        text = f"# Written by Agent Deck: out of memory ends one process, not the tmux session.\n[{section}]\nOOMPolicy=continue\n"
+        try:
+            with open(path) as stream:
+                if stream.read() == text:
+                    continue
+        except OSError:
+            pass
+        try:
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            with open(path + ".tmp", "w") as stream:
+                stream.write(text)
+            os.replace(path + ".tmp", path)
+            changed = True
+        except OSError as error:
+            print(f"Could not keep sessions alive on low memory: {error}", flush=True)
+    if changed:
+        try:
+            run(["systemctl", "--user", "daemon-reload"], input=b"", capture_output=True, timeout=30)
+        except (OSError, subprocess.TimeoutExpired):
+            print("Could not reload systemd user units", flush=True)
+
+
 def main():
+    keep_sessions_on_oom()
     if sys.platform == "darwin" and os.environ.get("TMUX_SOCKET_NAME") and not tmux_server_pid():
         config = os.path.expanduser("~/.config/cc-panel/tmux.conf")
         tmux("-f", config, "new-session", "-d", "-s", "_keep")

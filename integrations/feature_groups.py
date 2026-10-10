@@ -45,10 +45,12 @@ def cli_model(name, run=subprocess.run, which=shutil.which):
 
 
 def claude_answer(claude, prompt, run):
-    with tempfile.TemporaryDirectory(prefix='agent-deck-groups-') as empty:
-        result = run([claude, '-p', '--model', 'haiku', '--tools', '', '--output-format', 'json',
-                      '--no-session-persistence', '--strict-mcp-config', '--setting-sources', ''],
-                     input=prompt.encode(), capture_output=True, timeout=MODEL_TIMEOUT, cwd=empty)
+    # One fixed empty folder: Claude Code registers every new working folder as a project of its own.
+    empty = Path.home() / '.cache/agent-deck/feature-groups/model'
+    empty.mkdir(parents=True, exist_ok=True, mode=0o700)
+    result = run([claude, '-p', '--model', 'haiku', '--tools', '', '--output-format', 'json',
+                  '--no-session-persistence', '--strict-mcp-config', '--setting-sources', ''],
+                 input=prompt.encode(), capture_output=True, timeout=MODEL_TIMEOUT, cwd=str(empty))
     if result.returncode:
         raise ValueError('Claude Code не ответил; проверьте вход в Claude в настройках агентов')
     answer = json.loads(result.stdout.decode('utf-8', 'replace'))

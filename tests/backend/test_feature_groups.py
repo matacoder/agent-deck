@@ -156,13 +156,17 @@ class FeatureGroupTests(unittest.TestCase):
                 Path(command[command.index('-o') + 1]).write_text('{"assign":[]}')
                 return subprocess.CompletedProcess(command, 0, b'', b'')
             return subprocess.CompletedProcess(command, 0, json.dumps({'result': '{"assign":[]}'}).encode(), b'')
-        with patch.object(F.os, 'access', return_value=True):
+        home = tempfile.TemporaryDirectory(dir='/tmp')
+        self.addCleanup(home.cleanup)
+        with patch.object(F.os, 'access', return_value=True), patch.object(F.Path, 'home', return_value=Path(home.name)):
             claude = F.cli_model('claude', run=run, which=lambda name: '/bin/' + name)
             codex = F.cli_model('codex', run=run, which=lambda name: '/bin/' + name)
-        self.assertEqual(claude['complete']('p'), '{"assign":[]}')
-        self.assertEqual(codex['complete']('p'), '{"assign":[]}')
+            self.assertEqual(claude['complete']('p'), '{"assign":[]}')
+            self.assertEqual(codex['complete']('p'), '{"assign":[]}')
         command, kwargs = calls[0]
         self.assertEqual(command[1:6], ['-p', '--model', 'haiku', '--tools', ''])
+        self.assertTrue(kwargs['cwd'].endswith('/.cache/agent-deck/feature-groups/model'))  # One folder, not a new project each time.
+        self.assertEqual(list(Path(kwargs['cwd']).iterdir()), [])
         command, kwargs = calls[1]
         self.assertEqual(command[command.index('-s') + 1], 'read-only')
         for flag in ('--ephemeral', '--ignore-user-config', '--ignore-rules'):

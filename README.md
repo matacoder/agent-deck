@@ -58,7 +58,8 @@ models to the others.
 The agents run on your own computers, in your project folders, exactly as if you had opened a terminal
 there. The browser is only a window onto them: close it and the work goes on; open it on a phone and you
 see the same sessions. Nothing is exposed to the internet — the phone reaches the computer over
-Tailscale.
+Tailscale. On Linux, when the computer runs out of memory, only the process the kernel kills ends (say, the
+agent); its session and tab stay, and the agent can be started again in it.
 
 **Checking results while away from the computer:**
 

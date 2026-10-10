@@ -2,6 +2,11 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.29.1 — 2026-10-10
+
+- A session no longer disappears when the computer runs out of memory (Linux). systemd stopped the whole tmux session, shell included, when the kernel killed one of its processes, so a heavy agent with subagents and test stands could take its tab with it. The panel now tells systemd to end only the killed process (`OOMPolicy=continue` for tmux sessions and `cc-tmux.service`); the session stays and the agent can be started again with its conversation.
+- Feature groups ask Claude Haiku from one fixed empty folder (`~/.cache/agent-deck/feature-groups/model`) instead of a new temporary folder each time, which Claude Code kept as a new empty project.
+
 ## 1.29.0 — 2026-10-09
 
 - Any file can be downloaded: a file path an agent prints on the Screen (`/home/me/trip/plan.pdf`, `src/app.py`) is a link that downloads the file, and Project files offers **Download** for text files and for files it cannot show (archives, spreadsheets). Inside the home folder only, never the panel's settings, up to 40 MB; also for sessions on connected computers (they need this version too).

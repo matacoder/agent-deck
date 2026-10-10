@@ -653,3 +653,23 @@ class InboxAndTextAnswerTests(PanelCase):
             decks.request.return_value = (200, {}, b'{"ok":true}')
             self.panel.answer_any_question(remote, 1, 'Use staging')
             self.assertEqual(json.loads(decks.request.call_args.args[3]), {'name': 'api', 'id': 'remote-fp', 'index': 1, 'text': 'Use staging'})
+
+
+class OutOfMemoryTests(PanelCase):
+    def test_low_memory_ends_one_process_not_the_tmux_session(self):
+        home = Path(tempfile.mkdtemp(dir='/tmp'))
+        self.addCleanup(lambda: __import__('shutil').rmtree(home))
+        run = Mock()
+        with patch.object(self.panel.sys, 'platform', 'linux'), patch.object(self.panel.os.path, 'isdir', return_value=True):
+            self.panel.keep_sessions_on_oom(str(home), run)
+            self.panel.keep_sessions_on_oom(str(home), run)
+        units = home / '.config/systemd/user'
+        self.assertIn('[Scope]\nOOMPolicy=continue\n', (units / 'tmux-spawn-.scope.d/agent-deck-oom.conf').read_text())
+        self.assertIn('[Service]\nOOMPolicy=continue\n', (units / 'cc-tmux.service.d/agent-deck-oom.conf').read_text())
+        run.assert_called_once()  # Reloaded only when something changed.
+        self.assertEqual(run.call_args.args[0], ['systemctl', '--user', 'daemon-reload'])
+        other = Path(tempfile.mkdtemp(dir='/tmp'))
+        self.addCleanup(lambda: __import__('shutil').rmtree(other))
+        with patch.object(self.panel.sys, 'platform', 'darwin'):
+            self.panel.keep_sessions_on_oom(str(other), run)
+        self.assertFalse((other / '.config').exists())
