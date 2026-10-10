@@ -2,6 +2,11 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.33.1 — 2026-10-10
+
+- The phone project drawer no longer blinks or jumps back when a swipe lets go (half way or at the end) and slides in when opened with its button: the fade-in all dialogs share also moved it and restarted on every release, overriding the slide.
+- The phone project drawer moves on its own compositor layer, isolated from the page, so iOS does not repaint a long diff on every frame of a swipe; the check for new changes on reopening waits until the drawer has slid in and the finger has let go.
+
 ## 1.33.0 — 2026-10-10
 
 - The phone project drawer opens as smoothly as the menu on the left: closed, it now stays laid out past the right edge instead of being re-laid out on every swipe (with a long diff that took most of a second on a phone). On a phone it is no longer a modal dialog; the dimmed area beside it closes it, as with the menu.

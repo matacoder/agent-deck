@@ -968,7 +968,10 @@ body.resizing iframe{pointer-events:none}
 /* Phone: the project panel is a drawer on the right, mirroring the menu on the left. */
 @media (max-width:760px),(pointer:coarse) and (max-height:500px){
   #project_dlg:not(.docked){inset:var(--app-top,0) 0 auto auto;width:min(340px,88vw);max-width:88vw;height:var(--app-h);margin:0;border:0;border-left:1px solid var(--bd);border-radius:0;box-shadow:0 0 40px rgba(0,0,0,.6)}
-  #project_dlg:not(.docked){position:fixed;z-index:40;transition:transform .22s ease}
+  /* No dialog fade-in (dlg-in): it moves transform too, so it overrode the slide and restarted, a blink, each
+     time a swipe let go. Its own compositor layer, isolated from the page: a swipe only moves it, iOS does not repaint a long diff
+     on every frame, and the page updating behind it does not re-lay it out. */
+  #project_dlg:not(.docked){position:fixed;z-index:40;transition:transform .22s ease;animation:none!important;will-change:transform;contain:layout paint style;-webkit-backface-visibility:hidden;backface-visibility:hidden}
   body.project-drawer #scrim{display:block;z-index:39}
   /* Closed, it stays laid out past the edge (its shadow too), like the menu: a swipe only moves it. Showing
      a display:none dialog, or switching an inherited property such as visibility, re-did the whole diff
@@ -2663,7 +2666,7 @@ async function loadChanges(){
 async function pollChanges(){
   const typing=()=>$("git_body").querySelector(".diff-comment");
   if(!document.hidden&&$("project_dlg").open&&project.tab==="groups"&&!hist.view&&hist.session===active)return loadGroups(true);
-  if(document.hidden||!$("project_dlg").open||project.tab!=="changes"||hist.view||hist.session!==active||!hist.changes||hist.polling||typing())return;
+  if(document.hidden||!$("project_dlg").open||$("project_dlg").style.transform||project.tab!=="changes"||hist.view||hist.session!==active||!hist.changes||hist.polling||typing())return;
   const seq=hist.changesSeq,old=hist.changes;hist.polling=true;
   try{
     const data=await api(gitPath("changes",{tree:hist.tree}),null,false,{timeout:60000});
@@ -2963,8 +2966,15 @@ function projectCurrent(){
 }
 function quietProject(){
   markProjectTab();
-  if(project.tab==="gallery")return loadGallery();
-  if(project.tab==="changes"||project.tab==="groups")pollChanges();
+  // After the drawer has slid in: a diff redrawn mid-slide is what makes it stutter.
+  clearTimeout(project.quiet);
+  project.quiet=setTimeout(function check(){
+    const box=$("project_dlg");
+    if(!box.open)return;
+    if(box.style.transform){project.quiet=setTimeout(check,200);return}  // Still under the finger.
+    if(project.tab==="gallery")return loadGallery();
+    if(project.tab==="changes"||project.tab==="groups")pollChanges();
+  },projectDrawer()?400:0);
 }
 // The phone drawer slides in and out like the menu on the left; elsewhere the panel just appears.
 const PROJECT_DRAWER="(max-width:760px),(pointer:coarse) and (max-height:500px)";

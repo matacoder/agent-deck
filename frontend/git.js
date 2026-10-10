@@ -111,7 +111,7 @@ async function loadChanges(){
 async function pollChanges(){
   const typing=()=>$("git_body").querySelector(".diff-comment");
   if(!document.hidden&&$("project_dlg").open&&project.tab==="groups"&&!hist.view&&hist.session===active)return loadGroups(true);
-  if(document.hidden||!$("project_dlg").open||project.tab!=="changes"||hist.view||hist.session!==active||!hist.changes||hist.polling||typing())return;
+  if(document.hidden||!$("project_dlg").open||$("project_dlg").style.transform||project.tab!=="changes"||hist.view||hist.session!==active||!hist.changes||hist.polling||typing())return;
   const seq=hist.changesSeq,old=hist.changes;hist.polling=true;
   try{
     const data=await api(gitPath("changes",{tree:hist.tree}),null,false,{timeout:60000});

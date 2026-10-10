@@ -31,8 +31,15 @@ function projectCurrent(){
 }
 function quietProject(){
   markProjectTab();
-  if(project.tab==="gallery")return loadGallery();
-  if(project.tab==="changes"||project.tab==="groups")pollChanges();
+  // After the drawer has slid in: a diff redrawn mid-slide is what makes it stutter.
+  clearTimeout(project.quiet);
+  project.quiet=setTimeout(function check(){
+    const box=$("project_dlg");
+    if(!box.open)return;
+    if(box.style.transform){project.quiet=setTimeout(check,200);return}  // Still under the finger.
+    if(project.tab==="gallery")return loadGallery();
+    if(project.tab==="changes"||project.tab==="groups")pollChanges();
+  },projectDrawer()?400:0);
 }
 // The phone drawer slides in and out like the menu on the left; elsewhere the panel just appears.
 const PROJECT_DRAWER="(max-width:760px),(pointer:coarse) and (max-height:500px)";
