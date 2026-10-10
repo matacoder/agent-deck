@@ -20,7 +20,8 @@ function applyContextLimits(){
 }
 function saveContextLimits(){
   const heavy=Math.round(+$("context_heavy").value*1000),full=Math.round(+$("context_full").value*1000);
-  if(!(heavy>0&&full>heavy)){toast(tr("Красный порог должен быть больше жёлтого"));applyContextLimits();return}
+  // Nothing is saved until the pair fits, and the fields keep what was typed: the other one is changed next.
+  if(!(heavy>0&&full>heavy)){toast(tr("Красный порог должен быть больше жёлтого"));return}
   try{localStore.setItem("cc.context-limits",JSON.stringify({heavy,full}))}catch(e){}
   renderSessionInfo();
 }
@@ -39,9 +40,10 @@ async function loadSessionInfo(){
   const key=sessionInfoKey(),seq=++sessionInfo.seq;
   if(sessionInfo.session!==key){sessionInfo.session=key;sessionInfo.data=null;renderSessionInfo()}
   if(!key)return;
-  let data=null;
+  let data;
   try{data=await api("/api/session_info?name="+encodeURIComponent(active))}
-  catch(e){if(e.message===STALE)return}  // A computer without this version, or a shell: nothing to show.
+  // A failed poll keeps what is shown. A computer without this version has had nothing to show since the key changed.
+  catch(e){if(e.message===STALE)return;data=sessionInfo.data}
   if(seq!==sessionInfo.seq)return;
   sessionInfo.data=data;renderSessionInfo();
   // A summary being written is asked for again soon; otherwise the conversation changes slowly.

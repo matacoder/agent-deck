@@ -2,6 +2,24 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.36.4 — 2026-10-10
+
+Fixes from a review of the last two days of changes.
+
+- The panel no longer freezes while a session shows a very long line (`base64 -w0`, minified code): the picture search for the gallery took seconds on such a line, every five seconds, and every request waited for it.
+- Feature groups: a deleted or failing repository no longer stops the grouping of the others; groups keep their language across a panel restart instead of being sorted again; a failed re-sort in another language keeps the groups there are; "Refresh" pressed while a pass is running is not lost; a model that answers with nothing is followed by the next model instead of sending commits to "No group" within seconds.
+- Context size no longer drops to zero after Claude Code's own notices (an API error, an interrupt), and is still shown, with the conversation age, when the last message is a pasted picture of several megabytes.
+- A session whose saved model source cannot be read gets no summary instead of one written by Claude; a provider that cannot summarize is asked again every few minutes, not on every poll.
+- The gallery folder `~/.cache/agent-deck/gallery` and its lists are private to the user (the folder was created readable by others).
+- The background fetch refuses `ext::` remotes.
+- Phone project drawer: messages are no longer cut off inside it or laid over its tabs; a wide table, code block or diff scrolls sideways both ways before a swipe closes the drawer; it comes back with the file it showed, and unsaved text is never dropped without the question; closed, it is skipped by Tab and screen readers from the start.
+- With the keyboard up on a phone, an opened summary gives its room to the conversation. A failed check no longer blanks the summary and the session strip for half a minute. Selecting summary text with the mouse does not close it.
+- The gallery of a session is not shown for a session of the same name on another computer, and keeps refreshing after a computer switch.
+- A download says it started, and more taps on the same file do not start it again.
+- Context limits in Settings can be typed in any order; nothing is saved until red is above yellow.
+- A commit opened from "not sorted yet" goes back "To groups"; the line-number column on a phone fits four-digit new line numbers.
+- Tests for the 1.27.0 terminal-link, framing and paste fixes now run with the unit tests; the ttyd pins of the installer and the image are checked against each other.
+
 ## 1.36.3 — 2026-10-10
 
 - The closed summary under the session bar is its headline only, shown in full (wrapped, not cut with an ellipsis); the first sentence of the description is no longer shown until the note is opened.
@@ -76,6 +94,7 @@ Versions follow [semver](https://semver.org). Install a version with `sudo ./upd
 - Feature groups are a tab of their own in the project panel and are always ready: the panel sorts new commits into features in the background, a few at a time, instead of regrouping 80 commits on a button press and dropping the result at the next commit. **Now** on top shows who works on what (each author active in the last 7 days and the feature of their latest commit); commits not sorted yet are listed as plain commits; groups show their authors, commit count and last change. A pass waits until the newest commit is 10 minutes old (or 20 wait); **Sort now** skips the wait.
 - The repositories of this computer's sessions are fetched quietly every 15 minutes, so a collaborator's pushed branches appear without "Fetch from GitHub".
 - Grouping models are tried in a fixed order: Claude Haiku (`claude -p`, no tools) and Codex's light model (`codex exec`, read-only sandbox without network), both on the subscription in an empty folder, then Kimi, then the first LM Studio model. The model picker is gone. Only subjects, authors and file names are sent, never code.
+- BREAKING for connected computers on different versions: `GET /api/git/models` is gone, `/api/git/groups` answers with `now`, `pending`, `groups` and `commits` instead of `phase` and `head`, and the `git_group` action ignores `model` and `ref`. Feature groups of a connected computer need this version on both sides; an older one shows a note asking to update it.
 
 ## 1.27.0 — 2026-10-08
 

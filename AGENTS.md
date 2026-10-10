@@ -8,7 +8,7 @@ Self-hosted panel (Python stdlib + static JS) for tmux sessions running Claude C
 - tmux session `cc-<name>`, options `@cc_agent`, `@cc_sid`, `@cc_skip`; persisted in `~/.config/cc-panel/sessions.json`.
 
 ## Files (read only what you touch)
-- `panel/panel.py`: HTTP backend (~2200 lines), no unrelated refactors.
+- `panel/panel.py`: HTTP backend (~2800 lines), no unrelated refactors.
 - `panel/updater.py`: update job, release validation (syntax + imports), rollback. `PACKAGES` lists every `integrations/*.py`.
 - `panel/session_hook.py`, `claude/*`: conversation-id hooks; nested agents must not overwrite `@cc_sid`.
 - `integrations/git.py`: read-only history and diffs. `integrations/feature_groups.py`: background, incremental feature groups per repository (subjects, authors, file names only); models in order Haiku via `claude -p --tools ""`, Codex Luna via `codex exec -s read-only --ignore-user-config`, both in an empty folder on the subscription, then Kimi, then LM Studio (`reasoning_effort: none`).

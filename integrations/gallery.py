@@ -18,6 +18,7 @@ PATH_RE = re.compile(r'(?<![\w/.~@+-])(?:~?/)?(?:[\w.@+-]+/)*[\w.@+-]+\.(?:png|j
 HEAD_RE = re.compile(r'^[\w./@+-]+\.(?:png|jpe?g|webp|gif)(?![\w-]|\.\w)', re.I)
 TAIL_RE = re.compile(r'[\w.~@+-]*/[\w./@+-]*$')
 EXT = {'image/png': 'png', 'image/jpeg': 'jpg', 'image/gif': 'gif', 'image/webp': 'webp'}
+TAIL_CHARS = 300  # A wrapped path ends its line; searching a whole long line (base64, minified code) takes seconds.
 KEEP = 200
 KEEP_BYTES = 300 * 1024 * 1024
 DAYS = 30
@@ -31,7 +32,7 @@ def mentioned(screen):
     while i < len(lines):
         line = lines[i]
         while i + 1 < len(lines):
-            tail = TAIL_RE.search(line.rstrip())
+            tail = TAIL_RE.search(line.rstrip()[-TAIL_CHARS:])
             if not tail or PATH_RE.fullmatch(tail.group(0)) or not HEAD_RE.match(lines[i + 1]):
                 break
             line = line.rstrip() + lines[i + 1]
@@ -61,11 +62,20 @@ class Gallery:
         except (OSError, ValueError):
             return []
 
-    def save(self, session, items):
+    def private_folder(self, session):
         folder = self.folder(session)
-        folder.mkdir(parents=True, exist_ok=True, mode=0o700)
+        for path in (self.root, folder):  # mkdir gives its mode to the last folder only.
+            path.mkdir(parents=True, exist_ok=True, mode=0o700)
+        if self.root.stat().st_mode & 0o077:
+            self.root.chmod(0o700)  # Versions before 1.36.4 left it open to other users.
+        return folder
+
+    def save(self, session, items):
+        folder = self.private_folder(session)
         temporary = folder / 'index.json.tmp'
-        temporary.write_text(json.dumps(items, ensure_ascii=False))
+        fd = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        with os.fdopen(fd, 'w') as stream:
+            json.dump(items, stream, ensure_ascii=False)
         os.replace(temporary, folder / 'index.json')
 
     def locate(self, session, path, cwd, home):
@@ -110,8 +120,7 @@ class Gallery:
             items = self.load(session)
             if any(item['id'] == ident for item in items):
                 return False
-            folder = self.folder(session)
-            folder.mkdir(parents=True, exist_ok=True, mode=0o700)
+            folder = self.private_folder(session)
             target = folder / f'{ident}.{EXT[kind]}'
             fd = os.open(target, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
             with os.fdopen(fd, 'wb') as stream:

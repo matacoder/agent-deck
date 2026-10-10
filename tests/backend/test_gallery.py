@@ -29,6 +29,27 @@ class GalleryTests(unittest.TestCase):
         screen = 'Saved (/tmp/padel-w1-cashier-\npreview/cashier.png) and shots/a.PNG, ~/b.webp; https://x/y.png?\nnotes.png.bak'
         self.assertEqual(G.mentioned(screen), ['/tmp/padel-w1-cashier-preview/cashier.png', 'shots/a.PNG', '~/b.webp'])  # Web links are not files.
 
+    def test_a_very_long_line_does_not_stall_the_panel(self):
+        import time
+        long = 'QUJD' * 50_000  # `base64 -w0` of a picture: 200 000 characters and no path at the end.
+        began = time.monotonic()
+        self.assertEqual(G.mentioned(long + '=\n' + long + '\nshots/wide-\nscreen.png'), ['shots/wide-screen.png'])
+        self.assertLess(time.monotonic() - began, 1)
+
+    def test_the_gallery_and_its_list_are_private_to_the_user(self):
+        import os
+        (self.project / 'shots/a.png').write_bytes(PNG)
+        old = os.umask(0o002)
+        self.addCleanup(os.umask, old)
+        self.assertEqual(self.collect('shots/a.png'), 1)
+        root = self.gallery.root
+        modes = [oct(path.stat().st_mode & 0o777) for path in (root, root / 'demo', root / 'demo/index.json')]
+        self.assertEqual(modes, ['0o700', '0o700', '0o600'])
+        root.chmod(0o775)  # Left open by an earlier version.
+        (self.project / 'shots/b.png').write_bytes(PNG + b'1')
+        self.collect('shots/b.png')
+        self.assertEqual(oct(root.stat().st_mode & 0o777), '0o700')
+
     def test_pictures_stay_after_the_file_is_replaced_or_deleted(self):
         shot = self.project / 'shots/home.png'
         shot.write_bytes(PNG)

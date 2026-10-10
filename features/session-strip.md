@@ -16,7 +16,7 @@ too big, with one tap to start over. The bottom row of session tabs goes (sessio
 - Read from the conversation file, tail only: Claude's last answer usage (input + cache read + cache write +
   output), Codex's last `token_count` (and its context window).
 - Levels by size, not by the window, because quality drops long before the limit: under 80k fine, under
-  160k getting heavy, above that time for a new conversation. Codex shows % of its window too.
+  150k getting heavy, above that time for a new conversation. Codex shows % of its window too.
 
 ## Summary
 - Written by a model of the same provider as the session, so the conversation does not go anywhere new:

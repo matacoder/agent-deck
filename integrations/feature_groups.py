@@ -109,7 +109,7 @@ def pass_prompt(groups, commits, files, language):
 
 def apply_answer(store, text, commits):
     """Merges the model's answer into the store; returns the shas it placed."""
-    text = re.sub(r'<think>.*?</think>', '', text or '', flags=re.S)
+    text = re.sub(r'<think>.*?</think>', '', text if isinstance(text, str) else '', flags=re.S)
     match = re.search(r'\{.*\}', text, re.S)
     try:
         data = json.loads(match.group(0)) if match else None
@@ -164,7 +164,7 @@ class FeatureGroups:
         try:
             store = json.loads((self.cache / (key + '.json')).read_text())
             if isinstance(store, dict) and isinstance(store.get('groups'), list):
-                return store
+                return {**empty_store(), **store}  # A store with fields missing still reads.
         except (OSError, ValueError):
             pass
         return empty_store()
@@ -214,16 +214,22 @@ class FeatureGroups:
             with self.lock:
                 self.state.setdefault(key, {}).setdefault('folder', root)
         with self.lock:
+            for key in [key for key, state in self.state.items() if not os.path.isdir(state['folder'])]:
+                del self.state[key]  # The repository was deleted or moved: nothing to fetch or group.
             work = [(key, dict(state)) for key, state in self.state.items()]
         for key, state in work:
-            self.fetch_if_due(key, state)
-            self.group(key, state)
+            try:
+                self.fetch_if_due(key, state)
+                self.group(key, state)
+            except Exception as error:  # One repository failing must not stop the ones after it.
+                print(f'Feature groups: {type(error).__name__}', flush=True)
 
     def fetch_if_due(self, key, state):
         if self.clock() - state.get('fetched', 0) < FETCH_EVERY:
             return
         with self.lock:
-            self.state[key]['fetched'] = self.clock()
+            if key in self.state:
+                self.state[key]['fetched'] = self.clock()
         try:
             fetch(state['folder'], run=self.run)
         except (ValueError, OSError, subprocess.TimeoutExpired):
@@ -231,21 +237,27 @@ class FeatureGroups:
 
     def group(self, key, state):
         with self.lock:
-            if self.state[key].get('running'):
+            live = self.state.get(key)
+            if live is None or live.get('running'):
                 return
-            self.state[key].update(running=True, forced=False)
+            # Read here, not from the tick's snapshot: a refresh or a language asked for meanwhile counts.
+            forced, language = live.get('forced'), live.get('language')
+            live.update(running=True, forced=False)
         try:
             for _ in range(PASSES_PER_TICK):
-                if not self.one_pass(key, state['folder'], state.get('language') or self.language, state.get('forced')):
+                if not self.one_pass(key, state['folder'], language, forced):
                     break
-                state['forced'] = False
+                forced = False
         finally:
             with self.lock:
-                self.state[key]['running'] = False
+                if key in self.state:
+                    self.state[key]['running'] = False
 
     def one_pass(self, key, root, language, forced):
+        kept = store = self.load(key)
+        # Nobody opened this repository since the panel started: its groups stay in their own language.
+        language = language or kept.get('language') or self.language
         language = language if re.fullmatch(r'[a-zA-Z-]{2,10}', language) else 'en'
-        store = self.load(key)
         if store['groups'] and store.get('language') != language:
             # Titles and summaries are written in one language; another panel language sorts again.
             store = empty_store()
@@ -257,23 +269,27 @@ class FeatureGroups:
             return False
         batch = pending[:BATCH]
         prompt = pass_prompt(store['groups'], batch, commit_files(root, [c['sha'] for c in batch], run=self.run), language)
-        errors = []
+        errors, placed, answered = [], set(), None
         for model in self.models():
             try:
                 placed = apply_answer(store, model['complete'](prompt), batch)
-                break
             except (ValueError, OSError, subprocess.TimeoutExpired) as error:
                 errors.append(str(error) if isinstance(error, ValueError) else 'Модель не ответила; группировка повторится позже')
-        else:
+                continue
+            answered = model
+            if placed:
+                break  # An answer that places nothing is as good as none: the next model is asked.
+        if answered is None:
             # The first model's reason: it is the one the user expects to work. A plain message, so it is translated.
-            store['error'] = (errors[0] if errors else
-                              'Нет модели для группировки: войдите в Claude, Codex или Kimi, или подключите LM Studio')[:300]
-            self.save(key, store)
+            # Saved with the groups there are: a failed re-sort in another language must not erase them.
+            kept['error'] = (errors[0] if errors else
+                             'Нет модели для группировки: войдите в Claude, Codex или Kimi, или подключите LM Studio')[:300]
+            self.save(key, kept)
             return False
         store['language'] = language
-        self.record(store, batch, placed, model['label'], now)
+        self.record(store, batch, placed, answered['label'], now)
         self.save(key, store)
-        return True
+        return bool(placed)  # Nothing placed counts one try; the next one waits for the next tick.
 
     def record(self, store, batch, placed, label, now):
         for c in batch:

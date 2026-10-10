@@ -179,7 +179,8 @@ def fetch(folder, run=subprocess.run):
     if not (own or env.get('GIT_SSH_COMMAND') or env.get('GIT_SSH')):
         env['GIT_SSH_COMMAND'] = 'ssh -o BatchMode=yes -o ConnectTimeout=15'
     try:
-        git(root, 'fetch', '--prune', '--quiet', 'origin', run=run, timeout=60, env=env)
+        # ext:: remotes are commands from the repository's own config; a fetch nobody asked for must not run them.
+        git(root, '-c', 'protocol.ext.allow=never', 'fetch', '--prune', '--quiet', 'origin', run=run, timeout=60, env=env)
     except subprocess.TimeoutExpired:
         raise ValueError('GitHub не ответил за минуту; попробуйте позже') from None
     return {'ok': True}

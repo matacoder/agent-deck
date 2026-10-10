@@ -62,6 +62,19 @@ class SessionInfoTests(unittest.TestCase):
         self.assertLess(len(records), 20)
         self.assertEqual(S.context('claude', records)['tokens'], 91502)
 
+    def test_claude_codes_own_notices_do_not_reset_the_context(self):
+        notice = {'type': 'assistant', 'message': {'role': 'assistant', 'model': '<synthetic>', 'content': [{'type': 'text', 'text': 'API Error'}],
+                                                   'usage': {'input_tokens': 0, 'output_tokens': 0}}}
+        self.assertEqual(S.context('claude', CLAUDE + [notice])['tokens'], 91502)
+
+    def test_a_last_line_bigger_than_the_tail_is_still_read(self):
+        picture = {'type': 'user', 'message': {'role': 'user', 'content': [{'type': 'image', 'data': 'x' * 5000}]}}
+        path = jsonl(self.dir / 'big.jsonl', CLAUDE[:3] + [picture])
+        records = S.tail_records(path, size=1000)
+        self.assertEqual(records[-1], picture)  # A longer tail was read, not nothing.
+        self.assertEqual(S.context('claude', records)['tokens'], 91502)
+        self.assertEqual(S.tail_records(path, size=1000, most=1000), [])  # Bounded: a huge line is given up on.
+
     def test_the_newest_turns_fit_the_prompt(self):
         turns = [('user', 'n' * 600)] * 40
         kept = S.dialogue('claude', [{'type': 'user', 'message': {'role': 'user', 'content': f'{i} ' + 'n' * 700}} for i in range(40)])
@@ -94,6 +107,17 @@ class SessionInfoTests(unittest.TestCase):
         self.assertEqual((after['line'], after['error']), ('Payments', 'Модель не прислала пересказ'))
         self.assertFalse(store.get('other', 'en', 5, turns, lambda: None)['updating'])  # No model for this provider.
         self.assertEqual(len(asked), 1)
+
+    def test_a_provider_that_cannot_summarize_is_asked_again_only_after_a_while(self):
+        now, picks = [1000], []
+        store = S.Summaries(self.dir / 'summaries', clock=lambda: now[0], start=lambda job: self.fail('no model'))
+        pick = lambda: picks.append(store.lock.locked())
+        for _ in range(3):
+            self.assertFalse(store.get('sid', 'en', 10, [('user', 'Fix it')], pick)['updating'])
+        self.assertEqual(picks, [False])  # Once, and not under the lock every session's summary waits for.
+        now[0] += S.SUMMARY_EVERY
+        store.get('sid', 'en', 10, [('user', 'Fix it')], pick)
+        self.assertEqual(len(picks), 2)
 
 
 if __name__ == '__main__':

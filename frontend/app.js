@@ -123,7 +123,9 @@ function setConnection(next){
 }
 function toast(m,info,action){
   if(m===STALE)return;
-  const t=$("toast"),dialogs=Array.from(document.querySelectorAll("dialog[open]:not(.docked)"));
+  // The phone drawer is not in the top layer and clips what is inside it: the toast stays on the page, above it.
+  const drawer=document.body.classList.contains("project-drawer")?$("project_dlg"):null;
+  const t=$("toast"),dialogs=Array.from(document.querySelectorAll("dialog[open]:not(.docked)")).filter(d=>d!==drawer);
   (dialogs[dialogs.length-1]||document.body).append(t);t.className=info==="success"?"success":info?"info":"";t.replaceChildren(el("span","",m));
   if(action){const b=document.createElement("button");b.textContent=action.label;b.onclick=e=>{e.stopPropagation();action.run();hideToast()};t.append(b)}
   t.setAttribute("role",info?"status":"alert");t.setAttribute("aria-live",info?"polite":"assertive");
@@ -219,6 +221,7 @@ for(const item of $("sheet").querySelectorAll(".panel button"))item.setAttribute
 // Escape on an edited file asks first instead of dropping the changes.
 $("project_dlg").addEventListener("cancel",e=>{if(filesDirty()){e.preventDefault();leaveFile()}});
 $("project_dlg").addEventListener("close",projectClosed);
+$("project_dlg").addEventListener("focusin",skipClosedDrawer);
 // A tap beside the phone drawer (on its backdrop) closes it, like the menu on the left.
 // The phone drawer is not a modal dialog (see placeProject), so Escape is handled here.
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&document.body.classList.contains("project-drawer")){e.preventDefault();closeProject()}});

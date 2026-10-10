@@ -22,6 +22,7 @@
     "Картинка недоступна": "L'image n'est pas disponible",
     "Здесь появятся картинки, которые агенты этой сессии покажут на экране: скриншоты, превью, графики. Они остаются, даже когда уходят с экрана.": "Les images que les agents de cette session affichent à l'écran apparaissent ici : captures, aperçus, graphiques. Elles restent même après avoir quitté l'écran.",
     "Скачать файл {0}": "Télécharger {0}",
+    "Скачиваю файл {0}…": "Téléchargement de {0}…",
     "Не удалось скачать файл": "Impossible de télécharger le fichier",
     "Файл больше 40 МБ; скачайте его другим способом": "Le fichier dépasse 40 Mo ; téléchargez-le autrement",
     "Сейчас": "Maintenant",

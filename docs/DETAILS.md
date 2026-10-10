@@ -26,6 +26,24 @@ systemd --user (linger):  cc-tmux  (owns the tmux server: restarts of the panel 
   last conversation in a shared project. After a reboot such a session restores to a shell for recovery.
 - Files: code in `/opt/cc-panel`, config in `~/.config/cc-panel/` (`env` holds the password),
   user units in `~/.config/systemd/user/`, install options in `/etc/agent-deck/install.conf`.
+- Out of memory (Linux): at every start the panel writes two drop-ins with `OOMPolicy=continue`,
+  `~/.config/systemd/user/cc-tmux.service.d/agent-deck-oom.conf` and
+  `~/.config/systemd/user/tmux-spawn-.scope.d/agent-deck-oom.conf`, so the kernel killing one process ends
+  that process and not the tmux session. The second one matches the scopes of every tmux server of this
+  user, not only Agent Deck's. They stay after a downgrade or an uninstall; delete the two files and run
+  `systemctl --user daemon-reload` to undo it. Nothing is written without a systemd user manager (Docker,
+  macOS).
+- Caches, safe to delete, all under `~/.cache/agent-deck/` and private to the user: `gallery/<session>/`
+  (copies of the pictures a session showed: 200 pictures, 300 MB and 30 days at most),
+  `feature-groups/<repository>.json` (commits sorted into features; `git-groups/` is the unused cache of
+  versions before 1.28), `summaries/<conversation>.<language>.json`, `thumbnails/`.
+- Session strip: `/api/session_info` reads the tail of the agent's own conversation file for how full the
+  context is and for a summary, written by a model of the session's own provider and never by another.
+  `/api/gallery` and `/api/gallery_image` serve the kept pictures, `/api/download` any file under the home
+  folder (40 MB at most, never `~/.config/cc-panel`), `/api/git/groups` the feature groups.
+- Feature groups: a background thread sorts new commits of the sessions' repositories and fetches their
+  `origin` every 15 minutes. The fetch uses the repository's own git config (SSH command, credential
+  helper), as any git command in that folder does; `ext::` remotes are refused.
 - Interface updates: the page checks for a new UI every 30 s and when it returns from the background and
   reloads when idle (no draft or attachments); the mobile action menu has **Обновить интерфейс**, which keeps
   the draft and uploaded attachments.

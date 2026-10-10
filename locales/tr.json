@@ -22,6 +22,7 @@
     "Картинка недоступна": "Görsel kullanılamıyor",
     "Здесь появятся картинки, которые агенты этой сессии покажут на экране: скриншоты, превью, графики. Они остаются, даже когда уходят с экрана.": "Bu oturumun ajanlarının ekranda gösterdiği görseller burada görünür: ekran görüntüleri, önizlemeler, grafikler. Ekrandan çıksalar da kalırlar.",
     "Скачать файл {0}": "{0} dosyasını indir",
+    "Скачиваю файл {0}…": "{0} dosyası indiriliyor…",
     "Не удалось скачать файл": "Dosya indirilemedi",
     "Файл больше 40 МБ; скачайте его другим способом": "Dosya 40 MB'tan büyük; başka bir yolla indirin",
     "Сейчас": "Şimdi",

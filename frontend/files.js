@@ -179,17 +179,23 @@ function fileLink(session,path,runs,from,to){
   return link;
 }
 // Fetched first, so a missing or too large file is a message here, not an error page in its place.
+// A large file takes a while with nothing to see: a note says it started, and more taps do not start it again.
+const downloading=new Set();
 async function downloadFile(session,path){
   const url=activePath("/api/download?"+(session?"name="+encodeURIComponent(session)+"&":"")+"path="+encodeURIComponent(path));
+  if(downloading.has(url))return;
+  const name=path.split("/").pop();
+  downloading.add(url);toast(tr("Скачиваю файл {0}…",[name]),"info");
   try{
     const r=await fetch(url,{cache:"no-store"});
     if(!r.ok){let message="";try{message=(await r.json()).error}catch(e){}toast(message||tr("Не удалось скачать файл"));return}
-    const blob=await r.blob(),name=path.split("/").pop();
+    const blob=await r.blob();
     if(await shareDownload(blob,name))return;
     const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;
     document.body.append(a);a.click();a.remove();
     setTimeout(()=>URL.revokeObjectURL(a.href),60000);
   }catch(e){toast(tr("Не удалось скачать файл"))}
+  finally{downloading.delete(url)}
 }
 // An iOS Home Screen app has no downloads: a blob link opens a blank in-app page that only "back" leaves.
 // The share sheet saves to Files instead. It needs a fresh tap, which a slow download has outlived.

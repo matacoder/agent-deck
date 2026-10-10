@@ -74,3 +74,47 @@ test('the right drawer mirrors the left: shown at the start of a pull from the r
   touch('touchend',300);
   expect(setOpen).toHaveBeenLastCalledWith(false);
 });
+
+// A drawer with wide content (a table, a diff) that scrolls sideways inside it.
+function wideSetup(right){
+  const panel=document.createElement('aside'),wide=document.createElement('div'),cell=document.createElement('span');
+  panel.getBoundingClientRect=()=>({width:300});
+  wide.style.overflowX='auto';wide.append(cell);panel.append(wide);document.body.append(panel);
+  Object.defineProperty(wide,'scrollWidth',{value:900});Object.defineProperty(wide,'clientWidth',{value:300});
+  let open=true;const setOpen=jest.fn(on=>{open=on});
+  const doc=document.implementation.createHTMLDocument('');
+  Object.defineProperty(doc,'defaultView',{value:window});
+  doc.body.append(panel);
+  attachDrawerSwipe(doc,{panel,right,isOpen:()=>open,setOpen,enabled:()=>true});
+  const touch=(type,x,target=cell)=>{
+    const event=new Event(type,{bubbles:true,cancelable:true}),point={clientX:x,clientY:300};
+    event.touches=type==='touchend'?[]:[point];event.changedTouches=[point];target.dispatchEvent(event);return event;
+  };
+  const swipe=(from,to,target)=>{touch('touchstart',from,target);const move=touch('touchmove',to,target);touch('touchend',to,target);return move};
+  return {panel,wide,setOpen,swipe};
+}
+
+test('wide content inside the open right drawer scrolls back first; at its start the same swipe closes the drawer',()=>{
+  const {panel,wide,setOpen,swipe}=wideSetup(true);
+  Object.defineProperty(wide,'scrollLeft',{value:120,writable:true});
+  const scroll=swipe(100,300);
+  expect([scroll.defaultPrevented,panel.style.transform]).toEqual([false,'']);
+  expect(setOpen).not.toHaveBeenCalled();
+  // Beside the wide block the drawer follows the finger as before.
+  expect(swipe(100,300,panel).defaultPrevented).toBe(true);
+  expect(setOpen).toHaveBeenLastCalledWith(false);
+  setOpen.mockClear();setOpen(true);setOpen.mockClear();
+  wide.scrollLeft=0;
+  expect(swipe(100,300).defaultPrevented).toBe(true);
+  expect(setOpen).toHaveBeenLastCalledWith(false);
+});
+
+test('the menu on the left mirrors it: content that can still scroll on keeps the closing swipe',()=>{
+  const {wide,setOpen,swipe}=wideSetup(false);
+  Object.defineProperty(wide,'scrollLeft',{value:0,writable:true});
+  expect(swipe(250,100).defaultPrevented).toBe(false);
+  expect(setOpen).not.toHaveBeenCalled();
+  wide.scrollLeft=600;  // At its end.
+  expect(swipe(250,100).defaultPrevented).toBe(true);
+  expect(setOpen).toHaveBeenLastCalledWith(false);
+});

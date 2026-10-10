@@ -12,7 +12,8 @@ import threading
 import time
 
 TAIL = 4 * 1024 * 1024
-HEAD = 4 * 1024 * 1024
+TAIL_MAX = 64 * 1024 * 1024
+HEAD = 32 * 1024 * 1024  # Read only as far as the first timestamp; several pasted pictures can come before it.
 PIECE = 256 * 1024
 SUMMARY_EVERY = 300
 SUMMARY_CHARS = 12000
@@ -21,9 +22,20 @@ TURN_CHARS = 600
 HEAVY, FULL = 80_000, 150_000  # Defaults; the browser colours by the user's own limits.
 
 
-def tail_records(path, size=TAIL):
+def tail_records(path, size=TAIL, most=TAIL_MAX):
+    """The records at the end of the file. A last line bigger than the tail (a pasted picture) leaves
+    nothing whole in it: a longer tail is read then."""
+    total = Path(path).stat().st_size
+    while True:
+        records = read_tail(path, size, total)
+        if records or size >= total or size >= most:
+            return records
+        size *= 4
+
+
+def read_tail(path, size, total):
     with Path(path).open('rb') as stream:
-        if Path(path).stat().st_size > size:
+        if total > size:
             stream.seek(-size, 2)
             stream.readline()  # A cut line is not a record.
         records = []
@@ -64,7 +76,8 @@ def context(agent, records):
             continue
         message = record.get('message') if record.get('type') == 'assistant' else None
         usage = message.get('usage') if isinstance(message, dict) else None
-        if isinstance(usage, dict) and not record.get('isSidechain'):
+        # Claude Code writes its own notices (an API error, an interrupt) as answers with no tokens at all.
+        if isinstance(usage, dict) and not record.get('isSidechain') and message.get('model') != '<synthetic>':
             keys = ('input_tokens', 'cache_read_input_tokens', 'cache_creation_input_tokens', 'output_tokens')
             return level(sum(int(usage.get(key) or 0) for key in keys), None)
     return None
@@ -167,11 +180,19 @@ class Summaries:
         key = (sid, language)
         with self.lock:
             updating = key in self.busy
-            model = pick_model() if stale and turns and not updating else None
-            if model:
-                self.busy.add(key)
-                updating = True
-                self.start(lambda: self.rewrite(sid, language, size, turns, model, kept))
+        if stale and turns and not updating:
+            model = pick_model()  # Outside the lock: it asks tmux and the agent's login, other sessions do not wait.
+            with self.lock:
+                updating = key in self.busy
+                if model and not updating:
+                    self.busy.add(key)
+                    updating = True
+                    self.start(lambda: self.rewrite(sid, language, size, turns, model, kept))
+            if not model:
+                try:
+                    self.write(sid, language, dict(kept, tried=now))  # Asked again in a few minutes, not on every poll.
+                except OSError:
+                    pass
         return {'line': kept.get('line', ''), 'text': kept.get('text', ''), 'at': kept.get('at'),
                 'model': kept.get('model', ''), 'error': kept.get('error', ''), 'updating': updating}
 

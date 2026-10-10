@@ -22,6 +22,7 @@
     "Картинка недоступна": "Obraz jest niedostępny",
     "Здесь появятся картинки, которые агенты этой сессии покажут на экране: скриншоты, превью, графики. Они остаются, даже когда уходят с экрана.": "Tu pojawiają się obrazy, które agenci tej sesji pokazują na ekranie: zrzuty, podglądy, wykresy. Zostają, nawet gdy znikną z ekranu.",
     "Скачать файл {0}": "Pobierz {0}",
+    "Скачиваю файл {0}…": "Pobieranie {0}…",
     "Не удалось скачать файл": "Nie udało się pobrać pliku",
     "Файл больше 40 МБ; скачайте его другим способом": "Plik jest większy niż 40 MB; pobierz go w inny sposób",
     "Сейчас": "Teraz",

@@ -11,16 +11,20 @@ sys.path.insert(0, str(ROOT))
 from integrations import feature_groups as F
 
 
+# The developer's own git config (templates, hooks, signing) must not change what these repositories do.
+GIT_ENV = {'PATH': '/usr/bin:/bin', 'GIT_CONFIG_GLOBAL': '/dev/null', 'GIT_CONFIG_NOSYSTEM': '1'}
+
+
 def repo(test, commits):
     """commits: [(author, subject, file, unix time)] oldest first."""
     tmp = tempfile.TemporaryDirectory(dir='/tmp')
     test.addCleanup(tmp.cleanup)
     path = Path(tmp.name)
-    subprocess.run(['git', 'init', '-q', '-b', 'main', str(path)], check=True, capture_output=True)
+    subprocess.run(['git', 'init', '-q', '-b', 'main', str(path)], check=True, capture_output=True, env=GIT_ENV)
     for author, subject, name, at in commits:
         (path / name).write_text(subject + '\n')
-        env = {'GIT_AUTHOR_DATE': f'@{at}', 'GIT_COMMITTER_DATE': f'@{at}', 'PATH': '/usr/bin:/bin'}
-        subprocess.run(['git', '-C', str(path), 'add', '.'], check=True, capture_output=True)
+        env = {**GIT_ENV, 'GIT_AUTHOR_DATE': f'@{at}', 'GIT_COMMITTER_DATE': f'@{at}'}
+        subprocess.run(['git', '-C', str(path), 'add', '.'], check=True, capture_output=True, env=GIT_ENV)
         subprocess.run(['git', '-c', f'user.name={author}', '-c', 'user.email=a@example.test', '-c', 'commit.gpgsign=false',
                         '-C', str(path), 'commit', '-q', '-m', subject], check=True, capture_output=True, env=env)
     return path
@@ -98,6 +102,75 @@ class FeatureGroupTests(unittest.TestCase):
         with patch.object(F, 'fetch'):
             groups.tick()
         self.assertEqual(groups.status(str(path))['error'], 'offline')
+
+    def test_a_deleted_or_failing_repository_does_not_stop_the_others(self):
+        gone = repo(self, [('Denis', 'Add login', 'login.py', self.NOW - 3600)])
+        path = repo(self, [('Pasha', 'Write docs', 'README.md', self.NOW - 3600)])
+        folders = [str(gone), str(path)]
+        groups = self.service(path, [{'label': 'Fake', 'complete': sorter([])}])
+        groups.folders = lambda: folders
+        with patch.object(F, 'fetch'):
+            groups.tick()
+            __import__('shutil').rmtree(gone)
+            repo_commit(path, 'Pasha', 'More docs', 'GUIDE.md', self.NOW - 1800)
+            groups.tick()
+            self.assertEqual(len(groups.state), 1)  # The deleted one is forgotten, not fetched for ever.
+            self.assertEqual(len(groups.status(str(path))['commits']), 2)
+            repo_commit(path, 'Pasha', 'Even more docs', 'FAQ.md', self.NOW - 1200)
+            with patch.object(groups, 'fetch_if_due', side_effect=[RuntimeError('unexpected'), None]), \
+                 patch.object(groups, 'state', {'broken': {'folder': str(path)}, **groups.state}), patch('builtins.print'):
+                groups.tick()
+        self.assertEqual(len(groups.status(str(path))['commits']), 3)
+
+    def test_groups_keep_their_language_after_a_restart_and_survive_a_failed_resort(self):
+        path = repo(self, [('Denis', 'Add login', 'login.py', self.NOW - 3600)])
+        calls = []
+        groups = self.service(path, [{'label': 'Fake', 'complete': sorter(calls)}])
+        groups.status(str(path), 'ru')
+        with patch.object(F, 'fetch'):
+            groups.tick()
+            # The panel restarted: its default language is English and nobody opened the tab yet.
+            again = F.FeatureGroups(groups.cache, lambda: [{'label': 'Fake', 'complete': sorter(calls)}],
+                                    lambda: [str(path)], clock=lambda: self.NOW, language='en')
+            again.tick()
+            self.assertEqual(len(calls), 1)  # Not sorted again in English.
+            repo_commit(path, 'Denis', 'Fix login', 'login.py', self.NOW - 1800)
+            again.tick()
+            self.assertIn('language with code "ru"', calls[1])
+            # Another language, and every model is down: the Russian groups stay until the new ones exist.
+            again.models = lambda: [{'label': 'Fake', 'complete': sorter([], fail=True)}]
+            again.status(str(path), 'de')
+            again.tick()
+        shown = again.status(str(path), 'de')
+        self.assertEqual((len(shown['groups']), shown['error']), (1, 'offline'))
+
+    def test_a_refresh_that_arrives_during_a_tick_is_not_lost(self):
+        path = repo(self, [('Denis', 'Add login', 'login.py', self.NOW - 60)])  # Too fresh to group unasked.
+        calls = []
+        groups = self.service(path, [{'label': 'Fake', 'complete': sorter(calls)}])
+        # The fetch is where a tick spends its time; the snapshot of the state is already taken by then.
+        with patch.object(F, 'fetch', side_effect=lambda *a, **k: groups.refresh(str(path))):
+            groups.tick()
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(len(groups.status(str(path))['groups']), 1)
+
+    def test_an_answer_that_places_nothing_goes_to_the_next_model_and_counts_one_try_a_tick(self):
+        path = repo(self, [('Denis', 'Add login', 'login.py', self.NOW - 3600)])
+        empty, good = [], []
+        nothing = lambda prompt: empty.append(prompt) or '{"assign":[]}'
+        groups = self.service(path, [{'label': 'Empty', 'complete': nothing}, {'label': 'Luna', 'complete': sorter(good)}])
+        with patch.object(F, 'fetch'):
+            groups.tick()
+        self.assertEqual((len(empty), len(good), groups.status(str(path))['model']), (1, 1, 'Luna'))
+        path = repo(self, [('Denis', 'Add login', 'login.py', self.NOW - 3600)])
+        groups = self.service(path, [{'label': 'Empty', 'complete': nothing}, {'label': 'Odd', 'complete': lambda prompt: {'assign': []}}])
+        del empty[:]
+        with patch.object(F, 'fetch'):
+            groups.tick()
+            self.assertEqual(len(empty), 1)  # One try in a tick, so a second opinion comes minutes later.
+            self.assertEqual(groups.status(str(path))['groups'], [])
+            groups.tick()
+        self.assertEqual([g['title'] for g in groups.status(str(path))['groups']], ['Без группы'])
 
     def test_groups_are_written_in_the_panel_language_and_sorted_again_when_it_changes(self):
         path = repo(self, [('Denis', 'Add login', 'login.py', self.NOW - 3600)])
@@ -187,8 +260,8 @@ class FeatureGroupTests(unittest.TestCase):
 
 def repo_commit(path, author, subject, name, at):
     (path / name).write_text(subject + '\n')
-    env = {'GIT_AUTHOR_DATE': f'@{at}', 'GIT_COMMITTER_DATE': f'@{at}', 'PATH': '/usr/bin:/bin'}
-    subprocess.run(['git', '-C', str(path), 'add', '.'], check=True, capture_output=True)
+    env = {**GIT_ENV, 'GIT_AUTHOR_DATE': f'@{at}', 'GIT_COMMITTER_DATE': f'@{at}'}
+    subprocess.run(['git', '-C', str(path), 'add', '.'], check=True, capture_output=True, env=GIT_ENV)
     subprocess.run(['git', '-c', f'user.name={author}', '-c', 'user.email=a@example.test', '-c', 'commit.gpgsign=false',
                     '-C', str(path), 'commit', '-q', '-m', subject], check=True, capture_output=True, env=env)
 

@@ -469,7 +469,12 @@ class RemoteDeckTests(PanelCase):
             self.assertEqual(self.panel.summary_model('demo','claude')['label'],'kimi')
             options['@cc_source']=''
             self.assertEqual(self.panel.summary_model('demo','codex')['label'],'codex')
+            # A damaged or unknown source may be a local model: nothing is sent anywhere.
+            for damaged in ('{broken','[]','{}',json.dumps({'kind':'someday'})):
+                options['@cc_source']=damaged
+                with self.subTest(source=damaged):self.assertIsNone(self.panel.summary_model('demo','claude'))
             self.assertEqual(chosen,['claude','lmstudio:p1:qwen','kimi','codex'])
+            options['@cc_source']=''
             options['@cc_agent']='shell'
             handler=self.handler();handler.path='/api/session_info?name=demo';handler.get_request()
             self.assertEqual(handler.send_json.call_args.args[1],{'supported':False})

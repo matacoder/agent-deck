@@ -26,7 +26,7 @@ function openProject(tab){
 }
 function projectCurrent(){
   if(project.tab==="files")return files.session===active;
-  if(project.tab==="gallery")return gallery.session===active&&Boolean(gallery.items);
+  if(project.tab==="gallery")return gallery.key===sessionInfoKey()&&Boolean(gallery.items);
   return hist.session===active&&Boolean(hist.changes);
 }
 function quietProject(){
@@ -69,7 +69,7 @@ function projectTab(tab){
 function refreshProject(){
   markProjectTab();
   if(project.tab==="files"){if(files.session!==active&&!filesDirty())startFiles();return}
-  if(project.tab==="gallery"){if(gallery.session!==active)loadGallery();return}
+  if(project.tab==="gallery"){if(gallery.key!==sessionInfoKey())loadGallery();return}
   if(hist.session!==active)startHistory(project.tab);
 }
 function markProjectTab(){
@@ -92,15 +92,30 @@ function placeProject(open){
   if(docked||drawer)box.open=true;
   else box.showModal();
 }
+// Closed, the phone drawer stays in the page past the edge: hidden from screen readers, and Tab passes it
+// by. Not inert: that re-styles the whole diff, as slow as the re-layout this avoids.
+function hideClosedDrawer(){
+  const box=$("project_dlg"),hidden=!box.open&&projectDrawer();
+  if(hidden)box.setAttribute("aria-hidden","true");else box.removeAttribute("aria-hidden");
+  if(hidden&&box.contains(document.activeElement))document.activeElement.blur();
+}
+function skipClosedDrawer(event){
+  const box=$("project_dlg");
+  if(box.getAttribute("aria-hidden")!=="true")return;
+  const stops=[...document.querySelectorAll("a[href],button,input,select,textarea,[tabindex]")].filter(x=>!box.contains(x)&&!x.disabled&&x.tabIndex>=0&&x.getClientRects().length);
+  // The drawer is last in the page: Tab goes round to the start, Shift+Tab back to what stands before it.
+  const next=event.relatedTarget?stops[0]:stops[stops.length-1];
+  if(next)next.focus();else event.target.blur();
+}
 // Called after every session or layout change: a wide screen restores the remembered sidebar.
 function syncProject(){
   const box=$("project_dlg");
   if(!projectDocked()){
     if(box.open&&box.classList.contains("docked")){project.moving=true;box.close();project.moving=false}
-    return markProjectTab();
+    hideClosedDrawer();return markProjectTab();
   }
   const tab=savedProjectTab();
-  if(!tab||!active||!cur()){if(box.open){project.moving=true;box.close();project.moving=false}return markProjectTab()}
+  if(!tab||!active||!cur()){if(box.open){project.moving=true;box.close();project.moving=false}hideClosedDrawer();return markProjectTab()}
   if(!box.open)project.tab=tab;
   placeProject(true);refreshProject();
 }
@@ -113,11 +128,15 @@ async function closeProject(){
 }
 // Closed by hand (not moved between layouts): stop polling and free a previewed file's blob.
 function projectClosed(){
-  // Closed, the phone drawer stays in the page past the edge: hidden from screen readers and focus. Not
-  // inert: that re-styles the whole diff, as slow as the re-layout this avoids.
-  const box=$("project_dlg");
-  if(document.body.classList.contains("project-drawer")){box.setAttribute("aria-hidden","true");if(box.contains(document.activeElement))document.activeElement.blur()}
+  const box=$("project_dlg"),drawer=document.body.classList.contains("project-drawer");
+  // The event comes a moment after close(): a computer switch has the sidebar open again by then.
+  if(box.open)return;
+  hideClosedDrawer();
   document.body.classList.remove("project-drawer");
   if(project.moving)return;
-  clearTimeout(hist.timer);clearTimeout(gallery.timer);dropPreview();files.file=null;markProjectTab();
+  clearTimeout(hist.timer);clearTimeout(gallery.timer);markProjectTab();
+  // The phone drawer comes back showing what it showed, so its open file stays too. Elsewhere the file is
+  // let go and the folder drawn in its place; unsaved text is never dropped without the question.
+  if(drawer||!files.file||filesDirty())return;
+  dropPreview();files.file=null;renderFiles();
 }

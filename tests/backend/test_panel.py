@@ -476,6 +476,46 @@ class ReviewFixTests(PanelCase):
         handler.send_body(200, b'x', 'text/html')
         self.assertIn(b'X-Content-Type-Options: nosniff', handler.wfile.getvalue())
 
+    def test_pages_and_the_terminal_refuse_foreign_frames(self):
+        import io
+        handler = object.__new__(self.panel.Handler)
+        handler.request_version, handler.wfile, handler.log_request = 'HTTP/1.1', io.BytesIO(), Mock()
+        handler.send_body(200, b'<html>', 'text/html; charset=utf-8')
+        self.assertIn(b"X-Frame-Options: SAMEORIGIN\r\n", handler.wfile.getvalue())
+        self.assertIn(b"Content-Security-Policy: frame-ancestors 'self'\r\n", handler.wfile.getvalue())
+        head = self.panel.with_frame_headers(b'HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n<html>')
+        self.assertTrue(head.startswith(b'HTTP/1.1 200 OK\r\nX-Frame-Options: SAMEORIGIN\r\n'))
+        self.assertTrue(head.endswith(b'Content-Type: text/html\r\n\r\n<html>'))
+
+    def test_terminal_link_with_extra_tmux_arguments_is_refused_before_ttyd_is_reached(self):
+        # ttyd -a appends every arg to `tmux attach -t`; a bare `;` would chain run-shell.
+        with patch.object(self.panel.socket, 'socket') as opened:
+            for path in ('/t/?arg=_keep&arg=%3B&arg=run-shell&arg=touch%20x', '/t/ws?arg=cc-demo&arg=%3B',
+                         '/t/?arg=-x', '/t/?arg=cc-demo%3Brun-shell', '/t/?cmd=cc-demo'):
+                with self.subTest(path=path):
+                    handler = self.handler(b'Host: panel\r\n', path)
+                    handler.proxy_tty()
+                    self.assertEqual(handler.send_json.call_args.args[0], 400)
+                    self.assertTrue(handler.close_connection)
+            opened.assert_not_called()
+
+    def test_idle_timeout_is_not_logged_and_needs_no_headers(self):
+        handler = object.__new__(self.panel.Handler)
+        handler.client_address = ('172.18.0.2', 1234)
+        with patch('builtins.print') as printed:
+            handler.log_error('Request timed out: %r', TimeoutError('timed out'))
+            printed.assert_not_called()
+            handler.log_error('code %d, message %s', 400, 'Bad request')
+        self.assertIn('172.18.0.2 code 400', printed.call_args.args[0])
+
+    def test_paste_markers_inside_the_text_never_reach_tmux_even_nested(self):
+        # A marker nested in a marker would reappear after a single pass of removal.
+        loaded = Mock(return_value=Mock(returncode=0, stderr=''))
+        with patch.object(self.panel, '_paste_raw_supported', True), patch.object(self.panel, 'tmux'), \
+             patch.object(self.panel.subprocess, 'run', loaded), patch.object(self.panel.time, 'sleep'):
+            self.panel.paste_to_tmux('demo', 'foo\x1b[201~\x1b[Z bar\x1b[20\x1b[201~1~X')
+        self.assertEqual(loaded.call_args.kwargs['input'], '\x1b[200~foo\x1b[Z barX\x1b[201~')
+
 
 class WebQuestionTests(PanelCase):
     def question(self, **values):
@@ -673,3 +713,22 @@ class OutOfMemoryTests(PanelCase):
         with patch.object(self.panel.sys, 'platform', 'darwin'):
             self.panel.keep_sessions_on_oom(str(other), run)
         self.assertFalse((other / '.config').exists())
+
+    def test_nothing_is_written_without_a_user_manager_and_failures_do_not_stop_the_panel(self):
+        home = Path(tempfile.mkdtemp(dir='/tmp'))
+        self.addCleanup(lambda: __import__('shutil').rmtree(home))
+        run = Mock(side_effect=self.panel.subprocess.TimeoutExpired('systemctl', 30))
+        # Docker, a SteamOS container, WSL without systemd: no /run/user/<uid>/systemd.
+        with patch.object(self.panel.sys, 'platform', 'linux'), patch.object(self.panel.os.path, 'isdir', return_value=False):
+            self.panel.keep_sessions_on_oom(str(home), run)
+        self.assertFalse((home / '.config').exists())
+        run.assert_not_called()
+        with patch.object(self.panel.sys, 'platform', 'linux'), patch.object(self.panel.os.path, 'isdir', return_value=True), \
+             patch('builtins.print') as printed:
+            self.panel.keep_sessions_on_oom(str(home), run)  # The reload hangs: the files are written all the same.
+            self.assertTrue((home / '.config/systemd/user/cc-tmux.service.d/agent-deck-oom.conf').exists())
+            self.assertIn('reload', printed.call_args.args[0])
+            with patch.object(self.panel.os, 'makedirs', side_effect=PermissionError('read-only')):
+                (home / '.config/systemd/user/cc-tmux.service.d/agent-deck-oom.conf').unlink()
+                self.panel.keep_sessions_on_oom(str(home), Mock())
+            self.assertIn('read-only', printed.call_args.args[0])

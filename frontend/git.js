@@ -36,7 +36,8 @@ function renderDiff(patch,file,onLine){
   if(!patch){box.append(el("p","diff-note",tr("Дифф слишком большой для просмотра; откройте его в терминале")));return box}
   const rows=diffRows(patch);
   // Width of the line-number column in digits, so a phone can give it no more room than it needs.
-  box.style.setProperty("--ln",Math.max(2,...rows.map(row=>String(row.old||row.new||"").length)));
+  // The longer of the two: a phone shows the new number on unchanged lines.
+  box.style.setProperty("--ln",Math.max(2,...rows.map(row=>Math.max(String(row.old||"").length,String(row.new||"").length))));
   for(const row of rows){
     if(row.kind==="hunk"){box.append(el("div","dl hunk",row.text));continue}
     const line=el("div","dl "+row.kind,el("span","ln o",String(row.old)),el("span","ln n",String(row.new)),el("span","code",row.text||" "));
@@ -256,14 +257,16 @@ function backButton(label,run){const b=fileButton(label,"files-up",run,"arrow-le
 function renderHistoryView(box){
   const view=hist.view;
   const leave=()=>{if(view.back)showGroup(view.back);else{hist.view=null;renderHistory()}};
+  // A commit opened from "not sorted yet" returns to Groups, not to Commits.
+  const home=hist.tab==="groups"?tr("К группам"):tr("К коммитам");
   if(view.kind==="loading"||view.kind==="error"){
-    box.append(backButton(view.back?tr("К группе"):tr("К коммитам"),leave),
+    box.append(backButton(view.back?tr("К группе"):home,leave),
       view.kind==="error"?errorWithRetry(view.error,view.retry):el("p","files-empty",tr("Загрузка…")));
     return;
   }
   if(view.kind==="commit"){
     const back=hist.back;
-    box.append(backButton(back?tr("К группе"):tr("К коммитам"),()=>{hist.view=back?{kind:"group",group:back,diff:null}:null;if(back)showGroup(back);else renderHistory()}));
+    box.append(backButton(back?tr("К группе"):home,()=>{hist.view=back?{kind:"group",group:back,diff:null}:null;if(back)showGroup(back);else renderHistory()}));
     return commitDetails(box,view.data);
   }
   const group=view.group;

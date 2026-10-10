@@ -1,6 +1,7 @@
 // Every picture the open session showed, kept by the panel after it left the screen: a grid of square
 // thumbnails, newest first, opening in the full-screen viewer. Reloaded while the tab is open and visible.
-const gallery={session:null,items:null,raw:"",error:"",timer:null};
+// key: computer and session, as in sessionInfoKey(): the same name on another computer has other pictures.
+const gallery={key:null,session:null,items:null,raw:"",error:"",timer:null};
 const GALLERY_POLL=15000;
 
 function galleryUrl(session,id,thumb){
@@ -11,16 +12,16 @@ function galleryShown(){
   return box.open&&project.tab==="gallery"&&!document.hidden;
 }
 async function loadGallery(){
-  const session=active;clearTimeout(gallery.timer);
-  if(gallery.session!==session){Object.assign(gallery,{session,items:null,raw:"",error:""});renderGallery()}
+  const session=active,key=sessionInfoKey();clearTimeout(gallery.timer);
+  if(gallery.key!==key){Object.assign(gallery,{key,session,items:null,raw:"",error:""});renderGallery()}
   try{
     const data=await api("/api/gallery?name="+encodeURIComponent(session));
-    if(gallery.session!==session)return;
+    if(gallery.key!==key)return;
     const raw=JSON.stringify(data.items||[]);
     // The same answer leaves the grid alone: no thumbnail reloads, no lost scroll.
     if(raw!==gallery.raw||gallery.error){Object.assign(gallery,{raw,items:data.items||[],error:""});renderGallery()}
   }catch(e){
-    if(gallery.session!==session||e.message===STALE)return;
+    if(gallery.key!==key||e.message===STALE)return;
     gallery.error=e.message;if(!gallery.items)renderGallery();
   }
   if(galleryShown())gallery.timer=setTimeout(()=>{if(galleryShown())loadGallery()},GALLERY_POLL);

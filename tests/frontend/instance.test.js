@@ -319,6 +319,11 @@ test('the session strip shows a quiet summary under the bar and the context with
   $('hint_toggle').click();
   expect([$('hint_more').hidden,$('hint_text').textContent,$('hint_toggle').getAttribute('aria-expanded')]).toEqual([false,'Moving payments to Stripe. Tests are next.','true']);
   // The whole note toggles, the open text too; there is no arrow.
+  // Selecting its text with the mouse ends in a click too: that is not a request to fold it.
+  doc.getSelection=()=>'Tests are next';
+  $('hint_more').click();
+  expect($('hint_more').hidden).toBe(false);
+  delete doc.getSelection;
   $('hint_more').click();
   expect([$('hint_more').hidden,$('session_hint').querySelector('svg')]).toEqual([true,null]);
   $('hint_toggle').click();
@@ -326,8 +331,22 @@ test('the session strip shows a quiet summary under the bar and the context with
   // Limits from Settings colour the bar in this browser.
   $('context_heavy').value='100';$('context_full').value='200';$('context_full').dispatchEvent(new window.Event('change'));
   expect($('ctx').dataset.level).toBe('heavy');
+  // Red below yellow is not saved, but the typed number stays: the other field may be the one to change next.
   $('context_full').value='50';$('context_full').dispatchEvent(new window.Event('change'));
-  expect([$('ctx').dataset.level,$('context_full').value]).toEqual(['heavy','200']);  // Red below yellow is refused.
+  expect([$('ctx').dataset.level,$('context_full').value,$('toast').textContent]).toEqual(['heavy','50','Красный порог должен быть больше жёлтого']);
+  expect(JSON.parse(window.localStorage.getItem('cc.context-limits'))).toEqual({heavy:100000,full:200000});
+  // Either order works: yellow first above the old red, then red.
+  $('context_full').value='200';$('context_full').dispatchEvent(new window.Event('change'));
+  $('context_heavy').value='250';$('context_heavy').dispatchEvent(new window.Event('change'));
+  expect([$('context_heavy').value,JSON.parse(window.localStorage.getItem('cc.context-limits')).heavy]).toEqual(['250',100000]);
+  $('context_full').value='300';$('context_full').dispatchEvent(new window.Event('change'));
+  expect(JSON.parse(window.localStorage.getItem('cc.context-limits'))).toEqual({heavy:250000,full:300000});
+  expect($('ctx').dataset.level).toBe('fine');
+  // A pair left half-typed is replaced by the saved one when Settings open again.
+  $('context_full').value='10';$('context_full').dispatchEvent(new window.Event('change'));
+  await window.eval('openSettings("look")');
+  expect($('context_full').value).toBe('300');
+  $('settings_dlg').close();
   window.eval('select("beta")');await settle();await settle();
   // A shell, another agent or an older computer: nothing to show.
   expect([$('session_hint').hidden,$('session_meta').hidden]).toEqual([true,true]);
@@ -356,12 +375,18 @@ test('on a phone the project drawer is not modal: it stays laid out when closed 
   try{
   await settle();await settle();
   const doc=window.document,box=doc.getElementById('project_dlg');
+  // Before the first opening it already waits past the edge: not for screen readers, and Tab passes it by.
+  expect(box.getAttribute('aria-hidden')).toBe('true');
+  box.querySelector('[data-tab]').focus();
+  expect(box.contains(doc.activeElement)).toBe(false);
   let modal=0;box.showModal=()=>{modal++};
   doc.getElementById('b_project').click();await settle();
   expect([box.open,modal,doc.body.classList.contains('project-drawer'),box.hasAttribute('aria-hidden')]).toEqual([true,0,true,false]);
   doc.getElementById('scrim').click();
   await new Promise(resolve=>setTimeout(resolve,350));  // The slide out (no transitionend in jsdom).
   expect([box.open,doc.body.classList.contains('project-drawer'),box.getAttribute('aria-hidden')]).toEqual([false,false,'true']);
+  box.querySelector('.project-close').focus();
+  expect(box.contains(doc.activeElement)).toBe(false);
   }finally{window.close()}
 });
 
@@ -399,6 +424,7 @@ test('on a wide screen the project panel docks on the right, follows the session
   try{
   await settle();await settle();
   const doc=window.document,panel=doc.getElementById('project_dlg');
+  expect(panel.hasAttribute('aria-hidden')).toBe(false);
   window.eval('openHistory()');await settle();
   expect(panel.open).toBe(true);
   expect(panel.classList.contains('docked')).toBe(true);
@@ -637,6 +663,11 @@ test('feature groups have their own tab: who works on what, commits not sorted y
   expect([...doc.querySelectorAll('#git_body .git-section')].map(h=>h.textContent)).toEqual(['Сейчас','Ещё не разобрано','Группы фич']);
   expect(doc.querySelector('#git_body .git-group .git-subject').textContent).toBe('Login');
   expect(doc.querySelector('#git_body .git-group .git-meta').textContent).toContain('Denis');
+  // A commit not sorted yet opens from here and its back button says where it leads.
+  doc.querySelector('#git_body .git-list .git-row').click();
+  expect(doc.querySelector('#git_body .files-up').textContent).toBe('К группам');
+  doc.querySelector('#git_body .files-up').click();await settle();
+  expect(doc.querySelector('#git_body .git-group .git-subject').textContent).toBe('Login');
   doc.querySelector('#git_body .git-foot button').click();await settle();
   expect(refreshed).toEqual(['alpha']);
   // The server sorts in the background; the open tab picks it up on the quiet poll.
@@ -784,7 +815,7 @@ test('an empty gallery explains what will appear, and an older computer asks for
   await settle();await settle();
   window.eval('openProject("gallery")');await settle();
   expect(window.document.getElementById('gallery_body').textContent).toMatch(/Здесь появятся картинки|Pictures the agents/);
-  old=true;window.eval('gallery.session=null;loadGallery()');await settle();
+  old=true;window.eval('gallery.key=null;loadGallery()');await settle();
   expect(window.document.getElementById('gallery_body').textContent).toMatch(/обновите Agent Deck|update Agent Deck/i);
   }finally{window.close()}
 });
@@ -1107,5 +1138,183 @@ test('a lost connection shows the status pill instead of errors and recovers on 
   expect(window.document.querySelector('#title b').textContent).toBe('alpha');
   await new Promise(resolve=>setTimeout(resolve,1700));
   expect(pill.hidden).toBe(true);
+  }finally{window.close()}
+});
+
+const phone=w=>{w.matchMedia=query=>({matches:/max-width/.test(query),addEventListener(){},removeEventListener(){}})};
+const gitRoutes=routes=>{
+  routes['/api/git/log']=()=>({repo:'/r',name:'r',branch:'main',ref:'HEAD',branches:['main'],remote:'',ahead:0,behind:0,commits:[],more:false});
+  routes['/api/git/changes']=()=>({repo:'/r',name:'r',branch:'main',skipped:0,files:[]});
+  return routes;
+};
+
+test('a message over the phone drawer sits on the page, not clipped inside the drawer; a modal dialog keeps its own',async()=>{
+  const window=boot(gitRoutes(routesFor({local:()=>({sessions:[session('alpha')]})})),null,phone);
+  try{
+  await settle();await settle();
+  const doc=window.document,note=doc.getElementById('toast');
+  doc.getElementById('b_project').click();await settle();
+  expect(doc.body.classList.contains('project-drawer')).toBe(true);
+  window.eval('toast("Saved","success")');
+  expect(note.parentNode).toBe(doc.body);
+  // A modal dialog is in the top layer: a message outside it would be under it.
+  doc.getElementById('confirm_dlg').showModal();
+  window.eval('toast("Failed")');
+  expect(note.parentNode).toBe(doc.getElementById('confirm_dlg'));
+  }finally{window.close()}
+});
+
+test('with the keyboard up the open summary gives its room to the terminal and the headline stays',()=>{
+  const css=fs.readFileSync(path.resolve(__dirname,'../../frontend/style.css'),'utf8');
+  const rule=css.split('\n').find(line=>line.includes('body.keyboard-open #hint_more'));
+  expect(rule).toMatch(/body\.keyboard-open #hint_more\{display:none!important\}/);
+  expect(css).not.toMatch(/body\.keyboard-open (#session_hint|\.session-hint|#hint_line|#hint_toggle)[,{]/);
+});
+
+test('the gallery belongs to a computer and a session: the same name elsewhere loads its own pictures and keeps checking',async()=>{
+  const picture=name=>({id:'c'.repeat(24),name,path:'/tmp/'+name,kind:'image/png',size:9,at:1800000000});
+  const routes=gitRoutes(routesFor({local:()=>({sessions:[session('alpha')]})})),asked=[];
+  routes['/deck/'+DECK+'/api/sessions']=()=>({sessions:[session('alpha')]});
+  routes['/api/gallery']=()=>({items:[picture('here.png')]});
+  routes['/deck/'+DECK+'/api/gallery']=()=>{asked.push(1);return {items:[picture('there.png')]}};
+  const window=boot(routes,null,w=>{
+    // As in a browser: the close event comes after the code that closed the dialog has finished.
+    w.HTMLDialogElement.prototype.close=function(){this.open=false;w.setTimeout(()=>this.dispatchEvent(new w.Event('close')),0)};
+    const timeout=w.setTimeout;w.setTimeout=(fn,ms,...args)=>timeout(fn,ms===15000?40:ms,...args);  // The gallery poll, quickly.
+  });
+  try{
+  await settle();await settle();
+  const doc=window.document,titles=()=>[...doc.querySelectorAll('#gallery_body .gallery-cell')].map(c=>c.title);
+  window.eval('openProject("gallery")');await settle();
+  expect(titles()).toEqual(['here.png']);
+  window.openDeckSession(DECK,'alpha');
+  await settle();await settle();await settle();
+  expect(doc.querySelector('#title b').textContent).toBe('alpha');
+  expect(doc.getElementById('project_dlg').open).toBe(true);
+  expect(titles()).toEqual(['there.png']);
+  const before=asked.length;
+  await new Promise(resolve=>setTimeout(resolve,200));
+  expect(asked.length).toBeGreaterThan(before);
+  }finally{window.close()}
+});
+
+test('a failed check keeps the summary and the context on screen; another session starts empty',async()=>{
+  const routes=routesFor({local:()=>({sessions:[session('alpha'),session('beta')]})});let answer='ok';
+  routes['/api/session_info']=()=>answer==='down'?{__network:true}:answer==='broken'?{__status:500,error:'boom'}
+    :{supported:true,context:{tokens:90000,window:200000},summary:{line:'Payments webhook',text:'Tests are next.',at:1,model:'Claude Haiku',updating:false},started:1};
+  const window=boot(routes);
+  try{
+  await settle();await settle();
+  const doc=window.document,shown=()=>[doc.getElementById('session_hint').hidden,doc.getElementById('session_meta').hidden,doc.getElementById('hint_line').textContent];
+  expect(shown()).toEqual([false,false,'Payments webhook']);
+  answer='down';await window.eval('loadSessionInfo()');
+  expect(shown()).toEqual([false,false,'Payments webhook']);
+  answer='broken';await window.eval('loadSessionInfo()');
+  expect(shown()).toEqual([false,false,'Payments webhook']);
+  // What is kept belongs to this session only: one that cannot be read shows nothing.
+  window.eval('select("beta")');await settle();await settle();
+  expect(shown().slice(0,2)).toEqual([true,true]);
+  }finally{window.close()}
+});
+
+function fileRoutes(){
+  const routes=gitRoutes(routesFor({local:()=>({sessions:[session('alpha')]})}));
+  routes['/api/files']=()=>({path:'/home/demo/p',home:'/home/demo',parent:'/home/demo',entries:[{name:'notes.txt',dir:false,size:4},{name:'doc.pdf',dir:false,size:4}]});
+  routes['/api/file']=()=>({path:'/home/demo/p/notes.txt',content:'one\n',hash:'h',size:4});
+  routes['/api/file_preview']=()=>({path:'/home/demo/p/doc.pdf',type:'application/pdf',size:4,data:'JVBERg=='});
+  return routes;
+}
+const button=(doc,label)=>[...doc.querySelectorAll('#files_body button')].find(b=>b.textContent===label);
+
+test('the phone drawer comes back with the file it showed: it can be edited and saved, and a PDF link still opens',async()=>{
+  const window=boot(fileRoutes(),null,phone),revoked=[];
+  window.URL.createObjectURL=()=>'blob:https://panel.test/pdf';window.URL.revokeObjectURL=url=>revoked.push(url);
+  try{
+  await settle();await settle();
+  const doc=window.document,rows=()=>[...doc.querySelectorAll('.files-row')];
+  await window.eval('openFiles()');await settle();
+  rows()[0].click();await settle();
+  expect(doc.querySelector('#files_body .files-view .code').textContent).toBe('one');
+  await window.eval('closeProject()');
+  window.eval('openProject("files")');await settle();
+  button(doc,'Изменить').click();
+  const area=doc.querySelector('.files-text');
+  expect(area.value).toBe('one\n');
+  expect(button(doc,'Сохранить').disabled).toBe(true);
+  area.value='two\n';area.dispatchEvent(new window.Event('input'));
+  expect(button(doc,'Сохранить').disabled).toBe(false);
+  // Unsaved text: closing asks, and refusing keeps the drawer and the text.
+  const closing=window.eval('closeProject()');await settle();
+  expect(doc.getElementById('confirm_dlg').open).toBe(true);
+  doc.getElementById('confirm_dlg').close();await closing;
+  expect([doc.getElementById('project_dlg').open,doc.querySelector('.files-text').value]).toEqual([true,'two\n']);
+  area.value='one\n';area.dispatchEvent(new window.Event('input'));
+  button(doc,'К папке').click();await settle();
+  rows()[1].click();await settle();
+  await window.eval('closeProject()');
+  window.eval('openProject("files")');await settle();
+  expect(doc.querySelector('#files_body a.btn').getAttribute('href')).toBe('blob:https://panel.test/pdf');
+  expect(revoked).toEqual([]);
+  }finally{window.close()}
+});
+
+test('a closed sidebar lets a clean file go and shows the folder; unsaved text is never dropped by a close',async()=>{
+  const window=boot(fileRoutes()),revoked=[];
+  window.URL.createObjectURL=()=>'blob:https://panel.test/pdf';window.URL.revokeObjectURL=url=>revoked.push(url);
+  try{
+  await settle();await settle();
+  const doc=window.document,rows=()=>[...doc.querySelectorAll('.files-row')],box=doc.getElementById('project_dlg');
+  await window.eval('openFiles()');await settle();
+  rows()[1].click();await settle();
+  await window.eval('closeProject()');
+  expect(revoked).toEqual(['blob:https://panel.test/pdf']);
+  window.eval('openProject("files")');await settle();
+  // No link to a freed blob and no reader over a forgotten file: the folder.
+  expect([doc.querySelector('#files_body a.btn'),rows().length]).toEqual([null,2]);
+  rows()[0].click();await settle();
+  button(doc,'Изменить').click();
+  const area=doc.querySelector('.files-text');
+  area.value='typed\n';area.dispatchEvent(new window.Event('input'));
+  box.close();  // Closed without the question, as a computer switch closes every dialog.
+  expect([window.eval('filesDirty()'),doc.querySelector('.files-text').value]).toEqual([true,'typed\n']);
+  }finally{window.close()}
+});
+
+test('a download says it started and more taps on the same file do not start it again',async()=>{
+  const routes=fileRoutes(),asked=[];let release;
+  routes['/api/download']=url=>new Promise(resolve=>{asked.push(url.searchParams.get('path'));release=()=>resolve({__blob:'PK'})});
+  const window=boot(routes),saved=[];
+  window.URL.createObjectURL=()=>'blob:https://panel.test/z';window.URL.revokeObjectURL=()=>{};
+  window.HTMLAnchorElement.prototype.click=function(){saved.push(this.download)};
+  try{
+  await settle();await settle();
+  const doc=window.document,note=doc.getElementById('toast');
+  await window.eval('openFiles()');await settle();
+  const [first,second]=doc.querySelectorAll('.files-download');
+  first.click();first.click();await settle();
+  expect(asked).toEqual(['/home/demo/p/notes.txt']);
+  expect([note.textContent,note.classList.contains('info'),note.classList.contains('on')]).toEqual(['Скачиваю файл notes.txt…',true,true]);
+  // Another file is not held back, and the first one can be downloaded again once it has arrived.
+  second.click();await settle();
+  expect(asked).toEqual(['/home/demo/p/notes.txt','/home/demo/p/doc.pdf']);
+  release();await settle();
+  const finishFirst=asked.length;
+  first.click();await settle();
+  expect(asked.length).toBe(finishFirst);  // Still loading: only doc.pdf was released.
+  }finally{window.close()}
+});
+
+test('the line-number column is sized for the longer of the two numbers',async()=>{
+  const routes=gitRoutes(routesFor({local:()=>({sessions:[session('alpha')]})}));
+  routes['/api/git/changes']=()=>({repo:'/r',name:'r',branch:'main',skipped:0,files:[{path:'app.py',old_path:'app.py',status:'modified',added:0,removed:1,binary:false,truncated:false,
+    patch:'@@ -8,3 +100,2 @@\n a\n-b\n c\n'}]});
+  const window=boot(routes);
+  try{
+  await settle();await settle();
+  window.eval('openHistory()');await settle();await settle();
+  const diff=window.document.querySelector('#git_body .diff');
+  // Old numbers 8-10, new ones 100-101: a phone shows the new number on unchanged lines.
+  expect([...diff.querySelectorAll('.dl.ctx .ln.n')].map(n=>n.textContent)).toEqual(['100','101']);
+  expect(diff.style.getPropertyValue('--ln')).toBe('3');
   }finally{window.close()}
 });

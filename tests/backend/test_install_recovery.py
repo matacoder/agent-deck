@@ -84,6 +84,19 @@ class TerminalCommandTests(unittest.TestCase):
         self.assertIn("'--', tmux, '-L', 'agent-deck', 'attach', '-t'", (ROOT / "macos/install.py").read_text())
 
 
+class TtydPinTests(unittest.TestCase):
+    def test_the_installer_and_the_image_pin_the_same_ttyd(self):
+        # Two copies of the version and hashes: a bump in one file only would fail every fresh root install.
+        import re
+        script, image = (ROOT / 'install.sh').read_text(), (ROOT / 'docker/Dockerfile').read_text()
+        self.assertEqual(re.search(r'^TTYD_VERSION=(\S+)$', script, re.M).group(1),
+                         re.search(r'^ARG TTYD_VERSION=(\S+)$', image, re.M).group(1))
+        for arch in ('x86_64', 'aarch64'):
+            with self.subTest(arch=arch):
+                pinned = re.search(rf'arch={arch} sum=([0-9a-f]{{64}}) ', script).group(1)
+                self.assertEqual(pinned, re.search(rf'^ARG TTYD_SHA256_{arch.upper()}=([0-9a-f]{{64}})$', image, re.M).group(1))
+
+
 class ContainerTrustTests(unittest.TestCase):
     def test_a_container_does_not_trust_forwarded_addresses_from_its_gateway(self):
         code = ("import sys; sys.path.insert(0, 'panel'); sys.argv=['panel']; import panel; "

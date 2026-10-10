@@ -108,7 +108,8 @@ async function openSettings(section="agents"){
   // overwrite fields being edited elsewhere.
   if($("settings_dlg").open){renderHub();return}
   $("hub_title").textContent=deckDirectory.decks.length?tr("Настройки · {0}",[currentDeckName()]):tr("Настройки");
-  if(!$("settings_dlg").open)$("settings_dlg").showModal();updateHubNavFade();
+  // A pair of context limits left half-typed last time was never saved: show the ones in use.
+  if(!$("settings_dlg").open){applyContextLimits();$("settings_dlg").showModal()}updateHubNavFade();
   renderHub();
   // Push and backup state feed the getting-started card and the section dots.
   await Promise.allSettled([loadDeckSettings(),loadPush(),loadBackups(),(async()=>{const data=await api("/api/project_directory");syncField($("project_directory"),data.directory)})(),refreshLMModels(),loadIntegrations(),checkGithubFoot(),(async()=>{const data=await api("/api/locales");$("ui_language").replaceChildren(...data.languages.map(x=>{const o=el("option","",x.name);o.value=x.code;return o}));$("ui_language").value=I18N.language})()]);

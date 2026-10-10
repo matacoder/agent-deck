@@ -1761,11 +1761,10 @@ def summary_model(name, agent):
     """A model of the provider this session already talks to, so its conversation goes nowhere new; None
     when that provider cannot be asked (not logged in, no key, the local model is gone)."""
     from integrations.feature_groups import cli_model
-    try:
-        source = json.loads(opt(name, "@cc_source") or "null")
-    except ValueError:
-        source = None
-    kind = source.get("kind") if isinstance(source, dict) else ""
+    source = saved_source(name)
+    kind = "default" if source is None else source.get("kind")
+    if kind not in ("default", "kimi", "lmstudio"):
+        return None  # An unreadable source may be a local model: its conversation is not sent to a cloud one.
     try:
         if kind == "lmstudio":
             return grouping_model(f"lmstudio:{source.get('profile')}:{source.get('model')}")
@@ -1779,7 +1778,7 @@ def summary_model(name, agent):
 
 def session_info(name, language):
     """How full the open conversation is and its summary; parsed again only when the file changed."""
-    from integrations.session_info import context, dialogue, started, tail_records
+    from integrations.session_info import HEAD, context, dialogue, started, tail_records
     agent = opt(name, "@cc_agent") or "claude"
     sid = opt(name, "@cc_sid")
     if agent not in ("claude", "claude-kimi", "codex") or not valid_sid(sid):
@@ -1794,14 +1793,16 @@ def session_info(name, language):
         cached = _session_reads.get(path)
     if not cached or cached[0] != stamp:
         records = tail_records(path)
-        # The start never changes once known; only the tail is read again.
-        cached = (stamp, context(kind, records), dialogue(kind, records), (cached and cached[3]) or started(path))
+        # The start never changes once known; only the tail is read again. 0: looked through the whole head
+        # and found none, so it is not read again on every change either.
+        begun = cached[3] if cached and cached[3] is not None else started(path) or (0 if stat.st_size > HEAD else None)
+        cached = (stamp, context(kind, records), dialogue(kind, records), begun)
         with _session_reads_lock:
             if len(_session_reads) > 200:
                 _session_reads.clear()
             _session_reads[path] = cached
     summary = summaries().get(sid, language, stat.st_size, cached[2], lambda: summary_model(name, agent))
-    return {"supported": True, "context": cached[1], "summary": summary, "started": cached[3]}
+    return {"supported": True, "context": cached[1], "summary": summary, "started": cached[3] or None}
 
 
 def gallery_loop():

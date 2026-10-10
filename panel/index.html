@@ -829,7 +829,7 @@ body.resizing iframe{pointer-events:none}
 
 
   /* While typing, the conversation gets the space: no tab strip, no status line, compact header. */
-  body.keyboard-open #session_meta,body.keyboard-open .composer-status{display:none!important}
+  body.keyboard-open #session_meta,body.keyboard-open .composer-status,body.keyboard-open #hint_more{display:none!important}
   .session-meta{padding:2px 14px max(2px,var(--sab)) 8px}.session-meta .iconbtn{width:var(--tap);height:var(--tap)}
   main:has(#session_meta:not([hidden])) .composer{padding-bottom:8px}
   body.keyboard-open .composer{padding-bottom:8px}
@@ -1081,7 +1081,7 @@ body.resizing iframe{pointer-events:none}
       <div id="search_pop" class="search-pop" hidden><div id="search_body" role="region" aria-label="Поиск в выводе"></div></div>
       <button class="iconbtn" id="b_project" onclick="toggleProject(PROJECT_TABS)" aria-pressed="false" aria-label="Скрыть или показать панель проекта" title="Скрыть или показать панель проекта"><svg class="ui-icon"><use href="#i-sidebar-right"/></svg></button>
     </div>
-    <div id="session_hint" class="session-hint" hidden><button type="button" id="hint_toggle" onclick="toggleSummary()" aria-expanded="false" aria-controls="hint_more"><span id="hint_line"></span></button><div id="hint_more" onclick="toggleSummary()" hidden><p id="hint_text"></p><p id="hint_meta"></p></div></div>
+    <div id="session_hint" class="session-hint" hidden><button type="button" id="hint_toggle" onclick="toggleSummary()" aria-expanded="false" aria-controls="hint_more"><span id="hint_line"></span></button><div id="hint_more" onclick="if(!String(getSelection()||''))toggleSummary()" hidden><p id="hint_text"></p><p id="hint_meta"></p></div></div>
     <div id="stage">
       <div id="conn" class="conn" role="status" aria-live="polite" hidden></div>
       <div id="drop_zone" class="drop-zone" hidden><div class="drop-card"><svg class="ui-icon"><use href="#i-paperclip"/></svg><b id="drop_title"></b><span>До 4 файлов, до 200 МБ каждый</span></div></div>
@@ -2280,6 +2280,17 @@ function updateScreen(s,force){
 // Attached to the page and to each terminal frame (same origin), whose touches never reach the page.
 // reveal: a drawer that is not in the page while closed (a dialog) is shown when the drag starts.
 const EDGE=28,DECIDE=10,OPEN_SHARE=0.3;
+// Wide content in an open drawer (a table, a diff) scrolls under the finger first; the drawer follows
+// once that content is back at its edge.
+function scrollsAside(node,panel,dx){
+  if(!panel.contains(node))return false;
+  for(;node&&node!==panel;node=node.parentElement){
+    if(node.scrollWidth<=node.clientWidth)continue;
+    const flow=node.ownerDocument.defaultView.getComputedStyle(node).overflowX;
+    if((flow==="auto"||flow==="scroll")&&(dx>0?node.scrollLeft>0:node.scrollLeft+node.clientWidth<node.scrollWidth-1))return true;
+  }
+  return false;
+}
 function attachDrawerSwipe(doc,{panel:drawer,isOpen,setOpen,enabled,right=false,reveal}){
   let start=null,dragging=false,width=0;
   const panel=typeof drawer==="function"?drawer:()=>drawer;
@@ -2294,7 +2305,7 @@ function attachDrawerSwipe(doc,{panel:drawer,isOpen,setOpen,enabled,right=false,
     // Closed: only the edge, so vertical scrolling and taps elsewhere stay untouched.
     const fromEdge=right?(doc.defaultView?.innerWidth||innerWidth)-t.clientX:t.clientX;
     if(!open&&fromEdge>EDGE)return;
-    start={x:t.clientX,y:t.clientY,open};width=panel().getBoundingClientRect().width||panel().offsetWidth||300;
+    start={x:t.clientX,y:t.clientY,open,target:e.target};width=panel().getBoundingClientRect().width||panel().offsetWidth||300;
   },{passive:true,capture:true});
   doc.addEventListener("touchmove",e=>{
     if(!start||e.touches.length!==1)return;
@@ -2302,7 +2313,7 @@ function attachDrawerSwipe(doc,{panel:drawer,isOpen,setOpen,enabled,right=false,
     if(!dragging){
       if(Math.abs(dx)<DECIDE&&Math.abs(dy)<DECIDE)return;
       // A mostly vertical move is a scroll; an open drawer only drags towards closing.
-      if(Math.abs(dy)>Math.abs(dx)||(start.open&&sign*dx>0)){start=null;return}
+      if(Math.abs(dy)>Math.abs(dx)||(start.open&&(sign*dx>0||scrollsAside(start.target,panel(),dx)))){start=null;return}
       if(!start.open&&reveal){reveal();width=panel().getBoundingClientRect().width||width}
       dragging=true;panel().style.transition="none";panel().style.animation="none";
     }
@@ -2503,17 +2514,23 @@ function fileLink(session,path,runs,from,to){
   return link;
 }
 // Fetched first, so a missing or too large file is a message here, not an error page in its place.
+// A large file takes a while with nothing to see: a note says it started, and more taps do not start it again.
+const downloading=new Set();
 async function downloadFile(session,path){
   const url=activePath("/api/download?"+(session?"name="+encodeURIComponent(session)+"&":"")+"path="+encodeURIComponent(path));
+  if(downloading.has(url))return;
+  const name=path.split("/").pop();
+  downloading.add(url);toast(tr("Скачиваю файл {0}…",[name]),"info");
   try{
     const r=await fetch(url,{cache:"no-store"});
     if(!r.ok){let message="";try{message=(await r.json()).error}catch(e){}toast(message||tr("Не удалось скачать файл"));return}
-    const blob=await r.blob(),name=path.split("/").pop();
+    const blob=await r.blob();
     if(await shareDownload(blob,name))return;
     const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;
     document.body.append(a);a.click();a.remove();
     setTimeout(()=>URL.revokeObjectURL(a.href),60000);
   }catch(e){toast(tr("Не удалось скачать файл"))}
+  finally{downloading.delete(url)}
 }
 // An iOS Home Screen app has no downloads: a blob link opens a blank in-app page that only "back" leaves.
 // The share sheet saves to Files instead. It needs a fresh tap, which a slow download has outlived.
@@ -2534,7 +2551,8 @@ async function copyText(text){
 if(typeof module!=="undefined")module.exports={formatSize,homeRelative,fileMatches};
 // Every picture the open session showed, kept by the panel after it left the screen: a grid of square
 // thumbnails, newest first, opening in the full-screen viewer. Reloaded while the tab is open and visible.
-const gallery={session:null,items:null,raw:"",error:"",timer:null};
+// key: computer and session, as in sessionInfoKey(): the same name on another computer has other pictures.
+const gallery={key:null,session:null,items:null,raw:"",error:"",timer:null};
 const GALLERY_POLL=15000;
 
 function galleryUrl(session,id,thumb){
@@ -2545,16 +2563,16 @@ function galleryShown(){
   return box.open&&project.tab==="gallery"&&!document.hidden;
 }
 async function loadGallery(){
-  const session=active;clearTimeout(gallery.timer);
-  if(gallery.session!==session){Object.assign(gallery,{session,items:null,raw:"",error:""});renderGallery()}
+  const session=active,key=sessionInfoKey();clearTimeout(gallery.timer);
+  if(gallery.key!==key){Object.assign(gallery,{key,session,items:null,raw:"",error:""});renderGallery()}
   try{
     const data=await api("/api/gallery?name="+encodeURIComponent(session));
-    if(gallery.session!==session)return;
+    if(gallery.key!==key)return;
     const raw=JSON.stringify(data.items||[]);
     // The same answer leaves the grid alone: no thumbnail reloads, no lost scroll.
     if(raw!==gallery.raw||gallery.error){Object.assign(gallery,{raw,items:data.items||[],error:""});renderGallery()}
   }catch(e){
-    if(gallery.session!==session||e.message===STALE)return;
+    if(gallery.key!==key||e.message===STALE)return;
     gallery.error=e.message;if(!gallery.items)renderGallery();
   }
   if(galleryShown())gallery.timer=setTimeout(()=>{if(galleryShown())loadGallery()},GALLERY_POLL);
@@ -2618,7 +2636,8 @@ function renderDiff(patch,file,onLine){
   if(!patch){box.append(el("p","diff-note",tr("Дифф слишком большой для просмотра; откройте его в терминале")));return box}
   const rows=diffRows(patch);
   // Width of the line-number column in digits, so a phone can give it no more room than it needs.
-  box.style.setProperty("--ln",Math.max(2,...rows.map(row=>String(row.old||row.new||"").length)));
+  // The longer of the two: a phone shows the new number on unchanged lines.
+  box.style.setProperty("--ln",Math.max(2,...rows.map(row=>Math.max(String(row.old||"").length,String(row.new||"").length))));
   for(const row of rows){
     if(row.kind==="hunk"){box.append(el("div","dl hunk",row.text));continue}
     const line=el("div","dl "+row.kind,el("span","ln o",String(row.old)),el("span","ln n",String(row.new)),el("span","code",row.text||" "));
@@ -2838,14 +2857,16 @@ function backButton(label,run){const b=fileButton(label,"files-up",run,"arrow-le
 function renderHistoryView(box){
   const view=hist.view;
   const leave=()=>{if(view.back)showGroup(view.back);else{hist.view=null;renderHistory()}};
+  // A commit opened from "not sorted yet" returns to Groups, not to Commits.
+  const home=hist.tab==="groups"?tr("К группам"):tr("К коммитам");
   if(view.kind==="loading"||view.kind==="error"){
-    box.append(backButton(view.back?tr("К группе"):tr("К коммитам"),leave),
+    box.append(backButton(view.back?tr("К группе"):home,leave),
       view.kind==="error"?errorWithRetry(view.error,view.retry):el("p","files-empty",tr("Загрузка…")));
     return;
   }
   if(view.kind==="commit"){
     const back=hist.back;
-    box.append(backButton(back?tr("К группе"):tr("К коммитам"),()=>{hist.view=back?{kind:"group",group:back,diff:null}:null;if(back)showGroup(back);else renderHistory()}));
+    box.append(backButton(back?tr("К группе"):home,()=>{hist.view=back?{kind:"group",group:back,diff:null}:null;if(back)showGroup(back);else renderHistory()}));
     return commitDetails(box,view.data);
   }
   const group=view.group;
@@ -2982,7 +3003,8 @@ function applyContextLimits(){
 }
 function saveContextLimits(){
   const heavy=Math.round(+$("context_heavy").value*1000),full=Math.round(+$("context_full").value*1000);
-  if(!(heavy>0&&full>heavy)){toast(tr("Красный порог должен быть больше жёлтого"));applyContextLimits();return}
+  // Nothing is saved until the pair fits, and the fields keep what was typed: the other one is changed next.
+  if(!(heavy>0&&full>heavy)){toast(tr("Красный порог должен быть больше жёлтого"));return}
   try{localStore.setItem("cc.context-limits",JSON.stringify({heavy,full}))}catch(e){}
   renderSessionInfo();
 }
@@ -3001,9 +3023,10 @@ async function loadSessionInfo(){
   const key=sessionInfoKey(),seq=++sessionInfo.seq;
   if(sessionInfo.session!==key){sessionInfo.session=key;sessionInfo.data=null;renderSessionInfo()}
   if(!key)return;
-  let data=null;
+  let data;
   try{data=await api("/api/session_info?name="+encodeURIComponent(active))}
-  catch(e){if(e.message===STALE)return}  // A computer without this version, or a shell: nothing to show.
+  // A failed poll keeps what is shown. A computer without this version has had nothing to show since the key changed.
+  catch(e){if(e.message===STALE)return;data=sessionInfo.data}
   if(seq!==sessionInfo.seq)return;
   sessionInfo.data=data;renderSessionInfo();
   // A summary being written is asked for again soon; otherwise the conversation changes slowly.
@@ -3067,7 +3090,7 @@ function openProject(tab){
 }
 function projectCurrent(){
   if(project.tab==="files")return files.session===active;
-  if(project.tab==="gallery")return gallery.session===active&&Boolean(gallery.items);
+  if(project.tab==="gallery")return gallery.key===sessionInfoKey()&&Boolean(gallery.items);
   return hist.session===active&&Boolean(hist.changes);
 }
 function quietProject(){
@@ -3110,7 +3133,7 @@ function projectTab(tab){
 function refreshProject(){
   markProjectTab();
   if(project.tab==="files"){if(files.session!==active&&!filesDirty())startFiles();return}
-  if(project.tab==="gallery"){if(gallery.session!==active)loadGallery();return}
+  if(project.tab==="gallery"){if(gallery.key!==sessionInfoKey())loadGallery();return}
   if(hist.session!==active)startHistory(project.tab);
 }
 function markProjectTab(){
@@ -3133,15 +3156,30 @@ function placeProject(open){
   if(docked||drawer)box.open=true;
   else box.showModal();
 }
+// Closed, the phone drawer stays in the page past the edge: hidden from screen readers, and Tab passes it
+// by. Not inert: that re-styles the whole diff, as slow as the re-layout this avoids.
+function hideClosedDrawer(){
+  const box=$("project_dlg"),hidden=!box.open&&projectDrawer();
+  if(hidden)box.setAttribute("aria-hidden","true");else box.removeAttribute("aria-hidden");
+  if(hidden&&box.contains(document.activeElement))document.activeElement.blur();
+}
+function skipClosedDrawer(event){
+  const box=$("project_dlg");
+  if(box.getAttribute("aria-hidden")!=="true")return;
+  const stops=[...document.querySelectorAll("a[href],button,input,select,textarea,[tabindex]")].filter(x=>!box.contains(x)&&!x.disabled&&x.tabIndex>=0&&x.getClientRects().length);
+  // The drawer is last in the page: Tab goes round to the start, Shift+Tab back to what stands before it.
+  const next=event.relatedTarget?stops[0]:stops[stops.length-1];
+  if(next)next.focus();else event.target.blur();
+}
 // Called after every session or layout change: a wide screen restores the remembered sidebar.
 function syncProject(){
   const box=$("project_dlg");
   if(!projectDocked()){
     if(box.open&&box.classList.contains("docked")){project.moving=true;box.close();project.moving=false}
-    return markProjectTab();
+    hideClosedDrawer();return markProjectTab();
   }
   const tab=savedProjectTab();
-  if(!tab||!active||!cur()){if(box.open){project.moving=true;box.close();project.moving=false}return markProjectTab()}
+  if(!tab||!active||!cur()){if(box.open){project.moving=true;box.close();project.moving=false}hideClosedDrawer();return markProjectTab()}
   if(!box.open)project.tab=tab;
   placeProject(true);refreshProject();
 }
@@ -3154,13 +3192,17 @@ async function closeProject(){
 }
 // Closed by hand (not moved between layouts): stop polling and free a previewed file's blob.
 function projectClosed(){
-  // Closed, the phone drawer stays in the page past the edge: hidden from screen readers and focus. Not
-  // inert: that re-styles the whole diff, as slow as the re-layout this avoids.
-  const box=$("project_dlg");
-  if(document.body.classList.contains("project-drawer")){box.setAttribute("aria-hidden","true");if(box.contains(document.activeElement))document.activeElement.blur()}
+  const box=$("project_dlg"),drawer=document.body.classList.contains("project-drawer");
+  // The event comes a moment after close(): a computer switch has the sidebar open again by then.
+  if(box.open)return;
+  hideClosedDrawer();
   document.body.classList.remove("project-drawer");
   if(project.moving)return;
-  clearTimeout(hist.timer);clearTimeout(gallery.timer);dropPreview();files.file=null;markProjectTab();
+  clearTimeout(hist.timer);clearTimeout(gallery.timer);markProjectTab();
+  // The phone drawer comes back showing what it showed, so its open file stays too. Elsewhere the file is
+  // let go and the folder drawn in its place; unsaved text is never dropped without the question.
+  if(drawer||!files.file||filesDirty())return;
+  dropPreview();files.file=null;renderFiles();
 }
 // On a wide screen both sidebars can be dragged wider or narrower (or moved with the arrow keys on their
 // edge); a double click restores the default. Widths are kept in this browser; CSS still caps them by the
@@ -3496,7 +3538,8 @@ async function openSettings(section="agents"){
   // overwrite fields being edited elsewhere.
   if($("settings_dlg").open){renderHub();return}
   $("hub_title").textContent=deckDirectory.decks.length?tr("Настройки · {0}",[currentDeckName()]):tr("Настройки");
-  if(!$("settings_dlg").open)$("settings_dlg").showModal();updateHubNavFade();
+  // A pair of context limits left half-typed last time was never saved: show the ones in use.
+  if(!$("settings_dlg").open){applyContextLimits();$("settings_dlg").showModal()}updateHubNavFade();
   renderHub();
   // Push and backup state feed the getting-started card and the section dots.
   await Promise.allSettled([loadDeckSettings(),loadPush(),loadBackups(),(async()=>{const data=await api("/api/project_directory");syncField($("project_directory"),data.directory)})(),refreshLMModels(),loadIntegrations(),checkGithubFoot(),(async()=>{const data=await api("/api/locales");$("ui_language").replaceChildren(...data.languages.map(x=>{const o=el("option","",x.name);o.value=x.code;return o}));$("ui_language").value=I18N.language})()]);
@@ -4132,7 +4175,9 @@ function setConnection(next){
 }
 function toast(m,info,action){
   if(m===STALE)return;
-  const t=$("toast"),dialogs=Array.from(document.querySelectorAll("dialog[open]:not(.docked)"));
+  // The phone drawer is not in the top layer and clips what is inside it: the toast stays on the page, above it.
+  const drawer=document.body.classList.contains("project-drawer")?$("project_dlg"):null;
+  const t=$("toast"),dialogs=Array.from(document.querySelectorAll("dialog[open]:not(.docked)")).filter(d=>d!==drawer);
   (dialogs[dialogs.length-1]||document.body).append(t);t.className=info==="success"?"success":info?"info":"";t.replaceChildren(el("span","",m));
   if(action){const b=document.createElement("button");b.textContent=action.label;b.onclick=e=>{e.stopPropagation();action.run();hideToast()};t.append(b)}
   t.setAttribute("role",info?"status":"alert");t.setAttribute("aria-live",info?"polite":"assertive");
@@ -4228,6 +4273,7 @@ for(const item of $("sheet").querySelectorAll(".panel button"))item.setAttribute
 // Escape on an edited file asks first instead of dropping the changes.
 $("project_dlg").addEventListener("cancel",e=>{if(filesDirty()){e.preventDefault();leaveFile()}});
 $("project_dlg").addEventListener("close",projectClosed);
+$("project_dlg").addEventListener("focusin",skipClosedDrawer);
 // A tap beside the phone drawer (on its backdrop) closes it, like the menu on the left.
 // The phone drawer is not a modal dialog (see placeProject), so Escape is handled here.
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&document.body.classList.contains("project-drawer")){e.preventDefault();closeProject()}});

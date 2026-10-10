@@ -818,7 +818,7 @@ body.resizing iframe{pointer-events:none}
 
 
   /* While typing, the conversation gets the space: no tab strip, no status line, compact header. */
-  body.keyboard-open #session_meta,body.keyboard-open .composer-status{display:none!important}
+  body.keyboard-open #session_meta,body.keyboard-open .composer-status,body.keyboard-open #hint_more{display:none!important}
   .session-meta{padding:2px 14px max(2px,var(--sab)) 8px}.session-meta .iconbtn{width:var(--tap);height:var(--tap)}
   main:has(#session_meta:not([hidden])) .composer{padding-bottom:8px}
   body.keyboard-open .composer{padding-bottom:8px}
