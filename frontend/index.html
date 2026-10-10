@@ -65,7 +65,7 @@ __PANEL_STYLE__</style></head><body>
     <div id="integ"></div>
     <div class="side-foot"><span id="foot"></span><span id="ver"></span><button id="b_drafts" onclick="showClosedDrafts()" style="display:none"><svg class="ui-icon"><use href="#i-file"/></svg><span>Черновики закрытых сессий</span></button><button class="settingsbtn help-side" onclick="drawer(false);openHelp()"><svg class="ui-icon"><use href="#i-help"/></svg><span>Как это работает</span></button><button class="settingsbtn" onclick="openSettings()"><svg class="ui-icon"><use href="#i-gear"/></svg><span>Настройки</span></button></div>
   </aside>
-  <div id="scrim" onclick="drawer(false)"></div>
+  <div id="scrim" onclick="if(document.body.classList.contains('project-drawer'))closeProject();else drawer(false)"></div>
   <main>
     <div class="bar">
       <button class="iconbtn m-only" style="position:relative" onclick="drawer(true)" aria-label="Сессии"><svg class="ui-icon"><use href="#i-menu"/></svg><span id="menuBadge"></span></button>
@@ -359,7 +359,8 @@ __PANEL_STYLE__</style></head><body>
     <section id="hub_general" role="tabpanel" aria-labelledby="tab_general" hidden>
       <header class="hub-section-head"><h3>Общие</h3><p>Язык, папка проектов, версия и обновления.</p></header>
       <div class="hub-card"><h4>Этот браузер</h4><label for="ui_language">Язык интерфейса</label><select id="ui_language" onchange="saveLanguage()"></select><p class="hint">Сообщения и вывод агентов не переводятся.</p>
-        <label class="toggle"><span>Автокоррекция в поле сообщения</span><input type="checkbox" role="switch" id="autocorrect_enabled" onchange="saveAutocorrect()"></label><p class="hint">Выключена по умолчанию: iOS заменяет -- и кавычки, а агенту нужны точные символы.</p></div>
+        <label class="toggle"><span>Автокоррекция в поле сообщения</span><input type="checkbox" role="switch" id="autocorrect_enabled" onchange="saveAutocorrect()"></label><p class="hint">Выключена по умолчанию: iOS заменяет -- и кавычки, а агенту нужны точные символы.</p>
+        <label for="code_font">Размер шрифта кода</label><select id="code_font" onchange="setCodeFont(+this.value)"></select><p class="hint">Диффы, коммиты и файлы в правой панели.</p></div>
       <form class="hub-card" onsubmit="event.preventDefault();saveProjectDirectory()"><h4>Новые сессии</h4><label for="project_directory">Папка проектов</label><input type="text" id="project_directory" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="done" required><p class="hint">Используется для новых сессий. Существующие сессии остаются в своих папках.</p><div class="acts"><button class="pri" id="project_directory_save">Сохранить</button></div></form>
       <div class="hub-card" data-card="version">
         <div class="card-top"><span class="card-icon" aria-hidden="true"><svg class="ui-icon"><use href="#i-download"/></svg></span><div class="card-main"><h4>Версия и обновления</h4><p id="version_status" class="card-status" role="status"></p><p id="version_meta" class="card-meta"></p></div></div>

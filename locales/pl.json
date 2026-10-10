@@ -1,6 +1,8 @@
 {
   "name": "Polski",
   "messages": {
+    "Размер шрифта кода": "Rozmiar czcionki kodu",
+    "Диффы, коммиты и файлы в правой панели.": "Diffy, commity i pliki w prawym panelu.",
     "Галерея": "Galeria",
     "Картинок: {0}": "Obrazy: {0}",
     "Картинки нет в галерее": "Tego obrazu nie ma w galerii",

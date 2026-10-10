@@ -55,9 +55,17 @@ const STATUS_MARK={added:"A",deleted:"D",renamed:"R",modified:"M"};
 // One code size for diffs and commit messages, kept in this browser.
 const CODE_FONT={min:9,max:20,fallback:12};
 function codeFontSize(){const saved=+localStore.getItem("cc.code-font");return saved>=CODE_FONT.min&&saved<=CODE_FONT.max?saved:CODE_FONT.fallback}
-function applyCodeFont(){document.documentElement.style.setProperty("--code-font",codeFontSize()+"px")}
-function codeFont(step){
-  const size=Math.min(CODE_FONT.max,Math.max(CODE_FONT.min,codeFontSize()+step));
+function applyCodeFont(){
+  document.documentElement.style.setProperty("--code-font",codeFontSize()+"px");
+  // The same size in Settings, where a phone changes it (its project drawer has no room for A−/A+).
+  const pick=typeof document!=="undefined"&&document.getElementById("code_font");
+  if(!pick)return;
+  if(!pick.options.length)for(let n=CODE_FONT.min;n<=CODE_FONT.max;n++)pick.append(new Option(n+" px",String(n)));
+  pick.value=String(codeFontSize());
+}
+function codeFont(step){setCodeFont(codeFontSize()+step)}
+function setCodeFont(size){
+  size=Math.min(CODE_FONT.max,Math.max(CODE_FONT.min,size));
   try{localStore.setItem("cc.code-font",String(size))}catch(e){}
   applyCodeFont();
 }

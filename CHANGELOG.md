@@ -2,6 +2,11 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.33.0 — 2026-10-10
+
+- The phone project drawer opens as smoothly as the menu on the left: closed, it now stays laid out past the right edge instead of being re-laid out on every swipe (with a long diff that took most of a second on a phone). On a phone it is no longer a modal dialog; the dimmed area beside it closes it, as with the menu.
+- The code font size moved to **Settings → General** (Этот браузер); on a phone the A−/A+ buttons are gone from the project drawer and its five tabs share the full width. A wide screen keeps A−/A+ in the panel.
+
 ## 1.32.0 — 2026-10-10
 
 - On a phone the project drawer keeps its tabs at the bottom, under the thumb, and diffs and files show one narrow line-number column (the new number, or the old one for a removed line) with less padding, so code gets most of the width.

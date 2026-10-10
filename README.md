@@ -363,7 +363,7 @@ remembered in this browser. Drag the inner edge of either sidebar to change its 
 default). On a phone it is a drawer like the menu, mirrored: swipe from the right edge or tap the sidebar
 button at the top right; swipe it back or tap beside it to close. The phone's session bar keeps only search,
 **⋯** and that button. In the drawer the tabs sit at the bottom, under the thumb, and code shows one narrow
-line-number column. **Changes** shows what is not committed yet, or the last commit when the tree is clean.
+line-number column; the code font size is in **Settings → General** (a wide screen also has A−/A+ in the panel). **Changes** shows what is not committed yet, or the last commit when the tree is clean.
 With several git worktrees the panel shows the one the agent last named in its output (its path or branch),
 marked "auto"; the picker next to the repository name chooses another.
 

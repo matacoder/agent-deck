@@ -36,12 +36,13 @@ function quietProject(){
 }
 // The phone drawer slides in and out like the menu on the left; elsewhere the panel just appears.
 const PROJECT_DRAWER="(max-width:760px),(pointer:coarse) and (max-height:500px)";
+function projectDrawer(){return !projectDocked()&&typeof matchMedia==="function"&&matchMedia(PROJECT_DRAWER).matches}
 function projectSlides(box){
-  return !box.classList.contains("docked")&&typeof matchMedia==="function"&&matchMedia(PROJECT_DRAWER).matches&&!matchMedia("(prefers-reduced-motion:reduce)").matches;
+  return !box.classList.contains("docked")&&projectDrawer()&&!matchMedia("(prefers-reduced-motion:reduce)").matches;
 }
-function slideProject(box,inward){
-  if(inward){box.style.transition="none";box.style.transform="translateX(100%)";box.getBoundingClientRect();box.style.transition="";box.style.transform="";return}
-  box.style.transform="translateX(100%)";
+// In: closed, the drawer already waits past the edge (style.css), so showing it is the slide.
+function slideProject(box){
+  box.style.transform="translateX(calc(100% + 48px))";
   return new Promise(done=>{
     const end=()=>{clearTimeout(timer);box.removeEventListener("transitionend",end);done()};
     const timer=setTimeout(end,300);box.addEventListener("transitionend",end);
@@ -76,8 +77,13 @@ function placeProject(open){
   if(box.open&&box.classList.contains("docked")!==docked){project.moving=true;box.close();project.moving=false;open=true}
   if(!open||box.open)return;
   applyCodeFont();box.classList.toggle("docked",docked);
-  if(docked)box.open=true;  // Not modal: the terminal and the message field stay usable beside it.
-  else{box.showModal();if(projectSlides(box))slideProject(box,true)}
+  // Not modal: docked, the terminal and the message field stay usable beside it; as the phone drawer, the
+  // top layer a modal dialog enters re-lays out the whole diff (most of a second) on every swipe.
+  const drawer=!docked&&projectDrawer();
+  document.body.classList.toggle("project-drawer",drawer);
+  box.removeAttribute("aria-hidden");
+  if(docked||drawer)box.open=true;
+  else box.showModal();
 }
 // Called after every session or layout change: a wide screen restores the remembered sidebar.
 function syncProject(){
@@ -95,11 +101,16 @@ async function closeProject(){
   if(filesDirty()&&!await leaveFile())return;
   if(projectDocked())rememberProject("");
   const box=$("project_dlg");
-  if(box.open&&projectSlides(box))await slideProject(box,false);
+  if(box.open&&projectSlides(box))await slideProject(box);
   box.close();box.style.transform="";
 }
 // Closed by hand (not moved between layouts): stop polling and free a previewed file's blob.
 function projectClosed(){
+  // Closed, the phone drawer stays in the page past the edge: hidden from screen readers and focus. Not
+  // inert: that re-styles the whole diff, as slow as the re-layout this avoids.
+  const box=$("project_dlg");
+  if(document.body.classList.contains("project-drawer")){box.setAttribute("aria-hidden","true");if(box.contains(document.activeElement))document.activeElement.blur()}
+  document.body.classList.remove("project-drawer");
   if(project.moving)return;
   clearTimeout(hist.timer);clearTimeout(gallery.timer);dropPreview();files.file=null;markProjectTab();
 }

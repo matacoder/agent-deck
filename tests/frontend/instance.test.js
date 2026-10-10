@@ -296,6 +296,37 @@ test('a tapped line of an uncommitted change becomes a comment in the session dr
   }finally{window.close()}
 });
 
+test('the code font size is chosen in Settings and shared with the panel buttons',async()=>{
+  const window=boot(routesFor({local:()=>({sessions:[session('alpha')]})}));
+  try{
+  await settle();
+  const doc=window.document,pick=doc.getElementById('code_font');
+  expect(pick.value).toBe('12');
+  pick.value='16';pick.dispatchEvent(new window.Event('change'));
+  expect(doc.documentElement.style.getPropertyValue('--code-font')).toBe('16px');
+  window.eval('codeFont(1)');
+  expect(pick.value).toBe('17');
+  }finally{window.close()}
+});
+
+test('on a phone the project drawer is not modal: it stays laid out when closed and the scrim closes it',async()=>{
+  const state={local:()=>({sessions:[session('alpha')]})};
+  const routes=routesFor(state);
+  routes['/api/git/log']=()=>({repo:'/r',name:'r',branch:'main',ref:'HEAD',branches:['main'],remote:'',ahead:0,behind:0,commits:[],more:false});
+  routes['/api/git/changes']=()=>({repo:'/r',name:'r',branch:'main',skipped:0,files:[]});
+  const window=boot(routes,null,w=>{w.matchMedia=query=>({matches:/max-width/.test(query),addEventListener(){},removeEventListener(){}})});
+  try{
+  await settle();await settle();
+  const doc=window.document,box=doc.getElementById('project_dlg');
+  let modal=0;box.showModal=()=>{modal++};
+  doc.getElementById('b_project').click();await settle();
+  expect([box.open,modal,doc.body.classList.contains('project-drawer'),box.hasAttribute('aria-hidden')]).toEqual([true,0,true,false]);
+  doc.getElementById('scrim').click();
+  await new Promise(resolve=>setTimeout(resolve,350));  // The slide out (no transitionend in jsdom).
+  expect([box.open,doc.body.classList.contains('project-drawer'),box.getAttribute('aria-hidden')]).toEqual([false,false,'true']);
+  }finally{window.close()}
+});
+
 test('reopening the project panel on the same tab keeps what it showed while it checks quietly',async()=>{
   const state={local:()=>({sessions:[session('alpha')]})};
   const routes=routesFor(state);let asked=0,answer;

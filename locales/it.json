@@ -1,6 +1,8 @@
 {
   "name": "Italiano",
   "messages": {
+    "Размер шрифта кода": "Dimensione del carattere del codice",
+    "Диффы, коммиты и файлы в правой панели.": "Diff, commit e file nel pannello di destra.",
     "Галерея": "Galleria",
     "Картинок: {0}": "Immagini: {0}",
     "Картинки нет в галерее": "Questa immagine non è nella galleria",

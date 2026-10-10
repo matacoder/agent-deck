@@ -220,6 +220,8 @@ for(const item of $("sheet").querySelectorAll(".panel button"))item.setAttribute
 $("project_dlg").addEventListener("cancel",e=>{if(filesDirty()){e.preventDefault();leaveFile()}});
 $("project_dlg").addEventListener("close",projectClosed);
 // A tap beside the phone drawer (on its backdrop) closes it, like the menu on the left.
+// The phone drawer is not a modal dialog (see placeProject), so Escape is handled here.
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&document.body.classList.contains("project-drawer")){e.preventDefault();closeProject()}});
 $("project_dlg").addEventListener("click",e=>{if(e.target===e.currentTarget&&!e.currentTarget.classList.contains("docked"))closeProject()});
 addEventListener("keydown",e=>{if(e.key==="Escape"&&$("sheet").classList.contains("on"))sheet(false)});
 async function confirmAction(title,{text="",confirm=tr("Продолжить"),danger=false}={}){
@@ -1094,7 +1096,7 @@ function applyAutocorrect(){
   $("autocorrect_enabled").checked=on;
 }
 function saveAutocorrect(){try{localStore.setItem("cc.autocorrect",$("autocorrect_enabled").checked?"1":"0")}catch(e){}applyAutocorrect()}
-applyAutocorrect();
+applyAutocorrect();applyCodeFont();
 let UI_PANEL_VERSION=null;
 async function loadVersion(){
   if(versionLoading===deckEpoch)return;clearTimeout(versionTimer);

@@ -1,6 +1,8 @@
 {
   "name": "Bahasa Indonesia",
   "messages": {
+    "Размер шрифта кода": "Ukuran font kode",
+    "Диффы, коммиты и файлы в правой панели.": "Diff, commit, dan file di panel kanan.",
     "Галерея": "Galeri",
     "Картинок: {0}": "Gambar: {0}",
     "Картинки нет в галерее": "Gambar ini tidak ada di galeri",

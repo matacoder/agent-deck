@@ -1,6 +1,8 @@
 {
   "name": "Türkçe",
   "messages": {
+    "Размер шрифта кода": "Kod yazı tipi boyutu",
+    "Диффы, коммиты и файлы в правой панели.": "Sağ paneldeki diff'ler, commit'ler ve dosyalar.",
     "Галерея": "Galeri",
     "Картинок: {0}": "Görseller: {0}",
     "Картинки нет в галерее": "Bu görsel galeride yok",

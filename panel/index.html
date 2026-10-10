@@ -968,11 +968,18 @@ body.resizing iframe{pointer-events:none}
 /* Phone: the project panel is a drawer on the right, mirroring the menu on the left. */
 @media (max-width:760px),(pointer:coarse) and (max-height:500px){
   #project_dlg:not(.docked){inset:var(--app-top,0) 0 auto auto;width:min(340px,88vw);max-width:88vw;height:var(--app-h);margin:0;border:0;border-left:1px solid var(--bd);border-radius:0;box-shadow:0 0 40px rgba(0,0,0,.6)}
-  #project_dlg:not(.docked){transition:transform .22s ease}
-  #project_dlg:not(.docked)::backdrop{background:rgba(0,0,0,.5)}
+  #project_dlg:not(.docked){position:fixed;z-index:40;transition:transform .22s ease}
+  body.project-drawer #scrim{display:block;z-index:39}
+  /* Closed, it stays laid out past the edge (its shadow too), like the menu: a swipe only moves it. Showing
+     a display:none dialog, or switching an inherited property such as visibility, re-did the whole diff
+     (most of a second on a phone). */
+  #project_dlg:not(.docked):not([open]){display:block;transform:translateX(calc(100% + 48px))}
   /* Tabs at the bottom, under the thumb. */
   #project_dlg:not(.docked) #project_tabs{order:1;border-bottom:0;border-top:1px solid var(--bd);padding-bottom:calc(8px + var(--sab))}
   #project_dlg:not(.docked) .dlg-body{padding:12px}
+  /* Wide tabs across the bar; the code size lives in Settings here. */
+  #project_dlg:not(.docked) #project_tabs .git-font{display:none}
+  #project_dlg:not(.docked) #project_tabs [role=tab]{flex:1}
   /* One narrow line-number column: the new number, or the old one for a removed line. */
   .dl:not(.del) .ln.o,.dl.del .ln.n{display:none}
   .dl .ln,.files-view .ln{width:calc(var(--ln,3)*1ch + 6px);padding:0 4px 0 0;font-size:.85em;line-height:calc(1em/.85*1.45)}
@@ -1054,7 +1061,7 @@ body.resizing iframe{pointer-events:none}
     <div id="integ"></div>
     <div class="side-foot"><span id="foot"></span><span id="ver"></span><button id="b_drafts" onclick="showClosedDrafts()" style="display:none"><svg class="ui-icon"><use href="#i-file"/></svg><span>Черновики закрытых сессий</span></button><button class="settingsbtn help-side" onclick="drawer(false);openHelp()"><svg class="ui-icon"><use href="#i-help"/></svg><span>Как это работает</span></button><button class="settingsbtn" onclick="openSettings()"><svg class="ui-icon"><use href="#i-gear"/></svg><span>Настройки</span></button></div>
   </aside>
-  <div id="scrim" onclick="drawer(false)"></div>
+  <div id="scrim" onclick="if(document.body.classList.contains('project-drawer'))closeProject();else drawer(false)"></div>
   <main>
     <div class="bar">
       <button class="iconbtn m-only" style="position:relative" onclick="drawer(true)" aria-label="Сессии"><svg class="ui-icon"><use href="#i-menu"/></svg><span id="menuBadge"></span></button>
@@ -1348,7 +1355,8 @@ body.resizing iframe{pointer-events:none}
     <section id="hub_general" role="tabpanel" aria-labelledby="tab_general" hidden>
       <header class="hub-section-head"><h3>Общие</h3><p>Язык, папка проектов, версия и обновления.</p></header>
       <div class="hub-card"><h4>Этот браузер</h4><label for="ui_language">Язык интерфейса</label><select id="ui_language" onchange="saveLanguage()"></select><p class="hint">Сообщения и вывод агентов не переводятся.</p>
-        <label class="toggle"><span>Автокоррекция в поле сообщения</span><input type="checkbox" role="switch" id="autocorrect_enabled" onchange="saveAutocorrect()"></label><p class="hint">Выключена по умолчанию: iOS заменяет -- и кавычки, а агенту нужны точные символы.</p></div>
+        <label class="toggle"><span>Автокоррекция в поле сообщения</span><input type="checkbox" role="switch" id="autocorrect_enabled" onchange="saveAutocorrect()"></label><p class="hint">Выключена по умолчанию: iOS заменяет -- и кавычки, а агенту нужны точные символы.</p>
+        <label for="code_font">Размер шрифта кода</label><select id="code_font" onchange="setCodeFont(+this.value)"></select><p class="hint">Диффы, коммиты и файлы в правой панели.</p></div>
       <form class="hub-card" onsubmit="event.preventDefault();saveProjectDirectory()"><h4>Новые сессии</h4><label for="project_directory">Папка проектов</label><input type="text" id="project_directory" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="done" required><p class="hint">Используется для новых сессий. Существующие сессии остаются в своих папках.</p><div class="acts"><button class="pri" id="project_directory_save">Сохранить</button></div></form>
       <div class="hub-card" data-card="version">
         <div class="card-top"><span class="card-icon" aria-hidden="true"><svg class="ui-icon"><use href="#i-download"/></svg></span><div class="card-main"><h4>Версия и обновления</h4><p id="version_status" class="card-status" role="status"></p><p id="version_meta" class="card-meta"></p></div></div>
@@ -2599,9 +2607,17 @@ const STATUS_MARK={added:"A",deleted:"D",renamed:"R",modified:"M"};
 // One code size for diffs and commit messages, kept in this browser.
 const CODE_FONT={min:9,max:20,fallback:12};
 function codeFontSize(){const saved=+localStore.getItem("cc.code-font");return saved>=CODE_FONT.min&&saved<=CODE_FONT.max?saved:CODE_FONT.fallback}
-function applyCodeFont(){document.documentElement.style.setProperty("--code-font",codeFontSize()+"px")}
-function codeFont(step){
-  const size=Math.min(CODE_FONT.max,Math.max(CODE_FONT.min,codeFontSize()+step));
+function applyCodeFont(){
+  document.documentElement.style.setProperty("--code-font",codeFontSize()+"px");
+  // The same size in Settings, where a phone changes it (its project drawer has no room for A−/A+).
+  const pick=typeof document!=="undefined"&&document.getElementById("code_font");
+  if(!pick)return;
+  if(!pick.options.length)for(let n=CODE_FONT.min;n<=CODE_FONT.max;n++)pick.append(new Option(n+" px",String(n)));
+  pick.value=String(codeFontSize());
+}
+function codeFont(step){setCodeFont(codeFontSize()+step)}
+function setCodeFont(size){
+  size=Math.min(CODE_FONT.max,Math.max(CODE_FONT.min,size));
   try{localStore.setItem("cc.code-font",String(size))}catch(e){}
   applyCodeFont();
 }
@@ -2952,12 +2968,13 @@ function quietProject(){
 }
 // The phone drawer slides in and out like the menu on the left; elsewhere the panel just appears.
 const PROJECT_DRAWER="(max-width:760px),(pointer:coarse) and (max-height:500px)";
+function projectDrawer(){return !projectDocked()&&typeof matchMedia==="function"&&matchMedia(PROJECT_DRAWER).matches}
 function projectSlides(box){
-  return !box.classList.contains("docked")&&typeof matchMedia==="function"&&matchMedia(PROJECT_DRAWER).matches&&!matchMedia("(prefers-reduced-motion:reduce)").matches;
+  return !box.classList.contains("docked")&&projectDrawer()&&!matchMedia("(prefers-reduced-motion:reduce)").matches;
 }
-function slideProject(box,inward){
-  if(inward){box.style.transition="none";box.style.transform="translateX(100%)";box.getBoundingClientRect();box.style.transition="";box.style.transform="";return}
-  box.style.transform="translateX(100%)";
+// In: closed, the drawer already waits past the edge (style.css), so showing it is the slide.
+function slideProject(box){
+  box.style.transform="translateX(calc(100% + 48px))";
   return new Promise(done=>{
     const end=()=>{clearTimeout(timer);box.removeEventListener("transitionend",end);done()};
     const timer=setTimeout(end,300);box.addEventListener("transitionend",end);
@@ -2992,8 +3009,13 @@ function placeProject(open){
   if(box.open&&box.classList.contains("docked")!==docked){project.moving=true;box.close();project.moving=false;open=true}
   if(!open||box.open)return;
   applyCodeFont();box.classList.toggle("docked",docked);
-  if(docked)box.open=true;  // Not modal: the terminal and the message field stay usable beside it.
-  else{box.showModal();if(projectSlides(box))slideProject(box,true)}
+  // Not modal: docked, the terminal and the message field stay usable beside it; as the phone drawer, the
+  // top layer a modal dialog enters re-lays out the whole diff (most of a second) on every swipe.
+  const drawer=!docked&&projectDrawer();
+  document.body.classList.toggle("project-drawer",drawer);
+  box.removeAttribute("aria-hidden");
+  if(docked||drawer)box.open=true;
+  else box.showModal();
 }
 // Called after every session or layout change: a wide screen restores the remembered sidebar.
 function syncProject(){
@@ -3011,11 +3033,16 @@ async function closeProject(){
   if(filesDirty()&&!await leaveFile())return;
   if(projectDocked())rememberProject("");
   const box=$("project_dlg");
-  if(box.open&&projectSlides(box))await slideProject(box,false);
+  if(box.open&&projectSlides(box))await slideProject(box);
   box.close();box.style.transform="";
 }
 // Closed by hand (not moved between layouts): stop polling and free a previewed file's blob.
 function projectClosed(){
+  // Closed, the phone drawer stays in the page past the edge: hidden from screen readers and focus. Not
+  // inert: that re-styles the whole diff, as slow as the re-layout this avoids.
+  const box=$("project_dlg");
+  if(document.body.classList.contains("project-drawer")){box.setAttribute("aria-hidden","true");if(box.contains(document.activeElement))document.activeElement.blur()}
+  document.body.classList.remove("project-drawer");
   if(project.moving)return;
   clearTimeout(hist.timer);clearTimeout(gallery.timer);dropPreview();files.file=null;markProjectTab();
 }
@@ -4086,6 +4113,8 @@ for(const item of $("sheet").querySelectorAll(".panel button"))item.setAttribute
 $("project_dlg").addEventListener("cancel",e=>{if(filesDirty()){e.preventDefault();leaveFile()}});
 $("project_dlg").addEventListener("close",projectClosed);
 // A tap beside the phone drawer (on its backdrop) closes it, like the menu on the left.
+// The phone drawer is not a modal dialog (see placeProject), so Escape is handled here.
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&document.body.classList.contains("project-drawer")){e.preventDefault();closeProject()}});
 $("project_dlg").addEventListener("click",e=>{if(e.target===e.currentTarget&&!e.currentTarget.classList.contains("docked"))closeProject()});
 addEventListener("keydown",e=>{if(e.key==="Escape"&&$("sheet").classList.contains("on"))sheet(false)});
 async function confirmAction(title,{text="",confirm=tr("Продолжить"),danger=false}={}){
@@ -4960,7 +4989,7 @@ function applyAutocorrect(){
   $("autocorrect_enabled").checked=on;
 }
 function saveAutocorrect(){try{localStore.setItem("cc.autocorrect",$("autocorrect_enabled").checked?"1":"0")}catch(e){}applyAutocorrect()}
-applyAutocorrect();
+applyAutocorrect();applyCodeFont();
 let UI_PANEL_VERSION=null;
 async function loadVersion(){
   if(versionLoading===deckEpoch)return;clearTimeout(versionTimer);

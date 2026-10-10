@@ -957,11 +957,18 @@ body.resizing iframe{pointer-events:none}
 /* Phone: the project panel is a drawer on the right, mirroring the menu on the left. */
 @media (max-width:760px),(pointer:coarse) and (max-height:500px){
   #project_dlg:not(.docked){inset:var(--app-top,0) 0 auto auto;width:min(340px,88vw);max-width:88vw;height:var(--app-h);margin:0;border:0;border-left:1px solid var(--bd);border-radius:0;box-shadow:0 0 40px rgba(0,0,0,.6)}
-  #project_dlg:not(.docked){transition:transform .22s ease}
-  #project_dlg:not(.docked)::backdrop{background:rgba(0,0,0,.5)}
+  #project_dlg:not(.docked){position:fixed;z-index:40;transition:transform .22s ease}
+  body.project-drawer #scrim{display:block;z-index:39}
+  /* Closed, it stays laid out past the edge (its shadow too), like the menu: a swipe only moves it. Showing
+     a display:none dialog, or switching an inherited property such as visibility, re-did the whole diff
+     (most of a second on a phone). */
+  #project_dlg:not(.docked):not([open]){display:block;transform:translateX(calc(100% + 48px))}
   /* Tabs at the bottom, under the thumb. */
   #project_dlg:not(.docked) #project_tabs{order:1;border-bottom:0;border-top:1px solid var(--bd);padding-bottom:calc(8px + var(--sab))}
   #project_dlg:not(.docked) .dlg-body{padding:12px}
+  /* Wide tabs across the bar; the code size lives in Settings here. */
+  #project_dlg:not(.docked) #project_tabs .git-font{display:none}
+  #project_dlg:not(.docked) #project_tabs [role=tab]{flex:1}
   /* One narrow line-number column: the new number, or the old one for a removed line. */
   .dl:not(.del) .ln.o,.dl.del .ln.n{display:none}
   .dl .ln,.files-view .ln{width:calc(var(--ln,3)*1ch + 6px);padding:0 4px 0 0;font-size:.85em;line-height:calc(1em/.85*1.45)}
