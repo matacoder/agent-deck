@@ -2,6 +2,11 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.34.0 — 2026-10-10
+
+- Session strip: under the session bar a quiet one-line summary of what the conversation is about (tap for a few sentences and when it was written); at the bottom, where the session tabs were, how full the context is (green, orange from 80k tokens, red from 160k; Codex also against its window) next to **new conversation** and **restart** icons. Read from the agent's own conversation file (Claude Code, also on Kimi or LM Studio, and Codex); the summary is written by a model of the same provider as the session, at most every 5 minutes while the session is open. New endpoint `/api/session_info`.
+- The bottom row of session tabs is gone; sessions and **Waiting for you** are in the menu.
+
 ## 1.33.1 — 2026-10-10
 
 - The phone project drawer no longer blinks or jumps back when a swipe lets go (half way or at the end) and slides in when opened with its button: the fade-in all dialogs share also moved it and restarted on every release, overriding the slide.

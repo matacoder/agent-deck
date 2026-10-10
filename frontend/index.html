@@ -76,6 +76,7 @@ __PANEL_STYLE__</style></head><body>
       <div id="search_pop" class="search-pop" hidden><div id="search_body" role="region" aria-label="Поиск в выводе"></div></div>
       <button class="iconbtn" id="b_project" onclick="toggleProject(PROJECT_TABS)" aria-pressed="false" aria-label="Скрыть или показать панель проекта" title="Скрыть или показать панель проекта"><svg class="ui-icon"><use href="#i-sidebar-right"/></svg></button>
     </div>
+    <div id="session_hint" class="session-hint" hidden><button type="button" id="hint_toggle" onclick="toggleSummary()" aria-expanded="false" aria-controls="hint_more"><span id="hint_line"></span><svg class="ui-icon"><use href="#i-chevron-down"/></svg></button><div id="hint_more" hidden><p id="hint_text"></p><p id="hint_meta"></p></div></div>
     <div id="stage">
       <div id="conn" class="conn" role="status" aria-live="polite" hidden></div>
       <div id="drop_zone" class="drop-zone" hidden><div class="drop-card"><svg class="ui-icon"><use href="#i-paperclip"/></svg><b id="drop_title"></b><span>До 4 файлов, до 200 МБ каждый</span></div></div>
@@ -122,7 +123,7 @@ __PANEL_STYLE__</style></head><body>
       </div>
     </div>
     <div id="terminal_keys" hidden></div>
-    <nav id="quick_tabs" aria-label="Быстрое переключение сессий"></nav>
+    <div id="session_meta" class="session-meta" hidden><span class="ctx" id="ctx" role="img"><span class="ctx-bar"><i id="ctx_fill"></i></span><span id="ctx_text"></span></span><button type="button" class="iconbtn" onclick="restart('new')" aria-label="Перезапустить — новый разговор" title="Перезапустить — новый разговор"><svg class="ui-icon"><use href="#i-chat-plus"/></svg></button><button type="button" class="iconbtn" onclick="restart('continue')" aria-label="Перезапустить — продолжить разговор" title="Перезапустить — продолжить разговор"><svg class="ui-icon"><use href="#i-restart"/></svg></button></div>
   </main>
   <dialog id="help_dlg"><div class="dlg"><div class="hub-heading"><h3 tabindex="-1" autofocus>Как это работает</h3><button type="button" onclick="$('help_dlg').close()" aria-label="Закрыть"><svg class="ui-icon"><use href="#i-x"/></svg></button></div><div class="dlg-body">
     <div class="arch-scroll"><svg class="arch-map" viewBox="0 0 960 610" role="img" aria-label="Как это работает">

@@ -12,6 +12,7 @@ Self-hosted panel (Python stdlib + static JS) for tmux sessions running Claude C
 - `panel/updater.py`: update job, release validation (syntax + imports), rollback. `PACKAGES` lists every `integrations/*.py`.
 - `panel/session_hook.py`, `claude/*`: conversation-id hooks; nested agents must not overwrite `@cc_sid`.
 - `integrations/git.py`: read-only history and diffs. `integrations/feature_groups.py`: background, incremental feature groups per repository (subjects, authors, file names only); models in order Haiku via `claude -p --tools ""`, Codex Luna via `codex exec -s read-only --ignore-user-config`, both in an empty folder on the subscription, then Kimi, then LM Studio (`reasoning_effort: none`).
+- `integrations/session_info.py`: context size and a summary per session from the agent's own conversation file (tail only); the summary model is always the session's own provider (`summary_model` in `panel.py`), never a fallback to another.
 - `integrations/gallery.py`: per-session copies of pictures shown on screen (same rule as `/api/image`), served by `/api/gallery*` and as the `/api/image` fallback.
 - `integrations/files.py`: file browser; home only, never `~/.config/cc-panel`, atomic hash-checked saves.
 - `integrations/`: `telegram.py` + `store.py` (claim-before-input outbox, never delete foreign webhooks), `questions.py`, `gateway.py` (parallel deck polling, `get_json`), `backups.py`, `usage.py`, `lmstudio.py`, `relay.py`, `push.py`/`webpush.py`, `images.py`, `dependencies.py`.

@@ -1,6 +1,13 @@
 {
   "name": "Türkçe",
   "messages": {
+    "Составляю пересказ…": "Özet yazılıyor…",
+    "Пересказ: {0} · {1}": "Özet: {0} · {1}",
+    "Контекст {0}": "Bağlam {0}",
+    "Контекст: нет данных": "Bağlam: veri yok",
+    "Разговор свежий": "Konuşma taze",
+    "Разговор разросся: агент начинает хуже держать детали": "Konuşma büyüdü: ajan ayrıntıları kaçırmaya başlıyor",
+    "Пора начать новый разговор: контекст переполнен": "Yeni bir konuşma zamanı: bağlam aşırı dolu",
     "Размер шрифта кода": "Kod yazı tipi boyutu",
     "Диффы, коммиты и файлы в правой панели.": "Sağ paneldeki diff'ler, commit'ler ve dosyalar.",
     "Галерея": "Galeri",

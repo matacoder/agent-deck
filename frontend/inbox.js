@@ -32,7 +32,7 @@ function openInboxSession(deck,session){
   if((deck||"")!==selectedDeck)openDeckSession(deck||"",session);else select(session);
 }
 function renderInbox(){
-  renderInboxBadge();renderQuickTabs();
+  renderInboxBadge();
   if(!$("inbox_dlg").open)return;
   const list=$("inbox_list"),items=inboxItems(inbox.questions,finishedSessions());
   if(list.querySelector(".q-text textarea:focus"))return;  // Do not wipe a half-typed answer.

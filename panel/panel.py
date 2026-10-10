@@ -1743,6 +1743,66 @@ def gallery():
         return _gallery
 
 
+_summaries = None
+_session_reads = {}
+_session_reads_lock = threading.Lock()
+
+
+def summaries():
+    global _summaries
+    from integrations.session_info import Summaries
+    with _gallery_lock:
+        if _summaries is None:
+            _summaries = Summaries(os.path.expanduser("~/.cache/agent-deck/summaries"))
+        return _summaries
+
+
+def summary_model(name, agent):
+    """A model of the provider this session already talks to, so its conversation goes nowhere new; None
+    when that provider cannot be asked (not logged in, no key, the local model is gone)."""
+    from integrations.feature_groups import cli_model
+    try:
+        source = json.loads(opt(name, "@cc_source") or "null")
+    except ValueError:
+        source = None
+    kind = source.get("kind") if isinstance(source, dict) else ""
+    try:
+        if kind == "lmstudio":
+            return grouping_model(f"lmstudio:{source.get('profile')}:{source.get('model')}")
+        if kind == "kimi" or agent == "claude-kimi":
+            return grouping_model("kimi")
+    except (ValueError, OSError, KeyError, TypeError):
+        return None
+    cli = "codex" if agent == "codex" else "claude"
+    return cli_model(cli) if agent_status(cli)["logged_in"] else None
+
+
+def session_info(name, language):
+    """How full the open conversation is and its summary; parsed again only when the file changed."""
+    from integrations.session_info import context, dialogue, tail_records
+    agent = opt(name, "@cc_agent") or "claude"
+    sid = opt(name, "@cc_sid")
+    if agent not in ("claude", "claude-kimi", "codex") or not valid_sid(sid):
+        return {"supported": False}
+    kind = "codex" if agent == "codex" else "claude"
+    path = transcript_path(agent, sid)
+    if not path:
+        return {"supported": True, "context": None, "summary": None}
+    stat = path.stat()
+    stamp = (stat.st_mtime_ns, stat.st_size)
+    with _session_reads_lock:
+        cached = _session_reads.get(path)
+    if not cached or cached[0] != stamp:
+        records = tail_records(path)
+        cached = (stamp, context(kind, records), dialogue(kind, records))
+        with _session_reads_lock:
+            if len(_session_reads) > 200:
+                _session_reads.clear()
+            _session_reads[path] = cached
+    summary = summaries().get(sid, language, stat.st_size, cached[2], lambda: summary_model(name, agent))
+    return {"supported": True, "context": cached[1], "summary": summary}
+
+
 def gallery_loop():
     """Keeps every picture a session shows: screens are read again only after they changed."""
     seen, expire_at = {}, 0
@@ -2231,6 +2291,14 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_json(200, {"sessions": list_sessions(preview_name)})
         if parsed.path == "/api/image":
             return self.serve_session_image(parse_qs(parsed.query))
+        if parsed.path == "/api/session_info":
+            name = parse_qs(parsed.query).get("name", [""])[0]
+            if not NAME_RE.fullmatch(name) or not session_exists(name):
+                return self.send_json(404, {"error": "сессия не найдена"})
+            try:
+                return self.send_json(200, session_info(name, self.language()))
+            except (OSError, ValueError) as error:
+                return self.send_json(500, {"error": f"Не удалось прочитать разговор сессии: {type(error).__name__}"})
         if parsed.path == "/api/gallery":
             try:
                 return self.send_json(200, {"items": gallery().items(parse_qs(parsed.query).get("name", [""])[0])})

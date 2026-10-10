@@ -296,6 +296,31 @@ test('a tapped line of an uncommitted change becomes a comment in the session dr
   }finally{window.close()}
 });
 
+test('the session strip shows a quiet summary under the bar and the context with restarts at the bottom',async()=>{
+  const state={local:()=>({sessions:[session('alpha'),session('beta')]})};
+  const routes=routesFor(state),asked=[];
+  routes['/api/session_info']=url=>{const name=url.searchParams.get('name');asked.push(name);
+    return name==='alpha'?{supported:true,context:{tokens:171390,window:258400,level:'full'},summary:{line:'Payments webhook',text:'Moving payments to Stripe.',at:Math.floor(Date.now()/1000)-120,model:'Claude Haiku',updating:false}}:{supported:false}};
+  const window=boot(routes);
+  try{
+  await settle();await settle();
+  const doc=window.document,$=id=>doc.getElementById(id);
+  expect(asked).toContain('alpha');
+  expect([$('session_hint').hidden,$('session_meta').hidden]).toEqual([false,false]);
+  expect($('hint_line').textContent).toBe('Payments webhook');
+  expect($('hint_more').hidden).toBe(true);
+  expect($('ctx_text').textContent).toBe('Контекст 171k / 258k');
+  expect($('ctx').dataset.level).toBe('full');
+  expect($('ctx_fill').style.width).toBe('66%');
+  $('hint_toggle').click();
+  expect([$('hint_more').hidden,$('hint_text').textContent,$('hint_toggle').getAttribute('aria-expanded')]).toEqual([false,'Moving payments to Stripe.','true']);
+  expect($('hint_meta').textContent).toMatch(/^Пересказ: Claude Haiku · /);
+  window.eval('select("beta")');await settle();await settle();
+  // A shell, another agent or an older computer: nothing to show.
+  expect([$('session_hint').hidden,$('session_meta').hidden]).toEqual([true,true]);
+  }finally{window.close()}
+});
+
 test('the code font size is chosen in Settings and shared with the panel buttons',async()=>{
   const window=boot(routesFor({local:()=>({sessions:[session('alpha')]})}));
   try{

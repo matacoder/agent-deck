@@ -83,7 +83,7 @@ The **?** next to the search field in the session bar shows the same picture ins
 - Claude / Codex subscription limits with a pace forecast; Kimi usage windows and reset times.
 - Under the message field: the running agent and model (including after `/model`), remaining quota and today's plan, so limits stay visible on phones.
 - Server CPU/RAM indicators beside the message composer.
-- Phone friendly (tuned for large iPhones, portrait and landscape): home-screen app, one-tap answers to agent questions, quick session tabs with long-press actions, and file attachments up to 200 MB with upload progress.
+- Phone friendly (tuned for large iPhones, portrait and landscape): home-screen app, one-tap answers to agent questions, a summary of each conversation and how full its context is, and file attachments up to 200 MB with upload progress.
 - One Settings hub: agents, notifications (devices and Telegram), local models, other computers, backups and general preferences, with a getting-started checklist.
 - LM Studio profiles: discover known Tailscale nodes or add a custom address, port and API key.
 - Local models in Claude Code, with session speed/TTFT measurements and a separate benchmark; no subscription quotas.
@@ -341,15 +341,27 @@ from the icon. It runs full screen, keeps drafts and supports one-tap answers to
 
 **Android.** Open the panel in Chrome, tap **⋮ → Add to Home screen** (or **Install app**).
 
-Quick tabs at the bottom show this computer's sessions, then sessions of connected computers, and
-start with **Waiting for you** when something needs an answer. Files are uploaded as a raw stream with
+Sessions are in the menu (☰); its badge counts what is waiting for you. Under the session bar a quiet line
+says what the conversation is about (tap it for a few sentences); at the bottom a short bar shows how full
+the context is, next to **new conversation** and **restart** buttons. Files are uploaded as a raw stream with
 progress, so a large video does not have to fit into the phone's browser memory twice.
+
+## Session summary and context
+
+For Claude Code (also on Kimi or LM Studio) and Codex sessions the panel reads the agent's own conversation
+file. The bar at the bottom shows how many tokens the latest request carried: green while the conversation
+is fresh, orange from 80k (the agent starts losing details), red from 160k (time for a new conversation);
+Codex also shows its context window. The summary under the session bar is written by a model of the same
+provider as the session, so the conversation goes nowhere new: Claude Haiku for Claude on the subscription,
+Codex's light model for Codex, Kimi for Claude on Kimi, the same local model for LM Studio. It is rewritten
+in the background at most every 5 minutes, only while the session is open and only after it changed, and
+kept in `~/.cache/agent-deck/summaries/`.
 
 ## Waiting for you
 
 <img src="docs/screenshots/mobile-inbox.png" width="300" alt="Waiting for you: agent questions from two computers with answer buttons">
 
-The **Waiting for you** button in the sidebar (and the first quick tab on a phone) lists every agent
+The **Waiting for you** button in the sidebar lists every agent
 question and every session that finished work, on all connected computers. Answer a question with one
 tap right there; options such as *Other* or *Type something* open a text field and send your own answer.
 Tap a session name to open it, on the right computer.

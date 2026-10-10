@@ -1,6 +1,13 @@
 {
   "name": "Bahasa Indonesia",
   "messages": {
+    "Составляю пересказ…": "Menulis ringkasan…",
+    "Пересказ: {0} · {1}": "Ringkasan: {0} · {1}",
+    "Контекст {0}": "Konteks {0}",
+    "Контекст: нет данных": "Konteks: tidak ada data",
+    "Разговор свежий": "Percakapan masih segar",
+    "Разговор разросся: агент начинает хуже держать детали": "Percakapan sudah membesar: agen mulai kehilangan detail",
+    "Пора начать новый разговор: контекст переполнен": "Saatnya percakapan baru: konteks terlalu penuh",
     "Размер шрифта кода": "Ukuran font kode",
     "Диффы, коммиты и файлы в правой панели.": "Diff, commit, dan file di panel kanan.",
     "Галерея": "Galeri",

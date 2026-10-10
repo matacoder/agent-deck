@@ -437,6 +437,42 @@ class RemoteDeckTests(PanelCase):
             handler.get_request()
             handler.send_image.assert_not_called();self.assertEqual(handler.send_json.call_args.args[0],400)
 
+    def test_session_info_reads_the_conversation_and_summarizes_with_the_sessions_own_provider(self):
+        import json,tempfile
+        from pathlib import Path
+        from integrations.session_info import Summaries
+        tmp=tempfile.TemporaryDirectory(dir='/tmp');self.addCleanup(tmp.cleanup)
+        transcript=Path(tmp.name)/'t.jsonl'
+        transcript.write_text(json.dumps({'type':'user','message':{'role':'user','content':'Fix payments'}})+'\n'+
+                              json.dumps({'type':'assistant','message':{'role':'assistant','content':[{'type':'text','text':'On it'}],'usage':{'input_tokens':170000}}})+'\n')
+        options={'@cc_agent':'claude','@cc_sid':'2dafd88e-8570-4bee-a975-471fca0133ec','@cc_source':''}
+        jobs=[];store=Summaries(Path(tmp.name)/'s',start=jobs.append)
+        chosen=[]
+        def grouping(choice):chosen.append(choice);return {'label':choice,'complete':lambda prompt:'{"line":"Payments","text":"Fixing."}'}
+        def cli(name):chosen.append(name);return {'label':name,'complete':lambda prompt:'{"line":"Payments","text":"Fixing."}'}
+        import integrations.feature_groups as groups
+        with patch.object(self.panel,'session_exists',return_value=True),patch.object(self.panel,'opt',side_effect=lambda name,key:options[key]),\
+             patch.object(self.panel,'transcript_path',return_value=transcript),patch.object(self.panel,'summaries',return_value=store),\
+             patch.object(self.panel,'grouping_model',side_effect=grouping),patch.object(groups,'cli_model',side_effect=cli),\
+             patch.object(self.panel,'agent_status',return_value={'logged_in':True}):
+            handler=self.handler();handler.path='/api/session_info?name=demo';handler.get_request()
+            data=handler.send_json.call_args.args[1]
+            self.assertEqual((data['context']['tokens'],data['context']['level'],data['summary']['updating']),(170000,'full',True))
+            jobs.pop()()
+            handler=self.handler();handler.path='/api/session_info?name=demo';handler.get_request()
+            self.assertEqual(handler.send_json.call_args.args[1]['summary']['line'],'Payments')
+            # A session on a local model is summarized by that model, never sent to a cloud one.
+            options['@cc_source']=json.dumps({'kind':'lmstudio','profile':'p1','model':'qwen'})
+            self.assertEqual(self.panel.summary_model('demo','claude')['label'],'lmstudio:p1:qwen')
+            options['@cc_source']=json.dumps({'kind':'kimi'})
+            self.assertEqual(self.panel.summary_model('demo','claude')['label'],'kimi')
+            options['@cc_source']=''
+            self.assertEqual(self.panel.summary_model('demo','codex')['label'],'codex')
+            self.assertEqual(chosen,['claude','lmstudio:p1:qwen','kimi','codex'])
+            options['@cc_agent']='shell'
+            handler=self.handler();handler.path='/api/session_info?name=demo';handler.get_request()
+            self.assertEqual(handler.send_json.call_args.args[1],{'supported':False})
+
     def test_gateway_passes_raster_images_only_from_the_image_endpoint(self):
         service=self.enterContext(patch.object(self.panel,'remote_decks'))
         png=b'\x89PNG\r\n\x1a\n'+b'x'*10

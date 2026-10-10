@@ -230,82 +230,12 @@ async function confirmAction(title,{text="",confirm=tr("Продолжить"),d
 const cur=()=>sessions.find(x=>x.name===active);
 const messageDrafts=new Map();
 const closedDrafts=new Map();
-let quickSignature=null,quickActive=null;
-const quickRemote=new Map();
-const quickButtons=new Map();
-function renderQuickTabs(){
-  const others=otherDecks.filter(d=>d.id!==selectedDeck),waiting=inboxCount();
-  const box=$("quick_tabs"),signature=JSON.stringify([sessions.map(s=>[s.name,s.title,agentOf(s)]),others.map(d=>[d.id,d.sessions.map(s=>[s.name,s.title,agentOf(s)])]),waiting>0]);
-  if(signature!==quickSignature){
-    const left=box.scrollLeft;box.replaceChildren();quickButtons.clear();quickRemote.clear();
-    // What waits for you comes first, under the thumb.
-    if(waiting){
-      const pill=el("button","quick-tab quick-inbox",svgIcon("inbox"),el("span","label",tr("Ждут ответа")),el("b","quick-count",String(waiting)));
-      pill.type="button";pill.onclick=openInbox;box.append(pill);
-    }
-    for(const s of sessions){
-      const button=el("button","quick-tab",el("span","dot"),agentIcon(s),el("span","label",sessionTitle(s)),el("span","bell"));
-      button.type="button";button.setAttribute("aria-label",tr("Открыть сессию ")+sessionTitle(s));
-      onLongPress(button,()=>{select(s.name);sheet(true)});
-      button.addEventListener("click",e=>{if(button.dataset.longPress){delete button.dataset.longPress;e.preventDefault();return}select(s.name)});
-      box.append(button);quickButtons.set(s.name,button);
-    }
-    for(const deck of others)for(const s of deck.sessions){
-      const button=el("button","quick-tab quick-remote",el("span","dot "+state(s)),agentIcon(s),el("span","label",sessionTitle(s)),el("span","quick-machine",deck.name),el("span","bell"));
-      button.type="button";button.title=deck.name+" · "+sessionTitle(s);
-      button.onclick=()=>openDeckSession(deck.id,s.name);box.append(button);quickRemote.set(deck.id+"/"+s.name,{button,deck,s});
-    }
-    if(sessions.length){
-      const add=el("button","quick-tab quick-new",svgIcon("plus"));add.type="button";
-      add.setAttribute("aria-label",tr("Новая сессия"));add.onclick=openNew;box.append(add);
-    }
-    box.scrollLeft=left;quickSignature=signature;
-  }
-  box.classList.toggle("more-right",box.scrollLeft+box.clientWidth<box.scrollWidth-4);
-  document.body.classList.toggle("has-quick-tabs",sessions.length>0);
-  for(const s of sessions){
-    const button=quickButtons.get(s.name);button.classList.toggle("on",s.name===active);
-    button.setAttribute("aria-pressed",String(s.name===active));button.title=sessionTitle(s)+" · "+stateText(s);
-    button.children[0].className="dot "+state(s);button.children[3].style.display=attention.has(s.name)?"":"none";
-  }
-  for(const [key,{button,deck,s:known}] of quickRemote){
-    // The tab keeps the session from its last rebuild; states change without a rebuild.
-    const s=others.find(d=>d.id===deck.id)?.sessions.find(x=>x.name===known.name)||known;
-    button.children[0].className="dot "+state(s);button.children[4].style.display=otherAttention.has(key)?"":"none"}
-  const count=box.querySelector(".quick-count");if(count)count.textContent=waiting;
-  if(active!==quickActive&&isMobile()){
-    const safelySelected=active,button=quickButtons.get(active);
-    if(button)requestAnimationFrame(()=>{
-      if(active!==safelySelected||!button.isConnected)return;
-      const left=button.offsetLeft,right=left+button.offsetWidth;
-      if(left<box.scrollLeft)box.scrollTo({left:Math.max(0,left-8),behavior:"smooth"});
-      else if(right>box.scrollLeft+box.clientWidth)box.scrollTo({left:right-box.clientWidth+8,behavior:"smooth"});
-    });
-  }
-  quickActive=active;
-}
-$("quick_tabs").addEventListener("scroll",e=>{const box=e.target;box.classList.toggle("more-right",box.scrollLeft+box.clientWidth<box.scrollWidth-4)},{passive:true});
-// Session actions are under the thumb: long-press a quick tab instead of reaching for "⋯" at the top.
-function onLongPress(node,run){
-  let timer=null,start=null;
-  const cancel=()=>{clearTimeout(timer);timer=null};
-  node.addEventListener("pointerdown",e=>{
-    if(e.pointerType==="mouse")return;
-    start=[e.clientX,e.clientY];cancel();
-    timer=setTimeout(()=>{timer=null;node.dataset.longPress="1";navigator.vibrate?.(10);run()},500);
-  });
-  node.addEventListener("pointermove",e=>{if(timer&&start&&Math.hypot(e.clientX-start[0],e.clientY-start[1])>10)cancel()});
-  for(const type of ["pointerup","pointercancel","pointerleave"])node.addEventListener(type,cancel);
-  node.addEventListener("contextmenu",e=>e.preventDefault());
-}
-
 // A pending question is the state that needs you most, so the list says so, not only the inbox count.
 function waitingFor(deck,name){
   if((deck||"")===selectedDeck&&name===active&&question.data)return true;
   return inbox.questions.some(q=>(q.deck||"")===(deck||"")&&q.session===name);
 }
 function renderTabs(){
-  renderQuickTabs();
   const q=$("q").value.trim().toLowerCase(),view=$("tabs"),box=document.createElement("div");
   // Built on every poll but swapped in only when it differs, so focus, hover tooltips and the
   // screen-reader position survive; on a swap, keyboard focus stays on the same session row.
@@ -393,6 +323,7 @@ function frameFor(name){
   return f;
 }
 function show(){
+  watchSessionInfo();
   const s=cur(),m=curMode();
   $("empty").style.display=s?"none":"grid";
   if(!s){$("empty_text").textContent=load.done?tr("Сессий пока нет"):tr("Загружаю сессии…");$("empty_new").hidden=!load.done}
@@ -1063,7 +994,7 @@ function resetInstanceState(known){
   for(const key of [...otherAttention,...otherBusy.keys()])if(key.startsWith(selectedDeck+"/")){otherAttention.delete(key);otherBusy.delete(key)}
   for(const frame of frames.values())frame.remove();
   frames.clear();wasBusy.clear();attention.clear();previewCache.clear();sendStates.clear();
-  sessions=known;quickSignature=null;quickActive=null;
+  sessions=known;
   question={name:null,data:null,expanded:false,busy:null,textIndex:null};loadingQuestion=false;
   loadingSessions=null;queuedSessions=null;sessionsQueued=false;load.done=false;
   lastAg={};usageData={};ghLogin=null;lastGh=0;repos=[];integReady.usage=integReady.lm=false;

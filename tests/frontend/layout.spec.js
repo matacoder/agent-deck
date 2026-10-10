@@ -1,9 +1,9 @@
 const { test, expect } = require('./fixtures');
 
 for (const width of [320, 390]) {
-  test(`portrait ${width}px keeps header, input and session tabs inside the viewport`, async ({ app, page }) => {
+  test(`portrait ${width}px keeps header and input inside the viewport`, async ({ app, page }) => {
     await app.open({ width });
-    for (const selector of ['main > .bar', '#msg', '#b_send', '#quick_tabs']) {
+    for (const selector of ['main > .bar', '#msg', '#b_send']) {
       const bounds = await page.locator(selector).boundingBox();
       expect(bounds, selector).not.toBeNull();
       expect(bounds.x, selector).toBeGreaterThanOrEqual(-1);
@@ -11,8 +11,6 @@ for (const width of [320, 390]) {
       expect(bounds.y, selector).toBeGreaterThanOrEqual(0);
       expect(bounds.y + bounds.height, selector).toBeLessThanOrEqual(845);
     }
-    const gap = await page.locator('#quick_tabs').evaluate(el => innerHeight - el.getBoundingClientRect().bottom);
-    expect(gap).toBeLessThanOrEqual(1);
     expect(await page.locator('main > .bar').evaluate(el => getComputedStyle(el).backdropFilter)).toBe('none');
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(width);
   });
@@ -64,7 +62,6 @@ test('compact quotas show remaining and plan without affecting the header', asyn
 test('desktop layout keeps sidebar visible and Enter sends', async ({ app, page }) => {
   await app.open({ width: 1280, height: 800 });
   await expect(page.locator('aside')).toBeVisible();
-  await expect(page.locator('#quick_tabs')).toBeHidden();
   await page.locator('#msg').fill('Desktop message');
   await page.locator('#msg').press('Enter');
   await expect(page.locator('#send_state')).toContainText('Отправлено');

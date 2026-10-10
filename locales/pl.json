@@ -1,6 +1,13 @@
 {
   "name": "Polski",
   "messages": {
+    "Составляю пересказ…": "Piszę podsumowanie…",
+    "Пересказ: {0} · {1}": "Podsumowanie: {0} · {1}",
+    "Контекст {0}": "Kontekst {0}",
+    "Контекст: нет данных": "Kontekst: brak danych",
+    "Разговор свежий": "Rozmowa jest świeża",
+    "Разговор разросся: агент начинает хуже держать детали": "Rozmowa się rozrosła: agent zaczyna gubić szczegóły",
+    "Пора начать новый разговор: контекст переполнен": "Czas na nową rozmowę: kontekst jest przeciążony",
     "Размер шрифта кода": "Rozmiar czcionki kodu",
     "Диффы, коммиты и файлы в правой панели.": "Diffy, commity i pliki w prawym panelu.",
     "Галерея": "Galeria",
