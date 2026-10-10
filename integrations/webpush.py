@@ -120,11 +120,18 @@ self.addEventListener('push', event => {
   let data = {};
   try { data = event.data ? event.data.json() : {}; } catch (e) {}
   const title = data.title || 'Agent Deck';
-  event.waitUntil(Promise.all([
-    self.registration.showNotification(title, {body: data.body || '', tag: data.tag || undefined, renotify: Boolean(data.tag),
-      icon: '/icon-192.png', badge: '/icon-192.png', data: {url: data.url || '/', deck: data.deck || '', session: data.session || ''}}),
-    self.navigator && self.navigator.setAppBadge && data.badge ? self.navigator.setAppBadge(data.badge).catch(() => {}) : null,
-  ]));
+  event.waitUntil((async () => {
+    // Safari ignores renotify: a notification replacing one with the same tag arrives without a banner or
+    // sound. Closing the old one first makes the new one alert like any other.
+    if (data.tag && self.registration.getNotifications) {
+      try { (await self.registration.getNotifications({tag: data.tag})).forEach(old => old.close()); } catch (e) {}
+    }
+    await Promise.all([
+      self.registration.showNotification(title, {body: data.body || '', tag: data.tag || undefined, renotify: Boolean(data.tag),
+        icon: '/icon-192.png', badge: '/icon-192.png', data: {url: data.url || '/', deck: data.deck || '', session: data.session || ''}}),
+      self.navigator && self.navigator.setAppBadge && data.badge ? self.navigator.setAppBadge(data.badge).catch(() => {}) : null,
+    ]);
+  })());
 });
 self.addEventListener('notificationclick', event => {
   event.notification.close();

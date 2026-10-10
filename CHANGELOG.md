@@ -2,6 +2,11 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.36.1 — 2026-10-10
+
+- iPhone and iPad, panel opened from the Home Screen: downloading a file no longer leaves a blank white page. The file is offered through the share sheet (**Save to Files**); when the download took long enough for the tap to expire, a message with **Save** appears instead. The picture and PDF preview in **Files** downloads the same way.
+- A notification that replaces an earlier one for the same session (or a repeated test) alerts again in Safari on iPhone and Mac: the earlier one is closed first, because Safari replaces a notification with the same tag silently.
+
 ## 1.36.0 — 2026-10-10
 
 - Session strip, bottom row: **new conversation** and **restart** moved to the left, slightly larger and further apart; the context bar moved to the right, and before it a clock shows how long the conversation has been running (from the first timestamp in the agent's conversation file). `/api/session_info` returns it as `started`.

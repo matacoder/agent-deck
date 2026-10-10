@@ -10,6 +10,7 @@
     "Контекст {0}": "Kontext {0}",
     "Контекст: нет данных": "Kontext: keine Daten",
     "Разговор идёт {0}": "Unterhaltung läuft seit {0}",
+    "Файл {0} загружен": "Datei {0} ist geladen",
     "Разговор свежий": "Das Gespräch ist frisch",
     "Разговор разросся: агент начинает хуже держать детали": "Das Gespräch ist gewachsen: der Agent verliert allmählich Details",
     "Пора начать новый разговор: контекст переполнен": "Zeit für ein neues Gespräch: der Kontext ist überladen",

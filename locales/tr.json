@@ -10,6 +10,7 @@
     "Контекст {0}": "Bağlam {0}",
     "Контекст: нет данных": "Bağlam: veri yok",
     "Разговор идёт {0}": "Konuşma {0} süredir devam ediyor",
+    "Файл {0} загружен": "{0} dosyası yüklendi",
     "Разговор свежий": "Konuşma taze",
     "Разговор разросся: агент начинает хуже держать детали": "Konuşma büyüdü: ajan ayrıntıları kaçırmaya başlıyor",
     "Пора начать новый разговор: контекст переполнен": "Yeni bir konuşma zamanı: bağlam aşırı dolu",

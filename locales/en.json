@@ -10,6 +10,7 @@
     "Контекст {0}": "Context {0}",
     "Контекст: нет данных": "Context: no data",
     "Разговор идёт {0}": "Conversation running for {0}",
+    "Файл {0} загружен": "File {0} is loaded",
     "Разговор свежий": "The conversation is fresh",
     "Разговор разросся: агент начинает хуже держать детали": "The conversation has grown: the agent starts losing details",
     "Пора начать новый разговор: контекст переполнен": "Time for a new conversation: the context is overloaded",

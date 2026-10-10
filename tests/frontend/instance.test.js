@@ -711,6 +711,18 @@ test('a file path on the screen downloads the file; a missing one says why',asyn
   expect(asked).toEqual([['alpha','/home/demo/suzdal/plan.pdf'],['alpha','src/app.py']]);
   expect(saved.length).toBe(1);
   expect(window.document.body.textContent).toContain('Файл не найден');
+  // An iOS Home Screen app has no downloads: the share sheet saves the file; a tap that got too old asks for another.
+  const shared=[];let refuse=true;
+  Object.defineProperty(window.navigator,'userAgent',{value:'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)',configurable:true});
+  window.navigator.standalone=true;window.navigator.canShare=data=>data.files.length===1;
+  window.navigator.share=async data=>{if(refuse){refuse=false;throw Object.assign(new Error('gesture'),{name:'NotAllowedError'})}shared.push(data.files[0].name)};
+  tap(links[0]);await settle();
+  expect([saved.length,shared]).toEqual([1,[]]);
+  const again=[...window.document.querySelectorAll('#toast button')].find(b=>b.textContent==='Сохранить');
+  expect(window.document.getElementById('toast').textContent).toContain('Файл plan.pdf загружен');
+  again.click();await settle();
+  tap(links[0]);await settle();
+  expect([saved.length,shared]).toEqual([1,['plan.pdf','plan.pdf']]);
   }finally{window.close()}
 });
 

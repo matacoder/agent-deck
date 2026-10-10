@@ -389,7 +389,8 @@ up to 1 MB (including `.env`) open in an editor: copy from them, paste a secret 
 new file — new files are private (`0600`), existing ones keep their permissions, and a file that changed
 on disk after you opened it is never overwritten. The panel's own settings folder (`~/.config/cc-panel`)
 is not shown. Any file can be downloaded, up to 40 MB, with the button at the end of its row in the list
-(no need to open it) or from the open file. Works for
+(no need to open it) or from the open file. On an iPhone or iPad with the panel on the Home Screen the file is offered through the share sheet
+(**Save to Files**), because such an app has no downloads. Works for
 sessions on connected computers too.
 
 <img src="docs/screenshots/mobile-file.png" width="260" alt="Editing .env in Project files">

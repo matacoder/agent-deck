@@ -2490,8 +2490,8 @@ function renderPreview(box,head,file){
   box.append(head);
   if(type.startsWith("image/")){const img=el("img","files-image");img.src=url;img.alt=name;box.append(el("div","files-view files-picture",img))}
   else box.append(el("p","files-empty",tr("PDF-документ · {0}",[formatSize(size)])));
-  const link=(label,cls,download)=>{const a=el("a","btn "+cls,label);a.href=url;if(download)a.download=name;else{a.target="_blank";a.rel="noopener"}return a};
-  box.append(el("div","acts",link(tr("Скачать"),"",true),...(type==="application/pdf"?[link(tr("Открыть"),"pri",false)]:[])));
+  const open=el("a","btn pri",tr("Открыть"));open.href=url;open.target="_blank";open.rel="noopener";
+  box.append(el("div","acts",fileButton(tr("Скачать"),"",()=>downloadFile(null,file.path)),...(type==="application/pdf"?[open]:[])));
 }
 // Paths to any file that agents print ("/home/me/plan.pdf", "docs/notes.md"): a tap downloads it.
 // A folder in the path keeps ordinary words ("v1.2", "e.g.") from turning into links.
@@ -2512,10 +2512,23 @@ async function downloadFile(session,path){
   try{
     const r=await fetch(url,{cache:"no-store"});
     if(!r.ok){let message="";try{message=(await r.json()).error}catch(e){}toast(message||tr("Не удалось скачать файл"));return}
-    const a=document.createElement("a");a.href=URL.createObjectURL(await r.blob());a.download=path.split("/").pop();
+    const blob=await r.blob(),name=path.split("/").pop();
+    if(await shareDownload(blob,name))return;
+    const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;
     document.body.append(a);a.click();a.remove();
     setTimeout(()=>URL.revokeObjectURL(a.href),60000);
   }catch(e){toast(tr("Не удалось скачать файл"))}
+}
+// An iOS Home Screen app has no downloads: a blob link opens a blank in-app page that only "back" leaves.
+// The share sheet saves to Files instead. It needs a fresh tap, which a slow download has outlived.
+async function shareDownload(blob,name){
+  if(!navigator.canShare)return false;
+  const environment=pushEnvironment(),file=new File([blob],name,{type:blob.type||"application/octet-stream"});
+  if(!environment.ios||!environment.standalone||!navigator.canShare({files:[file]}))return false;
+  const share=()=>navigator.share({files:[file]});
+  try{await share()}
+  catch(e){if(e.name==="NotAllowedError")toast(tr("Файл {0} загружен",[name]),"info",{label:tr("Сохранить"),run:()=>share().catch(()=>{})})}
+  return true;
 }
 async function copyText(text){
   try{if(navigator.clipboard&&window.isSecureContext){await navigator.clipboard.writeText(text);toast(tr("Скопировано: {0} симв.",[text.length]),"success");return}}catch(e){}
