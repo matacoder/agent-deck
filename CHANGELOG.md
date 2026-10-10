@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.31.1 — 2026-10-10
+
+- On a phone the right-hand project drawer is as wide as the menu on the left (it covered almost the whole screen).
+
 ## 1.31.0 — 2026-10-10
 
 - On a phone the project panel (changes, commits, feature groups, files, gallery) is a drawer on the right, mirroring the menu on the left: it follows a swipe from the right edge, closes with a swipe back or a tap beside it, and the sidebar button at the top right toggles it. The session bar keeps only search, **⋯** and that button; the separate files and history icons are gone.
