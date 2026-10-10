@@ -1,5 +1,5 @@
 // The open session's conversation at a glance, read by the panel from the agent's own conversation file: a
-// quiet summary under the bar (its headline and first sentence; a tap shows all of it) and, at the bottom,
+// summary under the bar (its whole headline; a tap shows the rest) and, at the bottom,
 // the two restarts, how long the conversation has run and how full the context is. Shells, other agents and computers without this version show neither.
 const sessionInfo={session:null,data:null,timer:null,seq:0};
 const SESSION_INFO_POLL=30000;
@@ -48,11 +48,6 @@ async function loadSessionInfo(){
   if(!document.hidden)sessionInfo.timer=setTimeout(loadSessionInfo,data?.summary?.updating?8000:SESSION_INFO_POLL);
 }
 function formatTokens(n){return n>=1000?Math.round(n/1000)+"k":String(n)}
-// The summary's first sentence; CJK full stops are followed by no space.
-function firstSentence(text){
-  const found=/^[\s\S]*?(?:[.!?…]+(?=\s|$)|[。！？])/.exec((text||"").trim());
-  return found?found[0]:(text||"").trim();
-}
 function renderSessionInfo(){
   const data=sessionInfo.data?.supported?sessionInfo.data:null;
   $("session_meta").hidden=!data;
@@ -62,9 +57,6 @@ function renderSessionInfo(){
   if(hint.hidden)return;
   const open=summaryOpen()&&Boolean(summary.line);
   $("hint_line").textContent=summary.line||tr("Составляю пересказ…");
-  // Closed: the headline and the first sentence, two or three lines; open: all of it below.
-  const lead=open?"":firstSentence(summary.text);
-  $("hint_lead").textContent=lead;$("hint_lead").hidden=!lead;
   $("hint_toggle").setAttribute("aria-expanded",String(open));
   hint.classList.toggle("open",open);
   $("hint_more").hidden=!open;

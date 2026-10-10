@@ -726,10 +726,7 @@ body.resizing iframe{pointer-events:none}
    sit where the session tabs were. */
 .session-hint{flex:none;border-bottom:1px solid var(--bd);border-left:3px solid var(--acc);background:var(--acc-soft)}
 .session-hint>button{display:block;width:100%;padding:7px 14px 7px 11px;color:var(--mut);font-size:13px;text-align:left}
-.hint-body{display:grid;gap:2px;line-height:1.4}
-#hint_line{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--fg);font-weight:600}
-#hint_lead{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
-.session-hint.open #hint_line{white-space:normal}
+#hint_line{display:block;line-height:1.4;color:var(--fg);font-weight:600}
 #hint_more{cursor:pointer;max-height:40dvh;overflow-y:auto;padding:0 14px 8px 11px;font-size:13px;line-height:1.45;color:var(--mut)}
 #hint_more p{margin:0 0 4px}
 #hint_meta{font-size:11.5px;color:var(--dim)}

@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.36.3 — 2026-10-10
+
+- The closed summary under the session bar is its headline only, shown in full (wrapped, not cut with an ellipsis); the first sentence of the description is no longer shown until the note is opened.
+
 ## 1.36.2 — 2026-10-10
 
 - The summary under the session bar reads as a note: an accent edge, a tinted background, a bold headline and brighter text; the expand arrow is gone, and a tap anywhere on the note, the opened text included, opens or closes it.

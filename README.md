@@ -342,7 +342,7 @@ from the icon. It runs full screen, keeps drafts and supports one-tap answers to
 **Android.** Open the panel in Chrome, tap **⋮ → Add to Home screen** (or **Install app**).
 
 Sessions are in the menu (☰); its badge counts what is waiting for you. Under the session bar a quiet line
-says what the conversation is about (its headline and first sentence; tap it for the rest); at the bottom
+says what the conversation is about (its headline; tap it for the rest); at the bottom
 are the **new conversation** and **restart** buttons, how long the conversation has been running and a short
 bar showing how full the context is. Files are uploaded as a raw stream with
 progress, so a large video does not have to fit into the phone's browser memory twice.

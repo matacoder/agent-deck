@@ -737,10 +737,7 @@ body.resizing iframe{pointer-events:none}
    sit where the session tabs were. */
 .session-hint{flex:none;border-bottom:1px solid var(--bd);border-left:3px solid var(--acc);background:var(--acc-soft)}
 .session-hint>button{display:block;width:100%;padding:7px 14px 7px 11px;color:var(--mut);font-size:13px;text-align:left}
-.hint-body{display:grid;gap:2px;line-height:1.4}
-#hint_line{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--fg);font-weight:600}
-#hint_lead{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
-.session-hint.open #hint_line{white-space:normal}
+#hint_line{display:block;line-height:1.4;color:var(--fg);font-weight:600}
 #hint_more{cursor:pointer;max-height:40dvh;overflow-y:auto;padding:0 14px 8px 11px;font-size:13px;line-height:1.45;color:var(--mut)}
 #hint_more p{margin:0 0 4px}
 #hint_meta{font-size:11.5px;color:var(--dim)}
@@ -1084,7 +1081,7 @@ body.resizing iframe{pointer-events:none}
       <div id="search_pop" class="search-pop" hidden><div id="search_body" role="region" aria-label="Поиск в выводе"></div></div>
       <button class="iconbtn" id="b_project" onclick="toggleProject(PROJECT_TABS)" aria-pressed="false" aria-label="Скрыть или показать панель проекта" title="Скрыть или показать панель проекта"><svg class="ui-icon"><use href="#i-sidebar-right"/></svg></button>
     </div>
-    <div id="session_hint" class="session-hint" hidden><button type="button" id="hint_toggle" onclick="toggleSummary()" aria-expanded="false" aria-controls="hint_more"><span class="hint-body"><span id="hint_line"></span><span id="hint_lead" hidden></span></span></button><div id="hint_more" onclick="toggleSummary()" hidden><p id="hint_text"></p><p id="hint_meta"></p></div></div>
+    <div id="session_hint" class="session-hint" hidden><button type="button" id="hint_toggle" onclick="toggleSummary()" aria-expanded="false" aria-controls="hint_more"><span id="hint_line"></span></button><div id="hint_more" onclick="toggleSummary()" hidden><p id="hint_text"></p><p id="hint_meta"></p></div></div>
     <div id="stage">
       <div id="conn" class="conn" role="status" aria-live="polite" hidden></div>
       <div id="drop_zone" class="drop-zone" hidden><div class="drop-card"><svg class="ui-icon"><use href="#i-paperclip"/></svg><b id="drop_title"></b><span>До 4 файлов, до 200 МБ каждый</span></div></div>
@@ -2964,7 +2961,7 @@ function renderGroups(box){
 
 if(typeof module!=="undefined")module.exports={diffRows,lineComment,authorColor,AUTHOR_COLORS,filesToOpen};
 // The open session's conversation at a glance, read by the panel from the agent's own conversation file: a
-// quiet summary under the bar (its headline and first sentence; a tap shows all of it) and, at the bottom,
+// summary under the bar (its whole headline; a tap shows the rest) and, at the bottom,
 // the two restarts, how long the conversation has run and how full the context is. Shells, other agents and computers without this version show neither.
 const sessionInfo={session:null,data:null,timer:null,seq:0};
 const SESSION_INFO_POLL=30000;
@@ -3013,11 +3010,6 @@ async function loadSessionInfo(){
   if(!document.hidden)sessionInfo.timer=setTimeout(loadSessionInfo,data?.summary?.updating?8000:SESSION_INFO_POLL);
 }
 function formatTokens(n){return n>=1000?Math.round(n/1000)+"k":String(n)}
-// The summary's first sentence; CJK full stops are followed by no space.
-function firstSentence(text){
-  const found=/^[\s\S]*?(?:[.!?…]+(?=\s|$)|[。！？])/.exec((text||"").trim());
-  return found?found[0]:(text||"").trim();
-}
 function renderSessionInfo(){
   const data=sessionInfo.data?.supported?sessionInfo.data:null;
   $("session_meta").hidden=!data;
@@ -3027,9 +3019,6 @@ function renderSessionInfo(){
   if(hint.hidden)return;
   const open=summaryOpen()&&Boolean(summary.line);
   $("hint_line").textContent=summary.line||tr("Составляю пересказ…");
-  // Closed: the headline and the first sentence, two or three lines; open: all of it below.
-  const lead=open?"":firstSentence(summary.text);
-  $("hint_lead").textContent=lead;$("hint_lead").hidden=!lead;
   $("hint_toggle").setAttribute("aria-expanded",String(open));
   hint.classList.toggle("open",open);
   $("hint_more").hidden=!open;
