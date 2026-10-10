@@ -77,7 +77,7 @@ __PANEL_STYLE__</style></head><body>
       <div id="search_pop" class="search-pop" hidden><div id="search_body" role="region" aria-label="Поиск в выводе"></div></div>
       <button class="iconbtn" id="b_project" onclick="toggleProject(PROJECT_TABS)" aria-pressed="false" aria-label="Скрыть или показать панель проекта" title="Скрыть или показать панель проекта"><svg class="ui-icon"><use href="#i-sidebar-right"/></svg></button>
     </div>
-    <div id="session_hint" class="session-hint" hidden><button type="button" id="hint_toggle" onclick="toggleSummary()" aria-expanded="false" aria-controls="hint_more"><span class="hint-body"><span id="hint_line"></span><span id="hint_lead" hidden></span></span><svg class="ui-icon"><use href="#i-chevron-down"/></svg></button><div id="hint_more" hidden><p id="hint_text"></p><p id="hint_meta"></p></div></div>
+    <div id="session_hint" class="session-hint" hidden><button type="button" id="hint_toggle" onclick="toggleSummary()" aria-expanded="false" aria-controls="hint_more"><span class="hint-body"><span id="hint_line"></span><span id="hint_lead" hidden></span></span></button><div id="hint_more" onclick="toggleSummary()" hidden><p id="hint_text"></p><p id="hint_meta"></p></div></div>
     <div id="stage">
       <div id="conn" class="conn" role="status" aria-live="polite" hidden></div>
       <div id="drop_zone" class="drop-zone" hidden><div class="drop-card"><svg class="ui-icon"><use href="#i-paperclip"/></svg><b id="drop_title"></b><span>До 4 файлов, до 200 МБ каждый</span></div></div>

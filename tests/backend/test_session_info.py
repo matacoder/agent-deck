@@ -51,6 +51,9 @@ class SessionInfoTests(unittest.TestCase):
         path = jsonl(self.dir / 's.jsonl', records)
         self.assertEqual(S.started(path), 1791621000)
         self.assertIsNone(S.started(path, size=30))  # Only the head is read.
+        # A first message with a picture is one huge line: the next record answers.
+        picture = {'type': 'user', 'timestamp': '2026-10-10T08:00:00.000Z', 'message': {'content': 'x' * (S.PIECE + 100)}}
+        self.assertEqual(S.started(jsonl(self.dir / 'p.jsonl', [picture] + records)), 1791621000)
         self.assertIsNone(S.started(jsonl(self.dir / 'n.jsonl', [{'timestamp': 'yesterday'}, {'timestamp': 5}])))
 
     def test_only_the_tail_is_read_and_a_cut_line_is_skipped(self):

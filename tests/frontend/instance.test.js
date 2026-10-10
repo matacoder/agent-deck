@@ -320,6 +320,10 @@ test('the session strip shows a quiet summary under the bar and the context with
   $('hint_toggle').click();
   expect([$('hint_more').hidden,$('hint_text').textContent,$('hint_toggle').getAttribute('aria-expanded')]).toEqual([false,'Moving payments to Stripe. Tests are next.','true']);
   expect($('hint_lead').hidden).toBe(true);
+  // The whole note toggles, the open text too; there is no arrow.
+  $('hint_more').click();
+  expect([$('hint_more').hidden,$('hint_lead').hidden,$('session_hint').querySelector('svg')]).toEqual([true,false,null]);
+  $('hint_toggle').click();
   expect(['One. Two.','v1.2 is out! Next','第一句。第二句。','no stop',''].map(window.firstSentence)).toEqual(['One.','v1.2 is out!','第一句。','no stop','']);
   expect($('hint_meta').textContent).toMatch(/^Пересказ: Claude Haiku · /);
   // Limits from Settings colour the bar in this browser.

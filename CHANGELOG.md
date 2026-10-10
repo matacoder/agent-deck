@@ -2,6 +2,11 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.36.2 — 2026-10-10
+
+- The summary under the session bar reads as a note: an accent edge, a tinted background, a bold headline and brighter text; the expand arrow is gone, and a tap anywhere on the note, the opened text included, opens or closes it.
+- The conversation age is shown for conversations that begin with a picture: their first record is a single line of megabytes, which the start lookup now skips.
+
 ## 1.36.1 — 2026-10-10
 
 - iPhone and iPad, panel opened from the Home Screen: downloading a file no longer leaves a blank white page. The file is offered through the share sheet (**Save to Files**); when the download took long enough for the tap to expire, a message with **Save** appears instead. The picture and PDF preview in **Files** downloads the same way.

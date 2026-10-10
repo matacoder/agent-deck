@@ -1794,7 +1794,8 @@ def session_info(name, language):
         cached = _session_reads.get(path)
     if not cached or cached[0] != stamp:
         records = tail_records(path)
-        cached = (stamp, context(kind, records), dialogue(kind, records), started(path))
+        # The start never changes once known; only the tail is read again.
+        cached = (stamp, context(kind, records), dialogue(kind, records), (cached and cached[3]) or started(path))
         with _session_reads_lock:
             if len(_session_reads) > 200:
                 _session_reads.clear()

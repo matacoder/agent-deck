@@ -12,7 +12,8 @@ import threading
 import time
 
 TAIL = 4 * 1024 * 1024
-HEAD = 256 * 1024
+HEAD = 4 * 1024 * 1024
+PIECE = 256 * 1024
 SUMMARY_EVERY = 300
 SUMMARY_CHARS = 12000
 TURN_CHARS = 600
@@ -37,9 +38,11 @@ def tail_records(path, size=TAIL):
 
 
 def started(path, size=HEAD):
-    """When the conversation began, epoch seconds: the first timestamp in the file (its first records have none)."""
+    """When the conversation began, epoch seconds: the first timestamp in the file. Its first records have
+    none, and a first message with a picture is one line of megabytes: it is skipped piece by piece and the
+    next record, seconds later, answers instead."""
     with Path(path).open('rb') as stream:
-        for line in stream.read(size).splitlines():
+        for line in iter(lambda: stream.readline(PIECE) if stream.tell() < size else b'', b''):
             try:
                 stamp = json.loads(line).get('timestamp')
                 return int(datetime.fromisoformat(stamp.replace('Z', '+00:00')).timestamp())  # 3.10 rejects "Z".
