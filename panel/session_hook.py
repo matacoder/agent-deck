@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Remember only the top-level Claude/Codex conversation in a managed tmux pane."""
+"""Remember only the top-level Claude/Codex conversation in a managed tmux pane; ask it to show results."""
 import http.client
 import json
 import os
@@ -52,6 +52,40 @@ def remember(data, pane, pid):
     if session.startswith("cc-") and top_level(int(pane_pid), pid):
         subprocess.run([*command, "set-option", "-t", pane, "@cc_sid", sid],
                        capture_output=True, timeout=3)
+        return True
+
+
+RESULTS_NOTE = """Agent Deck session: the user follows it remotely, often from a phone, and cannot open localhost or files on this machine.
+When a finished task has a visible result (page, UI, picture, document, chart), before the final message:
+1. Screenshot the result and print each PNG/JPEG absolute path on its own line; the panel shows it as a picture.
+2. If it opens in a browser, {link}
+Nothing to look at: skip both silently."""
+LINK_KNOWN = "serve it on {0} (not 0.0.0.0) and give the link http://{0}:<port>/<path>, never localhost."
+LINK_UNKNOWN = "give a link on this machine's Tailscale address (`tailscale ip -4`), never localhost; no Tailscale: no link."
+
+
+def show_results():
+    # Read directly: the hook runs outside the panel. Missing or unreadable settings mean the default, on.
+    try:
+        with open(os.path.expanduser("~/.config/cc-panel/network.json")) as stream:
+            return json.load(stream).get("show_results") is not False
+    except (OSError, ValueError, AttributeError):
+        return True
+
+
+def tailscale_address():
+    try:
+        found = subprocess.run(["tailscale", "ip", "-4"], input="", capture_output=True, text=True,
+                               timeout=2).stdout.split()
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return next((a for a in found if a.startswith("100.") and a.count(".") == 3
+                 and a.replace(".", "").isdigit()), None)
+
+
+def results_note():
+    address = tailscale_address()
+    return RESULTS_NOTE.format(link=LINK_KNOWN.format(address) if address else LINK_UNKNOWN)
 
 
 def main():
@@ -59,7 +93,11 @@ def main():
     if not pane:
         return
     try:
-        remember(json.load(sys.stdin), pane, os.getppid())
+        data = json.load(sys.stdin)
+        # Kimi's own CLI is left out: what it does with hook output is not known.
+        if remember(data, pane, os.getppid()) and data.get("client_type") != "kimi_code_cli" and show_results():
+            print(json.dumps({"hookSpecificOutput": {"hookEventName": "SessionStart",
+                                                     "additionalContext": results_note()}}))
     except (OSError, ValueError, KeyError, TypeError, AttributeError, subprocess.TimeoutExpired):
         pass  # The hook must never prevent a conversation from starting.
 

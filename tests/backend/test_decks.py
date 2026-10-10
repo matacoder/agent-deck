@@ -138,7 +138,7 @@ class RemoteDeckTests(PanelCase):
     def test_network_settings_persist_privately_and_reject_credential_urls(self):
         settings = NetworkSettings(self.home)
         value = settings.save({'name':'Main server','public_url':'https://deck.example.com/'})
-        self.assertEqual(value, {'name':'Main server','public_url':'https://deck.example.com','isolate_terminals':False})
+        self.assertEqual(value, {'name':'Main server','public_url':'https://deck.example.com','isolate_terminals':False,'show_results':True})
         self.assertEqual(NetworkSettings(self.home).get(), value)
         self.assertEqual(settings.path.stat().st_mode & 0o777, 0o600)
         for url in ('https://user:secret@deck.example.com','https://deck.example.com/path','https://deck.example.com?secret=x','javascript:alert(1)','https://deck.example.com:wrong'):

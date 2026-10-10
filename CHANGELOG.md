@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.37.0 — 2026-10-10
+
+- Claude and Codex sessions started from the panel are asked, at the start of a conversation, to show a finished task: screenshots of the result (their paths appear as pictures on the Screen and in the gallery) and, for anything that opens in a browser, a link on this computer's Tailscale address instead of `localhost`. Work with nothing to look at is left alone. On by default; **Settings → General → Finished task** turns it off. It reaches a session at its next start, restart, `/clear` or compaction, and never agents started inside another agent or outside the panel.
+
 ## 1.36.4 — 2026-10-10
 
 Fixes from a review of the last two days of changes.

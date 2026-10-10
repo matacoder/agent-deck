@@ -91,7 +91,7 @@ function configureSource(){returnToNew=true;$("dlg").close();openSettings("model
 
 /* ---------- computers ---------- */
 function renderComputers(data,network){
-  syncField($("network_name"),network.name);syncField($("network_public_url"),network.public_url);$("network_isolate").checked=network.isolate_terminals===true;
+  syncField($("network_name"),network.name);syncField($("network_public_url"),network.public_url);$("network_isolate").checked=network.isolate_terminals===true;$("show_results").checked=network.show_results!==false;
   $("network_bind").textContent="http://"+network.bind_host+":"+network.bind_port;
   $("network_browser").textContent=location.origin;
   const count=data.decks.length;
@@ -171,5 +171,10 @@ async function saveIsolation(){
   const stored=deckDirectory.network||{};
   try{await saveNetworkSettings(input.checked,{name:stored.name||deckDirectory.name,public_url:stored.public_url||""});toast(tr("Настройки сохранены"),"success")}catch(e){input.checked=!input.checked;toast(e.message)}finally{input.disabled=false}
 }
+async function saveShowResults(){
+  const input=$("show_results");input.disabled=true;
+  const stored=deckDirectory.network||{};
+  try{await saveNetworkSettings(stored.isolate_terminals===true,{name:stored.name||deckDirectory.name,public_url:stored.public_url||"",show_results:input.checked});toast(tr("Настройки сохранены"),"success")}catch(e){input.checked=!input.checked;toast(e.message)}finally{input.disabled=false}
+}
 
-if(typeof module!=="undefined")module.exports={lmMetrics,deckAddress};
+if(typeof module!=="undefined")module.exports={lmMetrics,deckAddress,saveShowResults};

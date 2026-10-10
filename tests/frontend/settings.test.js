@@ -150,3 +150,17 @@ test('a found computer is matched to a connected one by address, not by name',()
  expect(deckAddress('http://100.66.158.47:8790')).not.toBe(deckAddress('http://100.66.158.47:8791'));
  expect(deckAddress('http://100.64.0.2')).toBe('100.64.0.2:80');
 });
+test('the results switch saves alone, keeps the other network settings and reverts on failure',async()=>{
+ const {saveShowResults}=require('../../frontend/hub-models');
+ document.body.innerHTML=fs.readFileSync(path.resolve(__dirname,'../../frontend/index.html'),'utf8');
+ const box=document.querySelector('#hub_general #show_results');
+ expect(box.getAttribute('onchange')).toContain('saveShowResults');
+ Object.assign(global,{$:id=>document.getElementById(id),tr:x=>x,toast:jest.fn(),loadDeckSettings:jest.fn(),selectedDeck:'',frames:new Map(),
+  deckDirectory:{name:'host',network:{name:'Deck',public_url:'https://deck.example',isolate_terminals:true,show_results:true}},gatewayApi:jest.fn().mockResolvedValue({})});
+ box.checked=false;await saveShowResults();
+ expect(gatewayApi).toHaveBeenCalledWith('/api/network_save',{name:'Deck',public_url:'https://deck.example',isolate_terminals:true,show_results:false});
+ expect(box.disabled).toBe(false);
+ gatewayApi.mockRejectedValue(new Error('Offline'));
+ await saveShowResults();
+ expect(box.checked).toBe(true);expect(toast).toHaveBeenLastCalledWith('Offline');
+});

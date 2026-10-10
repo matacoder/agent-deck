@@ -1370,6 +1370,7 @@ body.resizing iframe{pointer-events:none}
         <label for="context_heavy">Контекст разросся (жёлтый), тысяч токенов</label><input type="number" id="context_heavy" min="1" max="2000" step="5" inputmode="numeric" onchange="saveContextLimits()">
         <label for="context_full">Пора начать заново (красный), тысяч токенов</label><input type="number" id="context_full" min="2" max="2000" step="5" inputmode="numeric" onchange="saveContextLimits()"><p class="hint">Полоска внизу сессии. Качество падает задолго до заполнения окна; чаще всего его замечают около 150 тысяч.</p></div>
       <form class="hub-card" onsubmit="event.preventDefault();saveProjectDirectory()"><h4>Новые сессии</h4><label for="project_directory">Папка проектов</label><input type="text" id="project_directory" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="done" required><p class="hint">Используется для новых сессий. Существующие сессии остаются в своих папках.</p><div class="acts"><button class="pri" id="project_directory_save">Сохранить</button></div></form>
+      <div class="hub-card"><h4>Готовая задача</h4><label class="integration-toggle"><span>Скриншоты и ссылка от агента</span><input type="checkbox" role="switch" id="show_results" onchange="saveShowResults()"></label><p class="hint">Claude и Codex получают в начале сессии просьбу: закончив задачу, снять скриншоты результата и дать ссылку на адрес этого компьютера в Tailscale. Действует с новой или перезапущенной сессии.</p></div>
       <div class="hub-card" data-card="version">
         <div class="card-top"><span class="card-icon" aria-hidden="true"><svg class="ui-icon"><use href="#i-download"/></svg></span><div class="card-main"><h4>Версия и обновления</h4><p id="version_status" class="card-status" role="status"></p><p id="version_meta" class="card-meta"></p></div></div>
         <p id="version_hint" class="hint" hidden></p>
@@ -3923,7 +3924,7 @@ function configureSource(){returnToNew=true;$("dlg").close();openSettings("model
 
 /* ---------- computers ---------- */
 function renderComputers(data,network){
-  syncField($("network_name"),network.name);syncField($("network_public_url"),network.public_url);$("network_isolate").checked=network.isolate_terminals===true;
+  syncField($("network_name"),network.name);syncField($("network_public_url"),network.public_url);$("network_isolate").checked=network.isolate_terminals===true;$("show_results").checked=network.show_results!==false;
   $("network_bind").textContent="http://"+network.bind_host+":"+network.bind_port;
   $("network_browser").textContent=location.origin;
   const count=data.decks.length;
@@ -4003,8 +4004,13 @@ async function saveIsolation(){
   const stored=deckDirectory.network||{};
   try{await saveNetworkSettings(input.checked,{name:stored.name||deckDirectory.name,public_url:stored.public_url||""});toast(tr("Настройки сохранены"),"success")}catch(e){input.checked=!input.checked;toast(e.message)}finally{input.disabled=false}
 }
+async function saveShowResults(){
+  const input=$("show_results");input.disabled=true;
+  const stored=deckDirectory.network||{};
+  try{await saveNetworkSettings(stored.isolate_terminals===true,{name:stored.name||deckDirectory.name,public_url:stored.public_url||"",show_results:input.checked});toast(tr("Настройки сохранены"),"success")}catch(e){input.checked=!input.checked;toast(e.message)}finally{input.disabled=false}
+}
 
-if(typeof module!=="undefined")module.exports={lmMetrics,deckAddress};
+if(typeof module!=="undefined")module.exports={lmMetrics,deckAddress,saveShowResults};
 // Files dragged onto the window (desktop, iPad Split View) are attached to the open session, the same
 // way as the paperclip and paste. The terminal is a frame with its own document, so it is watched too.
 // Bundled before app.js; nothing here runs at load time.

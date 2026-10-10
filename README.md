@@ -435,6 +435,11 @@ square thumbnails, newest first, opening in the same viewer. The panel copies ea
 `/tmp/shot.png` with a new one or deletes the file; the Screen view falls back to that copy too. Up to 200
 pictures and 300 MB per session, each kept for 30 days.
 
+Claude and Codex sessions started from the panel are asked to show a finished task on their own: screenshots
+of the result and, for anything that opens in a browser, a link on this computer's Tailscale address rather
+than `localhost`. **Settings → General → Finished task** turns the request off; it reaches a session at its
+next start or restart.
+
 Paths to other files with a folder in them (`/home/me/trip/plan.pdf`, `src/app.py`) are links too: a tap
 downloads the file, with the same rules as Project files (inside your home folder, never the panel's
 settings, up to 40 MB).

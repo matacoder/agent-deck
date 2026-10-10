@@ -151,6 +151,44 @@ class HookTests(PanelCase):
             self.hook.remember({"session_id": sid}, "%1", 60)
             self.assertEqual(run.call_count, 1)
 
+    def start(self, data, tree, addresses="100.64.0.7\n"):
+        import io, json
+        from contextlib import redirect_stdout
+
+        def run(command, **_):
+            return SimpleNamespace(stdout=addresses if command[0] == "tailscale" else "10\tcc-demo")
+        output = io.StringIO()
+        with patch.object(self.hook, "parent_info", side_effect=lambda pid: tree[pid]), \
+                patch.object(self.hook.subprocess, "run", side_effect=run), \
+                patch.dict(self.hook.os.environ, {"TMUX_PANE": "%1"}), \
+                patch.object(self.hook.os, "getppid", return_value=max(tree)), \
+                patch.object(self.hook.sys, "stdin", io.StringIO(json.dumps(data))), redirect_stdout(output):
+            self.hook.main()
+        return output.getvalue()
+
+    def test_top_level_agent_is_asked_to_show_results_unless_switched_off(self):
+        import json
+        data = {"session_id": "11111111-1111-4111-8111-111111111111"}
+        roots = {40: (30, "sh"), 30: (10, "claude"), 10: (1, "bash")}
+        nested = {60: (50, "sh"), 50: (40, "claude"), **roots}
+        output = json.loads(self.start(data, roots))["hookSpecificOutput"]
+        self.assertEqual(output["hookEventName"], "SessionStart")
+        self.assertIn("http://100.64.0.7:<port>", output["additionalContext"])
+        self.assertNotIn("{", output["additionalContext"])
+        # No Tailscale (or a foreign address): the agent looks the address up itself.
+        for addresses in ("", "192.168.1.5\n"):
+            context = json.loads(self.start(data, roots, addresses))["hookSpecificOutput"]["additionalContext"]
+            self.assertIn("tailscale ip -4", context)
+            self.assertNotIn("192.168", context)
+        self.assertEqual(self.start(data, nested), "")
+        self.assertEqual(self.start({"session_id": "session_" + data["session_id"], "client_type": "kimi_code_cli"},
+                                    {40: (30, "sh"), 30: (10, "kimi-code")}), "")
+        settings = self.home / ".config/cc-panel/network.json"
+        settings.write_text("{broken")
+        self.assertTrue(self.start(data, roots))
+        settings.write_text(json.dumps({"name": "Deck", "public_url": "", "show_results": False}))
+        self.assertEqual(self.start(data, roots), "")
+
     def test_native_kimi_session_id_and_process_name_are_recorded(self):
         sid = "session_11111111-1111-4111-8111-111111111111"
         roots = {40: (30, "sh"), 30: (10, "kimi-code")}

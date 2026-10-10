@@ -19,7 +19,8 @@ systemd --user (linger):  cc-tmux  (owns the tmux server: restarts of the panel 
 - Persistence: sessions are saved to `~/.config/cc-panel/sessions.json` every 5 s. If the tmux server PID
   changes (reboot, crash), missing sessions are recreated and agents resumed (`claude --resume <id>`,
   `codex --no-daemon resume <id>`). SessionStart hooks remember the top-level conversation;
-  nested review agents cannot overwrite it. Codex runs without a daemon so ancestry identifies its pane.
+  nested review agents cannot overwrite it. The same hook asks the top-level agent to show a finished task
+  (screenshots, a link on the Tailscale address) unless `show_results` is off in `network.json`. Codex runs without a daemon so ancestry identifies its pane.
   Review and trust the newly registered Codex hook on its first launch; existing trust settings stay intact.
   Legacy sessions without a saved ID require choosing the conversation manually with `codex resume`.
   Missing IDs/transcripts produce a clear error before stopping an agent; the panel never guesses the
