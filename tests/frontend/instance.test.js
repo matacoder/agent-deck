@@ -315,6 +315,11 @@ test('the session strip shows a quiet summary under the bar and the context with
   $('hint_toggle').click();
   expect([$('hint_more').hidden,$('hint_text').textContent,$('hint_toggle').getAttribute('aria-expanded')]).toEqual([false,'Moving payments to Stripe.','true']);
   expect($('hint_meta').textContent).toMatch(/^Пересказ: Claude Haiku · /);
+  // Limits from Settings colour the bar in this browser.
+  $('context_heavy').value='100';$('context_full').value='200';$('context_full').dispatchEvent(new window.Event('change'));
+  expect($('ctx').dataset.level).toBe('heavy');
+  $('context_full').value='50';$('context_full').dispatchEvent(new window.Event('change'));
+  expect([$('ctx').dataset.level,$('context_full').value]).toEqual(['heavy','200']);  // Red below yellow is refused.
   window.eval('select("beta")');await settle();await settle();
   // A shell, another agent or an older computer: nothing to show.
   expect([$('session_hint').hidden,$('session_meta').hidden]).toEqual([true,true]);
@@ -715,6 +720,9 @@ test('a file that cannot be shown still offers a download in the file browser',a
   await settle();await settle();
   const doc=window.document;
   await window.eval('openFiles()');await settle();
+  // Straight from the list, without opening the file.
+  doc.querySelector('.files-download').click();await settle();
+  expect([asked.pop(),saved.pop()]).toEqual([[null,'/home/demo/p/data.zip'],'data.zip']);
   doc.querySelector('.files-row').click();await settle();
   expect(doc.querySelector('#files_body').textContent).toContain('Это не текстовый файл');
   [...doc.querySelectorAll('#files_body button')].find(b=>/Скачать|Download/.test(b.textContent)).click();await settle();

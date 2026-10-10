@@ -108,8 +108,13 @@ function renderFiles(){
   for(const entry of listing.entries){
     const path=listing.path+"/"+entry.name;
     const row=fileButton(entry.name,"files-row"+(entry.dir?" dir":""),()=>entry.dir?loadFolder(path):openFile(path),entry.dir?"folder":"file");
-    if(!entry.dir)row.append(el("span","files-size",formatSize(entry.size)));
-    list.append(row);
+    if(entry.dir){list.append(row);continue}
+    row.append(el("span","files-size",formatSize(entry.size)));
+    // Any file straight from the list, without opening it first (a video, an archive, a huge log).
+    const save=el("button","files-download",svgIcon("download"));save.type="button";
+    save.setAttribute("aria-label",tr("Скачать файл {0}",[entry.name]));save.title=tr("Скачать");
+    save.onclick=()=>downloadFile(null,path);
+    list.append(el("div","files-item",row,save));
   }
   if(!listing.entries.length)list.append(el("p","files-empty",tr("Папка пуста")));
   if(listing.truncated)list.append(el("p","files-empty",tr("Показаны первые 2000 элементов")));

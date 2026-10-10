@@ -1,6 +1,10 @@
 {
   "name": "Español",
   "messages": {
+    "Контекст разросся (жёлтый), тысяч токенов": "El contexto ha crecido (amarillo), miles de tokens",
+    "Пора начать заново (красный), тысяч токенов": "Hora de empezar de nuevo (rojo), miles de tokens",
+    "Полоска внизу сессии. Качество падает задолго до заполнения окна; чаще всего его замечают около 150 тысяч.": "La barra al pie de la sesión. La calidad baja mucho antes de llenar la ventana; suele notarse hacia los 150 mil.",
+    "Красный порог должен быть больше жёлтого": "El límite rojo debe ser mayor que el amarillo",
     "Составляю пересказ…": "Escribiendo un resumen…",
     "Пересказ: {0} · {1}": "Resumen: {0} · {1}",
     "Контекст {0}": "Contexto {0}",

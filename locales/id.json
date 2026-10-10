@@ -1,6 +1,10 @@
 {
   "name": "Bahasa Indonesia",
   "messages": {
+    "Контекст разросся (жёлтый), тысяч токенов": "Konteks membesar (kuning), ribu token",
+    "Пора начать заново (красный), тысяч токенов": "Saatnya mulai ulang (merah), ribu token",
+    "Полоска внизу сессии. Качество падает задолго до заполнения окна; чаще всего его замечают около 150 тысяч.": "Bilah di bawah sesi. Kualitas turun jauh sebelum jendela penuh; paling sering terasa sekitar 150 ribu.",
+    "Красный порог должен быть больше жёлтого": "Batas merah harus lebih tinggi dari kuning",
     "Составляю пересказ…": "Menulis ringkasan…",
     "Пересказ: {0} · {1}": "Ringkasan: {0} · {1}",
     "Контекст {0}": "Konteks {0}",

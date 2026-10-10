@@ -1,6 +1,10 @@
 {
   "name": "Italiano",
   "messages": {
+    "Контекст разросся (жёлтый), тысяч токенов": "Contesto cresciuto (giallo), migliaia di token",
+    "Пора начать заново (красный), тысяч токенов": "Ora di ricominciare (rosso), migliaia di token",
+    "Полоска внизу сессии. Качество падает задолго до заполнения окна; чаще всего его замечают около 150 тысяч.": "La barra in fondo alla sessione. La qualità cala molto prima che la finestra sia piena; di solito si nota intorno a 150 mila.",
+    "Красный порог должен быть больше жёлтого": "La soglia rossa deve essere più alta di quella gialla",
     "Составляю пересказ…": "Scrittura del riassunto…",
     "Пересказ: {0} · {1}": "Riassunto: {0} · {1}",
     "Контекст {0}": "Contesto {0}",

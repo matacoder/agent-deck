@@ -1027,7 +1027,7 @@ function applyAutocorrect(){
   $("autocorrect_enabled").checked=on;
 }
 function saveAutocorrect(){try{localStore.setItem("cc.autocorrect",$("autocorrect_enabled").checked?"1":"0")}catch(e){}applyAutocorrect()}
-applyAutocorrect();applyCodeFont();
+applyAutocorrect();applyCodeFont();applyContextLimits();
 let UI_PANEL_VERSION=null;
 async function loadVersion(){
   if(versionLoading===deckEpoch)return;clearTimeout(versionTimer);

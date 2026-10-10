@@ -2,6 +2,11 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.35.0 — 2026-10-10
+
+- The context bar's limits are set in **Settings → General** (this browser): yellow from 80k and red from 150k tokens by default (red was 160k). No official number exists; Claude Code users most often report the quality drop around 150k.
+- Every file in **Files** has a download button right in the list, so a video, an archive or a huge log downloads without opening it first.
+
 ## 1.34.0 — 2026-10-10
 
 - Session strip: under the session bar a quiet one-line summary of what the conversation is about (tap for a few sentences and when it was written); at the bottom, where the session tabs were, how full the context is (green, orange from 80k tokens, red from 160k; Codex also against its window) next to **new conversation** and **restart** icons. Read from the agent's own conversation file (Claude Code, also on Kimi or LM Studio, and Codex); the summary is written by a model of the same provider as the session, at most every 5 minutes while the session is open. New endpoint `/api/session_info`.

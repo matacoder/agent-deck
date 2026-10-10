@@ -350,7 +350,8 @@ progress, so a large video does not have to fit into the phone's browser memory 
 
 For Claude Code (also on Kimi or LM Studio) and Codex sessions the panel reads the agent's own conversation
 file. The bar at the bottom shows how many tokens the latest request carried: green while the conversation
-is fresh, orange from 80k (the agent starts losing details), red from 160k (time for a new conversation);
+is fresh, orange from 80k (the agent starts losing details), red from 150k (time for a new conversation);
+both limits are set in **Settings → General** for this browser;
 Codex also shows its context window. The summary under the session bar is written by a model of the same
 provider as the session, so the conversation goes nowhere new: Claude Haiku for Claude on the subscription,
 Codex's light model for Codex, Kimi for Claude on Kimi, the same local model for LM Studio. It is rewritten
@@ -385,7 +386,8 @@ The **Files** tab of the project panel browses the session's folder and everythi
 up to 1 MB (including `.env`) open in an editor: copy from them, paste a secret in and save, or create a
 new file — new files are private (`0600`), existing ones keep their permissions, and a file that changed
 on disk after you opened it is never overwritten. The panel's own settings folder (`~/.config/cc-panel`)
-is not shown. Any other file (an archive, a spreadsheet, a PDF) can be downloaded, up to 40 MB. Works for
+is not shown. Any file can be downloaded, up to 40 MB, with the button at the end of its row in the list
+(no need to open it) or from the open file. Works for
 sessions on connected computers too.
 
 <img src="docs/screenshots/mobile-file.png" width="260" alt="Editing .env in Project files">

@@ -1,6 +1,10 @@
 {
   "name": "English",
   "messages": {
+    "Контекст разросся (жёлтый), тысяч токенов": "Context has grown (yellow), thousand tokens",
+    "Пора начать заново (красный), тысяч токенов": "Time to start over (red), thousand tokens",
+    "Полоска внизу сессии. Качество падает задолго до заполнения окна; чаще всего его замечают около 150 тысяч.": "The bar at the bottom of a session. Quality drops long before the window is full; it is most often noticed around 150 thousand.",
+    "Красный порог должен быть больше жёлтого": "The red limit must be higher than the yellow one",
     "Составляю пересказ…": "Writing a summary…",
     "Пересказ: {0} · {1}": "Summary: {0} · {1}",
     "Контекст {0}": "Context {0}",

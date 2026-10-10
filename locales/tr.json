@@ -1,6 +1,10 @@
 {
   "name": "Türkçe",
   "messages": {
+    "Контекст разросся (жёлтый), тысяч токенов": "Bağlam büyüdü (sarı), bin token",
+    "Пора начать заново (красный), тысяч токенов": "Yeniden başlama zamanı (kırmızı), bin token",
+    "Полоска внизу сессии. Качество падает задолго до заполнения окна; чаще всего его замечают около 150 тысяч.": "Oturumun altındaki çubuk. Kalite pencere dolmadan çok önce düşer; çoğunlukla 150 bin civarında fark edilir.",
+    "Красный порог должен быть больше жёлтого": "Kırmızı sınır sarıdan büyük olmalı",
     "Составляю пересказ…": "Özet yazılıyor…",
     "Пересказ: {0} · {1}": "Özet: {0} · {1}",
     "Контекст {0}": "Bağlam {0}",

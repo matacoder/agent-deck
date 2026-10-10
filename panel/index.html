@@ -649,7 +649,9 @@ body.resizing iframe{pointer-events:none}
 .files-new button{display:inline-flex;align-items:center;gap:6px;padding:0 12px;border:1px solid var(--bd);border-radius:9px;color:var(--fg2)}
 .files-list{display:grid;border:1px solid var(--bd);border-radius:12px;overflow:hidden}
 .files-row{display:flex;align-items:center;gap:10px;min-height:40px;padding:6px 12px;border-bottom:1px solid var(--bd-soft);color:var(--fg);text-align:left}
-.files-row:last-child{border-bottom:0}@media (hover:hover){.files-row:hover{background:var(--side2)}}
+.files-item{display:flex;border-bottom:1px solid var(--bd-soft)}.files-item .files-row{flex:1;min-width:0;border-bottom:0}
+.files-download{flex:none;display:grid;place-items:center;width:40px;color:var(--mut)}.files-download .ui-icon{width:17px;height:17px}@media (hover:hover){.files-download:hover{color:var(--acc-text);background:var(--side2)}}
+.files-row:last-child,.files-item:last-child{border-bottom:0}@media (hover:hover){.files-row:hover{background:var(--side2)}}
 .files-row span:first-of-type{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--mono);font-size:13px}
 .files-row.dir svg{color:var(--acc-text)}
 .files-size{flex:none;color:var(--mut);font-size:12px;font-variant-numeric:tabular-nums}
@@ -755,7 +757,7 @@ body.resizing iframe{pointer-events:none}
 @media (max-width:760px),(pointer:coarse) and (max-height:500px){
   .q-text textarea,.files-new input{font-size:16px} /* Below 16px iOS zooms the page on focus. */
   .files-text{font-size:max(16px,var(--code-font,16px))}
-  .files-row{min-height:var(--tap)}
+  .files-row{min-height:var(--tap)}.files-download{width:var(--tap)}
   html,body{position:fixed;inset:0;width:100%;height:100%}
   body{font-size:15px}
   .m-only{display:inline-grid!important}.d-only{display:none!important}
@@ -1361,7 +1363,9 @@ body.resizing iframe{pointer-events:none}
       <header class="hub-section-head"><h3>Общие</h3><p>Язык, папка проектов, версия и обновления.</p></header>
       <div class="hub-card"><h4>Этот браузер</h4><label for="ui_language">Язык интерфейса</label><select id="ui_language" onchange="saveLanguage()"></select><p class="hint">Сообщения и вывод агентов не переводятся.</p>
         <label class="toggle"><span>Автокоррекция в поле сообщения</span><input type="checkbox" role="switch" id="autocorrect_enabled" onchange="saveAutocorrect()"></label><p class="hint">Выключена по умолчанию: iOS заменяет -- и кавычки, а агенту нужны точные символы.</p>
-        <label for="code_font">Размер шрифта кода</label><select id="code_font" onchange="setCodeFont(+this.value)"></select><p class="hint">Диффы, коммиты и файлы в правой панели.</p></div>
+        <label for="code_font">Размер шрифта кода</label><select id="code_font" onchange="setCodeFont(+this.value)"></select><p class="hint">Диффы, коммиты и файлы в правой панели.</p>
+        <label for="context_heavy">Контекст разросся (жёлтый), тысяч токенов</label><input type="number" id="context_heavy" min="1" max="2000" step="5" inputmode="numeric" onchange="saveContextLimits()">
+        <label for="context_full">Пора начать заново (красный), тысяч токенов</label><input type="number" id="context_full" min="2" max="2000" step="5" inputmode="numeric" onchange="saveContextLimits()"><p class="hint">Полоска внизу сессии. Качество падает задолго до заполнения окна; чаще всего его замечают около 150 тысяч.</p></div>
       <form class="hub-card" onsubmit="event.preventDefault();saveProjectDirectory()"><h4>Новые сессии</h4><label for="project_directory">Папка проектов</label><input type="text" id="project_directory" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="done" required><p class="hint">Используется для новых сессий. Существующие сессии остаются в своих папках.</p><div class="acts"><button class="pri" id="project_directory_save">Сохранить</button></div></form>
       <div class="hub-card" data-card="version">
         <div class="card-top"><span class="card-icon" aria-hidden="true"><svg class="ui-icon"><use href="#i-download"/></svg></span><div class="card-main"><h4>Версия и обновления</h4><p id="version_status" class="card-status" role="status"></p><p id="version_meta" class="card-meta"></p></div></div>
@@ -2425,8 +2429,13 @@ function renderFiles(){
   for(const entry of listing.entries){
     const path=listing.path+"/"+entry.name;
     const row=fileButton(entry.name,"files-row"+(entry.dir?" dir":""),()=>entry.dir?loadFolder(path):openFile(path),entry.dir?"folder":"file");
-    if(!entry.dir)row.append(el("span","files-size",formatSize(entry.size)));
-    list.append(row);
+    if(entry.dir){list.append(row);continue}
+    row.append(el("span","files-size",formatSize(entry.size)));
+    // Any file straight from the list, without opening it first (a video, an archive, a huge log).
+    const save=el("button","files-download",svgIcon("download"));save.type="button";
+    save.setAttribute("aria-label",tr("Скачать файл {0}",[entry.name]));save.title=tr("Скачать");
+    save.onclick=()=>downloadFile(null,path);
+    list.append(el("div","files-item",row,save));
   }
   if(!listing.entries.length)list.append(el("p","files-empty",tr("Папка пуста")));
   if(listing.truncated)list.append(el("p","files-empty",tr("Показаны первые 2000 элементов")));
@@ -2941,6 +2950,26 @@ if(typeof module!=="undefined")module.exports={diffRows,lineComment,authorColor,
 const sessionInfo={session:null,data:null,timer:null,seq:0};
 const SESSION_INFO_POLL=30000;
 const CONTEXT_SCALE=200000;  // A full bar for Claude, whose window the conversation file does not state.
+// Colours by size, not by the window: quality drops long before it is full. No published number exists;
+// Claude Code users most often report the drop around 150k. Both are set in Settings, in this browser.
+const CONTEXT_LIMITS={heavy:80000,full:150000};
+function contextLimits(){
+  let saved={};try{saved=JSON.parse(localStore.getItem("cc.context-limits")||"{}")}catch(e){}
+  const heavy=saved.heavy>0?saved.heavy:CONTEXT_LIMITS.heavy,full=saved.full>0?saved.full:CONTEXT_LIMITS.full;
+  return full>heavy?{heavy,full}:CONTEXT_LIMITS;
+}
+function contextLevel(tokens){const limits=contextLimits();return tokens>=limits.full?"full":tokens>=limits.heavy?"heavy":"fine"}
+function applyContextLimits(){
+  const limits=contextLimits(),heavy=document.getElementById("context_heavy"),full=document.getElementById("context_full");
+  if(heavy)heavy.value=String(limits.heavy/1000);
+  if(full)full.value=String(limits.full/1000);
+}
+function saveContextLimits(){
+  const heavy=Math.round(+$("context_heavy").value*1000),full=Math.round(+$("context_full").value*1000);
+  if(!(heavy>0&&full>heavy)){toast(tr("Красный порог должен быть больше жёлтого"));applyContextLimits();return}
+  try{localStore.setItem("cc.context-limits",JSON.stringify({heavy,full}))}catch(e){}
+  renderSessionInfo();
+}
 const CONTEXT_LEVELS={fine:"Разговор свежий",heavy:"Разговор разросся: агент начинает хуже держать детали",full:"Пора начать новый разговор: контекст переполнен"};
 
 function summaryOpen(){try{return localStore.getItem("cc.summary-open")==="1"}catch(e){return false}}
@@ -2982,11 +3011,12 @@ function renderSessionInfo(){
 }
 function renderContext(context){
   const box=$("ctx"),fill=$("ctx_fill");
-  box.dataset.level=context?.level||"";
+  const level=context?contextLevel(context.tokens):"";
+  box.dataset.level=level;
   fill.style.width=context?Math.min(100,Math.round(context.tokens/(context.window||CONTEXT_SCALE)*100))+"%":"0";
   const text=context?tr("Контекст {0}",[formatTokens(context.tokens)+(context.window?" / "+formatTokens(context.window):"")]):tr("Контекст: нет данных");
   $("ctx_text").textContent=text;
-  const hint=context?text+" · "+tr(CONTEXT_LEVELS[context.level]||CONTEXT_LEVELS.fine):text;
+  const hint=context?text+" · "+tr(CONTEXT_LEVELS[level]):text;
   box.title=hint;box.setAttribute("aria-label",hint);
 }
 if(typeof document!=="undefined")document.addEventListener("visibilitychange",()=>{if(!document.hidden&&sessionInfo.session)loadSessionInfo()});
@@ -4987,7 +5017,7 @@ function applyAutocorrect(){
   $("autocorrect_enabled").checked=on;
 }
 function saveAutocorrect(){try{localStore.setItem("cc.autocorrect",$("autocorrect_enabled").checked?"1":"0")}catch(e){}applyAutocorrect()}
-applyAutocorrect();applyCodeFont();
+applyAutocorrect();applyCodeFont();applyContextLimits();
 let UI_PANEL_VERSION=null;
 async function loadVersion(){
   if(versionLoading===deckEpoch)return;clearTimeout(versionTimer);

@@ -15,7 +15,7 @@ SUMMARY_EVERY = 300
 SUMMARY_CHARS = 12000
 TURN_CHARS = 600
 # Quality drops long before the window is full, so the levels are sizes, not shares of the window.
-HEAVY, FULL = 80_000, 160_000
+HEAVY, FULL = 80_000, 150_000  # Defaults; the browser colours by the user's own limits.
 
 
 def tail_records(path, size=TAIL):
