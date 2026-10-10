@@ -9,10 +9,10 @@ function rememberProject(tab){try{localStore.setItem("cc.project",tab)}catch(e){
 
 function openFiles(){openProject("files")}
 function openHistory(){openProject("changes")}
-// The bar buttons hide the sidebar when it already shows their tab; the sidebar button reopens the last one.
+// The bar button hides the panel when it is open and reopens the last tab.
 function toggleProject(tabs){
   const box=$("project_dlg");
-  if(box.open&&box.classList.contains("docked")&&tabs.includes(project.tab))return closeProject();
+  if(box.open&&tabs.includes(project.tab))return closeProject();
   openProject(tabs.includes(project.tab)?project.tab:tabs[0]);
 }
 function openProject(tab){
@@ -40,10 +40,8 @@ function refreshProject(){
 function markProjectTab(){
   for(const b of $("project_tabs").querySelectorAll("[data-tab]")){const on=b.dataset.tab===project.tab;b.classList.toggle("on",on);b.setAttribute("aria-selected",String(on))}
   $("git_body").hidden=["files","gallery"].includes(project.tab);$("files_body").hidden=project.tab!=="files";$("gallery_body").hidden=project.tab!=="gallery";
-  const box=$("project_dlg"),shown=box.open&&box.classList.contains("docked");
-  $("b_files").setAttribute("aria-pressed",String(shown&&project.tab==="files"));
-  $("b_history").setAttribute("aria-pressed",String(shown&&!["files","gallery"].includes(project.tab)));
-  $("b_project").setAttribute("aria-pressed",String(shown));
+  const box=$("project_dlg");
+  $("b_project").setAttribute("aria-pressed",String(box.open));
 }
 // Opens (or moves) the panel in the form this layout uses: docked beside the session or modal.
 function placeProject(open){

@@ -853,7 +853,7 @@ body.resizing iframe{pointer-events:none}
   .bar-search{display:none}
   body.searching .bar-search{display:flex;flex:1;width:auto;height:var(--tap)}
   body.searching .bar-tools{flex:1;min-width:0}
-  body.searching #title,body.searching .bar-tools>.iconbtn,body.searching #b_actions{display:none!important}
+  body.searching #title,body.searching .bar-tools>.iconbtn,body.searching #b_actions,body.searching #b_project{display:none!important}
   .search-close{place-items:center;flex:none;width:32px;height:32px;margin-right:-6px;color:var(--mut)}
   .search-pop{left:8px;right:8px;width:auto;max-height:60dvh}
   .bar-search input::-webkit-search-cancel-button{display:none}
@@ -955,6 +955,14 @@ body.resizing iframe{pointer-events:none}
 }
 @keyframes dlg-in{from{opacity:0;transform:translateY(4px)}}
 @media (prefers-reduced-motion:no-preference){dialog[open]{animation:dlg-in .14s ease-out}}
+/* Phone: the project panel is a drawer on the right, mirroring the menu on the left. */
+@keyframes drawer-in{from{transform:translateX(100%)}}
+@media (max-width:760px),(pointer:coarse) and (max-height:500px){
+  #project_dlg:not(.docked){inset:var(--app-top,0) 0 auto auto;width:min(440px,92vw);max-width:92vw;height:var(--app-h);margin:0;border:0;border-left:1px solid var(--bd);border-radius:0;box-shadow:0 0 40px rgba(0,0,0,.6)}
+  #project_dlg:not(.docked)[open]{animation:drawer-in .22s ease}
+  #project_dlg:not(.docked)::backdrop{background:rgba(0,0,0,.5)}
+}
+@media (prefers-reduced-motion:reduce){#project_dlg:not(.docked)[open]{animation:none}}
 .files-crumbs{flex:1;min-width:0;display:flex;flex-wrap:wrap;align-items:center;gap:2px;font:12.5px var(--mono);color:var(--mut)}
 .files-crumbs button{padding:4px 6px;border-radius:6px;color:var(--acc-text)}
 .files-crumbs .here{padding:4px 6px;color:var(--fg2)}.files-crumbs .sep{color:var(--dim)}

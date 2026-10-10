@@ -49,3 +49,28 @@ test('nothing happens while a dialog or the desktop layout disables it',()=>{
   touch('touchstart',10,400);touch('touchmove',200,400);touch('touchend',200,400);
   expect(setOpen).not.toHaveBeenCalled();
 });
+
+test('the right drawer mirrors the left: shown at the start of a pull from the right edge, closed by a swipe right',()=>{
+  const panel=document.createElement('dialog');panel.getBoundingClientRect=()=>({width:300});
+  let open=false;const setOpen=jest.fn(on=>{open=on}),reveal=jest.fn();
+  const doc=document.implementation.createHTMLDocument('');
+  Object.defineProperty(doc,'defaultView',{value:{innerWidth:400}});
+  attachDrawerSwipe(doc,{panel:()=>panel,right:true,reveal,isOpen:()=>open,setOpen,enabled:()=>true});
+  const touch=(type,x)=>{
+    const event=new Event(type,{bubbles:true,cancelable:true}),point={clientX:x,clientY:300};
+    event.touches=type==='touchend'?[]:[point];event.changedTouches=[point];doc.dispatchEvent(event);
+  };
+  touch('touchstart',200);touch('touchmove',100);touch('touchend',100);  // Not from the edge.
+  expect(reveal).not.toHaveBeenCalled();
+  touch('touchstart',390);touch('touchmove',250);
+  expect(reveal).toHaveBeenCalledTimes(1);
+  expect(panel.style.transform).toBe('translateX(160px)');
+  touch('touchend',250);
+  expect(setOpen).toHaveBeenLastCalledWith(true);
+  touch('touchstart',100);touch('touchmove',80);touch('touchend',80);  // Open: a swipe left does nothing.
+  expect(setOpen).toHaveBeenCalledTimes(1);
+  touch('touchstart',100);touch('touchmove',300);
+  expect(panel.style.transform).toBe('translateX(200px)');
+  touch('touchend',300);
+  expect(setOpen).toHaveBeenLastCalledWith(false);
+});

@@ -303,10 +303,10 @@ test('on a wide screen the project panel docks on the right, follows the session
   try{
   await settle();await settle();
   const doc=window.document,panel=doc.getElementById('project_dlg');
-  doc.getElementById('b_history').click();await settle();
+  window.eval('openHistory()');await settle();
   expect(panel.open).toBe(true);
   expect(panel.classList.contains('docked')).toBe(true);
-  expect(doc.getElementById('b_history').getAttribute('aria-pressed')).toBe('true');
+  expect(doc.getElementById('b_project').getAttribute('aria-pressed')).toBe('true');
   expect(window.localStorage.getItem('cc.project')).toBe('changes');
   // The terminal stays usable: a docked panel does not count as an open dialog.
   expect(doc.querySelector('dialog[open]:not(.docked)')).toBeNull();
@@ -317,7 +317,7 @@ test('on a wide screen the project panel docks on the right, follows the session
   expect(doc.getElementById('git_body').hidden).toBe(true);
   expect(doc.getElementById('files_body').hidden).toBe(false);
   expect(window.localStorage.getItem('cc.project')).toBe('files');
-  doc.getElementById('b_files').click();await settle();
+  doc.getElementById('b_project').click();await settle();
   expect(panel.open).toBe(false);
   expect(window.localStorage.getItem('cc.project')).toBe('');
   // The sidebar button reopens the last tab and hides the panel again.

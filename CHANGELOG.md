@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.31.0 — 2026-10-10
+
+- On a phone the project panel (changes, commits, feature groups, files, gallery) is a drawer on the right, mirroring the menu on the left: it follows a swipe from the right edge, closes with a swipe back or a tap beside it, and the sidebar button at the top right toggles it. The session bar keeps only search, **⋯** and that button; the separate files and history icons are gone.
+
 ## 1.30.0 — 2026-10-10
 
 - Gallery: a fifth tab in the project panel shows every picture the session's agents showed on screen, newest first, three per row, with the full-screen viewer to swipe through them. The panel keeps a private copy of each picture as it appears, so screenshots no longer vanish when the path scrolls away, the screen is redrawn, or the agent overwrites or deletes the file; the thumbnails under the output use that copy too. Up to 200 pictures and 300 MB per session, kept 30 days. Connected computers need this version for their gallery.

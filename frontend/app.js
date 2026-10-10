@@ -190,6 +190,12 @@ function drawer(on){document.body.classList.toggle("drawer",on);if(on)$("q").blu
 const drawerSwipe={panel:document.querySelector("aside"),isOpen:()=>document.body.classList.contains("drawer"),setOpen:on=>drawer(on),
   enabled:()=>isMobile()&&!document.querySelector("dialog[open]")&&$("viewer").hidden&&!$("sheet").classList.contains("on")};
 attachDrawerSwipe(document,drawerSwipe);
+// The project panel (changes, commits, files, gallery) slides in from the right edge on a phone.
+const projectSwipe={panel:()=>$("project_dlg"),right:true,
+  isOpen:()=>$("project_dlg").open&&!$("project_dlg").classList.contains("docked"),
+  setOpen:on=>on?openProject(project.tab):closeProject(),reveal:()=>openProject(project.tab),
+  enabled:()=>isMobile()&&Boolean(active)&&![...document.querySelectorAll("dialog[open]")].some(d=>d.id!=="project_dlg")&&$("viewer").hidden&&!$("sheet").classList.contains("on")&&!document.body.classList.contains("drawer")};
+attachDrawerSwipe(document,projectSwipe);
 function sheet(on){
   if(on){
     const s=cur();
@@ -213,6 +219,8 @@ for(const item of $("sheet").querySelectorAll(".panel button"))item.setAttribute
 // Escape on an edited file asks first instead of dropping the changes.
 $("project_dlg").addEventListener("cancel",e=>{if(filesDirty()){e.preventDefault();leaveFile()}});
 $("project_dlg").addEventListener("close",projectClosed);
+// A tap beside the phone drawer (on its backdrop) closes it, like the menu on the left.
+$("project_dlg").addEventListener("click",e=>{if(e.target===e.currentTarget&&!e.currentTarget.classList.contains("docked"))closeProject()});
 addEventListener("keydown",e=>{if(e.key==="Escape"&&$("sheet").classList.contains("on"))sheet(false)});
 async function confirmAction(title,{text="",confirm=tr("Продолжить"),danger=false}={}){
   return askConfirm($("confirm_dlg"),{title,text,confirm,danger});
@@ -377,7 +385,7 @@ function frameFor(name){
     f=document.createElement("iframe");f.src=activePath("/t/?arg="+encodeURIComponent("=cc-"+name));
     // Only the overlay reacts: a full show() would scroll the Screen view or move focus into the terminal.
     f.dataset.loading="1";f.addEventListener("load",()=>{delete f.dataset.loading;if(frames.get(active)===f&&curMode()==="term")$("term_loading").hidden=true},{once:true});
-    f.onload=()=>{try{f.contentWindow.addEventListener("keydown",hotkeys,true);watchFileDrops(f.contentWindow);hookClipboard(f.contentWindow);attachDrawerSwipe(f.contentDocument,drawerSwipe)}catch(e){}};
+    f.onload=()=>{try{f.contentWindow.addEventListener("keydown",hotkeys,true);watchFileDrops(f.contentWindow);hookClipboard(f.contentWindow);attachDrawerSwipe(f.contentDocument,drawerSwipe);attachDrawerSwipe(f.contentDocument,projectSwipe)}catch(e){}};
     $("stage").append(f);frames.set(name,f);
   }
   return f;

@@ -848,7 +848,7 @@
     "Как проверить результат удалённо": "Cómo revisar el resultado a distancia",
     "Агенты присылают скриншоты: картинки открываются прямо в выводе.": "Los agentes envían capturas: las imágenes se abren en la propia salida.",
     "Сайт, который запустил агент, открывается по адресу компьютера в Tailscale.": "Un sitio que inició el agente se abre en la dirección Tailscale del ordenador.",
-    "Изменения, коммиты и файлы — в панели справа (на телефоне — иконки сверху).": "Cambios, commits y archivos están en el panel derecho (iconos arriba en el teléfono).",
+    "Изменения, коммиты, файлы и галерея — в панели справа (на телефоне она выезжает свайпом от правого края или кнопкой справа сверху).": "Cambios, commits, archivos y la galería están en el panel derecho (en el móvil se desliza desde el borde derecho o con el botón de arriba a la derecha).",
     "локальные модели": "modelos locales",
     "Интернет-сервисы": "Servicios de internet",
     "Вы": "Tú",

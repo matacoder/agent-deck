@@ -864,7 +864,7 @@ body.resizing iframe{pointer-events:none}
   .bar-search{display:none}
   body.searching .bar-search{display:flex;flex:1;width:auto;height:var(--tap)}
   body.searching .bar-tools{flex:1;min-width:0}
-  body.searching #title,body.searching .bar-tools>.iconbtn,body.searching #b_actions{display:none!important}
+  body.searching #title,body.searching .bar-tools>.iconbtn,body.searching #b_actions,body.searching #b_project{display:none!important}
   .search-close{place-items:center;flex:none;width:32px;height:32px;margin-right:-6px;color:var(--mut)}
   .search-pop{left:8px;right:8px;width:auto;max-height:60dvh}
   .bar-search input::-webkit-search-cancel-button{display:none}
@@ -966,6 +966,14 @@ body.resizing iframe{pointer-events:none}
 }
 @keyframes dlg-in{from{opacity:0;transform:translateY(4px)}}
 @media (prefers-reduced-motion:no-preference){dialog[open]{animation:dlg-in .14s ease-out}}
+/* Phone: the project panel is a drawer on the right, mirroring the menu on the left. */
+@keyframes drawer-in{from{transform:translateX(100%)}}
+@media (max-width:760px),(pointer:coarse) and (max-height:500px){
+  #project_dlg:not(.docked){inset:var(--app-top,0) 0 auto auto;width:min(440px,92vw);max-width:92vw;height:var(--app-h);margin:0;border:0;border-left:1px solid var(--bd);border-radius:0;box-shadow:0 0 40px rgba(0,0,0,.6)}
+  #project_dlg:not(.docked)[open]{animation:drawer-in .22s ease}
+  #project_dlg:not(.docked)::backdrop{background:rgba(0,0,0,.5)}
+}
+@media (prefers-reduced-motion:reduce){#project_dlg:not(.docked)[open]{animation:none}}
 .files-crumbs{flex:1;min-width:0;display:flex;flex-wrap:wrap;align-items:center;gap:2px;font:12.5px var(--mono);color:var(--mut)}
 .files-crumbs button{padding:4px 6px;border-radius:6px;color:var(--acc-text)}
 .files-crumbs .here{padding:4px 6px;color:var(--fg2)}.files-crumbs .sep{color:var(--dim)}
@@ -1046,10 +1054,10 @@ body.resizing iframe{pointer-events:none}
       <button class="iconbtn m-only" style="position:relative" onclick="drawer(true)" aria-label="Сессии"><svg class="ui-icon"><use href="#i-menu"/></svg><span id="menuBadge"></span></button>
       <button class="iconbtn d-only" id="b_side" onclick="toggleSidebar()" aria-label="Скрыть или показать список сессий" title="Скрыть или показать список сессий"><svg class="ui-icon"><use href="#i-sidebar"/></svg></button>
       <div id="title">—</div>
-      <span class="bar-tools" id="bar_tools"><button class="iconbtn d-only" id="b_help" onclick="openHelp()" aria-label="Как это работает" title="Как это работает"><svg class="ui-icon"><use href="#i-help"/></svg></button><form class="bar-search" id="search_form" role="search"><svg class="ui-icon"><use href="#i-search"/></svg><input id="search_q" type="search" maxlength="200" placeholder="Поиск в выводе" aria-label="Поиск в выводе" title="Поиск по всему выводу сессии, включая прокрутку" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search"><button type="button" class="m-only search-close" onclick="closeOutputSearch()" aria-label="Закрыть поиск"><svg class="ui-icon"><use href="#i-x"/></svg></button></form><button class="iconbtn m-only" id="b_files" onclick="toggleProject(['files'])" aria-pressed="false" aria-label="Файлы проекта" title="Файлы проекта"><svg class="ui-icon"><use href="#i-folder"/></svg></button><button class="iconbtn m-only" id="b_search" onclick="openOutputSearch()" aria-label="Поиск в выводе" title="Поиск в выводе"><svg class="ui-icon"><use href="#i-search"/></svg></button><button class="iconbtn m-only" id="b_history" onclick="toggleProject(['changes','commits'])" aria-pressed="false" aria-label="История изменений" title="История изменений"><svg class="ui-icon"><use href="#i-history"/></svg></button></span>
+      <span class="bar-tools" id="bar_tools"><button class="iconbtn d-only" id="b_help" onclick="openHelp()" aria-label="Как это работает" title="Как это работает"><svg class="ui-icon"><use href="#i-help"/></svg></button><form class="bar-search" id="search_form" role="search"><svg class="ui-icon"><use href="#i-search"/></svg><input id="search_q" type="search" maxlength="200" placeholder="Поиск в выводе" aria-label="Поиск в выводе" title="Поиск по всему выводу сессии, включая прокрутку" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search"><button type="button" class="m-only search-close" onclick="closeOutputSearch()" aria-label="Закрыть поиск"><svg class="ui-icon"><use href="#i-x"/></svg></button></form><button class="iconbtn m-only" id="b_search" onclick="openOutputSearch()" aria-label="Поиск в выводе" title="Поиск в выводе"><svg class="ui-icon"><use href="#i-search"/></svg></button></span>
       <button class="iconbtn" id="b_actions" onclick="sheet(true)" aria-label="Действия" title="Действия" aria-haspopup="menu"><svg class="ui-icon"><use href="#i-more"/></svg></button>
       <div id="search_pop" class="search-pop" hidden><div id="search_body" role="region" aria-label="Поиск в выводе"></div></div>
-      <button class="iconbtn d-only" id="b_project" onclick="toggleProject(PROJECT_TABS)" aria-pressed="false" aria-label="Скрыть или показать панель проекта" title="Скрыть или показать панель проекта"><svg class="ui-icon"><use href="#i-sidebar-right"/></svg></button>
+      <button class="iconbtn" id="b_project" onclick="toggleProject(PROJECT_TABS)" aria-pressed="false" aria-label="Скрыть или показать панель проекта" title="Скрыть или показать панель проекта"><svg class="ui-icon"><use href="#i-sidebar-right"/></svg></button>
     </div>
     <div id="stage">
       <div id="conn" class="conn" role="status" aria-live="polite" hidden></div>
@@ -1148,7 +1156,7 @@ body.resizing iframe{pointer-events:none}
     <p class="arch-note">Домен ведёт на один компьютер со шлюзом Agent Deck. Остальные компьютеры подключены к нему внутри сети, и все их сессии видны в одном списке.</p>
     <p class="arch-note">На каждом компьютере свой Agent Deck и свои агенты; модели LM Studio может отдавать любой компьютер сети.</p>
     <h4 class="how-title">Как проверить результат удалённо</h4>
-    <ul class="how-list"><li>Агенты присылают скриншоты: картинки открываются прямо в выводе.</li><li>Сайт, который запустил агент, открывается по адресу компьютера в Tailscale.</li><li>Изменения, коммиты и файлы — в панели справа (на телефоне — иконки сверху).</li></ul>
+    <ul class="how-list"><li>Агенты присылают скриншоты: картинки открываются прямо в выводе.</li><li>Сайт, который запустил агент, открывается по адресу компьютера в Tailscale.</li><li>Изменения, коммиты, файлы и галерея — в панели справа (на телефоне она выезжает свайпом от правого края или кнопкой справа сверху).</li></ul>
   </div></div></dialog>
   <dialog id="project_dlg" aria-label="Проект"><div class="resizer" id="project_resizer" role="separator" aria-orientation="vertical" tabindex="0" aria-label="Ширина боковой панели" title="Потяните, чтобы изменить ширину; двойной клик — ширина по умолчанию"></div><div class="dlg"><div class="git-tabs" id="project_tabs" role="tablist" tabindex="-1" autofocus><button type="button" role="tab" data-tab="changes" onclick="projectTab('changes')" aria-label="Изменения" title="Изменения"><svg class="ui-icon"><use href="#i-diff"/></svg></button><button type="button" role="tab" data-tab="commits" onclick="projectTab('commits')" aria-label="Коммиты" title="Коммиты"><svg class="ui-icon"><use href="#i-commit"/></svg></button><button type="button" role="tab" data-tab="groups" onclick="projectTab('groups')" aria-label="Группы фич" title="Группы фич"><svg class="ui-icon"><use href="#i-layers"/></svg></button><button type="button" role="tab" data-tab="files" onclick="projectTab('files')" aria-label="Файлы" title="Файлы"><svg class="ui-icon"><use href="#i-folder"/></svg></button><button type="button" role="tab" data-tab="gallery" onclick="projectTab('gallery')" aria-label="Галерея" title="Галерея"><svg class="ui-icon"><use href="#i-image"/></svg></button><span class="git-font"><button type="button" onclick="codeFont(-1)" aria-label="Уменьшить шрифт">A−</button><button type="button" onclick="codeFont(1)" aria-label="Увеличить шрифт">A+</button></span><button type="button" class="project-close" onclick="closeProject()" aria-label="Закрыть"><svg class="ui-icon"><use href="#i-x"/></svg></button></div><div class="dlg-body" id="git_body"></div><div class="dlg-body" id="files_body" hidden></div><div class="dlg-body" id="gallery_body" hidden></div></div></dialog>
 </div>
@@ -2241,21 +2249,26 @@ function updateScreen(s,force){
   if(stick)p.scrollTop=p.scrollHeight;
   updateJump(changed&&!stick);
 }
-// Phone drawer follows the finger: a swipe from the left edge opens it, a swipe left closes it.
+// Phone drawers follow the finger: the menu comes from the left edge, the project panel from the right;
+// a swipe back towards the edge closes them.
 // Attached to the page and to each terminal frame (same origin), whose touches never reach the page.
+// reveal: a drawer that is not in the page while closed (a dialog) is shown when the drag starts.
 const EDGE=28,DECIDE=10,OPEN_SHARE=0.3;
-function attachDrawerSwipe(doc,{panel,isOpen,setOpen,enabled}){
+function attachDrawerSwipe(doc,{panel:drawer,isOpen,setOpen,enabled,right=false,reveal}){
   let start=null,dragging=false,width=0;
-  const offset=dx=>isOpen()?Math.min(0,dx):Math.min(0,dx-width);
+  const panel=typeof drawer==="function"?drawer:()=>drawer;
+  const sign=right?-1:1;  // Right drawer: the same moves, mirrored.
+  const offset=dx=>sign*Math.min(0,(start.open?sign*dx:sign*dx-width));
   doc.addEventListener("touchstart",e=>{
     // A second finger mid-drag ends the drag where it was, instead of leaving the panel half open.
-    if(dragging){panel.style.transition="";panel.style.transform="";setOpen(start?start.open:isOpen())}
+    if(dragging){reset();setOpen(start?start.open:isOpen())}
     start=null;dragging=false;
     if(e.touches.length!==1||!enabled())return;
     const t=e.touches[0],open=isOpen();
-    // Closed: only the left edge, so vertical scrolling and taps elsewhere stay untouched.
-    if(!open&&t.clientX>EDGE)return;
-    start={x:t.clientX,y:t.clientY,open};width=panel.getBoundingClientRect().width||panel.offsetWidth||300;
+    // Closed: only the edge, so vertical scrolling and taps elsewhere stay untouched.
+    const fromEdge=right?(doc.defaultView?.innerWidth||innerWidth)-t.clientX:t.clientX;
+    if(!open&&fromEdge>EDGE)return;
+    start={x:t.clientX,y:t.clientY,open};width=panel().getBoundingClientRect().width||panel().offsetWidth||300;
   },{passive:true,capture:true});
   doc.addEventListener("touchmove",e=>{
     if(!start||e.touches.length!==1)return;
@@ -2263,19 +2276,21 @@ function attachDrawerSwipe(doc,{panel,isOpen,setOpen,enabled}){
     if(!dragging){
       if(Math.abs(dx)<DECIDE&&Math.abs(dy)<DECIDE)return;
       // A mostly vertical move is a scroll; an open drawer only drags towards closing.
-      if(Math.abs(dy)>Math.abs(dx)||(start.open&&dx>0)){start=null;return}
-      dragging=true;panel.style.transition="none";
+      if(Math.abs(dy)>Math.abs(dx)||(start.open&&sign*dx>0)){start=null;return}
+      if(!start.open&&reveal){reveal();width=panel().getBoundingClientRect().width||width}
+      dragging=true;panel().style.transition="none";panel().style.animation="none";
     }
     e.preventDefault();
-    panel.style.transform="translateX("+offset(dx)+"px)";
+    panel().style.transform="translateX("+offset(dx)+"px)";
   },{passive:false,capture:true});
   const finish=e=>{
     if(!start)return;
     const was=start,moved=dragging?(e.changedTouches[0]?.clientX??was.x)-was.x:0;start=null;
     if(!dragging)return;
-    dragging=false;panel.style.transition="";panel.style.transform="";
-    setOpen(was.open?-moved<width*OPEN_SHARE:moved>width*OPEN_SHARE);
+    dragging=false;reset();
+    setOpen(was.open?-sign*moved<width*OPEN_SHARE:sign*moved>width*OPEN_SHARE);
   };
+  const reset=()=>{panel().style.transition="";panel().style.transform="";panel().style.animation=""};
   doc.addEventListener("touchend",finish,{capture:true});
   doc.addEventListener("touchcancel",finish,{capture:true});
 }
@@ -2900,10 +2915,10 @@ function rememberProject(tab){try{localStore.setItem("cc.project",tab)}catch(e){
 
 function openFiles(){openProject("files")}
 function openHistory(){openProject("changes")}
-// The bar buttons hide the sidebar when it already shows their tab; the sidebar button reopens the last one.
+// The bar button hides the panel when it is open and reopens the last tab.
 function toggleProject(tabs){
   const box=$("project_dlg");
-  if(box.open&&box.classList.contains("docked")&&tabs.includes(project.tab))return closeProject();
+  if(box.open&&tabs.includes(project.tab))return closeProject();
   openProject(tabs.includes(project.tab)?project.tab:tabs[0]);
 }
 function openProject(tab){
@@ -2931,10 +2946,8 @@ function refreshProject(){
 function markProjectTab(){
   for(const b of $("project_tabs").querySelectorAll("[data-tab]")){const on=b.dataset.tab===project.tab;b.classList.toggle("on",on);b.setAttribute("aria-selected",String(on))}
   $("git_body").hidden=["files","gallery"].includes(project.tab);$("files_body").hidden=project.tab!=="files";$("gallery_body").hidden=project.tab!=="gallery";
-  const box=$("project_dlg"),shown=box.open&&box.classList.contains("docked");
-  $("b_files").setAttribute("aria-pressed",String(shown&&project.tab==="files"));
-  $("b_history").setAttribute("aria-pressed",String(shown&&!["files","gallery"].includes(project.tab)));
-  $("b_project").setAttribute("aria-pressed",String(shown));
+  const box=$("project_dlg");
+  $("b_project").setAttribute("aria-pressed",String(box.open));
 }
 // Opens (or moves) the panel in the form this layout uses: docked beside the session or modal.
 function placeProject(open){
@@ -4004,6 +4017,12 @@ function drawer(on){document.body.classList.toggle("drawer",on);if(on)$("q").blu
 const drawerSwipe={panel:document.querySelector("aside"),isOpen:()=>document.body.classList.contains("drawer"),setOpen:on=>drawer(on),
   enabled:()=>isMobile()&&!document.querySelector("dialog[open]")&&$("viewer").hidden&&!$("sheet").classList.contains("on")};
 attachDrawerSwipe(document,drawerSwipe);
+// The project panel (changes, commits, files, gallery) slides in from the right edge on a phone.
+const projectSwipe={panel:()=>$("project_dlg"),right:true,
+  isOpen:()=>$("project_dlg").open&&!$("project_dlg").classList.contains("docked"),
+  setOpen:on=>on?openProject(project.tab):closeProject(),reveal:()=>openProject(project.tab),
+  enabled:()=>isMobile()&&Boolean(active)&&![...document.querySelectorAll("dialog[open]")].some(d=>d.id!=="project_dlg")&&$("viewer").hidden&&!$("sheet").classList.contains("on")&&!document.body.classList.contains("drawer")};
+attachDrawerSwipe(document,projectSwipe);
 function sheet(on){
   if(on){
     const s=cur();
@@ -4027,6 +4046,8 @@ for(const item of $("sheet").querySelectorAll(".panel button"))item.setAttribute
 // Escape on an edited file asks first instead of dropping the changes.
 $("project_dlg").addEventListener("cancel",e=>{if(filesDirty()){e.preventDefault();leaveFile()}});
 $("project_dlg").addEventListener("close",projectClosed);
+// A tap beside the phone drawer (on its backdrop) closes it, like the menu on the left.
+$("project_dlg").addEventListener("click",e=>{if(e.target===e.currentTarget&&!e.currentTarget.classList.contains("docked"))closeProject()});
 addEventListener("keydown",e=>{if(e.key==="Escape"&&$("sheet").classList.contains("on"))sheet(false)});
 async function confirmAction(title,{text="",confirm=tr("Продолжить"),danger=false}={}){
   return askConfirm($("confirm_dlg"),{title,text,confirm,danger});
@@ -4191,7 +4212,7 @@ function frameFor(name){
     f=document.createElement("iframe");f.src=activePath("/t/?arg="+encodeURIComponent("=cc-"+name));
     // Only the overlay reacts: a full show() would scroll the Screen view or move focus into the terminal.
     f.dataset.loading="1";f.addEventListener("load",()=>{delete f.dataset.loading;if(frames.get(active)===f&&curMode()==="term")$("term_loading").hidden=true},{once:true});
-    f.onload=()=>{try{f.contentWindow.addEventListener("keydown",hotkeys,true);watchFileDrops(f.contentWindow);hookClipboard(f.contentWindow);attachDrawerSwipe(f.contentDocument,drawerSwipe)}catch(e){}};
+    f.onload=()=>{try{f.contentWindow.addEventListener("keydown",hotkeys,true);watchFileDrops(f.contentWindow);hookClipboard(f.contentWindow);attachDrawerSwipe(f.contentDocument,drawerSwipe);attachDrawerSwipe(f.contentDocument,projectSwipe)}catch(e){}};
     $("stage").append(f);frames.set(name,f);
   }
   return f;

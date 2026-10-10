@@ -65,7 +65,7 @@ agent); its session and tab stay, and the agent can be started again in it.
 
 - Agents send screenshots of what they built; the pictures open right in the session output.
 - A site an agent starts (a dev server) opens in the phone's browser at the computer's Tailscale address.
-- Changes, commits and files are in the panel on the right (the icons at the top on a phone); tap a changed
+- Changes, commits, files and the gallery are in the panel on the right (on a phone it slides in from the right edge); tap a changed
   line to comment on it in your next message.
 
 The **?** next to the search field in the session bar shows the same picture inside the panel.
@@ -356,18 +356,19 @@ Tap a session name to open it, on the right computer.
 
 ## Project panel: changes, commits, files
 
-Changes, Commits and Files share one panel with three tabs. On a wide screen it is a sidebar on the right:
-the sidebar button at the right end of the session bar (like the one on the left) shows and hides it, the
-**folder** and **git** icons open it on their tab, it stays open while you switch sessions
-(showing the open session's project) and is remembered in this browser. Drag the inner edge of either
-sidebar to change its width (double click for the default). On a phone the same icons open it
-full screen. **Changes** shows what is not committed yet, or the last commit when the tree is clean.
+Changes, Commits, Feature groups, Files and Gallery share one panel with five tabs. On a wide screen it is
+a sidebar on the right: the sidebar button at the right end of the session bar (like the one on the left)
+shows and hides it, it stays open while you switch sessions (showing the open session's project) and is
+remembered in this browser. Drag the inner edge of either sidebar to change its width (double click for the
+default). On a phone it is a drawer like the menu, mirrored: swipe from the right edge or tap the sidebar
+button at the top right; swipe it back or tap beside it to close. The phone's session bar keeps only search,
+**⋯** and that button. **Changes** shows what is not committed yet, or the last commit when the tree is clean.
 With several git worktrees the panel shows the one the agent last named in its output (its path or branch),
 marked "auto"; the picker next to the repository name chooses another.
 
 ## Project files
 
-The **folder icon** in the session bar (Project files) browses the session's folder and everything else in your home folder. Text files
+The **Files** tab of the project panel browses the session's folder and everything else in your home folder. Text files
 up to 1 MB (including `.env`) open in an editor: copy from them, paste a secret in and save, or create a
 new file — new files are private (`0600`), existing ones keep their permissions, and a file that changed
 on disk after you opened it is never overwritten. The panel's own settings folder (`~/.config/cc-panel`)
