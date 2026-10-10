@@ -17,8 +17,35 @@ function toggleProject(tabs){
 }
 function openProject(tab){
   if(!active)return;
+  const shown=$("project_dlg").open;
   placeProject(true);
+  // Reopened on the same tab: what it showed stays while a quiet check runs, instead of a "Loading…"
+  // and a full redraw while the drawer slides in.
+  if(!shown&&tab===project.tab&&projectCurrent())return quietProject();
   projectTab(tab);
+}
+function projectCurrent(){
+  if(project.tab==="files")return files.session===active;
+  if(project.tab==="gallery")return gallery.session===active&&Boolean(gallery.items);
+  return hist.session===active&&Boolean(hist.changes);
+}
+function quietProject(){
+  markProjectTab();
+  if(project.tab==="gallery")return loadGallery();
+  if(project.tab==="changes"||project.tab==="groups")pollChanges();
+}
+// The phone drawer slides in and out like the menu on the left; elsewhere the panel just appears.
+const PROJECT_DRAWER="(max-width:760px),(pointer:coarse) and (max-height:500px)";
+function projectSlides(box){
+  return !box.classList.contains("docked")&&typeof matchMedia==="function"&&matchMedia(PROJECT_DRAWER).matches&&!matchMedia("(prefers-reduced-motion:reduce)").matches;
+}
+function slideProject(box,inward){
+  if(inward){box.style.transition="none";box.style.transform="translateX(100%)";box.getBoundingClientRect();box.style.transition="";box.style.transform="";return}
+  box.style.transform="translateX(100%)";
+  return new Promise(done=>{
+    const end=()=>{clearTimeout(timer);box.removeEventListener("transitionend",end);done()};
+    const timer=setTimeout(end,300);box.addEventListener("transitionend",end);
+  });
 }
 // A tab chosen by hand always shows the current state: the agent keeps working.
 function projectTab(tab){
@@ -50,7 +77,7 @@ function placeProject(open){
   if(!open||box.open)return;
   applyCodeFont();box.classList.toggle("docked",docked);
   if(docked)box.open=true;  // Not modal: the terminal and the message field stay usable beside it.
-  else box.showModal();
+  else{box.showModal();if(projectSlides(box))slideProject(box,true)}
 }
 // Called after every session or layout change: a wide screen restores the remembered sidebar.
 function syncProject(){
@@ -67,7 +94,9 @@ function syncProject(){
 async function closeProject(){
   if(filesDirty()&&!await leaveFile())return;
   if(projectDocked())rememberProject("");
-  $("project_dlg").close();
+  const box=$("project_dlg");
+  if(box.open&&projectSlides(box))await slideProject(box,false);
+  box.close();box.style.transform="";
 }
 // Closed by hand (not moved between layouts): stop polling and free a previewed file's blob.
 function projectClosed(){

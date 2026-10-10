@@ -137,7 +137,8 @@ function renderEditor(box,listing){
 function renderReader(box,head,file){
   let view=el("div","files-view");
   if(file.rendered)view=renderMarkdown(file.content);
-  else file.content.split("\n").forEach((line,i,lines)=>{
+  else view.style.setProperty("--ln",Math.max(2,String(file.content.split("\n").length).length));
+  if(!file.rendered)file.content.split("\n").forEach((line,i,lines)=>{
     if(i===lines.length-1&&!line&&lines.length>1)return;  // The newline that ends the file is not a line.
     view.append(el("div","fl",el("span","ln",String(i+1)),el("span","code",line||" ")));
   });

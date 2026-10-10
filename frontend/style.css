@@ -862,7 +862,6 @@ body.resizing iframe{pointer-events:none}
   #project_tabs{gap:2px;padding:8px 6px}#project_tabs button{padding:0 9px}#project_tabs .git-font button{min-width:36px}
   /* Close first, so a row wider than the phone scrolls only the font buttons out of view. */
   .project-close{order:-1;width:var(--tap);height:var(--tap)}
-  .dl .ln{width:36px}
   #confirm_dlg{width:calc(100vw - 32px);height:fit-content;margin:auto;border:1px solid var(--bd-soft);border-radius:16px}
   #confirm_dlg .dlg{height:auto;padding-top:0}
   #confirm_dlg .acts{padding:12px 16px 16px}
@@ -956,13 +955,20 @@ body.resizing iframe{pointer-events:none}
 @keyframes dlg-in{from{opacity:0;transform:translateY(4px)}}
 @media (prefers-reduced-motion:no-preference){dialog[open]{animation:dlg-in .14s ease-out}}
 /* Phone: the project panel is a drawer on the right, mirroring the menu on the left. */
-@keyframes drawer-in{from{transform:translateX(100%)}}
 @media (max-width:760px),(pointer:coarse) and (max-height:500px){
   #project_dlg:not(.docked){inset:var(--app-top,0) 0 auto auto;width:min(340px,88vw);max-width:88vw;height:var(--app-h);margin:0;border:0;border-left:1px solid var(--bd);border-radius:0;box-shadow:0 0 40px rgba(0,0,0,.6)}
-  #project_dlg:not(.docked)[open]{animation:drawer-in .22s ease}
+  #project_dlg:not(.docked){transition:transform .22s ease}
   #project_dlg:not(.docked)::backdrop{background:rgba(0,0,0,.5)}
+  /* Tabs at the bottom, under the thumb. */
+  #project_dlg:not(.docked) #project_tabs{order:1;border-bottom:0;border-top:1px solid var(--bd);padding-bottom:calc(8px + var(--sab))}
+  #project_dlg:not(.docked) .dlg-body{padding:12px}
+  /* One narrow line-number column: the new number, or the old one for a removed line. */
+  .dl:not(.del) .ln.o,.dl.del .ln.n{display:none}
+  .dl .ln,.files-view .ln{width:calc(var(--ln,3)*1ch + 6px);padding:0 4px 0 0;font-size:.85em;line-height:calc(1em/.85*1.45)}
+  .files-view .ln{line-height:calc(1em/.85*1.5)}
+  .dl .code{padding:0 6px}.files-view .code{padding-right:6px}.dl.hunk{padding:4px 6px}
 }
-@media (prefers-reduced-motion:reduce){#project_dlg:not(.docked)[open]{animation:none}}
+@media (prefers-reduced-motion:reduce){#project_dlg:not(.docked){transition:none}}
 .files-crumbs{flex:1;min-width:0;display:flex;flex-wrap:wrap;align-items:center;gap:2px;font:12.5px var(--mono);color:var(--mut)}
 .files-crumbs button{padding:4px 6px;border-radius:6px;color:var(--acc-text)}
 .files-crumbs .here{padding:4px 6px;color:var(--fg2)}.files-crumbs .sep{color:var(--dim)}

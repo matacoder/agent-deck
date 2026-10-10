@@ -283,6 +283,9 @@ test('a tapped line of an uncommitted change becomes a comment in the session dr
   message.value='Please check:';message.dispatchEvent(new window.Event('input'));
   window.eval('openHistory()');await settle();await settle();
   const added=doc.querySelector('#git_body .dl.add');
+  // Both numbers are there; a phone shows one of them in a column sized for the longest number.
+  expect([...added.querySelectorAll('.ln')].map(n=>n.className+'='+n.textContent)).toEqual(['ln o=','ln n=2']);
+  expect(doc.querySelector('#git_body .diff').style.getPropertyValue('--ln')).toBe('2');
   added.click();
   doc.querySelector('.diff-comment textarea').value='use a constant';
   doc.querySelector('.diff-comment').requestSubmit();
@@ -290,6 +293,30 @@ test('a tapped line of an uncommitted change becomes a comment in the session dr
   expect(doc.querySelector('.diff-comment')).toBeNull();
   // The commits page answered meanwhile; the open Changes tab was not redrawn under the user.
   expect(doc.querySelector('#project_tabs .on').dataset.tab).toBe('changes');
+  }finally{window.close()}
+});
+
+test('reopening the project panel on the same tab keeps what it showed while it checks quietly',async()=>{
+  const state={local:()=>({sessions:[session('alpha')]})};
+  const routes=routesFor(state);let asked=0,answer;
+  routes['/api/git/log']=()=>({repo:'/r',name:'r',branch:'main',ref:'HEAD',branches:['main'],remote:'',ahead:0,behind:0,commits:[],more:false});
+  routes['/api/git/changes']=()=>{asked++;return answer};
+  answer={repo:'/r',name:'r',branch:'main',skipped:0,files:[{path:'app.py',old_path:'app.py',status:'modified',added:1,removed:0,binary:false,truncated:false,patch:'@@ -1 +1,2 @@\n a\n+b\n'}]};
+  const window=boot(routes);
+  try{
+  await settle();await settle();
+  const doc=window.document;
+  window.eval('openHistory()');await settle();await settle();
+  const first=doc.querySelector('#git_body .dl.add');
+  expect(first).not.toBeNull();
+  await window.eval('closeProject()');
+  answer={...answer,files:[{...answer.files[0],added:2,patch:'@@ -1 +1,3 @@\n a\n+b\n+c\n'}]};
+  window.eval('openProject("changes")');
+  // Same nodes right away: no "Loading…" while the drawer slides in.
+  expect(doc.querySelector('#git_body .dl.add')).toBe(first);
+  await settle();await settle();
+  expect(asked).toBe(2);
+  expect(doc.querySelectorAll('#git_body .dl.add').length).toBe(2);
   }finally{window.close()}
 });
 

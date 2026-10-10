@@ -362,7 +362,8 @@ shows and hides it, it stays open while you switch sessions (showing the open se
 remembered in this browser. Drag the inner edge of either sidebar to change its width (double click for the
 default). On a phone it is a drawer like the menu, mirrored: swipe from the right edge or tap the sidebar
 button at the top right; swipe it back or tap beside it to close. The phone's session bar keeps only search,
-**⋯** and that button. **Changes** shows what is not committed yet, or the last commit when the tree is clean.
+**⋯** and that button. In the drawer the tabs sit at the bottom, under the thumb, and code shows one narrow
+line-number column. **Changes** shows what is not committed yet, or the last commit when the tree is clean.
 With several git worktrees the panel shows the one the agent last named in its output (its path or branch),
 marked "auto"; the picker next to the repository name chooses another.
 

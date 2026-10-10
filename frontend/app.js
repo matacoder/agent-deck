@@ -193,7 +193,7 @@ attachDrawerSwipe(document,drawerSwipe);
 // The project panel (changes, commits, files, gallery) slides in from the right edge on a phone.
 const projectSwipe={panel:()=>$("project_dlg"),right:true,
   isOpen:()=>$("project_dlg").open&&!$("project_dlg").classList.contains("docked"),
-  setOpen:on=>on?openProject(project.tab):closeProject(),reveal:()=>openProject(project.tab),
+  setOpen:on=>on?$("project_dlg").open||openProject(project.tab):closeProject(),reveal:()=>openProject(project.tab),
   enabled:()=>isMobile()&&Boolean(active)&&![...document.querySelectorAll("dialog[open]")].some(d=>d.id!=="project_dlg")&&$("viewer").hidden&&!$("sheet").classList.contains("on")&&!document.body.classList.contains("drawer")};
 attachDrawerSwipe(document,projectSwipe);
 function sheet(on){

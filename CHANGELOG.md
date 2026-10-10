@@ -2,6 +2,11 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.32.0 — 2026-10-10
+
+- On a phone the project drawer keeps its tabs at the bottom, under the thumb, and diffs and files show one narrow line-number column (the new number, or the old one for a removed line) with less padding, so code gets most of the width.
+- The phone project drawer moves as smoothly as the menu: reopening it keeps what it showed while a quiet check runs (no "Loading…" and full redraw mid-swipe), it slides out when closed, and letting go of a half-open drag no longer restarts the slide from the edge.
+
 ## 1.31.1 — 2026-10-10
 
 - On a phone the right-hand project drawer is as wide as the menu on the left (it covered almost the whole screen).

@@ -34,9 +34,12 @@ function renderDiff(patch,file,onLine){
   const box=el("div","diff");
   if(file.binary){box.append(el("p","diff-note",tr("Двоичный файл")));return box}
   if(!patch){box.append(el("p","diff-note",tr("Дифф слишком большой для просмотра; откройте его в терминале")));return box}
-  for(const row of diffRows(patch)){
+  const rows=diffRows(patch);
+  // Width of the line-number column in digits, so a phone can give it no more room than it needs.
+  box.style.setProperty("--ln",Math.max(2,...rows.map(row=>String(row.old||row.new||"").length)));
+  for(const row of rows){
     if(row.kind==="hunk"){box.append(el("div","dl hunk",row.text));continue}
-    const line=el("div","dl "+row.kind,el("span","ln",String(row.old)),el("span","ln",String(row.new)),el("span","code",row.text||" "));
+    const line=el("div","dl "+row.kind,el("span","ln o",String(row.old)),el("span","ln n",String(row.new)),el("span","code",row.text||" "));
     if(onLine){
       line.classList.add("commentable");line.tabIndex=0;line.setAttribute("role","button");
       // Selecting text to copy is not a request to comment.
