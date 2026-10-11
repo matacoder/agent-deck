@@ -2,6 +2,11 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.43.0 — 2026-10-11
+
+- **Each session chooses where its containers run.** The new-session dialog has a **Containers** list (this computer or one marked for containers), and a new line at the bottom of the status bar names the computer the session runs on (left) and the one that runs its containers (right, with the Docker whale); tap the right one to change it, then restart the session to apply. The choice in Settings → Computers is now the default for new sessions. Sessions started before keep following that default.
+- **Agent commands moved behind "…".** `/compact`, `/clear` and `/new` no longer sit in the row of quick prompts: the three-dots button shows them, and they hide again after one is sent.
+
 ## 1.42.0 — 2026-10-11
 
 - **A closed Docker is opened by the panel.** A computer whose Docker is installed but not running can now be marked for containers: marking it opens Docker, and so does a command that arrives later while it is closed (the command waits up to a minute instead of failing). Works for Docker Desktop and OrbStack on macOS, Colima, rootless Docker on Linux and Docker Desktop on Windows; a system Docker that needs root is not started.

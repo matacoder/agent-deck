@@ -310,7 +310,9 @@ test('the session strip shows a quiet summary under the bar and the context with
   expect($('hint_line').textContent).toBe('Payments webhook');
   expect($('hint_more').hidden).toBe(true);
   // Restarts on the left, then how long the conversation has run and the context.
-  expect([...$('session_meta').children].map(node=>node.id||node.tagName)).toEqual(['BUTTON','BUTTON','ctx']);
+  expect([...$('session_meta').children].map(node=>node.id||node.tagName)).toEqual(['BUTTON','BUTTON','ctx','session_where']);
+  // Another computer is connected: the line names this one; nobody is marked for containers, so no second name.
+  expect([$('session_where').hidden,$('session_computer').textContent,$('session_containers_box').hidden]).toEqual([false,'gateway',true]);
   expect([$('ctx_age_box').hidden,$('ctx_age').textContent]).toEqual([false,'3ч 12м']);
   expect($('ctx').getAttribute('aria-label')).toContain('Разговор идёт 3ч 12м');
   expect($('ctx_text').textContent).toBe('Контекст 171k / 258k');

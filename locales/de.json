@@ -933,7 +933,6 @@
     "Сообщение передано агенту": "Nachricht an Agent gesendet",
     "Контейнеры": "Container",
     "Docker-команды агентов этого компьютера могут выполняться на другом, более мощном. Отметьте компьютеры, где разрешено запускать контейнеры, и выберите один из них.": "Docker-Befehle der Agenten dieses Computers können auf einem anderen, stärkeren laufen. Markieren Sie die Computer, auf denen Container laufen dürfen, und wählen Sie einen davon.",
-    "Контейнеры сессий этого компьютера": "Container der Sitzungen dieses Computers",
     "На этом компьютере": "Auf diesem Computer",
     "Действует с новой или перезапущенной сессии агента. Папки этого компьютера в такие контейнеры не монтируются, а порты открываются на выбранном компьютере.": "Gilt ab einer neuen oder neu gestarteten Agentensitzung. Ordner dieses Computers werden in solche Container nicht eingebunden, und Ports öffnen sich auf dem gewählten Computer.",
     "Docker {0} · ядер: {1} · память: {2} ГБ": "Docker {0} · Kerne: {1} · Speicher: {2} GB",
@@ -943,6 +942,10 @@
     "Запуск контейнеров можно только включить или выключить": "Das Ausführen von Containern lässt sich nur ein- oder ausschalten",
     "Docker на этом компьютере не отвечает; запустите его и повторите": "Docker auf diesem Computer antwortet nicht; starten Sie es und versuchen Sie es erneut",
     "Этот компьютер не отмечен для контейнеров": "Dieser Computer ist nicht für Container markiert",
-    "Docker не найден": "Docker nicht gefunden"
+    "Docker не найден": "Docker nicht gefunden",
+    "Команды агента": "Agentenbefehle",
+    "По умолчанию для новых сессий": "Standard für neue Sitzungen",
+    "Контейнеры этой сессии: {0}. Действует после перезапуска.": "Container dieser Sitzung: {0}. Gilt nach einem Neustart.",
+    "В терминале компьютер для контейнеров выбирается вручную: docker --context": "Im Terminal wird der Computer für Container von Hand gewählt: docker --context"
   }
 }

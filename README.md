@@ -377,8 +377,8 @@ Tap a session name to open it, on the right computer.
 ## Quick prompts and sending later
 
 The row of buttons above the message field sends a message with one tap: your own saved prompts
-first, then the commands of the open agent (`/compact` and `/clear` for Claude, `/compact` and `/new`
-for Codex). Commands that drop the conversation ask before they are sent. The pencil at the end of the
+first, then a three-dots button that shows the commands of the open agent (`/compact` and `/clear` for
+Claude, `/compact` and `/new` for Codex). Commands that drop the conversation ask before they are sent. The pencil at the end of the
 row edits your prompts (up to 24); the list is kept on the Away Deck you open in the browser and is the
 same for every connected computer.
 
@@ -409,7 +409,8 @@ that is always on, and a strong desktop that builds images and runs test stacks.
 2. In the **Containers** card, switch on the computers that may run containers. A Docker that is installed
    but closed is opened by the panel, then and whenever a command arrives (Docker Desktop, OrbStack, Colima,
    rootless Docker); "Docker not found" means it has to be installed or started by hand.
-3. Under **Containers of this computer's sessions**, choose one of them.
+3. Choose one of them when you create a session (**Containers** in the new-session dialog), or later at the
+   bottom of the status bar, which names the session's computer on the left and its containers' computer on the right. **Default for new sessions** in the same card presets that choice.
 
 From the next new or restarted agent session, `docker` and `docker compose` in that session talk to
 the chosen computer's Docker. The commands do not change, and there is nothing to configure between

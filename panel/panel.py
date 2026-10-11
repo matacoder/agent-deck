@@ -412,11 +412,12 @@ def session_group(path):
 
 def list_sessions(preview_name=None):
     fmt = ("#{session_name}\t#{session_created}\t#{session_attached}\t#{pane_current_path}\t"
-           "#{pane_current_command}\t#{window_activity}\t#{@cc_agent}\t#{@cc_sid}\t#{@cc_skip}\t#{@cc_source}\t#{@cc_title}")
+           "#{pane_current_command}\t#{window_activity}\t#{@cc_agent}\t#{@cc_sid}\t#{@cc_skip}\t#{@cc_source}\t#{@cc_title}"
+           "\t#{@cc_containers}")
     out = tmux("list-sessions", "-F", fmt, check=False)
     result = []
     for line in out.splitlines():
-        sname, created, attached, path, cmd, activity, agent, sid, skip, source, title = (line.split("\t") + [""] * 11)[:11]
+        sname, created, attached, path, cmd, activity, agent, sid, skip, source, title, containers = (line.split("\t") + [""] * 12)[:12]
         if not sname.startswith(PREFIX):
             continue
         name = sname[len(PREFIX):]
@@ -427,6 +428,7 @@ def list_sessions(preview_name=None):
             "activity": int(activity or 0), "group": group, "agent": agent,
             "path": path, "running": is_running(agent, cmd), "command": cmd,
             "sid": sid or None, "skip": skip == "1",
+            "containers": containers,  # "" = this computer's default, "local", or the id of the computer chosen for this session.
         }
         try:
             model_source = json.loads(source or 'null')
@@ -521,14 +523,36 @@ def agent_cmd(agent, sid=None, resume=False, skip=False, name=None, source=None)
     return (launcher or "claude") + f" --session-id {sid}{flag}" + (f" -n {name}" if name else "")
 
 
-def with_containers(command):
-    """Docker commands of an agent started now go to the computer chosen for containers.
+def containers_choice(raw):
+    """What a request says about a session's containers -> None (the default), 'local' or a marked computer's id."""
+    if raw is None:
+        return None
+    if raw in ('', 'local'):
+        return 'local'
+    if not isinstance(raw, str) or not containers_service().available(raw):
+        raise ValueError('Этот компьютер не отмечен для контейнеров')
+    return raw
+
+
+def action_session_containers(d):
+    name = d.get('name', '')
+    if not session_exists(name):
+        raise ValueError('нет такой сессии')
+    if (opt(name, '@cc_agent') or 'claude') == 'shell':
+        raise ValueError('В терминале компьютер для контейнеров выбирается вручную: docker --context')
+    choice = containers_choice(d.get('containers', ''))
+    tmux('set-option', '-t', f'={PREFIX}{name}:', '@cc_containers', choice)
+    return {'containers': choice}
+
+
+def with_containers(command, choice=None):
+    """Docker commands of an agent started now go to the computer chosen for this session, or to the default one.
 
     Set on the command itself: a shell profile that exports DOCKER_HOST would win over the session's environment."""
     if not command:
         return command
     try:
-        extra = containers_service().environment()
+        extra = containers_service().environment(choice)
     except (OSError, ValueError):
         return command
     return ''.join(f'{key}={shlex.quote(value)} ' for key, value in extra.items()) + command
@@ -644,18 +668,21 @@ def _action_new(d):
     path = resolve_path(d, name)
     skip = bool(d.get("skip")) and agent not in ("shell", "pi")
     sid = str(uuid.uuid4()) if agent in ("claude", "claude-kimi", "pi") else None
+    choice = containers_choice(d.get('containers')) if agent != 'shell' else None
     source = session_source(d, agent)
     if source and source.get('kind') == 'kimi' and agent == 'claude':
         agent = 'claude-kimi'
     if source is None:
-        create_session(name, path, agent, skip, sid, with_containers(agent_cmd(agent, sid, False, skip, name)))
+        create_session(name, path, agent, skip, sid, with_containers(agent_cmd(agent, sid, False, skip, name), choice))
     else:
         try:
-            create_session(name, path, agent, skip, sid, with_containers(agent_cmd(agent, sid, False, skip, name, source)), source)
+            create_session(name, path, agent, skip, sid, with_containers(agent_cmd(agent, sid, False, skip, name, source), choice), source)
         except Exception:
             if source.get('binding'):
                 _model_relay.bindings.remove(source['binding'])
             raise
+    if choice:
+        tmux('set-option', '-t', f'={PREFIX}{name}:', '@cc_containers', choice)
     return {"name": name}
 
 
@@ -684,7 +711,7 @@ def action_restart(d):
     elif new and agent in ("codex", "kimi"):
         sid = None
     source = saved_source(name)
-    cmd = with_containers(agent_cmd(agent, sid, not new, skip, name, source))
+    cmd = with_containers(agent_cmd(agent, sid, not new, skip, name, source), opt(name, '@cc_containers'))
     target = f"={PREFIX}{name}:"
     path = tmux("display-message", "-p", "-t", target, "#{pane_current_path}").strip()
     shell = tmux("show-options", "-gv", "default-shell").strip() or "/bin/sh"
@@ -2050,7 +2077,8 @@ ACTIONS.update(file_save=action_file_save, git_group=action_git_group, git_fetch
                schedule_remove=lambda d: schedule_service().remove(d.get('id')),
                auto_resume=lambda d: schedule_service().set_auto(d.get('name'), d.get('enabled')),
                quick_prompts=lambda d: {'prompts': quick_prompts().save(d.get('prompts'))},
-               containers_save=lambda d: {'containers': containers_service().save(d)})
+               containers_save=lambda d: {'containers': containers_service().save(d)},
+               session_containers=action_session_containers)
 
 
 class PanelHTTPServer(ThreadingHTTPServer):

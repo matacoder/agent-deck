@@ -1,19 +1,22 @@
-const {quickPromptsFor,quickRows,laterWhen,defaultLaterTime,laterCount}=require('../../frontend/schedule');
+const {quickChips,quickRows,laterWhen,defaultLaterTime,laterCount}=require('../../frontend/schedule');
 const t=text=>'['+text+']';
 
-test('saved prompts come first, then the commands of that agent; a terminal gets none',()=>{
+test('saved prompts come first; the agent commands wait behind "more"; a terminal gets none',()=>{
  const saved=[{label:'Tests',text:'run the tests'}];
- expect(quickPromptsFor('claude',saved).map(p=>p.label)).toEqual(['Tests','/compact','/clear']);
- expect(quickPromptsFor('claude-kimi',[]).map(p=>p.label)).toEqual(['/compact','/clear']);
- expect(quickPromptsFor('codex',[]).map(p=>p.label)).toEqual(['/compact','/new']);
- expect(quickPromptsFor('pi',saved).map(p=>p.label)).toEqual(['Tests']);
- expect(quickPromptsFor('shell',saved)).toEqual([]);
+ const labels=(agent,list,more)=>quickChips(agent,list,more).map(p=>p.more?'…':p.label);
+ expect(labels('claude',saved,false)).toEqual(['Tests','…']);
+ expect(labels('claude',saved,true)).toEqual(['Tests','…','/compact','/clear']);
+ expect(labels('claude-kimi',[],true)).toEqual(['…','/compact','/clear']);
+ expect(labels('codex',[],true)).toEqual(['…','/compact','/new']);
+ expect(labels('pi',saved,true)).toEqual(['Tests']);
+ expect(quickChips('shell',saved,true)).toEqual([]);
 });
 
 test('only commands that drop the conversation ask before sending',()=>{
- const byText=Object.fromEntries(quickPromptsFor('claude',[]).concat(quickPromptsFor('codex',[])).map(p=>[p.text,Boolean(p.confirm)]));
+ const commands=agent=>quickChips(agent,[],true).filter(p=>!p.more);
+ const byText=Object.fromEntries(commands('claude').concat(commands('codex')).map(p=>[p.text,Boolean(p.confirm)]));
  expect(byText).toEqual({'/compact':false,'/clear':true,'/new':true});
- expect(quickPromptsFor('claude',[{label:'x',text:'/clear',confirm:'injected'}])[0].confirm).toBeUndefined();
+ expect(quickChips('claude',[{label:'x',text:'/clear',confirm:'injected'}],false)[0].confirm).toBeUndefined();
 });
 
 test('empty editor rows are dropped and labels are trimmed',()=>{

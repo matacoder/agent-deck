@@ -1,7 +1,7 @@
 // Sending without typing or waiting: quick prompts (one tap), prompts held for later (a time, a free
 // session, a limit reset) and continuing by itself after a subscription limit. Bundled before app.js.
 const later={session:null,data:null,seq:0,timer:null};
-const quick={saved:[],loaded:false};
+const quick={saved:[],loaded:false,more:false};
 const LATER_POLL=30000;
 // Commands that drop the conversation ask first: a chip sits where a thumb scrolls.
 const QUICK_COMMANDS={
@@ -9,10 +9,12 @@ const QUICK_COMMANDS={
   codex:[{label:"/compact",text:"/compact"},{label:"/new",text:"/new",confirm:"Агент забудет весь разговор этой сессии."}]};
 QUICK_COMMANDS["claude-kimi"]=QUICK_COMMANDS.claude;
 
-// The user's own prompts first, then the agent's commands; a terminal gets none. Pure for tests.
-function quickPromptsFor(agent,saved){
+// The user's own prompts, then the agent's commands behind "more": they are rare and one of them drops the
+// conversation. A terminal gets none. Pure for tests.
+function quickChips(agent,saved,more){
   if(agent==="shell")return [];
-  return [...saved.map(p=>({label:p.label,text:p.text})),...(QUICK_COMMANDS[agent]||[])];
+  const commands=QUICK_COMMANDS[agent]||[];
+  return [...saved.map(p=>({label:p.label,text:p.text})),...(commands.length?[{more:true}]:[]),...(more?commands:[])];
 }
 // Rows of the editor -> what is saved; empty rows are dropped, not reported. Pure for tests.
 function quickRows(rows){
@@ -117,12 +119,17 @@ async function loadQuickPrompts(){
   renderQuickPrompts();
 }
 function renderQuickPrompts(){
-  const box=$("quick_prompts"),session=cur(),prompts=session?quickPromptsFor(agentOf(session),quick.saved):[];
+  const box=$("quick_prompts"),session=cur(),prompts=session?quickChips(agentOf(session),quick.saved,quick.more):[];
   box.hidden=!session||agentOf(session)==="shell";
   const signature=JSON.stringify(prompts);
   if(box.dataset.signature===signature)return;  // Rebuilt on every refresh otherwise: a tap in progress would be lost.
   box.dataset.signature=signature;
-  const chips=prompts.map(p=>{const chip=btn(p.label,"quick-chip",()=>sendQuick(p),p.text);chip.type="button";return chip});
+  const chips=prompts.map(p=>{
+    if(!p.more){const chip=btn(p.label,"quick-chip",()=>sendQuick(p),p.text);chip.type="button";return chip}
+    const more=btn("","quick-chip quick-edit",()=>{quick.more=!quick.more;renderQuickPrompts()},tr("Команды агента"));
+    more.type="button";more.setAttribute("aria-label",tr("Команды агента"));more.setAttribute("aria-expanded",String(quick.more));more.append(svgIcon("more"));
+    return more;
+  });
   const edit=btn("","quick-chip quick-edit",openQuickEditor,tr("Настроить быстрые сообщения"));
   edit.type="button";edit.setAttribute("aria-label",tr("Настроить быстрые сообщения"));edit.append(svgIcon("pencil"));
   box.replaceChildren(...chips,edit);
@@ -141,7 +148,7 @@ async function sendQuick(prompt){
   }catch(e){
     if(epoch===deckEpoch)sendStates.set(name,{text:tr("Не отправлено: ")+e.message,error:true});
     else toast(tr("Не отправлено: ")+e.message);
-  }finally{sending=false;renderAttachments();renderSendState()}
+  }finally{sending=false;quick.more=false;renderAttachments();renderSendState();renderQuickPrompts()}
 }
 function quickEditorRow(prompt){
   const label=el("input"),text=el("textarea"),remove=btn("","later-remove",()=>row.remove(),tr("Удалить"));
@@ -170,4 +177,4 @@ async function saveQuickPrompts(){
 }
 if(typeof document!=="undefined")document.addEventListener("visibilitychange",()=>{if(!document.hidden&&later.session)loadLater()});
 
-if(typeof module!=="undefined")module.exports={quickPromptsFor,quickRows,laterWhen,defaultLaterTime,laterCount};
+if(typeof module!=="undefined")module.exports={quickChips,quickRows,laterWhen,defaultLaterTime,laterCount};

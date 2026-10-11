@@ -933,7 +933,6 @@
     "Сообщение передано агенту": "Message envoyé à l'agent",
     "Контейнеры": "Conteneurs",
     "Docker-команды агентов этого компьютера могут выполняться на другом, более мощном. Отметьте компьютеры, где разрешено запускать контейнеры, и выберите один из них.": "Les commandes Docker des agents de cet ordinateur peuvent s'exécuter sur un autre, plus puissant. Cochez les ordinateurs où les conteneurs sont autorisés et choisissez-en un.",
-    "Контейнеры сессий этого компьютера": "Conteneurs des sessions de cet ordinateur",
     "На этом компьютере": "Sur cet ordinateur",
     "Действует с новой или перезапущенной сессии агента. Папки этого компьютера в такие контейнеры не монтируются, а порты открываются на выбранном компьютере.": "S'applique à une session d'agent nouvelle ou redémarrée. Les dossiers de cet ordinateur ne sont pas montés dans ces conteneurs et les ports s'ouvrent sur l'ordinateur choisi.",
     "Docker {0} · ядер: {1} · память: {2} ГБ": "Docker {0} · cœurs : {1} · mémoire : {2} Go",
@@ -943,6 +942,10 @@
     "Запуск контейнеров можно только включить или выключить": "L'exécution des conteneurs ne peut être qu'activée ou désactivée",
     "Docker на этом компьютере не отвечает; запустите его и повторите": "Docker ne répond pas sur cet ordinateur ; démarrez-le et réessayez",
     "Этот компьютер не отмечен для контейнеров": "Cet ordinateur n'est pas désigné pour les conteneurs",
-    "Docker не найден": "Docker introuvable"
+    "Docker не найден": "Docker introuvable",
+    "Команды агента": "Commandes de l'agent",
+    "По умолчанию для новых сессий": "Par défaut pour les nouvelles sessions",
+    "Контейнеры этой сессии: {0}. Действует после перезапуска.": "Conteneurs de cette session : {0}. S'applique après un redémarrage.",
+    "В терминале компьютер для контейнеров выбирается вручную: docker --context": "Dans un terminal, l'ordinateur des conteneurs se choisit à la main : docker --context"
   }
 }

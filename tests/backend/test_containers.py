@@ -266,6 +266,43 @@ class TunnelTests(PanelCase):
         self.assertEqual(command, 'DOCKER_HOST=unix://%s claude --session-id x' % self.gateway.socket_path(DECK))
         self.assertIsNone(self.panel.with_containers(None))  # A plain terminal has no agent command.
 
+    def test_a_session_has_its_own_choice_over_the_default(self):
+        self.host.save({'host': True})
+        self.gateway.refresh()
+        self.panel._containers = self.gateway
+        remote = 'DOCKER_HOST=unix://%s claude' % self.gateway.socket_path(DECK)
+        # No default: only the session that chose the computer goes there.
+        self.assertEqual(self.panel.with_containers('claude'), 'claude')
+        self.assertEqual(self.panel.with_containers('claude', DECK), remote)
+        self.gateway.save({'use': DECK})
+        self.assertEqual(self.panel.with_containers('claude', None), remote)
+        self.assertEqual(self.panel.with_containers('claude', 'local'), 'claude')
+        self.assertEqual(self.panel.with_containers('claude', 'b' * 24), 'claude')  # No longer marked: this computer.
+        self.assertEqual([self.panel.containers_choice(raw) for raw in (None, '', 'local', DECK)], [None, 'local', 'local', DECK])
+        for wrong in ('b' * 24, 5, '../x'):
+            with self.assertRaisesRegex(ValueError, 'не отмечен'):
+                self.panel.containers_choice(wrong)
+
+    def test_choice_is_kept_on_the_session_and_listed(self):
+        self.host.save({'host': True})
+        self.gateway.refresh()
+        self.panel._containers = self.gateway
+        self.panel.session_exists = Mock(return_value=True)
+        self.panel.opt = Mock(return_value='claude')
+        self.panel.tmux = Mock(return_value='')
+        self.assertEqual(self.panel.action_session_containers({'name': 'demo', 'containers': DECK}), {'containers': DECK})
+        self.panel.tmux.assert_called_with('set-option', '-t', '=cc-demo:', '@cc_containers', DECK)
+        self.assertEqual(self.panel.action_session_containers({'name': 'demo', 'containers': ''}), {'containers': 'local'})
+        with self.assertRaises(ValueError):
+            self.panel.action_session_containers({'name': 'demo', 'containers': 'b' * 24})
+        self.panel.opt = Mock(return_value='shell')
+        with self.assertRaisesRegex(ValueError, 'docker --context'):
+            self.panel.action_session_containers({'name': 'demo', 'containers': DECK})
+        row = '\t'.join(['cc-demo', '1', '0', '/home/x', 'claude', '2', 'claude', '', '0', '', '', DECK])
+        self.panel.tmux = Mock(return_value=row + '\n' + '\t'.join(['cc-old', '1', '0', '/home/x', 'claude', '2', 'claude']))
+        listed = {s['name']: s['containers'] for s in self.panel.list_sessions()}
+        self.assertEqual(listed, {'demo': DECK, 'old': ''})
+
 
 class ContextTests(PanelCase):
     def service(self, rows):

@@ -1,4 +1,4 @@
-const {containerMeta,containerChoices}=require("../../frontend/containers.js");
+const {containerMeta,containerChoices,sessionContainers}=require("../../frontend/containers.js");
 
 const translate=(text,args=[])=>text.replace(/\{(\d+)\}/g,(_,n)=>args[n]);
 
@@ -16,4 +16,13 @@ test("only marked computers can be chosen, and a choice that is gone means this 
   expect(containerChoices({machines,use:"a"})).toEqual({hosts:[machines[0]],selected:"a"});
   expect(containerChoices({machines,use:"b"}).selected).toBe("");
   expect(containerChoices({machines:[],use:"a"})).toEqual({hosts:[],selected:""});
+});
+
+test("a session uses its own choice, else the default; a computer no longer marked means this one",()=>{
+  const data={machines:[{id:"a",name:"Red",host:true},{id:"b",name:"Air",host:true},{id:"c",name:"Old",host:false}],use:"a"};
+  expect(sessionContainers({containers:""},data)).toBe("a");
+  expect(sessionContainers({},data)).toBe("a");
+  expect(sessionContainers({containers:"local"},data)).toBe("");
+  expect(sessionContainers({containers:"b"},data)).toBe("b");
+  expect(sessionContainers({containers:"c"},data)).toBe("");
 });

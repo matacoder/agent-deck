@@ -1,6 +1,6 @@
 // Containers on another computer: which computers lend their Docker and which one this computer's
 // sessions use. Always asked from the gateway: it is the one that reaches the others.
-let containers=null,containersTimer=null;
+let containers=null,containersTimer=null,containersAt=0;
 
 // What a row says under a computer's name. Pure for tests.
 function containerMeta(machine,translate){
@@ -14,6 +14,61 @@ function containerMeta(machine,translate){
 function containerChoices(data){
   const hosts=data.machines.filter(m=>m.host);
   return {hosts,selected:hosts.some(m=>m.id===data.use)?data.use:""};
+}
+// Where a session's containers go: its own choice, else this computer's default; "" is this computer. Pure for tests.
+function sessionContainers(session,data){
+  const {hosts,selected}=containerChoices(data),own=session.containers;
+  if(own==="local")return "";
+  return own?(hosts.some(m=>m.id===own)?own:""):selected;
+}
+function containerOptions(select,hosts){
+  const option=(value,label)=>{const o=el("option","",label);o.value=value;return o};
+  select.replaceChildren(option("",tr("На этом компьютере")),...hosts.map(m=>option(m.id,m.name)));
+}
+// Only this computer's sessions can send their containers elsewhere, and a terminal chooses by hand.
+function containerHostsFor(agent){
+  return !selectedDeck&&agent!=="shell"&&containers?containerChoices(containers).hosts:[];
+}
+// The new-session dialog and the status bar need the list without Settings ever being opened.
+async function ensureContainers(){
+  if(Date.now()-containersAt<60000)return;
+  containersAt=Date.now();
+  try{const data=await gatewayApi("/api/containers");containers=data&&Array.isArray(data.machines)?data:null}catch(e){containersAt=0;return}
+  renderNewContainers();renderSessionContainers();
+}
+function renderNewContainers(){
+  const hosts=containerHostsFor(newAgent),select=$("n_containers");
+  $("n_containers_row").hidden=!hosts.length;
+  if(!hosts.length)return;
+  const chosen=select.dataset.touched?select.value:containerChoices(containers).selected;
+  containerOptions(select,hosts);
+  select.value=hosts.some(m=>m.id===chosen)?chosen:"";
+}
+// Under the context: the computer the session runs on and, when another one may run containers, which one does.
+function renderSessionContainers(){
+  const session=cur(),hosts=session?containerHostsFor(agentOf(session)):[],select=$("session_containers");
+  // One computer and nobody marked: both names would say the obvious.
+  $("session_where").hidden=!session||(!hosts.length&&!deckDirectory.decks.length);
+  $("session_computer").textContent=currentDeckName();
+  $("session_containers_box").hidden=!hosts.length;
+  if(!hosts.length||document.activeElement===select)return;
+  containerOptions(select,hosts);
+  select.value=sessionContainers(session,containers);
+  // The list says "on this computer"; the bar names it, next to the same name on the left.
+  $("session_containers_name").textContent=select.value?select.selectedOptions[0].textContent:deckDirectory.name;
+}
+async function saveSessionContainers(){
+  const select=$("session_containers"),name=active,session=cur(),value=select.value;
+  if(!session)return;
+  select.blur();
+  try{
+    await api("/api/session_containers",{name,containers:value});
+    session.containers=value||"local";
+    toast(tr("Контейнеры этой сессии: {0}. Действует после перезапуска.",[select.selectedOptions[0].textContent]),"success");
+    // The running agent keeps the Docker it started with; offer the restart that keeps the conversation.
+    if(session.running&&active===name)restart("continue");
+  }catch(e){if(e.message!==STALE)toast(e.message)}
+  renderSessionContainers();
 }
 function containerRow(name,meta,checked,disabled,save){
   const input=el("input");
@@ -33,9 +88,9 @@ function renderContainers(){
     host=>api(instancePath(m.id,"/api/containers_save"),{host},true)));
   $("container_machines").replaceChildren(...rows);
   const {hosts,selected}=containerChoices(data),select=$("containers_use");
-  const option=(value,label)=>{const o=el("option","",label);o.value=value;return o};
-  select.replaceChildren(option("",tr("На этом компьютере")),...hosts.map(m=>option(m.id,m.name)));
+  containerOptions(select,hosts);
   select.value=selected;select.disabled=!hosts.length;
+  containersAt=Date.now();renderNewContainers();renderSessionContainers();
 }
 async function loadContainers(){
   // The other computers are asked again: a switch flipped on one of them shows at once.
@@ -60,4 +115,4 @@ async function saveContainersUse(){
   renderContainers();
 }
 
-if(typeof module!=="undefined")module.exports={containerMeta,containerChoices};
+if(typeof module!=="undefined")module.exports={containerMeta,containerChoices,sessionContainers};

@@ -348,14 +348,20 @@ class Containers:
         raise ValueError('its saved login expired; reconnect it in the Away Deck settings')
 
     # ----- what a session gets -----
-    def target(self):
+    def available(self, identity):
         with self.lock:
-            machine = self.machines.get(self.use)
-            return dict(machine) if machine and machine['host'] and self.use in self.listeners else None
+            machine = self.machines.get(identity)
+            return bool(machine and machine['host'] and identity in self.listeners)
 
-    def environment(self):
+    def target(self, choice=None):
+        """The session's own choice ('local' or a computer's id), else this computer's default."""
+        identity = self.use if choice is None else choice
+        with self.lock:
+            return dict(self.machines[identity]) if self.available(identity) else None
+
+    def environment(self, choice=None):
         """Variables for an agent started now: Docker commands go to the chosen machine."""
-        machine = self.target()
+        machine = self.target(choice)
         if not machine:
             return {}
         path = self.socket_path(machine['id'])
