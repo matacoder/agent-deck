@@ -33,7 +33,7 @@ function pushStatus(s,blocker,subscribed){
   if(!s.available){
     pushUnavailableSince=pushUnavailableSince||Date.now();
     if(s.error)return [s.error,"bad"];
-    return Date.now()-pushUnavailableSince>60000?[tr("Не удалось загрузить компоненты шифрования — обновите Agent Deck"),"bad"]:[tr("Панель скачивает компоненты шифрования…"),"idle"];
+    return Date.now()-pushUnavailableSince>60000?[tr("Не удалось загрузить компоненты шифрования — обновите Away Deck"),"bad"]:[tr("Панель скачивает компоненты шифрования…"),"idle"];
   }
   pushUnavailableSince=0;
   return subscribed?[tr("Включены на этом устройстве"),"ok"]:[tr("Выключены на этом устройстве"),"idle"];

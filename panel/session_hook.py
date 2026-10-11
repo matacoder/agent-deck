@@ -55,7 +55,7 @@ def remember(data, pane, pid):
         return True
 
 
-RESULTS_NOTE = """Agent Deck session: the user follows it remotely, often from a phone, and cannot open localhost or files on this machine.
+RESULTS_NOTE = """Away Deck session: the user follows it remotely, often from a phone, and cannot open localhost or files on this machine.
 When a finished task has a visible result (page, UI, picture, document, chart), before the final message:
 1. Screenshot the result and print each PNG/JPEG absolute path on its own line; the panel shows it as a picture.
 2. If it opens in a browser, {link}

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Agent Deck on SteamOS (Steam Machine, Steam Deck) without root.
+# Away Deck on SteamOS (Steam Machine, Steam Deck) without root.
 #
-# SteamOS wipes system packages on every update, so Agent Deck runs as a rootless Podman container
+# SteamOS wipes system packages on every update, so Away Deck runs as a rootless Podman container
 # (Podman ships with SteamOS 3.5+) built from docker/Dockerfile, started by a systemd user service.
 # Everything lives in the home directory and survives SteamOS updates. Re-run to update.
 #
@@ -40,7 +40,7 @@ render_unit() {
     [ -z "$PROJECTS" ] || mount=" -v $PROJECTS:/home/dev/dev"
     cat <<UNIT
 [Unit]
-Description=Agent Deck (Podman)
+Description=Away Deck (Podman)
 Wants=network-online.target
 After=network-online.target
 
@@ -57,7 +57,7 @@ UNIT
 }
 
 main() {
-    say "building the Agent Deck image (first time: a few minutes)"
+    say "building the Away Deck image (first time: a few minutes)"
     "$PODMAN" build --format docker -t localhost/agent-deck:latest -f "$SRC/docker/Dockerfile" "$SRC"
     "$PODMAN" volume exists agent-deck-home || "$PODMAN" volume create agent-deck-home >/dev/null
 
@@ -77,7 +77,7 @@ main() {
         || die "the panel did not start; logs: journalctl --user -u agent-deck -n 50"
     password=$("$PODMAN" exec agent-deck sed -n 's/^PANEL_PASSWORD=//p' /home/dev/.config/cc-panel/env)
     echo
-    echo "Agent Deck is ready: http://$([ "$BIND" = 0.0.0.0 ] && echo "<this machine's address>" || echo "$BIND"):$PORT"
+    echo "Away Deck is ready: http://$([ "$BIND" = 0.0.0.0 ] && echo "<this machine's address>" || echo "$BIND"):$PORT"
     echo "Login: dev"
     echo "Password: $password"
     echo "It starts with the desktop session. To keep it running without anyone logged in, run once:"

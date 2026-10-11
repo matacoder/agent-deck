@@ -143,7 +143,7 @@ class Push:
         return sent
 
     def test(self, identity):
-        if not self.deliver({'title': 'Agent Deck', 'body': [('Уведомления Agent Deck работают',),
+        if not self.deliver({'title': 'Away Deck', 'body': [('Уведомления Away Deck работают',),
                              ('Так будут выглядеть вопросы агентов и завершение работы.',)], 'tag': 'test'}, only=identity):
             raise ValueError('Сервис уведомлений не принял сообщение; включите уведомления заново')
 

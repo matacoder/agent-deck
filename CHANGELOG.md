@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.39.0 — 2026-10-11
+
+- **Agent Deck is now Away Deck.** Another project already uses the earlier name. The new name is shown in the panel, the login page, the home-screen app, notifications, Telegram messages, installer output and the documentation. Nothing moves on disk and no setting changes: `/opt/agent-deck`, `~/.config/cc-panel`, service and container names, the repository address, the Windows Start menu shortcut and scheduled task, and the macOS log folder keep their names, and computers on earlier versions stay connected.
+
 ## 1.38.0 — 2026-10-11
 
 - **Quick prompts.** A row of buttons above the message field sends a message with one tap: your own saved prompts (edited with the pencil at the end of the row, up to 24, one list for every connected computer) and the agent's commands, `/compact` and `/clear` for Claude, `/compact` and `/new` for Codex. Commands that drop the conversation ask first.

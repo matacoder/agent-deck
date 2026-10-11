@@ -1,6 +1,6 @@
 # Localization
 
-Agent Deck includes 16 languages:
+Away Deck includes 16 languages:
 
 | Language | Catalog / installer option |
 |---|---|

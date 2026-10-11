@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# One-line install / update of Agent Deck:
+# One-line install / update of Away Deck:
 #   curl -fsSL https://raw.githubusercontent.com/matacoder/agent-deck/main/get.sh | sudo bash
 #   curl -fsSL https://raw.githubusercontent.com/matacoder/agent-deck/main/get.sh | sudo PUBLIC_DOMAIN=cli.example.com bash
 # Clones the latest release to /opt/agent-deck (AGENT_DECK_DIR) and runs install.sh; if it is already

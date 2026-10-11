@@ -643,7 +643,7 @@ class RemoteQuestionTests(PanelCase):
         self.decks.request.return_value = (400, {}, b'{"error":"This question is already closed"}')
         with self.assertRaisesRegex(ValueError, 'already closed'):
             self.panel.answer_any_question(question, 0)
-        for failure in (ValueError('Remote Agent Deck did not respond'), OSError('reset')):
+        for failure in (ValueError('Remote Away Deck did not respond'), OSError('reset')):
             self.decks.request.side_effect = failure
             with self.assertRaises(RuntimeError):
                 self.panel.answer_any_question(question, 0)

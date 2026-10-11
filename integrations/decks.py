@@ -1,4 +1,4 @@
-"""Authenticated Agent Deck connections over known numeric Tailscale addresses."""
+"""Authenticated Away Deck connections over known numeric Tailscale addresses."""
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import copy
 import http.client
@@ -25,7 +25,7 @@ TAILNET = ipaddress.ip_network('100.64.0.0/10')
 
 def deck_url(raw):
     if not isinstance(raw, str):
-        raise ValueError('Enter the Agent Deck Tailscale URL')
+        raise ValueError('Enter the Away Deck Tailscale URL')
     try:
         parsed = urlsplit(raw.strip())
         address = ipaddress.ip_address(parsed.hostname or '')
@@ -56,7 +56,7 @@ def remote_path(raw):
     decoded = unquote(parsed.path)
     if (parsed.scheme or parsed.netloc or '..' in decoded.split('/') or '%' in decoded
             or not re.fullmatch(r'/api/[a-zA-Z0-9_-]+(?:/[a-zA-Z0-9_-]+)?|/t(?:/[a-zA-Z0-9_./-]*)?', decoded)):
-        raise ValueError('Only Agent Deck API and terminal paths may be proxied')
+        raise ValueError('Only Away Deck API and terminal paths may be proxied')
     if decoded.startswith('/api/decks') or decoded.startswith('/api/network'):
         raise ValueError('Nested gateway configuration is not supported')
     if decoded.startswith('/t') and not terminal_query_ok(raw):
@@ -87,7 +87,7 @@ def http_request(url, method, path, body=None, headers=None, timeout=30, limit=3
             if size > limit:
                 raise ValueError('Remote response is too large')
             if time.monotonic() > deadline:
-                raise ValueError('Remote Agent Deck answered too slowly')
+                raise ValueError('Remote Away Deck answered too slowly')
         return response.status, dict(response.getheaders()), b''.join(chunks)
     finally:
         connection.close()
@@ -133,7 +133,7 @@ class RemoteDecks:
     def get(self, identity):
         with self.lock:
             if not isinstance(identity, str) or not IDENTITY.fullmatch(identity) or identity not in self.profiles:
-                raise ValueError('Agent Deck connection not found')
+                raise ValueError('Away Deck connection not found')
             profile = copy.deepcopy(self.profiles[identity])
             profile['url'] = deck_url(profile['url'])
             return profile
@@ -147,13 +147,13 @@ class RemoteDecks:
             cookie = SimpleCookie(next((v for k,v in headers.items() if k.lower() == 'set-cookie'), ''))
             location = next((v for k,v in headers.items() if k.lower() == 'location'), '/')
             if status not in (302, 303) or location != '/' or 'cc_auth' not in cookie:
-                raise ValueError('Could not sign in to Agent Deck; check the login and password')
+                raise ValueError('Could not sign in to Away Deck; check the login and password')
             token = cookie['cc_auth'].value
             if not re.fullmatch(r'[A-Za-z0-9_.=-]+', token):
                 raise ValueError('Invalid remote login response')
             return 'cc_auth=' + token
         except (OSError, http.client.HTTPException):
-            raise ValueError('Remote Agent Deck is unavailable over Tailscale') from None
+            raise ValueError('Remote Away Deck is unavailable over Tailscale') from None
 
     def save(self, data):
         name, username, password = data.get('name', ''), data.get('username', ''), data.get('password', '')
@@ -162,23 +162,23 @@ class RemoteDecks:
         username = username.strip()
         url = deck_url(data.get('url'))
         if url == self.local_url:
-            raise ValueError('This is the current Agent Deck')
+            raise ValueError('This is the current Away Deck')
         identity = data.get('id') or secrets.token_hex(12)
         old = self.get(identity) if data.get('id') else {}
         if not isinstance(password, str) or len(password) > 4096:
-            raise ValueError('Invalid Agent Deck password')
+            raise ValueError('Invalid Away Deck password')
         # Reusing a password is allowed only for the same saved destination and login.
         password = password or (old.get('password', '') if old.get('url') == url and old.get('username') == username else '')
         if not password:
-            raise ValueError('Enter the Agent Deck password')
+            raise ValueError('Enter the Away Deck password')
         profile = {'id': identity, 'name': name.strip(), 'url': url, 'username': username, 'password': password}
         cookie = self.login(profile)
         try:
             status, _, body = http_request(url, 'GET', '/api/version', headers={'Cookie': cookie}, timeout=10, limit=1024*1024)
             if status != 200 or not isinstance(json.loads(body).get('version'), str):
-                raise ValueError('The destination is not an authenticated Agent Deck')
+                raise ValueError('The destination is not an authenticated Away Deck')
         except (OSError, http.client.HTTPException, ValueError, AttributeError):
-            raise ValueError('Could not verify the remote Agent Deck') from None
+            raise ValueError('Could not verify the remote Away Deck') from None
         with self.lock:
             names = {p['name'].casefold() for key,p in self.profiles.items() if key != identity}
             profile['name'] = unique_name(profile['name'], lambda n: n.casefold() in names, 100)
@@ -214,7 +214,7 @@ class RemoteDecks:
                 cookie = self.login(profile)
                 with self.lock:
                     if self.profiles.get(identity) != profile:
-                        raise ValueError('Agent Deck connection changed; retry the request')
+                        raise ValueError('Away Deck connection changed; retry the request')
                     self.cookies[identity] = cookie
         if re.fullmatch(r'[a-z]{2,3}(?:-[A-Za-z0-9]{2,8})*', language):
             cookie += '; cc_lang=' + language
@@ -235,13 +235,13 @@ class RemoteDecks:
                     timeout=timeout, limit=limit)
             except (OSError, http.client.HTTPException):
                 # Never retry an ambiguous mutation after a transport failure.
-                raise ValueError('Remote Agent Deck did not respond; reconnect or retry') from None
+                raise ValueError('Remote Away Deck did not respond; reconnect or retry') from None
             location = next((v for k,v in result[1].items() if k.lower() == 'location'), '')
             if result[0] != 401 and not (result[0] in (302,303) and location == '/login'):
                 if result[0] in (301,302,303,307,308):
                     raise ValueError('Remote redirects are not supported')
                 return result
-        raise ValueError('Remote authentication expired; reconnect this Agent Deck')
+        raise ValueError('Remote authentication expired; reconnect this Away Deck')
 
     def request_stream(self, identity, path, stream, length, language='en', timeout=300):
         """Raw upload relayed in chunks, so the gateway never holds a whole file in memory. A streamed body
@@ -254,9 +254,9 @@ class RemoteDecks:
                 {'Cookie': cookie, 'Origin': profile['url'], 'Content-Type': 'application/octet-stream',
                  'Content-Length': str(length), 'Accept-Encoding': 'identity'}, timeout=timeout, limit=1024*1024)
         except (OSError, http.client.HTTPException):
-            raise ValueError('Remote Agent Deck did not respond; retry the upload') from None
+            raise ValueError('Remote Away Deck did not respond; retry the upload') from None
         if result[0] in (301,302,303,307,308,401):
-            raise ValueError('Remote Agent Deck did not accept the upload; retry it')
+            raise ValueError('Remote Away Deck did not accept the upload; retry it')
         return result
 
     def terminal_socket(self, identity, language='en'):
@@ -269,7 +269,7 @@ class RemoteDecks:
 
     def discover(self, port=8790):
         if isinstance(port, bool) or not isinstance(port, int) or not 1 <= port <= 65535:
-            raise ValueError('Enter a valid Agent Deck port')
+            raise ValueError('Enter a valid Away Deck port')
         with self.lock:
             if self.discovery['phase'] == 'running':return copy.deepcopy(self.discovery)
             self.discovery = {'phase':'running','results':[]}
@@ -302,14 +302,15 @@ class RemoteDecks:
                         with self.lock:self.discovery['results'] = copy.deepcopy(found)
             with self.lock:self.discovery = {'phase':'done','results':found}
         except (OSError, subprocess.SubprocessError, ValueError, TypeError, AttributeError):
-            with self.lock:self.discovery = {'phase':'error','results':[], 'error':'Could not discover Agent Deck instances; check Tailscale on the gateway'}
+            with self.lock:self.discovery = {'phase':'error','results':[], 'error':'Could not discover Away Deck instances; check Tailscale on the gateway'}
 
     @staticmethod
     def _probe(profile):
         try:
             status, headers, body = http_request(profile['url'], 'GET', '/login', timeout=2, limit=1024*1024)
             server = next((v for k,v in headers.items() if k.lower() == 'server'), '')
-            return status == 200 and ('cc-panel/' in server or b'<title>Agent Deck' in body)
+            return status == 200 and ('cc-panel/' in server or b'<title>Away Deck' in body
+                                      or b'<title>Agent Deck' in body)  # The name before 1.39.
         except (OSError, http.client.HTTPException, ValueError):return False
 
 

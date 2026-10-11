@@ -1,5 +1,5 @@
 [Unit]
-Description=Agent Deck: tmux server (independent of panel/ttyd restarts)
+Description=Away Deck: tmux server (independent of panel/ttyd restarts)
 
 [Service]
 Type=forking

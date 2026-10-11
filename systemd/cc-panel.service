@@ -1,5 +1,5 @@
 [Unit]
-Description=Agent Deck web panel
+Description=Away Deck web panel
 After=cc-ttyd.service cc-tmux.service
 Wants=cc-tmux.service
 

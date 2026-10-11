@@ -1,4 +1,4 @@
-"""What the gateway asks its connected Agent Decks: questions, session lists and Telegram state.
+"""What the gateway asks its connected Away Decks: questions, session lists and Telegram state.
 
 Computers are asked in parallel, so an offline one costs one timeout instead of one per computer.
 A computer that fails keeps its last answer for a while: a network blip must not look like its
@@ -26,9 +26,9 @@ def get_json(decks, identity, path, timeout=5, method='GET', body=None):
     try:
         data = json.loads(raw)
     except ValueError:
-        raise ValueError('Remote Agent Deck returned invalid JSON') from None
+        raise ValueError('Remote Away Deck returned invalid JSON') from None
     if not isinstance(data, dict):
-        raise ValueError('Remote Agent Deck returned an unexpected answer')
+        raise ValueError('Remote Away Deck returned an unexpected answer')
     return status, data
 
 
@@ -73,7 +73,7 @@ class Gateway:
                 for item in data.get('questions', [])]
 
     def questions(self):
-        """Questions of connected Agent Decks, so one Telegram bot on the gateway serves every machine."""
+        """Questions of connected Away Decks, so one Telegram bot on the gateway serves every machine."""
         decks, now = self.connected(), self.clock()
         with self.lock:
             due = [deck for deck in decks if self.backoff.get(deck['id'], 0) <= now]
@@ -143,7 +143,7 @@ class Gateway:
             status, _, payload = self.decks().request(deck, 'POST', path, json.dumps(request).encode(), timeout=15)
         except Exception:
             # Transport failure after sending is ambiguous: report it, never resend.
-            raise RuntimeError(f'Remote Agent Deck did not confirm the {what}') from None
+            raise RuntimeError(f'Remote Away Deck did not confirm the {what}') from None
         if status == 200:
             return
         try:
@@ -152,4 +152,4 @@ class Gateway:
             message = None
         if 400 <= status < 500 and message:
             raise ValueError(message)
-        raise RuntimeError(f'Remote Agent Deck did not confirm the {what}')
+        raise RuntimeError(f'Remote Away Deck did not confirm the {what}')

@@ -1,6 +1,6 @@
 {
-  "name": "Agent Deck",
-  "short_name": "Agent Deck",
+  "name": "Away Deck",
+  "short_name": "Away Deck",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

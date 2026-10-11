@@ -20,7 +20,7 @@ PROJECTS_DIR=$HOME/dev
 CONF
     )
     # Never print the password itself: container logs are kept and shipped.
-    [ -n "${PANEL_PASSWORD:-}" ] || echo "Agent Deck login: ${PANEL_USER:-dev}; password: docker compose exec agent-deck sed -n 's/^PANEL_PASSWORD=//p' $ENV_FILE"
+    [ -n "${PANEL_PASSWORD:-}" ] || echo "Away Deck login: ${PANEL_USER:-dev}; password: docker compose exec agent-deck sed -n 's/^PANEL_PASSWORD=//p' $ENV_FILE"
 fi
 # A password given in the environment always wins, so it can be rotated by recreating the container.
 if [ -n "${PANEL_PASSWORD:-}" ]; then

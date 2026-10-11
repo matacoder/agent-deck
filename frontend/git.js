@@ -349,8 +349,8 @@ function renderGroups(box){
   const state=hist.groups;
   if(!state){box.append(el("p","files-empty",tr("Загрузка…")));return}
   if(state.error&&!state.groups){box.append(errorWithRetry(state.error,()=>loadGroups()));return}
-  // An older Agent Deck on this computer still groups on request only.
-  if(!Array.isArray(state.pending)){box.append(el("p","diff-note",tr("Эта функция недоступна: обновите Agent Deck на этом компьютере")));return}
+  // An older Away Deck on this computer still groups on request only.
+  if(!Array.isArray(state.pending)){box.append(el("p","diff-note",tr("Эта функция недоступна: обновите Away Deck на этом компьютере")));return}
   if(state.now.length){
     box.append(el("h5","git-section",tr("Сейчас")));
     const list=el("div","git-now");

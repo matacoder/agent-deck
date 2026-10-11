@@ -2,7 +2,7 @@
  * @jest-environment node
  *
  * Runs the real bundled panel (panel/index.html) in jsdom with a fake network to cover switching
- * between connected Agent Decks without a page reload.
+ * between connected Away Decks without a page reload.
  */
 const fs=require('fs');
 const path=require('path');
@@ -121,7 +121,7 @@ test('a response from the previous computer that arrives after the switch is rej
   window.openDeckSession(DECK,'beta');
   await settle();
   release();
-  await expect(inFlight).rejects.toThrow('stale Agent Deck response');
+  await expect(inFlight).rejects.toThrow('stale Away Deck response');
   expect(window.document.querySelector('#title b').textContent).toBe('beta');
   }finally{window.close()}
 });
@@ -816,7 +816,7 @@ test('an empty gallery explains what will appear, and an older computer asks for
   window.eval('openProject("gallery")');await settle();
   expect(window.document.getElementById('gallery_body').textContent).toMatch(/Здесь появятся картинки|Pictures the agents/);
   old=true;window.eval('gallery.key=null;loadGallery()');await settle();
-  expect(window.document.getElementById('gallery_body').textContent).toMatch(/обновите Agent Deck|update Agent Deck/i);
+  expect(window.document.getElementById('gallery_body').textContent).toMatch(/обновите Away Deck|update Away Deck/i);
   }finally{window.close()}
 });
 

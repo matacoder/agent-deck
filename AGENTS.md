@@ -1,4 +1,4 @@
-# AGENTS.md - Agent Deck
+# AGENTS.md - Away Deck
 
 Self-hosted panel (Python stdlib + static JS) for tmux sessions running Claude Code/Codex/Kimi/shell; Telegram bot, LM Studio, GitHub, 16 locales, installers for Linux (systemd), macOS (launchd), Windows (WSL2). Runs on other people's machines: installer, proxy or secret-store bugs are incidents.
 

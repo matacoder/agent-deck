@@ -535,7 +535,7 @@ class DuplicateBotTests(PanelCase):
                    'b' * 24: (200, {}, json.dumps({'telegram': {'configured': True, 'enabled': True, 'bot': 'other_bot'}}).encode())}
         def request(deck, method, path, body=None, timeout=30, limit=None):
             if deck not in replies:
-                raise ValueError('Remote Agent Deck did not respond')
+                raise ValueError('Remote Away Deck did not respond')
             return replies[deck]
         decks.request.side_effect = request
         with patch.object(self.panel, 'remote_decks', decks):

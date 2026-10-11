@@ -67,7 +67,7 @@ async function agentAction(kind,agent){
 
 /* ---------- Telegram ---------- */
 function telegramSummary(c){
-  if(c.available===false)return [tr("Нужно обновление Agent Deck: Общие → Версия и обновления"),"bad"];
+  if(c.available===false)return [tr("Нужно обновление Away Deck: Общие → Версия и обновления"),"bad"];
   if(c.error)return [c.error,"bad"];
   if(c.paired)return [`@${c.bot} · ${c.account||tr("аккаунт привязан")} · ${c.enabled?tr("включён"):tr("пауза")}`,c.enabled?"ok":"warn"];
   if(c.configured)return [tr("@{0} · привяжите свой Telegram",[c.bot]),"warn"];

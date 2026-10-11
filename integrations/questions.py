@@ -16,7 +16,7 @@ class Question:
     selected: int
     progress: str = ""
     request_id: str = ""
-    # Set for questions relayed from a connected Agent Deck: its identity and display name.
+    # Set for questions relayed from a connected Away Deck: its identity and display name.
     deck: str = ""
     origin: str = ""
     # The session's display name (renamed title); shown to people, never part of the fingerprint.
