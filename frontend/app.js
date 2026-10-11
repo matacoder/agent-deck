@@ -694,7 +694,7 @@ async function logout(){
   try{await fetch("/logout",{method:"POST"})}catch(e){toast(tr("Нет связи с панелью"));return}
   location.href="/login";
 }
-function toggleKeys(){const expanded=$("keys").classList.toggle("expanded");$("b_keymore").setAttribute("aria-expanded",String(expanded));fitKeys()}
+function toggleKeys(){const expanded=$("keys").classList.toggle("expanded");$("b_keymore").setAttribute("aria-expanded",String(expanded));fitKeys();renderQuickPrompts()}
 function fitKeys(){
   const box=$("keys"),more=$("b_keymore"),keys=[...box.children].filter(k=>k!==more);
   for(const k of keys)k.classList.remove("key-overflow");

@@ -18,11 +18,11 @@ test("only marked computers can be chosen, and a choice that is gone means this 
   expect(containerChoices({machines:[],use:"a"})).toEqual({hosts:[],selected:""});
 });
 
-test("a session uses its own choice, else the default; a computer no longer marked means this one",()=>{
+test("the bar names what the session was started with, not the setting; a computer no longer marked means this one",()=>{
   const data={machines:[{id:"a",name:"Red",host:true},{id:"b",name:"Air",host:true},{id:"c",name:"Old",host:false}],use:"a"};
-  expect(sessionContainers({containers:""},data)).toBe("a");
-  expect(sessionContainers({},data)).toBe("a");
-  expect(sessionContainers({containers:"local"},data)).toBe("");
-  expect(sessionContainers({containers:"b"},data)).toBe("b");
-  expect(sessionContainers({containers:"c"},data)).toBe("");
+  expect(sessionContainers({containers:"",docker:""},data)).toBe("");
+  expect(sessionContainers({containers:"a"},data)).toBe("");
+  expect(sessionContainers({docker:"local"},data)).toBe("");
+  expect(sessionContainers({docker:"b"},data)).toBe("b");
+  expect(sessionContainers({docker:"c"},data)).toBe("");
 });

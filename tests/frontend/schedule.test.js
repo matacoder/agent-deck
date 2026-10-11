@@ -3,13 +3,17 @@ const t=text=>'['+text+']';
 
 test('saved prompts come first; the agent commands wait behind "more"; a terminal gets none',()=>{
  const saved=[{label:'Tests',text:'run the tests'}];
- const labels=(agent,list,more)=>quickChips(agent,list,more).map(p=>p.more?'…':p.label);
+ const labels=(agent,list,more,shared)=>quickChips(agent,list,more,shared).map(p=>p.more?'…':p.label);
  expect(labels('claude',saved,false)).toEqual(['Tests','…']);
  expect(labels('claude',saved,true)).toEqual(['Tests','…','/compact','/clear']);
  expect(labels('claude-kimi',[],true)).toEqual(['…','/compact','/clear']);
  expect(labels('codex',[],true)).toEqual(['…','/compact','/new']);
  expect(labels('pi',saved,true)).toEqual(['Tests']);
  expect(quickChips('shell',saved,true)).toEqual([]);
+ // The keys row already has a "more": the commands follow it and no second one is drawn.
+ expect(labels('claude',saved,false,true)).toEqual(['Tests']);
+ expect(quickChips('claude',[],false,true)).toEqual([]);
+ expect(quickChips('claude',[],true,true).map(p=>p.label)).toEqual(['/compact','/clear']);
 });
 
 test('only commands that drop the conversation ask before sending',()=>{

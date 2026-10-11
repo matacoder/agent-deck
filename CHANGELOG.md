@@ -2,6 +2,12 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.43.1 — 2026-10-11
+
+- **One "…" on a phone instead of two.** Where the keys row has its own three-dots button, it now opens the agent commands (`/compact`, `/clear`, `/new`) together with the other keys; the second button is gone, and so is the row that held only the pencil (it appears with the commands).
+
+- **The bottom line names the Docker the session really uses.** It showed this computer's default, so a session started before a computer was chosen for containers looked as if it already ran them there. Now the session remembers what its agent was started with; sessions started before this version show this computer until their next restart.
+
 ## 1.43.0 — 2026-10-11
 
 - **Each session chooses where its containers run.** The new-session dialog has a **Containers** list (this computer or one marked for containers), and a new line at the bottom of the status bar names the computer the session runs on (left) and the one that runs its containers (right, with the Docker whale); tap the right one to change it, then restart the session to apply. The choice in Settings → Computers is now the default for new sessions. Sessions started before keep following that default.

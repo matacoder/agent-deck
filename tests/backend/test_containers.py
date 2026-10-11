@@ -298,10 +298,25 @@ class TunnelTests(PanelCase):
         self.panel.opt = Mock(return_value='shell')
         with self.assertRaisesRegex(ValueError, 'docker --context'):
             self.panel.action_session_containers({'name': 'demo', 'containers': DECK})
-        row = '\t'.join(['cc-demo', '1', '0', '/home/x', 'claude', '2', 'claude', '', '0', '', '', DECK])
+        row = '\t'.join(['cc-demo', '1', '0', '/home/x', 'claude', '2', 'claude', '', '0', '', '', DECK, 'local'])
         self.panel.tmux = Mock(return_value=row + '\n' + '\t'.join(['cc-old', '1', '0', '/home/x', 'claude', '2', 'claude']))
-        listed = {s['name']: s['containers'] for s in self.panel.list_sessions()}
-        self.assertEqual(listed, {'demo': DECK, 'old': ''})
+        listed = {s['name']: (s['containers'], s['docker']) for s in self.panel.list_sessions()}
+        # Chosen but not restarted yet: the agent still has the Docker it was started with.
+        self.assertEqual(listed, {'demo': (DECK, 'local'), 'old': ('', '')})
+
+    def test_session_remembers_the_docker_its_agent_was_started_with(self):
+        self.host.save({'host': True})
+        self.gateway.refresh()
+        self.panel._containers = self.gateway
+        self.panel.tmux = Mock(return_value='')
+        noted = lambda: self.panel.tmux.call_args.args[-2:]
+        self.panel.note_containers('demo')
+        self.assertEqual(noted(), ('@cc_docker', 'local'))  # Nothing chosen as the default yet.
+        self.gateway.save({'use': DECK})
+        self.panel.note_containers('demo')
+        self.assertEqual(noted(), ('@cc_docker', DECK))
+        self.panel.note_containers('demo', 'local')
+        self.assertEqual(noted(), ('@cc_docker', 'local'))
 
 
 class ContextTests(PanelCase):

@@ -10,11 +10,12 @@ const QUICK_COMMANDS={
 QUICK_COMMANDS["claude-kimi"]=QUICK_COMMANDS.claude;
 
 // The user's own prompts, then the agent's commands behind "more": they are rare and one of them drops the
-// conversation. A terminal gets none. Pure for tests.
-function quickChips(agent,saved,more){
+// conversation. With `shared` the "more" of the keys row opens them, so no second one is drawn. A terminal
+// gets none. Pure for tests.
+function quickChips(agent,saved,more,shared){
   if(agent==="shell")return [];
   const commands=QUICK_COMMANDS[agent]||[];
-  return [...saved.map(p=>({label:p.label,text:p.text})),...(commands.length?[{more:true}]:[]),...(more?commands:[])];
+  return [...saved.map(p=>({label:p.label,text:p.text})),...(commands.length&&!shared?[{more:true}]:[]),...(more?commands:[])];
 }
 // Rows of the editor -> what is saved; empty rows are dropped, not reported. Pure for tests.
 function quickRows(rows){
@@ -119,8 +120,10 @@ async function loadQuickPrompts(){
   renderQuickPrompts();
 }
 function renderQuickPrompts(){
-  const box=$("quick_prompts"),session=cur(),prompts=session?quickChips(agentOf(session),quick.saved,quick.more):[];
-  box.hidden=!session||agentOf(session)==="shell";
+  // One "more" on a phone: when the keys row shows its own, it opens the agent's commands too.
+  const shared=$("b_keymore").offsetParent!==null,open=shared?$("keys").classList.contains("expanded"):quick.more;
+  const box=$("quick_prompts"),session=cur(),prompts=session?quickChips(agentOf(session),quick.saved,open,shared):[];
+  box.hidden=!session||agentOf(session)==="shell"||!prompts.length&&shared;
   const signature=JSON.stringify(prompts);
   if(box.dataset.signature===signature)return;  // Rebuilt on every refresh otherwise: a tap in progress would be lost.
   box.dataset.signature=signature;

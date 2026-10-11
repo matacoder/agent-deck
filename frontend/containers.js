@@ -15,11 +15,11 @@ function containerChoices(data){
   const hosts=data.machines.filter(m=>m.host);
   return {hosts,selected:hosts.some(m=>m.id===data.use)?data.use:""};
 }
-// Where a session's containers go: its own choice, else this computer's default; "" is this computer. Pure for tests.
+// Where a session's containers go now: what its agent was started with, not the setting, which may have
+// changed since and acts only after a restart; "" is this computer. Pure for tests.
 function sessionContainers(session,data){
-  const {hosts,selected}=containerChoices(data),own=session.containers;
-  if(own==="local")return "";
-  return own?(hosts.some(m=>m.id===own)?own:""):selected;
+  const {hosts}=containerChoices(data);
+  return hosts.some(m=>m.id===session.docker)?session.docker:"";
 }
 function containerOptions(select,hosts){
   const option=(value,label)=>{const o=el("option","",label);o.value=value;return o};

@@ -413,11 +413,11 @@ def session_group(path):
 def list_sessions(preview_name=None):
     fmt = ("#{session_name}\t#{session_created}\t#{session_attached}\t#{pane_current_path}\t"
            "#{pane_current_command}\t#{window_activity}\t#{@cc_agent}\t#{@cc_sid}\t#{@cc_skip}\t#{@cc_source}\t#{@cc_title}"
-           "\t#{@cc_containers}")
+           "\t#{@cc_containers}\t#{@cc_docker}")
     out = tmux("list-sessions", "-F", fmt, check=False)
     result = []
     for line in out.splitlines():
-        sname, created, attached, path, cmd, activity, agent, sid, skip, source, title, containers = (line.split("\t") + [""] * 12)[:12]
+        sname, created, attached, path, cmd, activity, agent, sid, skip, source, title, containers, docker = (line.split("\t") + [""] * 13)[:13]
         if not sname.startswith(PREFIX):
             continue
         name = sname[len(PREFIX):]
@@ -428,6 +428,7 @@ def list_sessions(preview_name=None):
             "activity": int(activity or 0), "group": group, "agent": agent,
             "path": path, "running": is_running(agent, cmd), "command": cmd,
             "sid": sid or None, "skip": skip == "1",
+            "docker": docker,  # Where the running agent's containers really go: "local", a computer's id, "" = started before this was kept.
             "containers": containers,  # "" = this computer's default, "local", or the id of the computer chosen for this session.
         }
         try:
@@ -558,6 +559,16 @@ def with_containers(command, choice=None):
     return ''.join(f'{key}={shlex.quote(value)} ' for key, value in extra.items()) + command
 
 
+def note_containers(name, choice=None):
+    """Kept on the session: the Docker its agent was really started with. The default may change later, and a
+    running agent keeps what it got."""
+    try:
+        machine = containers_service().target(choice)
+    except (OSError, ValueError):
+        machine = None
+    tmux('set-option', '-t', f'={PREFIX}{name}:', '@cc_docker', machine['id'] if machine else 'local', check=False)
+
+
 def type_line(name, text):
     paste_to_tmux(name, text, bracketed=False)
     tmux("send-keys", "-t", f"={PREFIX}{name}:", "Enter")
@@ -683,6 +694,8 @@ def _action_new(d):
             raise
     if choice:
         tmux('set-option', '-t', f'={PREFIX}{name}:', '@cc_containers', choice)
+    if agent != 'shell':  # A terminal has no agent command to carry the choice.
+        note_containers(name, choice)
     return {"name": name}
 
 
@@ -729,6 +742,8 @@ def action_restart(d):
     script = "clear; " + (f"{cmd}; " if cmd else "") + "exec " + shlex.quote(shell)
     tmux("respawn-pane", "-k", "-t", target, "-c", path,
          shlex.join([shell, "-lic", script]))
+    if cmd:
+        note_containers(name, opt(name, '@cc_containers'))
 
 
 def action_kill(d):
