@@ -942,6 +942,7 @@
     "Запускать контейнеры здесь": "Exécuter les conteneurs ici",
     "Запуск контейнеров можно только включить или выключить": "L'exécution des conteneurs ne peut être qu'activée ou désactivée",
     "Docker на этом компьютере не отвечает; запустите его и повторите": "Docker ne répond pas sur cet ordinateur ; démarrez-le et réessayez",
-    "Этот компьютер не отмечен для контейнеров": "Cet ordinateur n'est pas désigné pour les conteneurs"
+    "Этот компьютер не отмечен для контейнеров": "Cet ordinateur n'est pas désigné pour les conteneurs",
+    "Docker не найден": "Docker introuvable"
   }
 }

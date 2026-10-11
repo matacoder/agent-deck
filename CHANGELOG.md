@@ -2,6 +2,11 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.42.0 — 2026-10-11
+
+- **A closed Docker is opened by the panel.** A computer whose Docker is installed but not running can now be marked for containers: marking it opens Docker, and so does a command that arrives later while it is closed (the command waits up to a minute instead of failing). Works for Docker Desktop and OrbStack on macOS, Colima, rootless Docker on Linux and Docker Desktop on Windows; a system Docker that needs root is not started.
+- The Containers card tells a Docker that is closed ("not running") from one the panel cannot find or start ("not found").
+
 ## 1.41.0 — 2026-10-11
 
 - **Containers run on the computer you choose.** In Settings → Computers, mark a connected computer as one that runs containers and pick it for this computer's sessions: `docker` and `docker compose` typed by an agent then run on that computer's Docker, with no change to the commands. Agents stay on the weak machine, builds and checks go to the strong one. Nothing to set up between the machines: the panels already trust each other over Tailscale, so there is no SSH and there are no keys. Applies to a new or restarted agent session.

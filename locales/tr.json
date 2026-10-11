@@ -942,6 +942,7 @@
     "Запускать контейнеры здесь": "Konteynerleri burada çalıştır",
     "Запуск контейнеров можно только включить или выключить": "Konteyner çalıştırma yalnızca açılıp kapatılabilir",
     "Docker на этом компьютере не отвечает; запустите его и повторите": "Bu bilgisayarda Docker yanıt vermiyor; başlatıp yeniden deneyin",
-    "Этот компьютер не отмечен для контейнеров": "Bu bilgisayar konteynerler için işaretlenmemiş"
+    "Этот компьютер не отмечен для контейнеров": "Bu bilgisayar konteynerler için işaretlenmemiş",
+    "Docker не найден": "Docker bulunamadı"
   }
 }

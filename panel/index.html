@@ -4251,14 +4251,14 @@ async function saveShowResults(){
 if(typeof module!=="undefined")module.exports={lmMetrics,deckAddress,saveShowResults};
 // Containers on another computer: which computers lend their Docker and which one this computer's
 // sessions use. Always asked from the gateway: it is the one that reaches the others.
-let containers=null;
+let containers=null,containersTimer=null;
 
 // What a row says under a computer's name. Pure for tests.
 function containerMeta(machine,translate){
   if(machine.state==="offline")return translate("Не отвечает");
   if(machine.state==="old")return translate("Нужна новая версия панели");
   const d=machine.docker;
-  if(!d)return translate("Docker не запущен");
+  if(!d)return translate(machine.can_start||machine.host?"Docker не запущен":"Docker не найден");
   return translate("Docker {0} · ядер: {1} · память: {2} ГБ",[d.version,d.cpus,Math.round(d.memory/2**30)]);
 }
 // Computers a session's containers can go to: marked ones only; a saved choice that is gone means "here". Pure for tests.
@@ -4278,9 +4278,9 @@ function renderContainers(){
   // One computer has nobody to lend Docker to.
   card.hidden=!data||!data.machines.length;
   if(card.hidden)return;
-  const rows=[containerRow(deckDirectory.name,containerMeta({state:"ok",docker:data.docker},tr),data.host,!data.docker&&!data.host,
+  const rows=[containerRow(deckDirectory.name,containerMeta({state:"ok",...data},tr),data.host,!data.docker&&!data.can_start&&!data.host,
     host=>gatewayApi("/api/containers_save",{host}))];
-  for(const m of data.machines)rows.push(containerRow(m.name,containerMeta(m,tr),m.host,m.state!=="ok"||(!m.docker&&!m.host),
+  for(const m of data.machines)rows.push(containerRow(m.name,containerMeta(m,tr),m.host,m.state!=="ok"||(!m.docker&&!m.can_start&&!m.host),
     host=>api(instancePath(m.id,"/api/containers_save"),{host},true)));
   $("container_machines").replaceChildren(...rows);
   const {hosts,selected}=containerChoices(data),select=$("containers_use");
@@ -4293,6 +4293,10 @@ async function loadContainers(){
   let data=null;
   try{data=await gatewayApi("/api/containers?fresh=1")}catch(e){if(e.message===STALE)return}
   containers=data&&Array.isArray(data.machines)?data:null;
+  // A computer just switched on is still opening its Docker: look again until it shows.
+  clearTimeout(containersTimer);
+  const starting=containers&&[containers,...containers.machines].some(m=>m.host&&!m.docker&&m.state!=="offline");
+  if(starting&&$("settings_dlg").open&&!document.hidden)containersTimer=setTimeout(loadContainers,8000);
   renderContainers();
 }
 async function saveContainerHost(input,save){

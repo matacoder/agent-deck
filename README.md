@@ -406,7 +406,9 @@ Agents can run on one computer while their containers run on another: for exampl
 that is always on, and a strong desktop that builds images and runs test stacks.
 
 1. Connect the computers in **Settings → Computers** (each runs its own Away Deck).
-2. In the **Containers** card, switch on the computers that may run containers. Docker must be running there.
+2. In the **Containers** card, switch on the computers that may run containers. A Docker that is installed
+   but closed is opened by the panel, then and whenever a command arrives (Docker Desktop, OrbStack, Colima,
+   rootless Docker); "Docker not found" means it has to be installed or started by hand.
 3. Under **Containers of this computer's sessions**, choose one of them.
 
 From the next new or restarted agent session, `docker` and `docker compose` in that session talk to

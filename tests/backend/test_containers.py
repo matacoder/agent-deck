@@ -16,6 +16,7 @@ from integrations import containers
 from integrations.containers import Containers, context_name
 
 DECK = 'a' * 24
+NO_SERVICE = lambda *args, **kwargs: SimpleNamespace(returncode=1, stdout='', stderr='')  # No rootless Docker unit.
 
 
 class FakeEngine:
@@ -86,11 +87,11 @@ class TunnelTests(PanelCase):
         self.addCleanup(self.engine.server.close)
         # The panel under test is the machine with Docker; `gateway` is the other computer that uses it.
         self.host = Containers(self.home / 'host', self.home / 'host-sockets', lambda: None, home=self.home,
-                               environ={'DOCKER_HOST': 'unix://' + str(engine)})
+                               environ={'DOCKER_HOST': 'unix://' + str(engine)}, run=NO_SERVICE)
         self.panel._containers = self.host
         self.decks = FakeDecks(self.server.server_address, self.login())
         self.gateway = Containers(self.home / 'gateway', self.home / 'docker', lambda: self.decks, home=self.home,
-                                  environ={'XDG_RUNTIME_DIR': str(self.home / 'none')})
+                                  environ={'XDG_RUNTIME_DIR': str(self.home / 'none')}, run=NO_SERVICE)
         self.enterContext(patch.object(containers.shutil, 'which', return_value=None))
 
     def request(self, path, headers=None, method='GET', body=None):
@@ -132,6 +133,7 @@ class TunnelTests(PanelCase):
         machine = self.gateway.refresh()['machines'][0]
         self.assertEqual((machine['name'], machine['address'], machine['host'], machine['state']), ('Red PC', '127.0.0.1', False, 'ok'))
         self.assertEqual(machine['docker'], {'version': '28.3.3', 'cpus': 16, 'memory': 64 * 2**30})
+        self.assertFalse(machine['can_start'])
         self.assertFalse(self.gateway.socket_path(DECK).exists())
         self.assertEqual(self.gateway.environment(), {})
         with self.assertRaisesRegex(ValueError, 'не отмечен'):
@@ -193,14 +195,66 @@ class TunnelTests(PanelCase):
 
     def test_marking_needs_a_running_docker(self):
         without = Containers(self.home / 'other', self.home / 'other-sockets', lambda: None, home=self.home,
-                             environ={'XDG_RUNTIME_DIR': str(self.home / 'none')})
+                             environ={'XDG_RUNTIME_DIR': str(self.home / 'none')}, run=NO_SERVICE)
         with patch.object(containers, 'engine_paths', return_value=[str(self.home / 'missing.sock')]):
             with self.assertRaisesRegex(ValueError, 'не отвечает'):
                 without.save({'host': True})
-            self.assertEqual(without.local(), {'host': False, 'docker': None})
+            self.assertEqual(without.local(), {'host': False, 'docker': None, 'can_start': False})
         for wrong in ({'host': 'yes'}, {'use': 5}):
             with self.assertRaises(ValueError):
                 self.host.save(wrong)
+
+    def closed(self, clock):
+        """A computer whose Docker Desktop is installed but closed; it opens 40 s after it is asked to."""
+        spawned, engine = [], str(self.home / 'engine.sock')
+        service = Containers(self.home / 'closed', self.home / 'closed-sockets', lambda: None, home=self.home,
+                             environ={}, run=NO_SERVICE, spawn=lambda command, **kwargs: spawned.append((command, kwargs)),
+                             pause=lambda seconds: clock.__setitem__(0, clock[0] + seconds))
+        service.starter = lambda: ['open', '-ga', 'Docker']
+        paths = lambda *args: [engine] if spawned and clock[0] >= 1040 else [str(self.home / 'missing.sock')]
+        self.enterContext(patch.object(containers, 'engine_paths', side_effect=paths))
+        self.enterContext(patch.object(containers.time, 'monotonic', side_effect=lambda: clock[0]))
+        return service, spawned
+
+    def test_closed_docker_is_opened_when_the_computer_is_marked_and_when_a_command_arrives(self):
+        clock = [1000]
+        service, spawned = self.closed(clock)
+        self.assertEqual(service.local(), {'host': False, 'docker': None, 'can_start': True})
+        with self.assertRaisesRegex(ValueError, 'not marked'):
+            service.connect()
+        self.assertEqual(spawned, [])  # Nobody may open Docker on a computer that is not marked.
+        self.assertTrue(service.save({'host': True})['host'])
+        self.assertEqual([command for command, _ in spawned], [['open', '-ga', 'Docker']])
+        self.assertTrue(spawned[0][1]['start_new_session'])
+        link = service.connect()  # The command waits for Docker instead of failing.
+        link.close()
+        self.assertGreaterEqual(clock[0], 1040)
+        self.assertEqual(len(spawned), 1)  # Asked once, not on every waiting command.
+
+    def test_docker_that_never_opens_fails_the_command_after_a_minute(self):
+        clock = [1000]
+        service, spawned = self.closed(clock)
+        service.save({'host': True})
+        service.spawn = lambda command, **kwargs: None  # It is asked to open and never does.
+        spawned.clear()
+        with self.assertRaisesRegex(ValueError, 'not running'):
+            service.connect()
+        self.assertLess(clock[0], 1000 + 70)
+
+    def test_how_docker_is_started_on_each_system(self):
+        unit = lambda *args, **kwargs: SimpleNamespace(returncode=0, stdout='', stderr='')
+        start = containers.start_command
+        self.assertEqual(start(self.home, {}, unit, 'linux'), ['systemctl', '--user', 'start', 'docker.service'])
+        self.assertIsNone(start(self.home, {}, NO_SERVICE, 'linux'))  # System Docker needs root: not ours to start.
+        self.assertIsNone(start(self.home, {'WSL_DISTRO_NAME': 'Ubuntu'}, NO_SERVICE, 'linux'))
+        with patch.object(containers.os.path, 'isfile', side_effect=lambda path: path == containers.DESKTOP_EXE):
+            self.assertEqual(start(self.home, {'WSL_DISTRO_NAME': 'Ubuntu'}, NO_SERVICE, 'linux'), [containers.DESKTOP_EXE])
+            self.assertIsNone(start(self.home, {}, NO_SERVICE, 'linux'))
+        (self.home / 'Applications/OrbStack.app').mkdir(parents=True)
+        with patch.object(containers.Path, 'is_dir', autospec=True, side_effect=lambda path: str(path) == str(self.home / 'Applications/OrbStack.app')):
+            self.assertEqual(start(self.home, {}, NO_SERVICE, 'darwin'), ['open', '-ga', 'OrbStack'])
+        with patch.object(containers.Path, 'is_dir', return_value=False), patch.object(containers.shutil, 'which', return_value=None):
+            self.assertIsNone(start(self.home, {}, NO_SERVICE, 'darwin'))
 
     def test_new_agent_gets_the_chosen_computer_in_its_command(self):
         self.assertEqual(self.panel.with_containers('claude --session-id x'), 'claude --session-id x')

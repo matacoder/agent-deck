@@ -11,6 +11,7 @@ import re
 import shutil
 import socket
 import subprocess
+import sys
 import threading
 import time
 from urllib.parse import urlsplit
@@ -21,6 +22,9 @@ from .relay import private_write, read_json
 TUNNEL, UPGRADE = '/api/docker_tunnel', 'away-deck-docker'
 MARK = 'Away Deck: '   # Only contexts described this way are ever updated or removed.
 REFRESH = 30
+START_EVERY = 60   # Docker Desktop takes this long to come up; asking again sooner only opens it twice.
+START_WAIT = 60
+DESKTOP_EXE = '/mnt/c/Program Files/Docker/Docker/Docker Desktop.exe'
 SOCKET = re.compile(r'[0-9a-f]{24}\.sock\Z')
 
 
@@ -32,6 +36,23 @@ def engine_paths(home, environ, skip):
         '.docker/run/docker.sock', '.orbstack/run/docker.sock', '.colima/default/docker.sock', '.rd/docker.sock')]
     # A panel started inside a session would find the pipe to another machine instead of its own engine.
     return [path for path in found + ['/var/run/docker.sock'] if Path(path).parent != Path(skip)]
+
+
+def start_command(home, environ, run, platform=sys.platform):
+    """How this computer's own Docker is started without a password, or None when the panel cannot."""
+    if platform == 'darwin':
+        for app in ('Docker', 'OrbStack'):
+            if any((Path(root) / (app + '.app')).is_dir() for root in ('/Applications', Path(home) / 'Applications')):
+                return ['open', '-ga', app]
+        return ['colima', 'start'] if shutil.which('colima', path=environ.get('PATH')) else None
+    try:
+        # Rootless Docker is a user service; the system one needs root, which the panel never has.
+        if run(['systemctl', '--user', 'cat', 'docker.service'], input='', capture_output=True, text=True, timeout=5).returncode == 0:
+            return ['systemctl', '--user', 'start', 'docker.service']
+    except (OSError, subprocess.SubprocessError):
+        pass
+    # Windows: the panel lives in WSL and Docker Desktop is a Windows program.
+    return [DESKTOP_EXE] if environ.get('WSL_DISTRO_NAME') and os.path.isfile(DESKTOP_EXE) else None
 
 
 def connect_unix(path, timeout=5):
@@ -109,11 +130,14 @@ def context_name(name, taken):
 
 
 class Containers:
-    def __init__(self, directory, sockets, decks, home=None, environ=None, run=subprocess.run):
+    def __init__(self, directory, sockets, decks, home=None, environ=None, run=subprocess.run, spawn=subprocess.Popen,
+                 pause=time.sleep):
         self.path = Path(directory) / 'containers.json'
         self.sockets = Path(sockets)
         self.decks = decks  # Callable returning the connected-decks service, which the panel may replace.
         self.home, self.environ, self.run = home or os.path.expanduser('~'), environ or os.environ, run
+        self.spawn, self.pause = spawn, pause
+        self.start_asked = None  # When this computer's Docker was last asked to start.
         self.lock = threading.RLock()
         self.machines = {}    # deck id -> {'id', 'name', 'address', 'host', 'docker', 'state'}
         self.listeners = {}   # deck id -> listening socket
@@ -134,24 +158,48 @@ class Containers:
                 continue
         return None, None
 
-    def docker(self):
-        """Engine facts for the settings page, checked at most every 30 s."""
+    def local(self):
+        """This computer's Docker for the settings page, checked at most every 30 s."""
         with self.lock:
             at, known = self.checked
         if known is None or time.monotonic() - at > REFRESH:
-            known = self.engine()
+            docker = self.engine()[1]
+            known = {'docker': docker, 'can_start': not docker and self.starter() is not None}
             with self.lock:
                 self.checked = (time.monotonic(), known)
-        return known[1]
+        return {'host': self.host, **known}
 
-    def local(self):
-        return {'host': self.host, 'docker': self.docker()}
+    def starter(self):
+        return start_command(self.home, self.environ, self.run)
+
+    def start_engine(self):
+        """Ask this computer's Docker to start; True when it was asked now or a moment ago."""
+        command = self.starter()
+        if not command:
+            return False
+        with self.lock:
+            if self.start_asked is not None and time.monotonic() - self.start_asked < START_EVERY:
+                return True
+            self.start_asked = time.monotonic()
+            self.checked = (0, None)
+        try:
+            self.spawn(command, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                       start_new_session=True)
+        except OSError:
+            return False
+        return True
 
     def connect(self):
         """A connection into this machine's Docker for another computer; only while marked for containers."""
         if not self.host:
             raise ValueError('This computer is not marked for containers; turn it on in its Away Deck settings')
         path = self.engine()[0]
+        if not path and self.start_engine():
+            # A command arrived while Docker was closed: open it and let the command wait.
+            deadline = time.monotonic() + START_WAIT
+            while not path and time.monotonic() < deadline:
+                self.pause(2)
+                path = self.engine()[0]
         if not path:
             raise ValueError('Docker is not running on this computer')
         link = connect_unix(path)
@@ -172,7 +220,8 @@ class Containers:
         if host and not self.host:
             with self.lock:
                 self.checked = (0, None)
-            if not self.docker():
+            # A closed Docker that the panel can open is opened; it is also opened later, when a command arrives.
+            if not self.local()['docker'] and not self.start_engine():
                 raise ValueError('Docker на этом компьютере не отвечает; запустите его и повторите')
         with self.lock:
             if use != self.use and use and not (self.machines.get(use) or {}).get('host'):
@@ -189,7 +238,7 @@ class Containers:
         if status != 200 or not isinstance(data.get('host'), bool):
             return {'state': 'old'}  # A panel before this feature: it cannot be marked yet.
         docker = data.get('docker') if isinstance(data.get('docker'), dict) else None
-        return {'state': 'ok', 'host': data['host'], 'docker': docker}
+        return {'state': 'ok', 'host': data['host'], 'docker': docker, 'can_start': data.get('can_start') is True}
 
     def refresh(self):
         """Ask every connected computer whether it runs containers; keep sockets and contexts in step."""
@@ -201,10 +250,10 @@ class Containers:
                 known = self.machines.get(deck['id'], {})
             if result['state'] == 'offline':
                 # A sleeping machine keeps its socket: Docker then says who does not answer.
-                result = {'state': 'offline', 'host': known.get('host', False), 'docker': known.get('docker')}
+                result = {'state': 'offline', 'host': known.get('host', False), 'docker': known.get('docker'), 'can_start': False}
             found[deck['id']] = {'id': deck['id'], 'name': deck.get('name') or deck['id'],
                                  'address': urlsplit(deck.get('url', '')).hostname or '',
-                                 'host': False, 'docker': None, **result}
+                                 'host': False, 'docker': None, 'can_start': False, **result}
         with self.lock:
             self.machines = found
         self.listen({identity for identity, machine in found.items() if machine['host']})
@@ -281,6 +330,7 @@ class Containers:
                 link.sendall('\r\n'.join([f'GET {TUNNEL} HTTP/1.1', 'Host: ' + target.netloc, 'Origin: ' + profile['url'],
                                           'Cookie: ' + cookie, 'Connection: Upgrade', 'Upgrade: ' + UPGRADE,
                                           '', '']).encode('latin-1'))
+                link.settimeout(START_WAIT + 15)  # The other computer may be opening its Docker first.
                 head, rest = read_head(link)
                 code = (head.split('\r\n', 1)[0].split() + ['', ''])[1]
                 if code == '101' and not rest:

@@ -942,6 +942,7 @@
     "Запускать контейнеры здесь": "Jalankan kontainer di sini",
     "Запуск контейнеров можно только включить или выключить": "Menjalankan kontainer hanya dapat dinyalakan atau dimatikan",
     "Docker на этом компьютере не отвечает; запустите его и повторите": "Docker di komputer ini tidak merespons; jalankan lalu coba lagi",
-    "Этот компьютер не отмечен для контейнеров": "Komputer ini tidak ditandai untuk kontainer"
+    "Этот компьютер не отмечен для контейнеров": "Komputer ini tidak ditandai untuk kontainer",
+    "Docker не найден": "Docker tidak ditemukan"
   }
 }
