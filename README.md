@@ -91,7 +91,7 @@ The **?** next to the search field in the session bar shows the same picture ins
 - Local models in Claude Code, with session speed/TTFT measurements and a separate benchmark; no subscription quotas.
 - UI in 16 languages, switchable in Settings → Application; extensible file-based locales.
 - **Waiting for you:** one list of every agent question and finished session on all connected computers, answerable in place (including custom text answers).
-- Notifications on phone and desktop when an agent asks a question or finishes, from every connected computer.
+- Notifications on phone and desktop when an agent asks a question or finishes, from every connected computer; a "finished" notification says what was done.
 - **Quick prompts:** your own messages and the agent's `/compact` and `/clear` as buttons above the message field, sent with one tap.
 - **Send later:** hold a message until a set time, until the agent is free, or until the subscription limit resets; a session can also continue by itself after a limit.
 - Screenshots an agent mentions by path (`/tmp/shot.png`, `docs/home.png`) appear as thumbnails under the line and open in a full-screen viewer, also for sessions on connected computers.
@@ -513,6 +513,8 @@ recognized active terminal menus. Custom text and multiple selections use the pa
    custom answer (*Other* / *Type something*), reply to the question message with your text.
 
 The bot also says when an agent finishes working (the same event as the "finished" notification).
+Both carry the session's summary, rewritten at that moment by a model of the session's own provider:
+what the goal was, what is done and what is next. It can take up to 30 seconds to arrive.
 Reply to that message with text and it is sent to that session as the next prompt, on whichever
 connected computer it runs; the bot confirms it. A reply is refused when the session was closed or has
 an open question. The **Tell me when an agent finishes** switch in the Telegram card turns these

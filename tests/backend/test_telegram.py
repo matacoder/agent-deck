@@ -290,6 +290,17 @@ class TelegramTests(unittest.TestCase):
         self.assertEqual(self.api.calls[-1][1]['reply_to_message_id'], 900)
         self.answer.assert_not_called()
 
+    def test_finished_message_says_what_was_done_when_the_session_has_a_summary(self):
+        self.pair()
+        language = self.service.language()
+        self.service.finished(dict(self.FINISHED, summaries={language: {'line': 'Payments fixed', 'text': 'Tests pass. Next: deploy.'},
+                                                             'xx': {'line': 'other language'}}))
+        text = [d for m, d in self.api.calls if m == 'sendMessage'][-1]['text'].split('\n\n')
+        self.assertEqual(text[2:4], ['Payments fixed', 'Tests pass. Next: deploy.'])
+        self.assertEqual(len(text), 5)
+        plain, _ = self.notice()
+        self.assertEqual(len(plain['text'].split('\n\n')), 3)
+
     def test_a_prompt_that_cannot_be_sent_is_explained_and_never_repeated(self):
         self.pair()
         _, row = self.notice()

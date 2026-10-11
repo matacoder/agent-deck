@@ -9,6 +9,7 @@ from concurrent.futures import ThreadPoolExecutor
 import json
 import threading
 import time
+from urllib.parse import urlencode
 
 from .decks import POLL_LIMIT
 from .questions import Question
@@ -137,6 +138,12 @@ class Gateway:
     def send(self, deck, name, text):
         """Types a message into a session of a connected computer; an unconfirmed send is reported, never repeated."""
         self.confirmed(deck, '/api/send', {'name': name, 'text': text}, 'message')
+
+    def session_info(self, deck, name, language, fresh=False):
+        """A connected computer's summary of its own session; earlier versions answer in their own language."""
+        query = urlencode({'name': name, 'language': language, **({'fresh': '1'} if fresh else {})})
+        status, data = get_json(self.decks(), deck, '/api/session_info?' + query)
+        return data if status == 200 else {}
 
     def confirmed(self, deck, path, request, what):
         try:

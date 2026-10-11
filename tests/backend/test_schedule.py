@@ -246,6 +246,27 @@ class PanelWiringTests(PanelCase):
         self.assertEqual(self.panel.schedule_service().status('api')['prompts'], [])
         self.assertFalse(self.panel.schedule_service().status('api')['auto_resume'])
 
+    def test_a_finished_session_is_summarized_now_and_an_old_or_failed_summary_is_not_used(self):
+        answers, calls, pauses = [], [], []
+        def info(name, language, fresh):
+            calls.append((name, language, fresh))
+            return {'summary': answers.pop(0)}
+        self.panel.session_info = info
+        answers += [{'line': 'old', 'updating': True}, {'line': 'Payments fixed', 'text': 'Done.', 'updating': False}]
+        self.assertEqual(self.panel.finished_summary('', 'api', 'ru', pause=pauses.append), {'line': 'Payments fixed', 'text': 'Done.'})
+        self.assertEqual((calls, pauses), ([('api', 'ru', True), ('api', 'ru', False)], [2]))
+        answers += [{'line': 'old', 'error': 'TimeoutExpired', 'updating': False}]
+        self.assertIsNone(self.panel.finished_summary('', 'api', 'ru'))
+        answers += [{'line': 'old', 'updating': True}]
+        self.assertIsNone(self.panel.finished_summary('', 'api', 'ru', wait=0))  # The model took too long.
+        self.panel.session_info = Mock(return_value={'supported': False})
+        self.assertIsNone(self.panel.finished_summary('', 'api', 'ru'))
+        self.panel.gateway.session_info = Mock(return_value={'summary': {'line': 'Remote', 'text': '', 'updating': False}})
+        self.assertEqual(self.panel.finished_summary('a' * 24, 'api', 'ru')['line'], 'Remote')
+        self.panel.gateway.session_info.assert_called_once_with('a' * 24, 'api', 'ru', True)
+        self.panel.gateway.session_info = Mock(side_effect=ValueError('offline'))
+        self.assertIsNone(self.panel.finished_summary('a' * 24, 'api', 'ru'))
+
     def test_quick_prompts_are_saved_through_the_action(self):
         saved = self.panel.ACTIONS['quick_prompts']({'prompts': [{'text': 'run the tests'}]})
         self.assertEqual(saved, {'prompts': [{'label': 'run the tests', 'text': 'run the tests'}]})

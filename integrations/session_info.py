@@ -171,12 +171,13 @@ class Summaries:
             json.dump(data, stream, ensure_ascii=False)
         os.replace(temporary, self.file(sid, language))
 
-    def get(self, sid, language, size, turns, pick_model):
+    def get(self, sid, language, size, turns, pick_model, fresh=False):
         """The kept summary; starts a rewrite when the conversation grew and the last one is old enough.
-        pick_model: called only then; None when this session's provider cannot summarize."""
+        pick_model: called only then; None when this session's provider cannot summarize.
+        fresh: a notification about finished work wants the result, so it does not wait for the usual pause."""
         kept = self.read(sid, language)
         now = self.clock()
-        stale = kept.get('size') != size and now - kept.get('tried', 0) >= SUMMARY_EVERY
+        stale = kept.get('size') != size and (fresh or now - kept.get('tried', 0) >= SUMMARY_EVERY)
         key = (sid, language)
         with self.lock:
             updating = key in self.busy

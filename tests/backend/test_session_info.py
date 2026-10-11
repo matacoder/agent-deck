@@ -99,6 +99,9 @@ class SessionInfoTests(unittest.TestCase):
         self.assertEqual((kept['line'], kept['text'], kept['model'], kept['updating']), ('Payments', 'Done.', 'Claude Haiku', False))
         self.assertEqual(oct(store.file('sid', 'en').stat().st_mode & 0o777), '0o600')
         self.assertFalse(store.get('sid', 'en', 20, turns, lambda: model)['updating'])  # Grew, but too soon.
+        # A notification about finished work does not wait for the pause.
+        self.assertTrue(store.get('sid', 'en', 15, turns, lambda: model, fresh=True)['updating'])
+        jobs.pop()()
         now[0] += S.SUMMARY_EVERY
         broken = {'label': 'x', 'complete': lambda prompt: 'nonsense'}
         store.get('sid', 'en', 20, turns, lambda: broken)
@@ -106,7 +109,7 @@ class SessionInfoTests(unittest.TestCase):
         after = store.get('sid', 'en', 20, turns, lambda: None)
         self.assertEqual((after['line'], after['error']), ('Payments', 'Модель не прислала пересказ'))
         self.assertFalse(store.get('other', 'en', 5, turns, lambda: None)['updating'])  # No model for this provider.
-        self.assertEqual(len(asked), 1)
+        self.assertEqual(len(asked), 2)
 
     def test_a_provider_that_cannot_summarize_is_asked_again_only_after_a_while(self):
         now, picks = [1000], []

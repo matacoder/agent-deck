@@ -1547,7 +1547,7 @@ def telegram_finished():
             return telegram_service().wants_finished()
         except (OSError, ValueError):
             return False
-    return (wanted, lambda message: telegram_service().finished(message)) if Telegram else None
+    return (wanted, lambda message: telegram_service().finished(message), lambda: telegram_service().language()) if Telegram else None
 
 
 _backups = None
@@ -1648,13 +1648,35 @@ def push_sessions():
     return [{**s, 'deck': ''} for s in list_sessions()] + gateway.sessions()
 
 
+SUMMARY_WAIT = 30
+
+
+def finished_summary(deck, name, language, wait=SUMMARY_WAIT, pause=time.sleep):
+    """What a session that just finished did: its summary, rewritten now and waited for; None when its
+    provider cannot write one in time. An older summary is not used: it describes work still going on."""
+    deadline, fresh = time.monotonic() + wait, True
+    while True:
+        try:
+            info = gateway.session_info(deck, name, language, fresh) if deck else session_info(name, language, fresh)
+        except Exception:
+            return None
+        summary = info.get("summary") if isinstance(info.get("summary"), dict) else {}
+        if not summary.get("updating"):
+            line = summary.get("line")
+            return {"line": line, "text": summary.get("text") or ""} if line and not summary.get("error") else None
+        if time.monotonic() >= deadline:
+            return None
+        fresh = False  # A failed rewrite is not started again on every look.
+        pause(2)
+
+
 def push_service():
     global _push
     from integrations.push import Push
     with _push_lock:
         if _push is None:
             _push = Push(os.path.expanduser('~/.config/cc-panel/integrations'), push_sessions, shared_questions,
-                         finished=telegram_finished())
+                         finished=telegram_finished(), summary=finished_summary)
         return _push
 
 
@@ -1839,7 +1861,7 @@ def summary_model(name, agent):
     return cli_model(cli) if agent_status(cli)["logged_in"] else None
 
 
-def session_info(name, language):
+def session_info(name, language, fresh=False):
     """How full the open conversation is and its summary; parsed again only when the file changed."""
     from integrations.session_info import HEAD, context, dialogue, started, tail_records
     agent = opt(name, "@cc_agent") or "claude"
@@ -1864,7 +1886,7 @@ def session_info(name, language):
             if len(_session_reads) > 200:
                 _session_reads.clear()
             _session_reads[path] = cached
-    summary = summaries().get(sid, language, stat.st_size, cached[2], lambda: summary_model(name, agent))
+    summary = summaries().get(sid, language, stat.st_size, cached[2], lambda: summary_model(name, agent), fresh)
     return {"supported": True, "context": cached[1], "summary": summary, "started": cached[3] or None}
 
 
@@ -2365,7 +2387,12 @@ class Handler(BaseHTTPRequestHandler):
             if not NAME_RE.fullmatch(name) or not session_exists(name):
                 return self.send_json(404, {"error": "сессия не найдена"})
             try:
-                return self.send_json(200, session_info(name, self.language()))
+                # A gateway asks for a notification: in the reader's language and without the usual pause.
+                query = parse_qs(parsed.query)
+                language = query.get("language", [""])[0]
+                allowed = {item["code"] for item in locales.available()} if locales is not None else set()
+                return self.send_json(200, session_info(name, language if language in allowed else self.language(),
+                                                        query.get("fresh", [""])[0] == "1"))
             except (OSError, ValueError) as error:
                 return self.send_json(500, {"error": f"Не удалось прочитать разговор сессии: {type(error).__name__}"})
         if parsed.path == "/api/gallery":

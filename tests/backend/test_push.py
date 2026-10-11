@@ -219,6 +219,36 @@ class PushServiceTests(unittest.TestCase):
         self.assertEqual([(m['kind'], m['title'], m['session'], m['created']) for m in heard], [('finished', 'API', 'api', 7)])
         self.assertEqual(self.sent, [])
 
+    def test_finished_work_carries_the_session_summary_in_each_readers_language(self):
+        asked, jobs, heard = [], [], []
+        def summary(deck, session, language):
+            asked.append((deck, session, language))
+            if language == 'de':
+                raise OSError('model is down')
+            return {'line': 'Payments fixed', 'text': 'x' * 900} if language == 'en' else None
+        self.push.summary, self.push.spawn = summary, jobs.append
+        self.push.finished = (lambda: True, heard.append, lambda: 'ru')
+        english, german = self.subscribe(), self.subscribe(ENDPOINT + '2', 'de')
+        now = [0]
+        self.push.clock = lambda: now[0]
+        def tick(at, activity):
+            now[0] = at
+            self.sessions = [{'name': 'api', 'title': 'API', 'agent': 'claude', 'activity': activity, 'created': 7}]
+            self.push.tick()
+        tick(0, 1); tick(3, 2); tick(40, 3)
+        self.questions = [question('web')]
+        tick(50, 3)
+        # The question is not held back by the model that writes the summary.
+        self.assertEqual([payload['title'] for _, payload, _ in self.sent], ['web', 'web'])
+        self.assertEqual((len(jobs), heard), (1, []))
+        jobs.pop()()
+        self.assertEqual(asked, [('', 'api', 'de'), ('', 'api', 'en'), ('', 'api', 'ru')])
+        tick(53, 3)
+        bodies = {identity: payload['body'].split('\n') for identity, payload, _ in self.sent if payload['title'] == 'API'}
+        self.assertEqual(bodies[english][1:], ['Payments fixed', 'x' * 400])
+        self.assertEqual(len(bodies[german]), 1)  # Its model failed: the plain message is still sent.
+        self.assertEqual([(m['session'], list(m['summaries'])) for m in heard], [('api', ['en'])])
+
     def test_events_can_be_turned_off(self):
         self.push.set_events({'questions': False, 'finished': 'nope'})
         self.assertEqual(self.push.status()['events'], {'questions': False, 'finished': True})

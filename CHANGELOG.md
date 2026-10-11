@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.40.0 — 2026-10-11
+
+- **"Finished" notifications and Telegram messages say what was done.** When an agent finishes, the panel rewrites the session's summary right away and adds it to the notification and to the Telegram message: one line and a few sentences on the goal, what is done and what is next. Written by a model of the session's own provider, in the language of each device and of the bot, also for sessions on connected computers. The message waits for the model up to 30 seconds; a session whose provider cannot summarize (Kimi Code, Pi, not logged in) gets the earlier short message.
+
 ## 1.39.0 — 2026-10-11
 
 - **Agent Deck is now Away Deck.** Another project already uses the earlier name. The new name is shown in the panel, the login page, the home-screen app, notifications, Telegram messages, installer output and the documentation. Nothing moves on disk and no setting changes: `/opt/agent-deck`, `~/.config/cc-panel`, service and container names, the repository address, the Windows Start menu shortcut and scheduled task, and the macOS log folder keep their names, and computers on earlier versions stay connected.

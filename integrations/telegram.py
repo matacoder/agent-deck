@@ -104,13 +104,14 @@ class Telegram:
         self.started = False
         self.seen = {}
 
-    def translate(self, text):
-        if locales is None:
-            return text
+    def language(self):
         language = self.config.get('language', os.environ.get('PANEL_LANGUAGE', 'en'))
-        if language not in {item['code'] for item in locales.available()}:
+        if locales is not None and language not in {item['code'] for item in locales.available()}:
             language = 'en'
-        return locales.translate_message(text, language)
+        return language
+
+    def translate(self, text):
+        return text if locales is None else locales.translate_message(text, self.language())
 
     def database(self):
         with self.lock:
@@ -284,8 +285,11 @@ class Telegram:
         if not self.eligible(c) or not c.get('finished', True):
             return
         label = AGENT_LABELS.get(message.get('agent'), message.get('agent') or 'Agent')
+        # What was done, in the session's own summary, when a model of its provider could write one.
+        summary = (message.get('summaries') or {}).get(self.language()) or {}
         text = (' · '.join(filter(None, (message.get('origin'), label, message['title']))) + '\n\n'
                 + self.translate('{0} закончил работу').format(label) + '\n\n'
+                + ''.join(part + '\n\n' for part in (summary.get('line'), summary.get('text')) if part)
                 + self.translate('Ответьте на это сообщение, чтобы отправить агенту следующий запрос'))
         try:
             result = self.api.call(c['token'], 'sendMessage', chat_id=c['chat_id'], text=text)

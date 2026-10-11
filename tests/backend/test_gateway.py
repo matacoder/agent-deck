@@ -65,6 +65,13 @@ class GatewayTests(unittest.TestCase):
             self.gateway.send('a' * 24, 'api', 'continue')
         self.assertEqual(self.decks.request.call_count, 3)
 
+    def test_a_connected_computers_summary_is_asked_in_the_readers_language(self):
+        self.decks.request.return_value = (200, {}, b'{"summary":{"line":"Payments"}}')
+        self.assertEqual(self.gateway.session_info('a' * 24, 'api', 'ru', fresh=True)['summary']['line'], 'Payments')
+        self.assertEqual(self.decks.request.call_args.args[:3], ('a' * 24, 'GET', '/api/session_info?name=api&language=ru&fresh=1'))
+        self.decks.request.return_value = (404, {}, b'{"error":"gone"}')
+        self.assertEqual(self.gateway.session_info('a' * 24, 'api', 'ru'), {})
+
     def test_telegram_states_skip_computers_that_did_not_answer(self):
         def request(deck, method, path, *args, **kwargs):
             if deck == 'b' * 24:

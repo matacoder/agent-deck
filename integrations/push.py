@@ -21,16 +21,23 @@ AGENT_LABELS = {'claude': 'Claude', 'codex': 'Codex', 'claude-kimi': 'Claude · 
 MAX_DEVICES = 20
 IDLE_LOCAL, IDLE_REMOTE, MIN_BUSY = 8, 25, 20
 BACKLOG_SECONDS, BACKLOG_SIZE = 600, 20
+SUMMARY_LANGUAGES = 4   # Each one is a model call.
+SUMMARY_TEXT = 400      # An encrypted notification holds about 4 KB.
 
 
 class Push:
-    def __init__(self, directory, sessions, questions, sender=None, clock=time.monotonic, finished=None):
+    def __init__(self, directory, sessions, questions, sender=None, clock=time.monotonic, finished=None, summary=None):
         self.path = Path(directory) / 'push.json'
         self.sessions, self.questions = sessions, questions
         self.sender = sender or webpush.send
         self.clock = clock
-        # Telegram hears about finished work too: (wanted(), tell(message)); it has no devices of its own.
+        # Telegram hears about finished work too: (wanted(), tell(message), language()); it has no devices of its own.
         self.finished = finished
+        # summary(deck, session, language) -> {'line', 'text'} or None: what the finished session did. A model
+        # writes it, so it is asked off the loop and the message waits in `ready`.
+        self.summary = summary
+        self.spawn = lambda job: threading.Thread(target=job, name='agent-deck-push-summary', daemon=True).start()
+        self.ready = []
         self.lock = threading.RLock()
         self.activity = {}   # (deck, name) -> [activity, changed_at, busy_since or None]
         self.seen = {}       # question fingerprint -> last time it was present
@@ -104,9 +111,13 @@ class Push:
             self.save()
             return dict(self.config['events'])
 
+    @staticmethod
+    def language(code):
+        return code if locales is None or code in {i['code'] for i in locales.available()} else 'en'
+
     def translate(self, text, language, params=()):
         if locales is not None:
-            text = locales.translate_message(text, language if language in {i['code'] for i in locales.available()} else 'en')
+            text = locales.translate_message(text, self.language(language))
         return text.format(*params)
 
     def text(self, part, language):
@@ -124,8 +135,10 @@ class Push:
         for subscription in targets:
             language = subscription.get('language', 'en')
             # Short title (the session) that fits a lock-screen line; status and details go to the body.
-            payload = {'title': self.text(message['title'], language),
-                       'body': '\n'.join(self.text(part, language) for part in message.get('body', ())),
+            summary = (message.get('summaries') or {}).get(self.language(language)) or {}
+            body = [self.text(part, language) for part in message.get('body', ())]
+            body += [part for part in (summary.get('line'), (summary.get('text') or '')[:SUMMARY_TEXT]) if part]
+            payload = {'title': self.text(message['title'], language), 'body': '\n'.join(body),
                        'tag': message.get('tag'), 'deck': message.get('deck', ''), 'session': message.get('session', ''),
                        'url': ('/?deck=' + message['deck'] if message.get('deck') else '/') + ('#' + message['session'] if message.get('session') else '')}
             try:
@@ -221,12 +234,41 @@ class Push:
         if not self.config['subscriptions'] and not heard:
             return
         observed = self.observe()
+        if self.summary:
+            for message in observed:
+                if message['kind'] == 'finished':
+                    self.spawn(lambda message=message: self.describe(message, heard))
+            with self.lock:
+                observed, self.ready = [m for m in observed if m['kind'] != 'finished'] + self.ready, []
         if heard:
             for message in observed:
                 if message['kind'] == 'finished':
                     self.finished[1](message)
         if self.config['subscriptions']:
             self.send_all(self.wanted(observed))
+
+    def describe(self, message, heard):
+        """Adds the session's summary in every language the message will be read in, then hands it to the loop."""
+        with self.lock:
+            devices = self.config['subscriptions'] if self.config['events'].get('finished') else []
+            languages = {self.language(s.get('language', 'en')) for s in devices}
+        message['summaries'] = {}
+        try:
+            if heard and len(self.finished) > 2:
+                languages.add(self.finished[2]())
+            for language in sorted(languages)[:SUMMARY_LANGUAGES]:
+                found = self.one_summary(message, language)
+                if found:
+                    message['summaries'][language] = found
+        finally:
+            with self.lock:
+                self.ready.append(message)
+
+    def one_summary(self, message, language):
+        try:
+            return self.summary(message['deck'], message['session'], language)
+        except Exception as error:  # The plain "finished" message is still worth sending.
+            print(f'Notification summary failed: {type(error).__name__}', flush=True)
 
     def send_all(self, messages, now=None):
         """Events are observed once, so a message that cannot be sent yet (encryption components still

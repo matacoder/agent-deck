@@ -462,6 +462,11 @@ class RemoteDeckTests(PanelCase):
             jobs.pop()()
             handler=self.handler();handler.path='/api/session_info?name=demo';handler.get_request()
             self.assertEqual(handler.send_json.call_args.args[1]['summary']['line'],'Payments')
+            # A gateway asks in the reader's language; an unknown one falls back to the panel's own.
+            with patch.object(self.panel,'session_info',return_value={}) as asked:
+                for query,expected in (('&language=de&fresh=1',('de',True)),('&language=..%2Fx',(handler.language(),False))):
+                    handler=self.handler();handler.path='/api/session_info?name=demo'+query;handler.get_request()
+                    self.assertEqual(asked.call_args.args[1:],expected)
             # A session on a local model is summarized by that model, never sent to a cloud one.
             options['@cc_source']=json.dumps({'kind':'lmstudio','profile':'p1','model':'qwen'})
             self.assertEqual(self.panel.summary_model('demo','claude')['label'],'lmstudio:p1:qwen')
