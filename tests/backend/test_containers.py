@@ -148,10 +148,12 @@ class TunnelTests(PanelCase):
         self.assertIn('200 OK', head)
         self.assertEqual(body, b'ping done')  # The half-close reached the engine and its answer came back.
 
+        # This computer's own engine, for running a container here; never looked up on the machine running the test.
+        self.gateway.engine = Mock(return_value=('/run/local/docker.sock', {}))
         self.assertEqual(self.gateway.save({'use': DECK})['use'], DECK)
         self.assertEqual(self.gateway.environment(), {'DOCKER_HOST': 'unix://' + str(path)})
         note = json.loads(path.with_suffix('.json').read_text())
-        self.assertEqual(note, {'name': 'Red PC', 'address': '127.0.0.1', 'local': ''})
+        self.assertEqual(note, {'name': 'Red PC', 'address': '127.0.0.1', 'local': 'unix:///run/local/docker.sock'})
         self.assertEqual(Containers(self.home / 'gateway', self.home / 'docker', lambda: self.decks).use, DECK)
 
     def test_unmarked_or_silent_computer_answers_as_docker_would(self):
