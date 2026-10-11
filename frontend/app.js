@@ -326,7 +326,7 @@ function frameFor(name){
   return f;
 }
 function show(){
-  watchSessionInfo();
+  watchSessionInfo();watchLater();
   const s=cur(),m=curMode();
   $("empty").style.display=s?"none":"grid";
   if(!s){$("empty_text").textContent=load.done?tr("Сессий пока нет"):tr("Загружаю сессии…");$("empty_new").hidden=!load.done}
@@ -543,6 +543,7 @@ function renderAttachments(){
     chip.append(remove);list.append(chip);
   }
   $("b_attach").disabled=!active||sending||uploading||panelUpdating;
+  $("b_later").disabled=!active||panelUpdating;
   $("b_send").disabled=sending||uploading||panelUpdating;
 }
 // XHR instead of fetch: large phone videos take minutes and need visible progress.

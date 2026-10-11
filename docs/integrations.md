@@ -65,9 +65,12 @@ Existing panel state remains in `~/.config/cc-panel/sessions.json` and other JSO
 settings. New integration files are under `~/.config/cc-panel/integrations/`:
 
 - `telegram.json`: bot token, enabled state, linked account and expiring pairing hash.
-- `questions.sqlite3`: questions, delivery/answer states and Telegram polling offset.
+- `questions.sqlite3`: questions, delivery/answer states, Telegram polling offset and which session each
+  "finished" message is about (kept for seven days).
+- `schedule.json`: messages held for later and the sessions that continue after a limit reset.
+- `quick-prompts.json`: the saved quick prompts (not part of backups: older versions reject unknown backup files).
 
-Both files have mode `600`; the directory is created with mode `700`. The token is
+All of them have mode `600`; the directory is created with mode `700`. The token is
 never returned by panel APIs or saved in browser storage, URLs, the repository, or
 agent commands. Telegram API errors are sanitized to exclude token-bearing URLs.
 Back up this directory alongside panel settings; it contains private data.

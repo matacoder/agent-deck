@@ -202,6 +202,23 @@ class PushServiceTests(unittest.TestCase):
         self.push.send_all([], now=100 + 601)  # Too old to be useful: dropped.
         self.assertEqual(len(self.sent), 2)
 
+    def test_telegram_hears_about_finished_work_without_any_device(self):
+        heard, wanted = [], [False]
+        self.push.finished = (lambda: wanted[0], heard.append)
+        now = [0]
+        self.push.clock = lambda: now[0]
+        def tick(at, activity):
+            now[0] = at
+            self.sessions = [{'name': 'api', 'title': 'API', 'agent': 'claude', 'activity': activity, 'created': 7}]
+            self.push.tick()
+        tick(0, 1); tick(3, 2)
+        self.assertEqual(self.push.activity, {})  # Nobody listens: nothing is watched.
+        wanted[0] = True
+        self.questions = [question('web')]
+        tick(6, 1); tick(9, 2); tick(40, 3); tick(50, 3)
+        self.assertEqual([(m['kind'], m['title'], m['session'], m['created']) for m in heard], [('finished', 'API', 'api', 7)])
+        self.assertEqual(self.sent, [])
+
     def test_events_can_be_turned_off(self):
         self.push.set_events({'questions': False, 'finished': 'nope'})
         self.assertEqual(self.push.status()['events'], {'questions': False, 'finished': True})

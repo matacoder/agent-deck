@@ -2,6 +2,13 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.38.0 — 2026-10-11
+
+- **Quick prompts.** A row of buttons above the message field sends a message with one tap: your own saved prompts (edited with the pencil at the end of the row, up to 24, one list for every connected computer) and the agent's commands, `/compact` and `/clear` for Claude, `/compact` and `/new` for Codex. Commands that drop the conversation ask first.
+- **Send later.** The clock next to the send button holds a message until a set time, until the agent is free, or until the subscription limit that stopped the session resets. Waiting messages are listed there and can be removed; they survive a panel restart, are never typed into an open agent question and are sent at most once.
+- **Continue after the limit resets.** A per-session switch in the same dialog, off by default: when an agent stops with a limit notice, the panel waits for the reset time named in it (Claude Code and Codex notices; the provider's counters when no time is named) and sends `continue`, once per reset.
+- **Telegram says when an agent finishes,** and a reply to that message is sent to that session as the next prompt, also on connected computers. On by default for a linked bot; the **Tell me when an agent finishes** switch in the Telegram card turns it off. Installations on a plain Tailscale address, where browser notifications are unavailable, get the "finished" event this way.
+
 ## 1.37.0 — 2026-10-10
 
 - Claude and Codex sessions started from the panel are asked, at the start of a conversation, to show a finished task: screenshots of the result (their paths appear as pictures on the Screen and in the gallery) and, for anything that opens in a browser, a link on this computer's Tailscale address instead of `localhost`. Work with nothing to look at is left alone. On by default; **Settings → General → Finished task** turns it off. It reaches a session at its next start, restart, `/clear` or compaction, and never agents started inside another agent or outside the panel.

@@ -260,6 +260,38 @@ body.is-codex .question-key{display:inline-flex!important;align-items:center;jus
 .sendbtn svg,.attachbtn svg{width:var(--icon-lg);height:var(--icon-lg)}
 .sendbtn:active{opacity:.8}
 .sendbtn:disabled,.attachbtn:disabled{opacity:.45}
+/* send later + quick prompts */
+.laterbtn{position:relative}
+.laterbtn.on{color:var(--acc-text);border-color:var(--acc)}
+.later-count{position:absolute;top:-5px;right:-5px;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:var(--acc-strong);color:#fff;font-size:10.5px;font-weight:600;line-height:16px;text-align:center}
+.later-count:empty{display:none}
+.quick-prompts{display:flex;gap:6px;overflow-x:auto;padding-bottom:8px;scrollbar-width:none}
+.quick-prompts::-webkit-scrollbar{display:none}
+.quick-prompts[hidden]{display:none}
+.quick-chip{flex:none;max-width:220px;height:32px;padding:0 12px;border:1px solid var(--bd);border-radius:16px;background:var(--side2);color:var(--fg);font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media (hover:hover){.quick-chip:hover{border-color:var(--bd-strong);background:var(--sel)}}
+.quick-chip:active{transform:scale(.97)}
+.quick-edit{display:grid;place-items:center;width:32px;padding:0;color:var(--mut)}
+.quick-edit svg{width:14px;height:14px}
+.dlg textarea{display:block;width:100%;background:var(--bg);border:1px solid var(--bd);border-radius:9px;color:var(--fg2);font:inherit;font-size:14px;line-height:1.4;padding:10px 12px;outline:none;resize:vertical}
+.dlg textarea:focus{border-color:var(--acc)}
+.dlg h4{margin:20px 0 8px;font-size:13px;font-weight:600;color:var(--fg2)}
+.later-when input[type=radio]{border-radius:50%}
+.later-when input[type=datetime-local]{display:block;width:100%;min-height:42px;margin-top:10px;background:var(--bg);border:1px solid var(--bd);border-radius:9px;color:var(--fg2);padding:8px 12px;color-scheme:dark}
+.later-when input[hidden]{display:none}
+.later-item,.quick-row{display:flex;align-items:flex-start;gap:8px;padding:10px 0;border-top:1px solid var(--bd)}
+.later-body,.quick-fields{flex:1;min-width:0}
+.later-body b{font-size:12px;font-weight:600;color:var(--mut)}
+.later-body p{margin:4px 0 0;font-size:13px;color:var(--fg2);white-space:pre-wrap;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.later-remove{flex:none;display:grid;place-items:center;width:36px;height:36px;border-radius:8px;color:var(--mut)}
+.later-remove svg{width:16px;height:16px}
+@media (hover:hover){.later-remove:hover{color:var(--bad-text);background:var(--side2)}}
+.later-error{margin:12px 0 0;color:var(--bad-text);font-size:12.5px}
+.dlg label.later-auto{margin-top:18px;padding-top:12px;border-top:1px solid var(--bd)}
+.later-auto small{display:block;color:var(--mut);font-size:12px;line-height:1.4}
+#quick_rows{margin-top:14px}
+.quick-fields input{margin-bottom:6px}
+.quick-add{margin-top:12px;min-height:38px;padding:8px 14px;border:1px solid var(--bd);border-radius:9px;background:var(--side2);color:var(--fg2)}
 .composer-status{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 8px;margin:6px 4px 0;font-size:12px;color:var(--mut)}
 .send-state{min-height:1.4em}
 .send-state.error{color:var(--bad-text)}
@@ -862,6 +894,9 @@ body.resizing iframe{pointer-events:none}
   .repo{padding:11px 10px}
   #gh_list{max-height:38vh}
   .chk,.dlg label.chk{font-size:15px}
+  .dlg textarea,.later-when input[type=datetime-local]{font-size:16px}
+  .quick-chip{height:36px;font-size:14px;border-radius:18px}.quick-edit{width:36px}
+  .later-remove{width:var(--tap);height:var(--tap)}
   .acts{padding:12px 16px calc(12px + var(--sab))}
   .acts button{flex:1;min-height:var(--tap);padding:12px;font-size:16px;border-radius:var(--r)}
   #inbox_dlg,#project_dlg,#help_dlg,.palette{width:100vw}
@@ -1110,11 +1145,13 @@ body.resizing iframe{pointer-events:none}
           <button class="keyboard-hide" id="b_keyboard" onpointerdown="event.preventDefault()" onclick="hideKeyboard()" aria-label="Скрыть клавиатуру" title="Скрыть клавиатуру"><svg class="ui-icon"><use href="#i-keyboard-hide"/></svg></button>
           </div>
           </div>
+          <div id="quick_prompts" class="quick-prompts" role="group" aria-label="Быстрые сообщения" hidden></div>
           <div id="attachments" aria-label="Приложенные файлы"></div>
           <input type="file" id="image_files" multiple hidden>
           <div class="inrow">
             <button class="attachbtn agent-only" id="b_attach" onclick="chooseImages()" aria-label="Приложить файл" title="Приложить файл до 200 МБ · хранится 7 дней"><svg class="ui-icon"><use href="#i-paperclip"/></svg></button>
             <textarea id="msg" rows="1" aria-label="Сообщение агенту…" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" placeholder="Сообщение агенту…" enterkeyhint="enter"></textarea>
+            <button class="attachbtn laterbtn" id="b_later" onclick="openLater()" aria-label="Отправить позже" title="Отправить позже: в указанное время, когда агент освободится или когда сбросится лимит"><svg class="ui-icon"><use href="#i-clock"/></svg><span id="later_count" class="later-count" aria-hidden="true"></span></button>
             <button class="sendbtn" id="b_send" onclick="send()" aria-label="Отправить" title="Enter — отправить, Shift+Enter — новая строка"><svg class="ui-icon" style="stroke-width:2.6"><use href="#i-arrow-up"/></svg></button>
           </div>
           <div class="composer-status">
@@ -1244,6 +1281,25 @@ body.resizing iframe{pointer-events:none}
   <div class="acts"><button type="button" onclick="$('dlg').close()">Отмена</button><button class="pri" id="n_go">Создать</button></div>
 </form></dialog>
 
+<dialog id="later_dlg"><form class="dlg" onsubmit="event.preventDefault();saveLater()"><div class="dlg-body"><h3>Отправить позже</h3>
+<textarea id="later_text" rows="3" maxlength="20000" aria-label="Сообщение агенту…" placeholder="Сообщение агенту…" autocapitalize="sentences"></textarea>
+<div class="later-when" role="radiogroup" aria-label="Когда отправить" onchange="syncLaterTime()">
+<label class="chk"><input type="radio" name="later_trigger" value="idle" checked><span>Когда агент освободится</span></label>
+<label class="chk" id="later_limit_option"><input type="radio" name="later_trigger" value="limit"><span>Когда сбросится лимит</span></label>
+<label class="chk"><input type="radio" name="later_trigger" value="time"><span>В указанное время</span></label>
+<input type="datetime-local" id="later_at" aria-label="Время отправки" hidden>
+</div>
+<p class="hint">Пока в сессии открыт вопрос агента, сообщение ждёт: иначе оно стало бы ответом.</p>
+<div id="later_waiting" hidden><h4>Ждут отправки</h4><div id="later_list"></div></div>
+<p id="later_error" class="later-error" role="status" hidden></p>
+<label class="toggle later-auto" id="later_auto_row"><span>Продолжать после сброса лимита<small>Когда лимит подписки сбросится, панель сама напишет агенту «continue».</small></span><input type="checkbox" role="switch" id="later_auto" onchange="saveAutoResume()"></label>
+<p id="later_limit" class="hint" role="status" hidden></p>
+</div><div class="acts"><button type="button" onclick="$('later_dlg').close()">Закрыть</button><button class="pri" id="later_save">Запланировать</button></div></form></dialog>
+<dialog id="quick_dlg"><form class="dlg" onsubmit="event.preventDefault();saveQuickPrompts()"><div class="dlg-body"><h3>Быстрые сообщения</h3>
+<p class="hint">Кнопки над полем ввода: одно нажатие отправляет сообщение в открытую сессию. Список общий для всех компьютеров.</p>
+<div id="quick_rows"></div>
+<button type="button" class="quick-add" onclick="addQuickRow()">Добавить</button>
+</div><div class="acts"><button type="button" onclick="$('quick_dlg').close()">Отмена</button><button class="pri" id="quick_save">Сохранить</button></div></form></dialog>
 <dialog id="rename_dlg"><form class="dlg" onsubmit="event.preventDefault();saveSessionTitle()"><div class="dlg-body"><h3>Переименовать сессию</h3><label for="session_title">Название</label><input type="text" id="session_title" required maxlength="100"></div><div class="acts"><button type="button" onclick="$('rename_dlg').close()">Отмена</button><button class="pri" id="rename_save">Сохранить</button></div></form></dialog>
 <dialog id="settings_dlg"><div class="dlg settings-hub">
   <div class="hub-heading"><h3 tabindex="-1" autofocus id="hub_title">Настройки</h3><button type="button" onclick="closeSettings()" aria-label="Закрыть"><svg class="ui-icon"><use href="#i-x"/></svg></button></div>
@@ -1293,6 +1349,8 @@ body.resizing iframe{pointer-events:none}
         <p class="hint">Пустое поле сохраняет текущий токен.</p>
         </details>
         <label class="integration-toggle"><span>Отправлять вопросы</span><input type="checkbox" role="switch" id="telegram_enabled" checked></label>
+        <label class="integration-toggle"><span>Сообщать, когда агент закончил</span><input type="checkbox" role="switch" id="telegram_finished" checked></label>
+        <p class="hint">Ответ на такое сообщение уйдёт агенту как следующий запрос.</p>
         <div id="telegram_pairing" hidden>
           <p class="hint">Откройте бота и нажмите Start. Ответы доступны только вашему аккаунту.</p>
           <a class="integration-link" id="telegram_link" target="_blank" rel="noopener noreferrer">Привязать мой Telegram ↗</a>
@@ -3063,6 +3121,179 @@ function renderContext(context,started){
   box.title=hint;box.setAttribute("aria-label",hint);
 }
 if(typeof document!=="undefined")document.addEventListener("visibilitychange",()=>{if(!document.hidden&&sessionInfo.session)loadSessionInfo()});
+// Sending without typing or waiting: quick prompts (one tap), prompts held for later (a time, a free
+// session, a limit reset) and continuing by itself after a subscription limit. Bundled before app.js.
+const later={session:null,data:null,seq:0,timer:null};
+const quick={saved:[],loaded:false};
+const LATER_POLL=30000;
+// Commands that drop the conversation ask first: a chip sits where a thumb scrolls.
+const QUICK_COMMANDS={
+  claude:[{label:"/compact",text:"/compact"},{label:"/clear",text:"/clear",confirm:"Агент забудет весь разговор этой сессии."}],
+  codex:[{label:"/compact",text:"/compact"},{label:"/new",text:"/new",confirm:"Агент забудет весь разговор этой сессии."}]};
+QUICK_COMMANDS["claude-kimi"]=QUICK_COMMANDS.claude;
+
+// The user's own prompts first, then the agent's commands; a terminal gets none. Pure for tests.
+function quickPromptsFor(agent,saved){
+  if(agent==="shell")return [];
+  return [...saved.map(p=>({label:p.label,text:p.text})),...(QUICK_COMMANDS[agent]||[])];
+}
+// Rows of the editor -> what is saved; empty rows are dropped, not reported. Pure for tests.
+function quickRows(rows){
+  return rows.map(r=>({label:r.label.trim(),text:r.text})).filter(r=>r.text.trim());
+}
+function laterWhen(prompt,translate,formatTime){
+  if(prompt.trigger==="time")return formatTime(prompt.at);
+  return translate(prompt.trigger==="limit"?"Когда сбросится лимит":"Когда агент освободится");
+}
+// The next round five minutes, an hour ahead, as a datetime-local value in the browser's own time zone.
+function defaultLaterTime(now){
+  const at=new Date(Math.ceil((now+3600000)/300000)*300000),two=n=>String(n).padStart(2,"0");
+  return `${at.getFullYear()}-${two(at.getMonth()+1)}-${two(at.getDate())}T${two(at.getHours())}:${two(at.getMinutes())}`;
+}
+function laterCount(data){return data?data.prompts.length+(data.auto_resume?1:0):0}
+
+function laterKey(){return active?(selectedDeck||"")+"/"+active:null}
+function watchLater(){
+  renderQuickPrompts();
+  if(!quick.loaded){quick.loaded=true;loadQuickPrompts()}
+  if(later.session!==laterKey())loadLater();
+}
+async function loadLater(){
+  clearTimeout(later.timer);
+  const key=laterKey(),seq=++later.seq;
+  if(later.session!==key){later.session=key;later.data=null;renderLater()}
+  if(!key)return;
+  let data;
+  // A computer without this version has no schedule: the button then explains it instead of failing silently.
+  try{data=await api("/api/schedule?name="+encodeURIComponent(active))}
+  catch(e){if(e.message===STALE)return;data=later.data}
+  if(seq!==later.seq)return;
+  later.data=data&&Array.isArray(data.prompts)?data:null;renderLater();
+  if(!document.hidden)later.timer=setTimeout(loadLater,LATER_POLL);
+}
+function formatLaterTime(seconds){
+  return new Date(seconds*1000).toLocaleString(DATE_LOCALE,{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"});
+}
+function renderLater(){
+  const count=laterCount(later.data),button=$("b_later");
+  $("later_count").textContent=count||"";button.classList.toggle("on",count>0);
+  button.setAttribute("aria-label",count?tr("Отправить позже · ждут: {0}",[count]):tr("Отправить позже"));
+  if(!$("later_dlg").open)return;
+  const data=later.data,shell=agentOf(cur())==="shell";
+  $("later_limit_option").hidden=shell;$("later_auto_row").hidden=shell;
+  if(document.activeElement!==$("later_auto"))$("later_auto").checked=Boolean(data?.auto_resume);
+  const limit=data?.limit;
+  $("later_limit").hidden=!limit;
+  $("later_limit").textContent=limit?(limit.at?tr("Лимит исчерпан · сброс {0}",[formatLaterTime(limit.at)]):tr("Лимит исчерпан · время сброса на экране не распознано")):"";
+  $("later_error").hidden=!data?.error;
+  $("later_error").textContent=data?.error?tr("Не отправлено: ")+tr(data.error):"";
+  const rows=(data?.prompts||[]).map(p=>{
+    const row=el("div","later-item",el("div","later-body",el("b","",laterWhen(p,tr,formatLaterTime)),el("p","",p.text)));
+    const remove=btn("","later-remove",()=>removeLater(p.id),tr("Удалить"));
+    remove.type="button";remove.setAttribute("aria-label",tr("Удалить"));remove.append(svgIcon("x"));
+    row.append(remove);return row;
+  });
+  $("later_list").replaceChildren(...rows);
+  $("later_waiting").hidden=!rows.length;
+}
+function openLater(){
+  if(!active)return;
+  if(!later.data){toast(tr("На этом компьютере нужна новая версия панели, чтобы отправлять позже"));loadLater();return}
+  $("later_text").value=$("msg").value;
+  $("later_at").value=defaultLaterTime(Date.now());
+  $("later_dlg").querySelector("input[name=later_trigger][value=idle]").checked=true;
+  syncLaterTime();
+  $("later_dlg").showModal();renderLater();loadLater();
+}
+function syncLaterTime(){
+  $("later_at").hidden=$("later_dlg").querySelector("input[name=later_trigger]:checked").value!=="time";
+}
+async function saveLater(){
+  const name=active,text=$("later_text").value,trigger=$("later_dlg").querySelector("input[name=later_trigger]:checked").value;
+  if(!text.trim()){toast(tr("Введите сообщение"));$("later_text").focus();return}
+  const at=trigger==="time"?Math.floor(new Date($("later_at").value).getTime()/1000):undefined;
+  if(trigger==="time"&&!at){toast(tr("Укажите время отправки"));return}
+  $("later_save").disabled=true;
+  try{
+    const data=await api("/api/schedule_add",{name,text,trigger,at});
+    if(active!==name)return;
+    later.data=data;
+    // The message now waits on the server; keeping it in the field would send it twice.
+    if($("msg").value===text){$("msg").value="";$("msg").dispatchEvent(new Event("input"))}
+    $("later_text").value="";$("later_dlg").close();renderLater();
+    toast(tr("Сообщение ждёт отправки"),"success");
+  }catch(e){if(e.message!==STALE)toast(e.message)}finally{$("later_save").disabled=false}
+}
+async function removeLater(id){
+  try{await api("/api/schedule_remove",{id});await loadLater()}catch(e){if(e.message!==STALE)toast(e.message)}
+}
+async function saveAutoResume(){
+  const box=$("later_auto"),enabled=box.checked;
+  try{later.data=await api("/api/auto_resume",{name:active,enabled});renderLater()}
+  catch(e){box.checked=!enabled;if(e.message!==STALE)toast(e.message)}
+}
+
+/* ---------- Quick prompts ---------- */
+async function loadQuickPrompts(){
+  // One list for every computer, so it is read from the gateway.
+  try{quick.saved=(await api("/api/quick_prompts",null,true)).prompts||[]}catch(e){quick.loaded=false}
+  renderQuickPrompts();
+}
+function renderQuickPrompts(){
+  const box=$("quick_prompts"),session=cur(),prompts=session?quickPromptsFor(agentOf(session),quick.saved):[];
+  box.hidden=!session||agentOf(session)==="shell";
+  const signature=JSON.stringify(prompts);
+  if(box.dataset.signature===signature)return;  // Rebuilt on every refresh otherwise: a tap in progress would be lost.
+  box.dataset.signature=signature;
+  const chips=prompts.map(p=>{const chip=btn(p.label,"quick-chip",()=>sendQuick(p),p.text);chip.type="button";return chip});
+  const edit=btn("","quick-chip quick-edit",openQuickEditor,tr("Настроить быстрые сообщения"));
+  edit.type="button";edit.setAttribute("aria-label",tr("Настроить быстрые сообщения"));edit.append(svgIcon("pencil"));
+  box.replaceChildren(...chips,edit);
+}
+async function sendQuick(prompt){
+  if(sending||uploading||panelUpdating||!active)return;
+  if(prompt.confirm&&!await confirmAction(tr("Отправить {0}?",[prompt.text]),{text:tr(prompt.confirm),confirm:tr("Отправить"),danger:true}))return;
+  // Bound to the computer and session it was tapped on, like a typed message.
+  const deck=selectedDeck,epoch=deckEpoch,name=active;
+  sending=true;renderAttachments();
+  sendStates.set(name,{text:tr("Отправляю…"),phase:"pending"});renderSendState();
+  try{
+    await api(instancePath(deck,"/api/send"),{name,text:prompt.text},true);
+    sendStates.set(name,{text:tr("Отправлено в ")+agentLabel(sessions.find(s=>s.name===name))+" · "+new Date().toLocaleTimeString(DATE_LOCALE,{hour:"2-digit",minute:"2-digit"}),phase:"success"});
+    await load();
+  }catch(e){
+    if(epoch===deckEpoch)sendStates.set(name,{text:tr("Не отправлено: ")+e.message,error:true});
+    else toast(tr("Не отправлено: ")+e.message);
+  }finally{sending=false;renderAttachments();renderSendState()}
+}
+function quickEditorRow(prompt){
+  const label=el("input"),text=el("textarea"),remove=btn("","later-remove",()=>row.remove(),tr("Удалить"));
+  label.type="text";label.maxLength=30;label.value=prompt.label||"";label.placeholder=tr("Подпись кнопки");label.setAttribute("aria-label",tr("Подпись кнопки"));
+  text.rows=2;text.maxLength=4000;text.value=prompt.text||"";text.placeholder=tr("Текст сообщения");text.setAttribute("aria-label",tr("Текст сообщения"));
+  remove.type="button";remove.setAttribute("aria-label",tr("Удалить"));remove.append(svgIcon("x"));
+  const row=el("div","quick-row",el("div","quick-fields",label,text),remove);
+  return row;
+}
+function openQuickEditor(){
+  $("quick_rows").replaceChildren(...quick.saved.map(quickEditorRow));
+  if(!quick.saved.length)addQuickRow();
+  $("quick_dlg").showModal();
+}
+function addQuickRow(){
+  if($("quick_rows").children.length>=24){toast(tr("Быстрых сообщений может быть не больше 24"));return}
+  const row=quickEditorRow({});$("quick_rows").append(row);row.querySelector("input").focus();
+}
+async function saveQuickPrompts(){
+  const rows=[...$("quick_rows").children].map(r=>({label:r.querySelector("input").value,text:r.querySelector("textarea").value}));
+  $("quick_save").disabled=true;
+  try{
+    quick.saved=(await api("/api/quick_prompts",{prompts:quickRows(rows)},true)).prompts;
+    $("quick_dlg").close();renderQuickPrompts();
+  }catch(e){if(e.message!==STALE)toast(e.message)}finally{$("quick_save").disabled=false}
+}
+if(typeof document!=="undefined")document.addEventListener("visibilitychange",()=>{if(!document.hidden&&later.session)loadLater()});
+
+if(typeof module!=="undefined")module.exports={quickPromptsFor,quickRows,laterWhen,defaultLaterTime,laterCount};
 // Changes, commits, feature groups, files and pictures of the open session in one panel: a right sidebar on wide screens that stays
 // open while sessions switch (remembered in this browser), a full-screen dialog on phones. Each tab keeps
 // its own state and scroll; a tab loads for the open session only when shown.
@@ -3577,7 +3808,7 @@ function hubInit(){
   nav.addEventListener("scroll",updateHubNavFade,{passive:true});nav.addEventListener("keydown",hubNavKey);
   $("settings_dlg").addEventListener("cancel",settingsCancel);
   $("settings_dlg").addEventListener("close",settingsClosed);
-  for(const id of ["telegram_token","telegram_enabled"])$(id).addEventListener("input",()=>{telegramDirty=true});
+  for(const id of ["telegram_token","telegram_enabled","telegram_finished"])$(id).addEventListener("input",()=>{telegramDirty=true});
   // A "more" menu closes when the tap lands anywhere else.
   document.addEventListener("click",e=>{for(const menu of document.querySelectorAll(".card-more[open]"))if(!menu.contains(e.target))menu.open=false});
 }
@@ -3728,7 +3959,7 @@ function renderTelegramCard(){
   const card=hubCard({key:"telegram",icon:el("span","telegram-glyph",svgIcon("telegram")),title:"Telegram",status,tone,
     primary:{label:tr("Настроить"),run:openIntegrations,quiet:Boolean(telegramConfig.paired)},
     more:[telegramConfig.configured&&[tr("Отключить"),clearTelegram,true]],
-    body:[el("p","hint",tr("Вопросы с кнопками ответа в личном чате с вашим ботом.")),duplicateWarning(telegramConfig)]});
+    body:[el("p","hint",tr("Вопросы с кнопками ответа и сообщения о законченной работе в личном чате с вашим ботом.")),duplicateWarning(telegramConfig)]});
   $("telegram_cards").replaceChildren(...placeEditor([card],"telegram",$("integrations_dlg")));
 }
 function renderTelegram(config){
@@ -3742,7 +3973,7 @@ function renderTelegram(config){
   state.className="card-status "+tone;
   const warning=duplicateWarning(c);
   $("telegram_duplicates").hidden=!warning;$("telegram_duplicates").replaceChildren(...(warning?[warning]:[]));
-  if(!telegramDirty)$("telegram_enabled").checked=c.enabled!==false;  // A poll must not undo the user's switch.
+  if(!telegramDirty){$("telegram_enabled").checked=c.enabled!==false;$("telegram_finished").checked=c.finished!==false}  // A poll must not undo the user's switch.
   $("telegram_clear").hidden=!c.configured;
   $("telegram_pair").hidden=!(c.configured&&!c.pair_url);
   $("telegram_pair").textContent=c.paired?tr("Привязать другой аккаунт"):tr("Получить ссылку привязки");
@@ -3756,7 +3987,7 @@ async function loadIntegrations(){
 }
 function openIntegrations(){
   telegramDirty=false;$("telegram_token").value="";$("telegram_credentials").open=!telegramConfig.configured;$("integrations_dlg").hidden=false;
-  $("telegram_enabled").checked=telegramConfig.enabled!==false;snapshotEditor($("integrations_dlg"));
+  $("telegram_enabled").checked=telegramConfig.enabled!==false;$("telegram_finished").checked=telegramConfig.finished!==false;snapshotEditor($("integrations_dlg"));
   openSettings("notifications");loadIntegrations();$("integrations_dlg").scrollIntoView({block:"nearest"});
   clearInterval(integrationTimer);integrationTimer=setInterval(()=>{if(!document.hidden&&!telegramDirty)loadIntegrations()},3000);
 }
@@ -3768,7 +3999,7 @@ function closeIntegrations(){
 async function saveTelegram(clear=false){
   $("telegram_save").disabled=true;
   try{
-    const data=await api("/api/telegram_config",{token:$("telegram_token").value.trim(),enabled:$("telegram_enabled").checked,language:I18N.language,clear});
+    const data=await api("/api/telegram_config",{token:$("telegram_token").value.trim(),enabled:$("telegram_enabled").checked,finished:$("telegram_finished").checked,language:I18N.language,clear});
     telegramDirty=false;$("telegram_token").value="";renderTelegram(data.telegram);
     if(!clear&&!data.telegram.paired)await pairTelegram();
     toast(clear?tr("Telegram отключён"):tr("Настройки Telegram сохранены"),"success");
@@ -4384,7 +4615,7 @@ function frameFor(name){
   return f;
 }
 function show(){
-  watchSessionInfo();
+  watchSessionInfo();watchLater();
   const s=cur(),m=curMode();
   $("empty").style.display=s?"none":"grid";
   if(!s){$("empty_text").textContent=load.done?tr("Сессий пока нет"):tr("Загружаю сессии…");$("empty_new").hidden=!load.done}
@@ -4601,6 +4832,7 @@ function renderAttachments(){
     chip.append(remove);list.append(chip);
   }
   $("b_attach").disabled=!active||sending||uploading||panelUpdating;
+  $("b_later").disabled=!active||panelUpdating;
   $("b_send").disabled=sending||uploading||panelUpdating;
 }
 // XHR instead of fetch: large phone videos take minutes and need visible progress.

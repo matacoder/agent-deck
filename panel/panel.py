@@ -701,6 +701,7 @@ def action_kill(d):
             _model_relay.bindings.remove(source.get("binding"))
     if isinstance(name, str) and NAME_RE.fullmatch(name):
         shutil.rmtree(os.path.join(UPLOAD_DIR, name), ignore_errors=True)
+        schedule_service().forget(name)  # A new session with this name must not inherit waiting prompts.
 
 
 def attachment_dir(name):
@@ -1521,8 +1522,32 @@ def telegram_service():
     with telegram_lock:
         if telegram_integration is None:
             telegram_integration = Telegram(os.path.expanduser('~/.config/cc-panel/integrations'),
-                                            shared_questions, answer_any_question)
+                                            shared_questions, answer_any_question, prompt=telegram_prompt)
         return telegram_integration
+
+
+def telegram_prompt(deck, name, created, text):
+    """A Telegram reply to a "finished" message: typed into that very session, here or on a connected computer."""
+    sessions = gateway.sessions() if deck else list_sessions()
+    found = next((s for s in sessions if s['name'] == name and s.get('deck', '') == deck), None)
+    # The creation time tells a session from a later one that got the same name.
+    if not found or (created and found.get('created') != created):
+        raise ValueError('Эта сессия уже закрыта')
+    if any(q.deck == deck and q.session == name for q in shared_questions()):
+        raise ValueError('В сессии открыт вопрос: сначала ответьте на него')
+    if deck:
+        return gateway.send(deck, name, text)
+    action_send({'name': name, 'text': text})
+
+
+def telegram_finished():
+    """Lets notifications tell Telegram about finished work; a Telegram failure must not stop them."""
+    def wanted():
+        try:
+            return telegram_service().wants_finished()
+        except (OSError, ValueError):
+            return False
+    return (wanted, lambda message: telegram_service().finished(message)) if Telegram else None
 
 
 _backups = None
@@ -1628,8 +1653,46 @@ def push_service():
     from integrations.push import Push
     with _push_lock:
         if _push is None:
-            _push = Push(os.path.expanduser('~/.config/cc-panel/integrations'), push_sessions, shared_questions)
+            _push = Push(os.path.expanduser('~/.config/cc-panel/integrations'), push_sessions, shared_questions,
+                         finished=telegram_finished())
         return _push
+
+
+_schedule = None
+_schedule_lock = threading.Lock()
+_quick_prompts = None
+
+
+def limit_window_reset(agent):
+    """When the provider's full limit window resets, for a limit notice that names no time."""
+    provider = {'claude': 'claude', 'codex': 'codex', 'kimi': 'kimi', 'claude-kimi': 'kimi'}.get(agent)
+    try:
+        windows = (usage().get(provider) or {}).get('windows') or []
+    except (OSError, ValueError):
+        return None
+    resets = [w['resets_at'] for w in windows if (w.get('percent') or 0) >= 100 and w.get('resets_at')]
+    return min(resets) if resets else None
+
+
+def schedule_service():
+    global _schedule
+    from integrations.schedule import Schedule
+    with _schedule_lock:
+        if _schedule is None:
+            _schedule = Schedule(os.path.expanduser('~/.config/cc-panel/integrations'), list_sessions,
+                                 lambda name: tmux('capture-pane', '-p', '-t', f'={PREFIX}{name}:', check=False),
+                                 lambda name: session_question(name) is not None,
+                                 lambda name, text: action_send({'name': name, 'text': text}), limit_window_reset)
+        return _schedule
+
+
+def quick_prompts():
+    global _quick_prompts
+    from integrations.quick_prompts import QuickPrompts
+    with _schedule_lock:
+        if _quick_prompts is None:
+            _quick_prompts = QuickPrompts(os.path.expanduser('~/.config/cc-panel/integrations'))
+        return _quick_prompts
 
 
 def telegram_duplicates(bot):
@@ -1936,7 +1999,11 @@ ACTIONS.update(file_save=action_file_save, git_group=action_git_group, git_fetch
                push_subscribe=lambda d: push_service().subscribe(d),
                push_unsubscribe=lambda d: push_service().unsubscribe(d.get('id')),
                push_test=lambda d: push_service().test(d.get('id')),
-               push_events=lambda d: {'events': push_service().set_events(d)})
+               push_events=lambda d: {'events': push_service().set_events(d)},
+               schedule_add=lambda d: schedule_service().add(d.get('name'), d.get('text'), d.get('trigger'), d.get('at')),
+               schedule_remove=lambda d: schedule_service().remove(d.get('id')),
+               auto_resume=lambda d: schedule_service().set_auto(d.get('name'), d.get('enabled')),
+               quick_prompts=lambda d: {'prompts': quick_prompts().save(d.get('prompts'))})
 
 
 class PanelHTTPServer(ThreadingHTTPServer):
@@ -2327,6 +2394,10 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send_json(400, {"error": str(error)})
         if parsed.path == "/api/push":
             return self.send_json(200, push_service().status())
+        if parsed.path == "/api/schedule":
+            return self.send_json(200, schedule_service().status(parse_qs(parsed.query).get("name", [""])[0]))
+        if parsed.path == "/api/quick_prompts":
+            return self.send_json(200, {"prompts": quick_prompts().list()})
         if parsed.path == "/api/backups":
             return self.send_json(200, backup_service().status())
         if parsed.path == "/api/backup_blob":
@@ -2803,10 +2874,13 @@ def main():
     try:
         from integrations import dependencies
         dependencies.ensure()  # Downloads pinned cryptography in the background when missing.
-        if push_service().config['subscriptions']:
-            push_service().start()
     except (ImportError, OSError, ValueError) as error:
-        print(f'Notifications could not start: {error}', flush=True)
+        print(f'Notification components could not be checked: {error}', flush=True)
+    try:
+        push_service().start()  # Idles until a device subscribes or Telegram wants finished work.
+        schedule_service().start()
+    except (ImportError, OSError, ValueError) as error:
+        print(f'Notifications and scheduled prompts could not start: {error}', flush=True)
     if Telegram:
         try:
             telegram_service().start()

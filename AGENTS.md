@@ -14,6 +14,7 @@ Self-hosted panel (Python stdlib + static JS) for tmux sessions running Claude C
 - `integrations/git.py`: read-only history and diffs. `integrations/feature_groups.py`: background, incremental feature groups per repository (subjects, authors, file names only); models in order Haiku via `claude -p --tools ""`, Codex Luna via `codex exec -s read-only --ignore-user-config`, both in an empty folder on the subscription, then Kimi, then LM Studio (`reasoning_effort: none`).
 - `integrations/session_info.py`: context size and a summary per session from the agent's own conversation file (tail only); the summary model is always the session's own provider (`summary_model` in `panel.py`), never a fallback to another.
 - `integrations/gallery.py`: per-session copies of pictures shown on screen (same rule as `/api/image`), served by `/api/gallery*` and as the `/api/image` fallback.
+- `integrations/schedule.py` + `limits.py`: prompts held for later (time, free session, limit reset) and auto-continue after a limit; a prompt leaves the file before it is typed (never sent twice), and nothing is typed into an open question. `quick_prompts.py`: saved one-tap prompts, kept on the gateway.
 - `integrations/files.py`: file browser; home only, never `~/.config/cc-panel`, atomic hash-checked saves.
 - `integrations/`: `telegram.py` + `store.py` (claim-before-input outbox, never delete foreign webhooks), `questions.py`, `gateway.py` (parallel deck polling, `get_json`), `backups.py`, `usage.py`, `lmstudio.py`, `relay.py`, `push.py`/`webpush.py`, `images.py`, `dependencies.py`.
 - `frontend/*` bundled into `panel/index.html` by `scripts/build-panel.py`; files before `app.js` must not call `$` at top level.
@@ -40,7 +41,7 @@ Self-hosted panel (Python stdlib + static JS) for tmux sessions running Claude C
 - Uploads: max 4 files x 200 MB, 7-day TTL, reject symlinks; `/api/upload_raw` streams, JSON `/api/upload` kept for old gateways.
 - `/t/*`: unix-socket ttyd, keep ttyd `-O`. `/deck/<id>/t/*` only to an authenticated deck on a numeric Tailscale IPv4; never forward gateway cookies.
 - Isolated terminals (opt-in): `/deck/<id>/c/<signed>/t/*` with `CSP: sandbox` (no `allow-same-origin`); the signed path is the only credential there.
-- Telegram: one-shot 10-min pairing bound to user+chat; owner-only replies; callbacks bound to owner/chat/message/session/question; never replay ambiguous deliveries.
+- Telegram: one-shot 10-min pairing bound to user+chat; owner-only replies; callbacks bound to owner/chat/message/session/question; a reply to a "finished" message is a prompt for that session only (name + creation time); never replay ambiguous deliveries.
 - tmux input is exact bytes (leading `-`, `;`, Unicode, bracketed paste).
 - Never delete foreign tmux sessions, `.tmux.conf`, webhooks, launchd plists.
 

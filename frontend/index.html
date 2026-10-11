@@ -106,11 +106,13 @@ __PANEL_STYLE__</style></head><body>
           <button class="keyboard-hide" id="b_keyboard" onpointerdown="event.preventDefault()" onclick="hideKeyboard()" aria-label="Скрыть клавиатуру" title="Скрыть клавиатуру"><svg class="ui-icon"><use href="#i-keyboard-hide"/></svg></button>
           </div>
           </div>
+          <div id="quick_prompts" class="quick-prompts" role="group" aria-label="Быстрые сообщения" hidden></div>
           <div id="attachments" aria-label="Приложенные файлы"></div>
           <input type="file" id="image_files" multiple hidden>
           <div class="inrow">
             <button class="attachbtn agent-only" id="b_attach" onclick="chooseImages()" aria-label="Приложить файл" title="Приложить файл до 200 МБ · хранится 7 дней"><svg class="ui-icon"><use href="#i-paperclip"/></svg></button>
             <textarea id="msg" rows="1" aria-label="Сообщение агенту…" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" placeholder="Сообщение агенту…" enterkeyhint="enter"></textarea>
+            <button class="attachbtn laterbtn" id="b_later" onclick="openLater()" aria-label="Отправить позже" title="Отправить позже: в указанное время, когда агент освободится или когда сбросится лимит"><svg class="ui-icon"><use href="#i-clock"/></svg><span id="later_count" class="later-count" aria-hidden="true"></span></button>
             <button class="sendbtn" id="b_send" onclick="send()" aria-label="Отправить" title="Enter — отправить, Shift+Enter — новая строка"><svg class="ui-icon" style="stroke-width:2.6"><use href="#i-arrow-up"/></svg></button>
           </div>
           <div class="composer-status">
@@ -240,6 +242,25 @@ __PANEL_STYLE__</style></head><body>
   <div class="acts"><button type="button" onclick="$('dlg').close()">Отмена</button><button class="pri" id="n_go">Создать</button></div>
 </form></dialog>
 
+<dialog id="later_dlg"><form class="dlg" onsubmit="event.preventDefault();saveLater()"><div class="dlg-body"><h3>Отправить позже</h3>
+<textarea id="later_text" rows="3" maxlength="20000" aria-label="Сообщение агенту…" placeholder="Сообщение агенту…" autocapitalize="sentences"></textarea>
+<div class="later-when" role="radiogroup" aria-label="Когда отправить" onchange="syncLaterTime()">
+<label class="chk"><input type="radio" name="later_trigger" value="idle" checked><span>Когда агент освободится</span></label>
+<label class="chk" id="later_limit_option"><input type="radio" name="later_trigger" value="limit"><span>Когда сбросится лимит</span></label>
+<label class="chk"><input type="radio" name="later_trigger" value="time"><span>В указанное время</span></label>
+<input type="datetime-local" id="later_at" aria-label="Время отправки" hidden>
+</div>
+<p class="hint">Пока в сессии открыт вопрос агента, сообщение ждёт: иначе оно стало бы ответом.</p>
+<div id="later_waiting" hidden><h4>Ждут отправки</h4><div id="later_list"></div></div>
+<p id="later_error" class="later-error" role="status" hidden></p>
+<label class="toggle later-auto" id="later_auto_row"><span>Продолжать после сброса лимита<small>Когда лимит подписки сбросится, панель сама напишет агенту «continue».</small></span><input type="checkbox" role="switch" id="later_auto" onchange="saveAutoResume()"></label>
+<p id="later_limit" class="hint" role="status" hidden></p>
+</div><div class="acts"><button type="button" onclick="$('later_dlg').close()">Закрыть</button><button class="pri" id="later_save">Запланировать</button></div></form></dialog>
+<dialog id="quick_dlg"><form class="dlg" onsubmit="event.preventDefault();saveQuickPrompts()"><div class="dlg-body"><h3>Быстрые сообщения</h3>
+<p class="hint">Кнопки над полем ввода: одно нажатие отправляет сообщение в открытую сессию. Список общий для всех компьютеров.</p>
+<div id="quick_rows"></div>
+<button type="button" class="quick-add" onclick="addQuickRow()">Добавить</button>
+</div><div class="acts"><button type="button" onclick="$('quick_dlg').close()">Отмена</button><button class="pri" id="quick_save">Сохранить</button></div></form></dialog>
 <dialog id="rename_dlg"><form class="dlg" onsubmit="event.preventDefault();saveSessionTitle()"><div class="dlg-body"><h3>Переименовать сессию</h3><label for="session_title">Название</label><input type="text" id="session_title" required maxlength="100"></div><div class="acts"><button type="button" onclick="$('rename_dlg').close()">Отмена</button><button class="pri" id="rename_save">Сохранить</button></div></form></dialog>
 <dialog id="settings_dlg"><div class="dlg settings-hub">
   <div class="hub-heading"><h3 tabindex="-1" autofocus id="hub_title">Настройки</h3><button type="button" onclick="closeSettings()" aria-label="Закрыть"><svg class="ui-icon"><use href="#i-x"/></svg></button></div>
@@ -289,6 +310,8 @@ __PANEL_STYLE__</style></head><body>
         <p class="hint">Пустое поле сохраняет текущий токен.</p>
         </details>
         <label class="integration-toggle"><span>Отправлять вопросы</span><input type="checkbox" role="switch" id="telegram_enabled" checked></label>
+        <label class="integration-toggle"><span>Сообщать, когда агент закончил</span><input type="checkbox" role="switch" id="telegram_finished" checked></label>
+        <p class="hint">Ответ на такое сообщение уйдёт агенту как следующий запрос.</p>
         <div id="telegram_pairing" hidden>
           <p class="hint">Откройте бота и нажмите Start. Ответы доступны только вашему аккаунту.</p>
           <a class="integration-link" id="telegram_link" target="_blank" rel="noopener noreferrer">Привязать мой Telegram ↗</a>

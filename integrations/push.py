@@ -24,11 +24,13 @@ BACKLOG_SECONDS, BACKLOG_SIZE = 600, 20
 
 
 class Push:
-    def __init__(self, directory, sessions, questions, sender=None, clock=time.monotonic):
+    def __init__(self, directory, sessions, questions, sender=None, clock=time.monotonic, finished=None):
         self.path = Path(directory) / 'push.json'
         self.sessions, self.questions = sessions, questions
         self.sender = sender or webpush.send
         self.clock = clock
+        # Telegram hears about finished work too: (wanted(), tell(message)); it has no devices of its own.
+        self.finished = finished
         self.lock = threading.RLock()
         self.activity = {}   # (deck, name) -> [activity, changed_at, busy_since or None]
         self.seen = {}       # question fingerprint -> last time it was present
@@ -151,17 +153,25 @@ class Push:
         return {'message': (message, AGENT_LABELS.get(agent, agent or 'Agent')), 'suffix': ' · ' + machine if machine else ''}
 
     def events(self, now=None):
-        """One observation; returns notifications to send. Pure apart from its own memory, for testing."""
+        """The observed events this panel's devices asked for."""
+        return self.wanted(self.observe(now))
+
+    def wanted(self, observed):
+        events = self.config['events']
+        return [m for m in observed if events.get('finished' if m['kind'] == 'finished' else 'questions')]
+
+    def observe(self, now=None):
+        """One observation; returns every question and finished event. Pure apart from its own memory, for testing."""
         now = self.clock() if now is None else now
         out, pending = [], set()
-        if self.config['events'].get('questions') or self.config['events'].get('finished'):
-            for q in self.questions():
-                pending.add((q.deck, q.session))
-                if q.fingerprint not in self.seen and self.config['events'].get('questions'):
-                    out.append({'title': q.label or q.session, 'body': [self.status_line('{0} ждёт ответа', q.agent, q.origin), q.title[:240]],
-                                'tag': f'q-{q.deck}-{q.session}', 'deck': q.deck,
-                                'session': q.session, 'urgency': 'high'})
-                self.seen[q.fingerprint] = now
+        for q in self.questions():
+            pending.add((q.deck, q.session))
+            if q.fingerprint not in self.seen:
+                out.append({'kind': 'question', 'title': q.label or q.session,
+                            'body': [self.status_line('{0} ждёт ответа', q.agent, q.origin), q.title[:240]],
+                            'tag': f'q-{q.deck}-{q.session}', 'deck': q.deck,
+                            'session': q.session, 'urgency': 'high'})
+            self.seen[q.fingerprint] = now
         self.seen = {k: t for k, t in self.seen.items() if now - t < 30}
         if not self.warm:
             out = []
@@ -182,8 +192,9 @@ class Push:
             if state[2] is not None and now - state[1] >= idle:
                 worked = now - state[2] >= MIN_BUSY
                 state[2] = None
-                if worked and key not in pending and s.get('agent') != 'shell' and self.config['events'].get('finished'):
-                    out.append({'title': s.get('title') or s['name'],
+                if worked and key not in pending and s.get('agent') != 'shell':
+                    out.append({'kind': 'finished', 'title': s.get('title') or s['name'],
+                                'agent': s.get('agent'), 'origin': s.get('deck_name', ''), 'created': s.get('created', 0),
                                 'body': [self.status_line('{0} закончил работу', s.get('agent'), s.get('deck_name', ''))],
                                 'tag': f'f-{key[0]}-{key[1]}',
                                 'deck': key[0], 'session': key[1]})
@@ -201,11 +212,21 @@ class Push:
         while True:
             time.sleep(3)
             try:
-                if not self.config['subscriptions']:
-                    continue
-                self.send_all(self.events())
+                self.tick()
             except Exception as error:  # A failed tick must not stop notifications; it retries in 3 s.
                 print(f'Notification check failed: {error}', flush=True)
+
+    def tick(self):
+        heard = bool(self.finished and self.finished[0]())
+        if not self.config['subscriptions'] and not heard:
+            return
+        observed = self.observe()
+        if heard:
+            for message in observed:
+                if message['kind'] == 'finished':
+                    self.finished[1](message)
+        if self.config['subscriptions']:
+            self.send_all(self.wanted(observed))
 
     def send_all(self, messages, now=None):
         """Events are observed once, so a message that cannot be sent yet (encryption components still

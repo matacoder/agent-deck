@@ -94,7 +94,7 @@ function renderTelegramCard(){
   const card=hubCard({key:"telegram",icon:el("span","telegram-glyph",svgIcon("telegram")),title:"Telegram",status,tone,
     primary:{label:tr("Настроить"),run:openIntegrations,quiet:Boolean(telegramConfig.paired)},
     more:[telegramConfig.configured&&[tr("Отключить"),clearTelegram,true]],
-    body:[el("p","hint",tr("Вопросы с кнопками ответа в личном чате с вашим ботом.")),duplicateWarning(telegramConfig)]});
+    body:[el("p","hint",tr("Вопросы с кнопками ответа и сообщения о законченной работе в личном чате с вашим ботом.")),duplicateWarning(telegramConfig)]});
   $("telegram_cards").replaceChildren(...placeEditor([card],"telegram",$("integrations_dlg")));
 }
 function renderTelegram(config){
@@ -108,7 +108,7 @@ function renderTelegram(config){
   state.className="card-status "+tone;
   const warning=duplicateWarning(c);
   $("telegram_duplicates").hidden=!warning;$("telegram_duplicates").replaceChildren(...(warning?[warning]:[]));
-  if(!telegramDirty)$("telegram_enabled").checked=c.enabled!==false;  // A poll must not undo the user's switch.
+  if(!telegramDirty){$("telegram_enabled").checked=c.enabled!==false;$("telegram_finished").checked=c.finished!==false}  // A poll must not undo the user's switch.
   $("telegram_clear").hidden=!c.configured;
   $("telegram_pair").hidden=!(c.configured&&!c.pair_url);
   $("telegram_pair").textContent=c.paired?tr("Привязать другой аккаунт"):tr("Получить ссылку привязки");
@@ -122,7 +122,7 @@ async function loadIntegrations(){
 }
 function openIntegrations(){
   telegramDirty=false;$("telegram_token").value="";$("telegram_credentials").open=!telegramConfig.configured;$("integrations_dlg").hidden=false;
-  $("telegram_enabled").checked=telegramConfig.enabled!==false;snapshotEditor($("integrations_dlg"));
+  $("telegram_enabled").checked=telegramConfig.enabled!==false;$("telegram_finished").checked=telegramConfig.finished!==false;snapshotEditor($("integrations_dlg"));
   openSettings("notifications");loadIntegrations();$("integrations_dlg").scrollIntoView({block:"nearest"});
   clearInterval(integrationTimer);integrationTimer=setInterval(()=>{if(!document.hidden&&!telegramDirty)loadIntegrations()},3000);
 }
@@ -134,7 +134,7 @@ function closeIntegrations(){
 async function saveTelegram(clear=false){
   $("telegram_save").disabled=true;
   try{
-    const data=await api("/api/telegram_config",{token:$("telegram_token").value.trim(),enabled:$("telegram_enabled").checked,language:I18N.language,clear});
+    const data=await api("/api/telegram_config",{token:$("telegram_token").value.trim(),enabled:$("telegram_enabled").checked,finished:$("telegram_finished").checked,language:I18N.language,clear});
     telegramDirty=false;$("telegram_token").value="";renderTelegram(data.telegram);
     if(!clear&&!data.telegram.paired)await pairTelegram();
     toast(clear?tr("Telegram отключён"):tr("Настройки Telegram сохранены"),"success");

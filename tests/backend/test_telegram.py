@@ -265,6 +265,58 @@ class TelegramTests(unittest.TestCase):
         self.assertEqual(self.answer.call_args.args[1:], (2, 'Use Docker'))
         self.assertEqual(self.service.database().get(row['id'])['status'], 'answered')
 
+    FINISHED = {'kind': 'finished', 'title': 'Billing API', 'agent': 'claude', 'origin': 'Mac Studio',
+                'deck': 'a' * 24, 'session': 'api', 'created': 1700000000}
+
+    def notice(self):
+        self.service.finished(self.FINISHED)
+        return [d for m, d in self.api.calls if m == 'sendMessage'][-1], {'message_id': self.api.message_id}
+
+    def test_finished_work_is_announced_and_a_reply_is_the_next_prompt_for_that_session(self):
+        prompt = Mock()
+        self.service.prompt = prompt
+        self.service.finished(self.FINISHED)  # Not paired yet: nobody to tell.
+        self.assertFalse(self.service.wants_finished())
+        self.pair()
+        self.assertTrue(self.service.wants_finished())
+        sent, row = self.notice()
+        self.assertTrue(sent['text'].startswith('Mac Studio · Claude · Billing API\n\nClaude '))
+        self.service.handle(self.reply(row, 'now fix the tests', user=999))
+        self.service.handle(self.reply(row, 'now fix the tests', chat=999))
+        self.service.handle(self.reply(row, '/start'))
+        prompt.assert_not_called()
+        self.service.handle(self.reply(row, 'now fix the tests'))
+        prompt.assert_called_once_with('a' * 24, 'api', 1700000000, 'now fix the tests')
+        self.assertEqual(self.api.calls[-1][1]['reply_to_message_id'], 900)
+        self.answer.assert_not_called()
+
+    def test_a_prompt_that_cannot_be_sent_is_explained_and_never_repeated(self):
+        self.pair()
+        _, row = self.notice()
+        for failure, expected in ((ValueError('Эта сессия уже закрыта'), 'Эта сессия уже закрыта'),
+                                  (RuntimeError('tmux'), 'Проверьте сессию в панели: повторная отправка отключена')):
+            self.service.prompt = Mock(side_effect=failure)
+            self.service.handle(self.reply(row, 'continue'))
+            self.assertEqual(self.service.prompt.call_count, 1)
+            self.assertEqual(self.api.calls[-1][1]['text'], self.service.translate(expected))
+        self.service.prompt = Mock()
+        self.service.handle(self.reply(row, 'x' * 4001))
+        self.service.prompt.assert_not_called()
+
+    def test_finished_messages_can_be_turned_off_and_are_forgotten_with_the_bot(self):
+        self.pair()
+        _, row = self.notice()
+        self.assertTrue(self.service.status()['finished'])
+        self.service.save({'token': '', 'enabled': True, 'finished': False})
+        self.assertFalse(self.service.wants_finished())
+        before = len(self.api.calls)
+        self.service.finished(self.FINISHED)
+        self.assertEqual([m for m, _ in self.api.calls[before:]], [])
+        with self.assertRaises(ValueError):
+            self.service.save({'token': '', 'finished': 'yes'})
+        self.service.save({'clear': True})
+        self.assertIsNone(self.service.database().notice_by_message(row['message_id']))
+
     def test_reply_to_a_question_without_free_text_explains_buttons(self):
         from dataclasses import replace
         self.questions = [replace(question(), options=('Yes', 'No'))]

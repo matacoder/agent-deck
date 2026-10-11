@@ -52,6 +52,19 @@ class GatewayTests(unittest.TestCase):
         self.gateway.sessions()
         self.assertEqual(self.decks.request.call_count, 4)
 
+    def test_a_message_for_a_connected_computer_is_confirmed_or_reported_never_repeated(self):
+        self.decks.request.return_value = (200, {}, b'{"ok": true}')
+        self.gateway.send('a' * 24, 'api', 'continue')
+        identity, method, path, body = self.decks.request.call_args.args
+        self.assertEqual((identity, method, path, json.loads(body)), ('a' * 24, 'POST', '/api/send', {'name': 'api', 'text': 'continue'}))
+        self.decks.request.return_value = (400, {}, json.dumps({'error': 'нет такой сессии'}).encode())
+        with self.assertRaisesRegex(ValueError, 'нет такой сессии'):
+            self.gateway.send('a' * 24, 'api', 'continue')
+        self.decks.request.side_effect = OSError('reset')
+        with self.assertRaisesRegex(RuntimeError, 'did not confirm the message'):
+            self.gateway.send('a' * 24, 'api', 'continue')
+        self.assertEqual(self.decks.request.call_count, 3)
+
     def test_telegram_states_skip_computers_that_did_not_answer(self):
         def request(deck, method, path, *args, **kwargs):
             if deck == 'b' * 24:

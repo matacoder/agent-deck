@@ -146,7 +146,7 @@ function hubInit(){
   nav.addEventListener("scroll",updateHubNavFade,{passive:true});nav.addEventListener("keydown",hubNavKey);
   $("settings_dlg").addEventListener("cancel",settingsCancel);
   $("settings_dlg").addEventListener("close",settingsClosed);
-  for(const id of ["telegram_token","telegram_enabled"])$(id).addEventListener("input",()=>{telegramDirty=true});
+  for(const id of ["telegram_token","telegram_enabled","telegram_finished"])$(id).addEventListener("input",()=>{telegramDirty=true});
   // A "more" menu closes when the tap lands anywhere else.
   document.addEventListener("click",e=>{for(const menu of document.querySelectorAll(".card-more[open]"))if(!menu.contains(e.target))menu.open=false});
 }

@@ -132,12 +132,18 @@ class Gateway:
         request = {'name': question.session, 'id': question.instance, 'index': index}
         if text is not None:
             request['text'] = text
+        self.confirmed(question.deck, '/api/answer', request, 'answer')
+
+    def send(self, deck, name, text):
+        """Types a message into a session of a connected computer; an unconfirmed send is reported, never repeated."""
+        self.confirmed(deck, '/api/send', {'name': name, 'text': text}, 'message')
+
+    def confirmed(self, deck, path, request, what):
         try:
-            status, _, payload = self.decks().request(question.deck, 'POST', '/api/answer',
-                                                      json.dumps(request).encode(), timeout=15)
+            status, _, payload = self.decks().request(deck, 'POST', path, json.dumps(request).encode(), timeout=15)
         except Exception:
             # Transport failure after sending is ambiguous: report it, never resend.
-            raise RuntimeError('Remote Agent Deck did not confirm the answer') from None
+            raise RuntimeError(f'Remote Agent Deck did not confirm the {what}') from None
         if status == 200:
             return
         try:
@@ -146,4 +152,4 @@ class Gateway:
             message = None
         if 400 <= status < 500 and message:
             raise ValueError(message)
-        raise RuntimeError('Remote Agent Deck did not confirm the answer')
+        raise RuntimeError(f'Remote Agent Deck did not confirm the {what}')

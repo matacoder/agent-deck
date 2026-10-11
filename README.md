@@ -90,8 +90,10 @@ The **?** next to the search field in the session bar shows the same picture ins
 - UI in 16 languages, switchable in Settings → Application; extensible file-based locales.
 - **Waiting for you:** one list of every agent question and finished session on all connected computers, answerable in place (including custom text answers).
 - Notifications on phone and desktop when an agent asks a question or finishes, from every connected computer.
+- **Quick prompts:** your own messages and the agent's `/compact` and `/clear` as buttons above the message field, sent with one tap.
+- **Send later:** hold a message until a set time, until the agent is free, or until the subscription limit resets; a session can also continue by itself after a limit.
 - Screenshots an agent mentions by path (`/tmp/shot.png`, `docs/home.png`) appear as thumbnails under the line and open in a full-screen viewer, also for sessions on connected computers.
-- Telegram bot integration: receive agent questions with answer buttons in your private chat.
+- Telegram bot integration: agent questions with answer buttons and "finished" messages in your private chat; reply to a finished message to send the next prompt.
 - One-command installation on Linux (Ubuntu, Debian, 64-bit Raspberry Pi OS), macOS and Windows 11 (WSL2), or a Docker container for NAS and other distributions; autostart and panel updates; in-panel agent setup and login.
 
 <img src="docs/screenshots/mobile-settings.png" width="260" alt="Interface language settings">
@@ -369,6 +371,32 @@ question and every session that finished work, on all connected computers. Answe
 tap right there; options such as *Other* or *Type something* open a text field and send your own answer.
 Tap a session name to open it, on the right computer.
 
+## Quick prompts and sending later
+
+The row of buttons above the message field sends a message with one tap: your own saved prompts
+first, then the commands of the open agent (`/compact` and `/clear` for Claude, `/compact` and `/new`
+for Codex). Commands that drop the conversation ask before they are sent. The pencil at the end of the
+row edits your prompts (up to 24); the list is kept on the Agent Deck you open in the browser and is the
+same for every connected computer.
+
+The clock next to the send button holds a message for later:
+
+- **When the agent is free:** sent once the session has been quiet for a few seconds. Several such
+  messages go one at a time, each after the previous one is done.
+- **When the limit resets:** sent after the subscription limit that stopped the session has reset.
+- **At a set time:** sent at that time, within the next 30 days.
+
+The same dialog lists the messages still waiting (each can be removed) and has the
+**Continue after the limit resets** switch: when the agent stops with a limit notice, the panel reads
+the reset time from the notice (or from the provider's counters when the notice names none), waits a
+minute past it and sends `continue`, once per reset. It is off by default and set per session.
+
+A waiting message is never typed while an agent question is open in the session, because it would be
+taken as the answer; it goes as soon as the question is closed. Each message is sent at most once: if
+the panel cannot confirm it, the dialog says so and nothing is repeated. Messages wait on the computer
+that runs the session, in `~/.config/cc-panel/integrations/schedule.json`, and survive a panel restart;
+closing a session removes its waiting messages. Attachments cannot be held for later.
+
 ## Project panel: changes, commits, files
 
 Changes, Commits, Feature groups, Files and Gallery share one panel with five tabs. On a wide screen it is
@@ -481,6 +509,12 @@ recognized active terminal menus. Custom text and multiple selections use the pa
 3. Follow **Link my Telegram** and press **Start** in the bot's private chat.
 4. Answer a question using its buttons. The bot confirms when the answer reaches the agent. For a
    custom answer (*Other* / *Type something*), reply to the question message with your text.
+
+The bot also says when an agent finishes working (the same event as the "finished" notification).
+Reply to that message with text and it is sent to that session as the next prompt, on whichever
+connected computer it runs; the bot confirms it. A reply is refused when the session was closed or has
+an open question. The **Tell me when an agent finishes** switch in the Telegram card turns these
+messages off.
 
 The pairing link contains a one-time code and expires after ten minutes. The panel
 gets the administrator's user/chat IDs from that authorized `/start` message;

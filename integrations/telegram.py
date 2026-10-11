@@ -18,6 +18,7 @@ except ModuleNotFoundError:
     locales = None
 
 from .questions import Question
+from .push import AGENT_LABELS
 from .store import Store
 
 TOKEN = re.compile(r"\d{5,20}:[A-Za-z0-9_-]{20,100}")
@@ -73,7 +74,7 @@ def atomic_json(path, data):
 
 
 class Telegram:
-    def __init__(self, directory, scan, answer, api=None):
+    def __init__(self, directory, scan, answer, api=None, prompt=None):
         self.path = Path(directory) / 'telegram.json'
         self.directory = Path(directory)
         self.directory.mkdir(mode=0o700, parents=True, exist_ok=True)
@@ -81,6 +82,7 @@ class Telegram:
             raise ValueError('Integration directory must not be a symlink')
         self.directory.chmod(0o700)
         self.scan, self.answer = scan, answer
+        self.prompt = prompt  # prompt(deck, session, session_created, text): a reply to "finished" goes to that session.
         self.api = api or API()
         self.lock = threading.RLock()
         self.stop = threading.Event()
@@ -121,12 +123,13 @@ class Telegram:
             c = self.config
             return {'available': True, 'configured': bool(c.get('token')), 'enabled': c.get('enabled', False),
                     'paired': bool(c.get('user_id')), 'bot': c.get('bot', ''),
-                    'account': c.get('account', ''), 'error': self.error,
+                    'account': c.get('account', ''), 'error': self.error, 'finished': c.get('finished', True),
                     'pair_url': f"https://t.me/{c['bot']}?start=deck_{self.pair_code}"
                     if self.pair_code and time.time() < self.pair_deadline else None}
 
     def save(self, data):
-        if not isinstance(data.get('token', ''), str) or not isinstance(data.get('enabled', True), bool):
+        if (not isinstance(data.get('token', ''), str) or not isinstance(data.get('enabled', True), bool)
+                or not isinstance(data.get('finished', True), bool)):
             raise ValueError('Неверные настройки Telegram')
         with self.lock:
             if data.get('clear'):
@@ -154,7 +157,8 @@ class Telegram:
                 self.pair_code = None
                 self.database().reset()
             self.config.update(language=language)
-            self.config.update(token=token, bot=bot['username'], enabled=data.get('enabled', True))
+            self.config.update(token=token, bot=bot['username'], enabled=data.get('enabled', True),
+                               finished=data.get('finished', self.config.get('finished', True)))
             atomic_json(self.path, self.config)
             self.error = ''
         self.start()
@@ -269,6 +273,28 @@ class Telegram:
                     reply_markup={'inline_keyboard': keyboard})
                 db.set_status(row['id'], 'sent', result['message_id'])
 
+    def wants_finished(self):
+        with self.lock:
+            return self.eligible(self.config) and self.config.get('finished', True)
+
+    def finished(self, message):
+        """Says that a session finished working; a reply to this message is the next prompt for that session."""
+        with self.lock:
+            c = self.config.copy()
+        if not self.eligible(c) or not c.get('finished', True):
+            return
+        label = AGENT_LABELS.get(message.get('agent'), message.get('agent') or 'Agent')
+        text = (' · '.join(filter(None, (message.get('origin'), label, message['title']))) + '\n\n'
+                + self.translate('{0} закончил работу').format(label) + '\n\n'
+                + self.translate('Ответьте на это сообщение, чтобы отправить агенту следующий запрос'))
+        try:
+            result = self.api.call(c['token'], 'sendMessage', chat_id=c['chat_id'], text=text)
+            self.database().notice(result['message_id'], message.get('deck', ''), message['session'],
+                                   int(message.get('created') or 0))
+        except (TelegramError, KeyError, TypeError) as error:
+            with self.lock:  # Shown in Settings; the next finished session tries again.
+                self.error = str(error) if isinstance(error, TelegramError) else 'Telegram: не удалось обработать обновление'
+
     def handle(self, update):
         message = update.get('message', {})
         chat = message.get('chat', {})
@@ -344,6 +370,10 @@ class Telegram:
         if not (self.eligible(c) and chat.get('type') == 'private' and actor.get('id') == c.get('user_id')
                 and chat.get('id') == c.get('chat_id')) or text.startswith('/'):
             return
+        notice = self.database().notice_by_message(message['reply_to_message'].get('message_id'))
+        if notice:
+            return self.notify(c['token'], 'sendMessage', chat_id=c['chat_id'], text=self.translate(self.send_prompt(notice, text)),
+                               reply_to_message_id=message.get('message_id'))
         row = self.database().by_message(message['reply_to_message'].get('message_id'))
         reply = 'Этот вопрос не найден или уже закрыт'
         if row and row['status'] == 'sent':
@@ -361,6 +391,20 @@ class Telegram:
                                 reply_markup={'inline_keyboard': []})
         return self.notify(c['token'], 'sendMessage', chat_id=c['chat_id'], text=self.translate(reply),
                            reply_to_message_id=message.get('message_id'))
+
+    def send_prompt(self, notice, text):
+        # Each Telegram update is handled once, so an unknown failure is reported and never typed again.
+        if self.prompt is None:
+            return 'Отправка сообщений из Telegram недоступна'
+        if len(text) > 4000:
+            return 'Сообщение длиннее 4000 символов'
+        try:
+            self.prompt(notice['deck'], notice['session'], notice['session_created'], text)
+        except ValueError as error:
+            return str(error)
+        except Exception:
+            return 'Проверьте сессию в панели: повторная отправка отключена'
+        return 'Сообщение передано агенту'
 
     def answer_claimed(self, row, q, index, text=None):
         # Same outcomes as a button: retryable errors reopen, others close; unknown failures never replay.

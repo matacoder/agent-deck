@@ -26,6 +26,9 @@ class Store:
                 CREATE UNIQUE INDEX IF NOT EXISTS question_open ON questions(fingerprint)
                     WHERE status IN ('pending', 'sent', 'answering');
                 CREATE TABLE IF NOT EXISTS metadata (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+                CREATE TABLE IF NOT EXISTS notices (
+                    message_id INTEGER PRIMARY KEY, deck TEXT NOT NULL, session TEXT NOT NULL,
+                    session_created INTEGER NOT NULL, created REAL NOT NULL);
             ''')
             # Never replay an answer after a crash between terminal input and acknowledgement.
             db.execute("UPDATE questions SET status='uncertain' WHERE status='answering'")
@@ -93,6 +96,18 @@ class Store:
                        (time.time() - 7 * 86400,))
         return stale
 
+    def notice(self, message_id, deck, session, session_created):
+        """Remembers which session a "finished" message is about, so a reply to it reaches that session."""
+        with self.connect() as db:
+            db.execute("INSERT OR REPLACE INTO notices VALUES(?,?,?,?,?)",
+                       (message_id, deck, session, session_created, time.time()))
+            db.execute("DELETE FROM notices WHERE created < ?", (time.time() - 7 * 86400,))
+
+    def notice_by_message(self, message_id):
+        with self.connect() as db:
+            row = db.execute("SELECT * FROM notices WHERE message_id=?", (message_id,)).fetchone()
+            return dict(row) if row else None
+
     def offset(self, value=None):
         with self.connect() as db:
             if value is not None:
@@ -103,4 +118,5 @@ class Store:
     def reset(self):
         with self.connect() as db:
             db.execute("UPDATE questions SET status='retired'")
+            db.execute("DELETE FROM notices")
             db.execute("DELETE FROM metadata WHERE key='telegram_offset'")
