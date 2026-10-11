@@ -98,6 +98,7 @@ function renderComputers(data,network){
   $("deck_summary").textContent=count?tr("Подключено: {0}",[count]):tr("Пока не подключены");
   $("deck_summary").className="card-status "+(count?"ok":"idle");
   $("network_isolate_row").hidden=$("network_isolate_hint").hidden=!count;
+  if($("settings_dlg").open)loadContainers();else renderContainers();
   renderDeckDiscovery(data.discovery);
   if(editorInUse($("deck_editor")))return;
   const rows=data.decks.map(deck=>{

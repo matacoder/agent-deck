@@ -2,6 +2,14 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.41.0 — 2026-10-11
+
+- **Containers run on the computer you choose.** In Settings → Computers, mark a connected computer as one that runs containers and pick it for this computer's sessions: `docker` and `docker compose` typed by an agent then run on that computer's Docker, with no change to the commands. Agents stay on the weak machine, builds and checks go to the strong one. Nothing to set up between the machines: the panels already trust each other over Tailscale, so there is no SSH and there are no keys. Applies to a new or restarted agent session.
+- **A Docker context per such computer**, named after it (`docker --context red ps`), created and removed by the panel; contexts it did not create are never touched.
+- **The agent is told where its containers run**: at the start of a session it learns the computer's name and address, that local folders cannot be bind-mounted there, that published ports open on that computer, and how to run a container locally instead.
+- A computer that is asleep or no longer marked answers the Docker command with the reason instead of a connection error.
+- Limits of this version: folders of the session's computer are not mounted into remote containers (put code into the image, use named volumes or `docker compose watch`), ports are reached on the other computer's address, and only the computer the others are connected to (the gateway) can send its containers elsewhere.
+
 ## 1.40.0 — 2026-10-11
 
 - **"Finished" notifications and Telegram messages say what was done.** When an agent finishes, the panel rewrites the session's summary right away and adds it to the notification and to the Telegram message: one line and a few sentences on the goal, what is done and what is next. Written by a model of the session's own provider, in the language of each device and of the bot, also for sessions on connected computers. The message waits for the model up to 30 seconds; a session whose provider cannot summarize (Kimi Code, Pi, not logged in) gets the earlier short message.

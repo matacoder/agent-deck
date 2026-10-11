@@ -363,6 +363,8 @@ dialog:focus,dialog:focus-visible{outline:none}
 .toggle input:checked::after,.integration-toggle input:checked::after{left:18px}
 .toggle input:focus-visible,.integration-toggle input:focus-visible{outline:2px solid var(--fg2);outline-offset:3px}
 .toggle input:disabled,.integration-toggle input:disabled{opacity:.5;cursor:default}
+.container-machine>span{display:flex;flex-direction:column;gap:2px;padding:8px 0}
+.container-machine strong{color:var(--fg)}
 
 /* new-session dialog */
 .agsel{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px;padding:4px;margin-bottom:6px;background:var(--bg);border:1px solid var(--bd);border-radius:12px}
@@ -1387,6 +1389,10 @@ body.resizing iframe{pointer-events:none}
         <div class="deck-toolbar"><div class="deck-port"><label for="deck_port">Порт</label><input type="text" id="deck_port" inputmode="numeric" pattern="[0-9]*" maxlength="5" value="8790"></div><div class="deck-actions"><button type="button" id="deck_discover" onclick="discoverDecks()">Найти в Tailscale</button><button type="button" onclick="editDeck()">Добавить вручную</button></div></div>
         <p id="deck_discovery_status" class="hint" role="status"></p><div id="deck_discovery_results"></div>
       </div>
+      <div class="hub-card" id="containers_card" hidden><h4>Контейнеры</h4><p class="hint">Docker-команды агентов этого компьютера могут выполняться на другом, более мощном. Отметьте компьютеры, где разрешено запускать контейнеры, и выберите один из них.</p>
+        <div id="container_machines"></div>
+        <label for="containers_use">Контейнеры сессий этого компьютера</label><select id="containers_use" onchange="saveContainersUse()"></select>
+        <p class="hint">Действует с новой или перезапущенной сессии агента. Папки этого компьютера в такие контейнеры не монтируются, а порты открываются на выбранном компьютере.</p></div>
       <form id="deck_editor" class="hub-card editor" hidden onsubmit="event.preventDefault();saveDeck()">
         <h4 id="deck_editor_title">Подключить другой Away Deck</h4>
         <input type="hidden" id="deck_id"><label for="deck_name">Название</label><input type="text" id="deck_name" required maxlength="100" autocomplete="off">
@@ -4162,6 +4168,7 @@ function renderComputers(data,network){
   $("deck_summary").textContent=count?tr("Подключено: {0}",[count]):tr("Пока не подключены");
   $("deck_summary").className="card-status "+(count?"ok":"idle");
   $("network_isolate_row").hidden=$("network_isolate_hint").hidden=!count;
+  if($("settings_dlg").open)loadContainers();else renderContainers();
   renderDeckDiscovery(data.discovery);
   if(editorInUse($("deck_editor")))return;
   const rows=data.decks.map(deck=>{
@@ -4242,6 +4249,65 @@ async function saveShowResults(){
 }
 
 if(typeof module!=="undefined")module.exports={lmMetrics,deckAddress,saveShowResults};
+// Containers on another computer: which computers lend their Docker and which one this computer's
+// sessions use. Always asked from the gateway: it is the one that reaches the others.
+let containers=null;
+
+// What a row says under a computer's name. Pure for tests.
+function containerMeta(machine,translate){
+  if(machine.state==="offline")return translate("Не отвечает");
+  if(machine.state==="old")return translate("Нужна новая версия панели");
+  const d=machine.docker;
+  if(!d)return translate("Docker не запущен");
+  return translate("Docker {0} · ядер: {1} · память: {2} ГБ",[d.version,d.cpus,Math.round(d.memory/2**30)]);
+}
+// Computers a session's containers can go to: marked ones only; a saved choice that is gone means "here". Pure for tests.
+function containerChoices(data){
+  const hosts=data.machines.filter(m=>m.host);
+  return {hosts,selected:hosts.some(m=>m.id===data.use)?data.use:""};
+}
+function containerRow(name,meta,checked,disabled,save){
+  const input=el("input");
+  input.type="checkbox";input.setAttribute("role","switch");input.checked=checked;input.disabled=disabled;
+  input.setAttribute("aria-label",tr("Запускать контейнеры здесь")+": "+name);
+  input.onchange=()=>saveContainerHost(input,save);
+  return el("label","integration-toggle container-machine",el("span","",el("strong","",name),el("span","card-meta",meta)),input);
+}
+function renderContainers(){
+  const data=containers,card=$("containers_card");
+  // One computer has nobody to lend Docker to.
+  card.hidden=!data||!data.machines.length;
+  if(card.hidden)return;
+  const rows=[containerRow(deckDirectory.name,containerMeta({state:"ok",docker:data.docker},tr),data.host,!data.docker&&!data.host,
+    host=>gatewayApi("/api/containers_save",{host}))];
+  for(const m of data.machines)rows.push(containerRow(m.name,containerMeta(m,tr),m.host,m.state!=="ok"||(!m.docker&&!m.host),
+    host=>api(instancePath(m.id,"/api/containers_save"),{host},true)));
+  $("container_machines").replaceChildren(...rows);
+  const {hosts,selected}=containerChoices(data),select=$("containers_use");
+  const option=(value,label)=>{const o=el("option","",label);o.value=value;return o};
+  select.replaceChildren(option("",tr("На этом компьютере")),...hosts.map(m=>option(m.id,m.name)));
+  select.value=selected;select.disabled=!hosts.length;
+}
+async function loadContainers(){
+  // The other computers are asked again: a switch flipped on one of them shows at once.
+  let data=null;
+  try{data=await gatewayApi("/api/containers?fresh=1")}catch(e){if(e.message===STALE)return}
+  containers=data&&Array.isArray(data.machines)?data:null;
+  renderContainers();
+}
+async function saveContainerHost(input,save){
+  input.disabled=true;
+  try{await save(input.checked);toast(tr("Настройки сохранены"),"success")}catch(e){input.checked=!input.checked;if(e.message!==STALE)toast(e.message)}
+  await loadContainers();
+}
+async function saveContainersUse(){
+  const select=$("containers_use");select.disabled=true;
+  try{containers=(await gatewayApi("/api/containers_save",{use:select.value})).containers;toast(tr("Настройки сохранены"),"success")}
+  catch(e){if(e.message!==STALE)toast(e.message)}
+  renderContainers();
+}
+
+if(typeof module!=="undefined")module.exports={containerMeta,containerChoices};
 // Files dragged onto the window (desktop, iPad Split View) are attached to the open session, the same
 // way as the paperclip and paste. The terminal is a frame with its own document, so it is watched too.
 // Bundled before app.js; nothing here runs at load time.

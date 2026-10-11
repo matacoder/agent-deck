@@ -930,6 +930,18 @@
     "Отправка сообщений из Telegram недоступна": "O envio de mensagens pelo Telegram não está disponível",
     "Сообщение длиннее 4000 символов": "A mensagem tem mais de 4000 caracteres",
     "Проверьте сессию в панели: повторная отправка отключена": "Verifique a sessão no painel: o reenvio está desativado",
-    "Сообщение передано агенту": "Mensagem enviada ao agente"
+    "Сообщение передано агенту": "Mensagem enviada ao agente",
+    "Контейнеры": "Contêineres",
+    "Docker-команды агентов этого компьютера могут выполняться на другом, более мощном. Отметьте компьютеры, где разрешено запускать контейнеры, и выберите один из них.": "Os comandos Docker dos agentes deste computador podem rodar em outro, mais potente. Marque os computadores onde contêineres são permitidos e escolha um deles.",
+    "Контейнеры сессий этого компьютера": "Contêineres das sessões deste computador",
+    "На этом компьютере": "Neste computador",
+    "Действует с новой или перезапущенной сессии агента. Папки этого компьютера в такие контейнеры не монтируются, а порты открываются на выбранном компьютере.": "Vale para uma sessão de agente nova ou reiniciada. As pastas deste computador não são montadas nesses contêineres, e as portas abrem no computador escolhido.",
+    "Docker {0} · ядер: {1} · память: {2} ГБ": "Docker {0} · núcleos: {1} · memória: {2} GB",
+    "Docker не запущен": "O Docker não está em execução",
+    "Нужна новая версия панели": "É necessária uma versão mais recente do painel",
+    "Запускать контейнеры здесь": "Executar contêineres aqui",
+    "Запуск контейнеров можно только включить или выключить": "A execução de contêineres só pode ser ligada ou desligada",
+    "Docker на этом компьютере не отвечает; запустите его и повторите": "O Docker não responde neste computador; inicie-o e tente de novo",
+    "Этот компьютер не отмечен для контейнеров": "Este computador não está marcado para contêineres"
   }
 }

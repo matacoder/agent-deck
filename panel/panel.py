@@ -521,6 +521,19 @@ def agent_cmd(agent, sid=None, resume=False, skip=False, name=None, source=None)
     return (launcher or "claude") + f" --session-id {sid}{flag}" + (f" -n {name}" if name else "")
 
 
+def with_containers(command):
+    """Docker commands of an agent started now go to the computer chosen for containers.
+
+    Set on the command itself: a shell profile that exports DOCKER_HOST would win over the session's environment."""
+    if not command:
+        return command
+    try:
+        extra = containers_service().environment()
+    except (OSError, ValueError):
+        return command
+    return ''.join(f'{key}={shlex.quote(value)} ' for key, value in extra.items()) + command
+
+
 def type_line(name, text):
     paste_to_tmux(name, text, bracketed=False)
     tmux("send-keys", "-t", f"={PREFIX}{name}:", "Enter")
@@ -635,10 +648,10 @@ def _action_new(d):
     if source and source.get('kind') == 'kimi' and agent == 'claude':
         agent = 'claude-kimi'
     if source is None:
-        create_session(name, path, agent, skip, sid, agent_cmd(agent, sid, False, skip, name))
+        create_session(name, path, agent, skip, sid, with_containers(agent_cmd(agent, sid, False, skip, name)))
     else:
         try:
-            create_session(name, path, agent, skip, sid, agent_cmd(agent, sid, False, skip, name, source), source)
+            create_session(name, path, agent, skip, sid, with_containers(agent_cmd(agent, sid, False, skip, name, source)), source)
         except Exception:
             if source.get('binding'):
                 _model_relay.bindings.remove(source['binding'])
@@ -671,7 +684,7 @@ def action_restart(d):
     elif new and agent in ("codex", "kimi"):
         sid = None
     source = saved_source(name)
-    cmd = agent_cmd(agent, sid, not new, skip, name, source)
+    cmd = with_containers(agent_cmd(agent, sid, not new, skip, name, source))
     target = f"={PREFIX}{name}:"
     path = tmux("display-message", "-p", "-t", target, "#{pane_current_path}").strip()
     shell = tmux("show-options", "-gv", "default-shell").strip() or "/bin/sh"
@@ -1683,6 +1696,7 @@ def push_service():
 _schedule = None
 _schedule_lock = threading.Lock()
 _quick_prompts = None
+_containers = None
 
 
 def limit_window_reset(agent):
@@ -1715,6 +1729,16 @@ def quick_prompts():
         if _quick_prompts is None:
             _quick_prompts = QuickPrompts(os.path.expanduser('~/.config/cc-panel/integrations'))
         return _quick_prompts
+
+
+def containers_service():
+    global _containers
+    from integrations.containers import Containers
+    with _schedule_lock:
+        if _containers is None:
+            _containers = Containers(os.path.expanduser('~/.config/cc-panel/integrations'),
+                                     os.path.expanduser('~/.config/cc-panel/docker'), lambda: remote_decks)
+        return _containers
 
 
 def telegram_duplicates(bot):
@@ -2025,7 +2049,8 @@ ACTIONS.update(file_save=action_file_save, git_group=action_git_group, git_fetch
                schedule_add=lambda d: schedule_service().add(d.get('name'), d.get('text'), d.get('trigger'), d.get('at')),
                schedule_remove=lambda d: schedule_service().remove(d.get('id')),
                auto_resume=lambda d: schedule_service().set_auto(d.get('name'), d.get('enabled')),
-               quick_prompts=lambda d: {'prompts': quick_prompts().save(d.get('prompts'))})
+               quick_prompts=lambda d: {'prompts': quick_prompts().save(d.get('prompts'))},
+               containers_save=lambda d: {'containers': containers_service().save(d)})
 
 
 class PanelHTTPServer(ThreadingHTTPServer):
@@ -2365,6 +2390,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_json(200, {**value, 'name':value['name'] or socket.gethostname(), 'bind_host':BIND_HOST, 'bind_port':BIND_PORT})
         if self.path.startswith("/t/") or self.path == "/t":
             return self.proxy_tty()
+        if self.path == "/api/docker_tunnel":
+            return self.docker_tunnel()
         if self.path in ("/", "/index.html"):
             with open(PAGE_FILE, "rb") as f:
                 page = f.read()
@@ -2425,6 +2452,9 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_json(200, schedule_service().status(parse_qs(parsed.query).get("name", [""])[0]))
         if parsed.path == "/api/quick_prompts":
             return self.send_json(200, {"prompts": quick_prompts().list()})
+        if parsed.path == "/api/containers":
+            fresh = parse_qs(parsed.query).get("fresh", [""])[0] == "1"
+            return self.send_json(200, containers_service().refresh() if fresh else containers_service().status())
         if parsed.path == "/api/backups":
             return self.send_json(200, backup_service().status())
         if parsed.path == "/api/backup_blob":
@@ -2662,6 +2692,25 @@ class Handler(BaseHTTPRequestHandler):
             except OSError:
                 pass  # The socket is already upgraded; an HTTP error response would corrupt the stream.
         finally:backend.close()
+
+    def docker_tunnel(self):
+        """Raw pipe into this computer's Docker for another Away Deck, only while it is marked for containers."""
+        from integrations.containers import UPGRADE, pump
+        self.close_connection = True
+        if self.headers.get('Upgrade', '').lower() != UPGRADE or not self.same_origin(required=True):
+            return self.send_json(403, {'error': 'неверный источник запроса'})
+        try:
+            backend = containers_service().connect()
+        except (ValueError, OSError) as error:
+            return self.send_json(409, {'error': str(error) if isinstance(error, ValueError) else 'Docker is not running on this computer'})
+        try:
+            self.connection.sendall(f'HTTP/1.1 101 Switching Protocols\r\nConnection: Upgrade\r\nUpgrade: {UPGRADE}\r\n\r\n'.encode())
+            self.connection.settimeout(None)  # `docker logs -f` and waiting on a container stay silent for hours.
+            pump(self.connection, backend)
+        except OSError:
+            pass  # The socket is already upgraded; an HTTP error response would corrupt the stream.
+        finally:
+            backend.close()
 
     def proxy_tty(self):
         """Raw pass-through to ttyd (HTTP + websocket upgrade)."""
@@ -2906,6 +2955,7 @@ def main():
     try:
         push_service().start()  # Idles until a device subscribes or Telegram wants finished work.
         schedule_service().start()
+        containers_service().start()  # Sockets and Docker contexts for computers marked for containers.
     except (ImportError, OSError, ValueError) as error:
         print(f'Notifications and scheduled prompts could not start: {error}', flush=True)
     if Telegram:

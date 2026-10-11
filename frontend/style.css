@@ -352,6 +352,8 @@ dialog:focus,dialog:focus-visible{outline:none}
 .toggle input:checked::after,.integration-toggle input:checked::after{left:18px}
 .toggle input:focus-visible,.integration-toggle input:focus-visible{outline:2px solid var(--fg2);outline-offset:3px}
 .toggle input:disabled,.integration-toggle input:disabled{opacity:.5;cursor:default}
+.container-machine>span{display:flex;flex-direction:column;gap:2px;padding:8px 0}
+.container-machine strong{color:var(--fg)}
 
 /* new-session dialog */
 .agsel{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px;padding:4px;margin-bottom:6px;background:var(--bg);border:1px solid var(--bd);border-radius:12px}

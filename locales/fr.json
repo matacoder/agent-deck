@@ -930,6 +930,18 @@
     "Отправка сообщений из Telegram недоступна": "L’envoi de messages depuis Telegram n’est pas disponible",
     "Сообщение длиннее 4000 символов": "Le message dépasse 4000 caractères",
     "Проверьте сессию в панели: повторная отправка отключена": "Vérifiez la session dans le panneau : le renvoi est désactivé",
-    "Сообщение передано агенту": "Message envoyé à l'agent"
+    "Сообщение передано агенту": "Message envoyé à l'agent",
+    "Контейнеры": "Conteneurs",
+    "Docker-команды агентов этого компьютера могут выполняться на другом, более мощном. Отметьте компьютеры, где разрешено запускать контейнеры, и выберите один из них.": "Les commandes Docker des agents de cet ordinateur peuvent s'exécuter sur un autre, plus puissant. Cochez les ordinateurs où les conteneurs sont autorisés et choisissez-en un.",
+    "Контейнеры сессий этого компьютера": "Conteneurs des sessions de cet ordinateur",
+    "На этом компьютере": "Sur cet ordinateur",
+    "Действует с новой или перезапущенной сессии агента. Папки этого компьютера в такие контейнеры не монтируются, а порты открываются на выбранном компьютере.": "S'applique à une session d'agent nouvelle ou redémarrée. Les dossiers de cet ordinateur ne sont pas montés dans ces conteneurs et les ports s'ouvrent sur l'ordinateur choisi.",
+    "Docker {0} · ядер: {1} · память: {2} ГБ": "Docker {0} · cœurs : {1} · mémoire : {2} Go",
+    "Docker не запущен": "Docker n'est pas démarré",
+    "Нужна новая версия панели": "Une version plus récente du panneau est nécessaire",
+    "Запускать контейнеры здесь": "Exécuter les conteneurs ici",
+    "Запуск контейнеров можно только включить или выключить": "L'exécution des conteneurs ne peut être qu'activée ou désactivée",
+    "Docker на этом компьютере не отвечает; запустите его и повторите": "Docker ne répond pas sur cet ordinateur ; démarrez-le et réessayez",
+    "Этот компьютер не отмечен для контейнеров": "Cet ordinateur n'est pas désigné pour les conteneurs"
   }
 }

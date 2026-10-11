@@ -348,6 +348,10 @@ __PANEL_STYLE__</style></head><body>
         <div class="deck-toolbar"><div class="deck-port"><label for="deck_port">Порт</label><input type="text" id="deck_port" inputmode="numeric" pattern="[0-9]*" maxlength="5" value="8790"></div><div class="deck-actions"><button type="button" id="deck_discover" onclick="discoverDecks()">Найти в Tailscale</button><button type="button" onclick="editDeck()">Добавить вручную</button></div></div>
         <p id="deck_discovery_status" class="hint" role="status"></p><div id="deck_discovery_results"></div>
       </div>
+      <div class="hub-card" id="containers_card" hidden><h4>Контейнеры</h4><p class="hint">Docker-команды агентов этого компьютера могут выполняться на другом, более мощном. Отметьте компьютеры, где разрешено запускать контейнеры, и выберите один из них.</p>
+        <div id="container_machines"></div>
+        <label for="containers_use">Контейнеры сессий этого компьютера</label><select id="containers_use" onchange="saveContainersUse()"></select>
+        <p class="hint">Действует с новой или перезапущенной сессии агента. Папки этого компьютера в такие контейнеры не монтируются, а порты открываются на выбранном компьютере.</p></div>
       <form id="deck_editor" class="hub-card editor" hidden onsubmit="event.preventDefault();saveDeck()">
         <h4 id="deck_editor_title">Подключить другой Away Deck</h4>
         <input type="hidden" id="deck_id"><label for="deck_name">Название</label><input type="text" id="deck_name" required maxlength="100" autocomplete="off">

@@ -930,6 +930,18 @@
     "Отправка сообщений из Telegram недоступна": "Pengiriman pesan dari Telegram tidak tersedia",
     "Сообщение длиннее 4000 символов": "Pesan lebih dari 4000 karakter",
     "Проверьте сессию в панели: повторная отправка отключена": "Periksa sesi di panel: pengiriman ulang dinonaktifkan",
-    "Сообщение передано агенту": "Pesan terkirim ke agen"
+    "Сообщение передано агенту": "Pesan terkirim ke agen",
+    "Контейнеры": "Kontainer",
+    "Docker-команды агентов этого компьютера могут выполняться на другом, более мощном. Отметьте компьютеры, где разрешено запускать контейнеры, и выберите один из них.": "Perintah Docker dari agen di komputer ini dapat berjalan di komputer lain yang lebih kuat. Tandai komputer yang boleh menjalankan kontainer dan pilih salah satunya.",
+    "Контейнеры сессий этого компьютера": "Kontainer sesi komputer ini",
+    "На этом компьютере": "Di komputer ini",
+    "Действует с новой или перезапущенной сессии агента. Папки этого компьютера в такие контейнеры не монтируются, а порты открываются на выбранном компьютере.": "Berlaku mulai sesi agen baru atau yang dimulai ulang. Folder komputer ini tidak dipasang ke kontainer tersebut, dan port terbuka di komputer yang dipilih.",
+    "Docker {0} · ядер: {1} · память: {2} ГБ": "Docker {0} · inti: {1} · memori: {2} GB",
+    "Docker не запущен": "Docker tidak berjalan",
+    "Нужна новая версия панели": "Diperlukan versi panel yang lebih baru",
+    "Запускать контейнеры здесь": "Jalankan kontainer di sini",
+    "Запуск контейнеров можно только включить или выключить": "Menjalankan kontainer hanya dapat dinyalakan atau dimatikan",
+    "Docker на этом компьютере не отвечает; запустите его и повторите": "Docker di komputer ini tidak merespons; jalankan lalu coba lagi",
+    "Этот компьютер не отмечен для контейнеров": "Komputer ini tidak ditandai untuk kontainer"
   }
 }

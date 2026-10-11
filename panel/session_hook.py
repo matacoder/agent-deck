@@ -88,6 +88,33 @@ def results_note():
     return RESULTS_NOTE.format(link=LINK_KNOWN.format(address) if address else LINK_UNKNOWN)
 
 
+CONTAINERS_NOTE = """Containers: `docker` and `docker compose` in this session run on another, stronger computer, {name}{at}, not on this one.
+- This machine's files are not there: bind mounts of local paths (`-v ./src:/app`, compose `volumes: - ./...`) do not work. Put code into the image (`COPY`), use named volumes, `docker cp` or `docker compose watch`.
+- Published ports open on that computer, not on localhost: {ports}
+{local}"""
+PORTS_KNOWN = "connect to {0}:<port>, and for a container's page give the link http://{0}:<port>/<path>."
+PORTS_UNKNOWN = "connect to that computer's Tailscale address."
+LOCAL_KNOWN = "- A container that must run on this machine: `DOCKER_HOST={0} docker ...`."
+LOCAL_UNKNOWN = "- This machine has no Docker of its own running."
+
+
+def containers_note(environ=os.environ):
+    """What the panel wrote next to the Docker socket it gave this session; nothing when Docker is local."""
+    host = environ.get("DOCKER_HOST", "")
+    directory = os.path.expanduser("~/.config/cc-panel/docker/")
+    if not host.startswith("unix://" + directory) or not host.endswith(".sock"):
+        return None
+    try:
+        with open(host[7:-5] + ".json") as stream:
+            data = json.load(stream)
+        name, address, local = str(data["name"])[:100], str(data.get("address") or ""), str(data.get("local") or "")
+    except (OSError, ValueError, KeyError, TypeError):
+        return None
+    return CONTAINERS_NOTE.format(name=name, at=f" ({address})" if address else "",
+                                  ports=PORTS_KNOWN.format(address) if address else PORTS_UNKNOWN,
+                                  local=LOCAL_KNOWN.format(local) if local else LOCAL_UNKNOWN)
+
+
 def main():
     pane = os.environ.get("TMUX_PANE")
     if not pane:
@@ -95,9 +122,11 @@ def main():
     try:
         data = json.load(sys.stdin)
         # Kimi's own CLI is left out: what it does with hook output is not known.
-        if remember(data, pane, os.getppid()) and data.get("client_type") != "kimi_code_cli" and show_results():
-            print(json.dumps({"hookSpecificOutput": {"hookEventName": "SessionStart",
-                                                     "additionalContext": results_note()}}))
+        if remember(data, pane, os.getppid()) and data.get("client_type") != "kimi_code_cli":
+            notes = [note for note in (results_note() if show_results() else None, containers_note()) if note]
+            if notes:
+                print(json.dumps({"hookSpecificOutput": {"hookEventName": "SessionStart",
+                                                         "additionalContext": "\n\n".join(notes)}}))
     except (OSError, ValueError, KeyError, TypeError, AttributeError, subprocess.TimeoutExpired):
         pass  # The hook must never prevent a conversation from starting.
 

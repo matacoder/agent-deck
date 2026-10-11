@@ -930,6 +930,18 @@
     "Отправка сообщений из Telegram недоступна": "Telegram'dan mesaj gönderme kullanılamıyor",
     "Сообщение длиннее 4000 символов": "Mesaj 4000 karakterden uzun",
     "Проверьте сессию в панели: повторная отправка отключена": "Oturumu panelde kontrol et: yeniden gönderme devre dışı",
-    "Сообщение передано агенту": "Mesaj agent'a gönderildi"
+    "Сообщение передано агенту": "Mesaj agent'a gönderildi",
+    "Контейнеры": "Konteynerler",
+    "Docker-команды агентов этого компьютера могут выполняться на другом, более мощном. Отметьте компьютеры, где разрешено запускать контейнеры, и выберите один из них.": "Bu bilgisayardaki ajanların Docker komutları daha güçlü başka bir bilgisayarda çalışabilir. Konteynerlere izin verilen bilgisayarları işaretleyin ve birini seçin.",
+    "Контейнеры сессий этого компьютера": "Bu bilgisayarın oturumlarının konteynerleri",
+    "На этом компьютере": "Bu bilgisayarda",
+    "Действует с новой или перезапущенной сессии агента. Папки этого компьютера в такие контейнеры не монтируются, а порты открываются на выбранном компьютере.": "Yeni veya yeniden başlatılan ajan oturumundan itibaren geçerlidir. Bu bilgisayarın klasörleri bu konteynerlere bağlanmaz, portlar seçilen bilgisayarda açılır.",
+    "Docker {0} · ядер: {1} · память: {2} ГБ": "Docker {0} · çekirdek: {1} · bellek: {2} GB",
+    "Docker не запущен": "Docker çalışmıyor",
+    "Нужна новая версия панели": "Panelin daha yeni bir sürümü gerekli",
+    "Запускать контейнеры здесь": "Konteynerleri burada çalıştır",
+    "Запуск контейнеров можно только включить или выключить": "Konteyner çalıştırma yalnızca açılıp kapatılabilir",
+    "Docker на этом компьютере не отвечает; запустите его и повторите": "Bu bilgisayarda Docker yanıt vermiyor; başlatıp yeniden deneyin",
+    "Этот компьютер не отмечен для контейнеров": "Bu bilgisayar konteynerler için işaretlenmemiş"
   }
 }

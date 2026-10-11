@@ -92,6 +92,7 @@ The **?** next to the search field in the session bar shows the same picture ins
 - UI in 16 languages, switchable in Settings → Application; extensible file-based locales.
 - **Waiting for you:** one list of every agent question and finished session on all connected computers, answerable in place (including custom text answers).
 - Notifications on phone and desktop when an agent asks a question or finishes, from every connected computer; a "finished" notification says what was done.
+- **Containers on another computer:** keep agents on a weak machine and run their `docker` and `docker compose` on a strong one you mark for containers; no SSH, no keys.
 - **Quick prompts:** your own messages and the agent's `/compact` and `/clear` as buttons above the message field, sent with one tap.
 - **Send later:** hold a message until a set time, until the agent is free, or until the subscription limit resets; a session can also continue by itself after a limit.
 - Screenshots an agent mentions by path (`/tmp/shot.png`, `docs/home.png`) appear as thumbnails under the line and open in a full-screen viewer, also for sessions on connected computers.
@@ -398,6 +399,33 @@ taken as the answer; it goes as soon as the question is closed. Each message is 
 the panel cannot confirm it, the dialog says so and nothing is repeated. Messages wait on the computer
 that runs the session, in `~/.config/cc-panel/integrations/schedule.json`, and survive a panel restart;
 closing a session removes its waiting messages. Attachments cannot be held for later.
+
+## Containers on another computer
+
+Agents can run on one computer while their containers run on another: for example a small server
+that is always on, and a strong desktop that builds images and runs test stacks.
+
+1. Connect the computers in **Settings → Computers** (each runs its own Away Deck).
+2. In the **Containers** card, switch on the computers that may run containers. Docker must be running there.
+3. Under **Containers of this computer's sessions**, choose one of them.
+
+From the next new or restarted agent session, `docker` and `docker compose` in that session talk to
+the chosen computer's Docker. The commands do not change, and there is nothing to configure between
+the machines: the panels pass the connection over Tailscale with the login they already have. The
+agent is told at the start of the session where its containers run. Each marked computer also gets
+a Docker context named after it, for use by hand: `docker --context red ps`.
+
+What is different from local Docker:
+
+- **Local folders are not there.** A bind mount of a folder on the session's computer
+  (`-v ./src:/app`, compose `volumes: - ./src:/app`) does not work. Put the code into the image with
+  `COPY`, use named volumes, `docker cp` or `docker compose watch`.
+- **Ports open on the other computer.** A container published on port 5432 is reached at that
+  computer's Tailscale address, not at `localhost`.
+- **A sleeping computer runs nothing.** The Docker command then says which computer does not answer;
+  it never falls back to the local machine silently.
+- Marking a computer gives every Away Deck connected to it full control of its Docker. Only the
+  computer the others are connected to can send its containers elsewhere in this version.
 
 ## Project panel: changes, commits, files
 
