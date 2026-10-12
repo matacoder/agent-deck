@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.48.1 — 2026-10-12
+
+- **The session list no longer slides sideways on a phone.** The enlarged touch area of the "+" in a group's row reached past the right edge of the list, so the sidebar could be dragged left and right. The area now stays inside the row, and the sidebar does not scroll horizontally at all.
+
 ## 1.48.0 — 2026-10-12
 
 Fixes from a review of the last week, a first step towards talking to your own computer directly, and a tidier screen.
