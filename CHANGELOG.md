@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.45.1 — 2026-10-12
+
+- **The bottom of the session list takes less room on a desktop.** Limit rows are lower, a local model is one line (its name, the last answer and the speed), and Settings is a gear in the top row next to the actions and the search instead of a wide button below. A phone keeps its Settings button in the session list.
+
 ## 1.45.0 — 2026-10-12
 
 - **Text copied together with pictures (a chat message, a page fragment) is pasted with them.** The text goes where a paste always goes; the pictures are attached beside it, up to four. Emoji and avatars drawn as small pictures are left out. A picture its site does not let other pages read cannot be fetched by the browser: the panel says how many were attached, the rest are saved and attached as files.

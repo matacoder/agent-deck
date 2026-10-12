@@ -65,7 +65,7 @@ __PANEL_STYLE__</style></head><body>
     </div>
     <div id="tabs"></div>
     <div id="integ"></div>
-    <div class="side-foot"><span id="foot"></span><span id="ver"></span><button id="b_drafts" onclick="showClosedDrafts()" style="display:none"><svg class="ui-icon"><use href="#i-file"/></svg><span>Черновики закрытых сессий</span></button><button class="settingsbtn help-side" onclick="drawer(false);openHelp()"><svg class="ui-icon"><use href="#i-help"/></svg><span>Как это работает</span></button><button class="settingsbtn" onclick="openSettings()"><svg class="ui-icon"><use href="#i-gear"/></svg><span>Настройки</span></button></div>
+    <div class="side-foot"><span id="foot"></span><span id="ver"></span><button id="b_drafts" onclick="showClosedDrafts()" style="display:none"><svg class="ui-icon"><use href="#i-file"/></svg><span>Черновики закрытых сессий</span></button><button class="settingsbtn help-side" onclick="drawer(false);openHelp()"><svg class="ui-icon"><use href="#i-help"/></svg><span>Как это работает</span></button><button class="settingsbtn help-side" onclick="openSettings()"><svg class="ui-icon"><use href="#i-gear"/></svg><span>Настройки</span></button></div>
   </aside>
   <div id="scrim" onclick="if(document.body.classList.contains('project-drawer'))closeProject();else drawer(false)"></div>
   <main>
@@ -75,6 +75,7 @@ __PANEL_STYLE__</style></head><body>
       <div id="title">—</div>
       <span class="bar-tools" id="bar_tools"><button class="iconbtn d-only" id="b_help" onclick="openHelp()" aria-label="Как это работает" title="Как это работает"><svg class="ui-icon"><use href="#i-help"/></svg></button><form class="bar-search" id="search_form" role="search"><svg class="ui-icon"><use href="#i-search"/></svg><input id="search_q" type="search" maxlength="200" placeholder="Поиск в выводе" aria-label="Поиск в выводе" title="Поиск по всему выводу сессии, включая прокрутку" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search"><button type="button" class="m-only search-close" onclick="closeOutputSearch()" aria-label="Закрыть поиск"><svg class="ui-icon"><use href="#i-x"/></svg></button></form><button class="iconbtn m-only" id="b_search" onclick="openOutputSearch()" aria-label="Поиск в выводе" title="Поиск в выводе"><svg class="ui-icon"><use href="#i-search"/></svg></button></span>
       <button class="iconbtn" id="b_actions" onclick="sheet(true)" aria-label="Действия" title="Действия" aria-haspopup="menu"><svg class="ui-icon"><use href="#i-more"/></svg></button>
+      <button class="iconbtn d-only" id="b_settings" onclick="openSettings()" aria-label="Настройки" title="Настройки"><svg class="ui-icon"><use href="#i-gear"/></svg></button>
       <div id="search_pop" class="search-pop" hidden><div id="search_body" role="region" aria-label="Поиск в выводе"></div></div>
       <button class="iconbtn" id="b_project" onclick="toggleProject(PROJECT_TABS)" aria-pressed="false" aria-label="Скрыть или показать панель проекта" title="Скрыть или показать панель проекта"><svg class="ui-icon"><use href="#i-sidebar-right"/></svg></button>
     </div>

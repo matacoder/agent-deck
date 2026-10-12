@@ -97,9 +97,9 @@ aside{position:relative;width:min(var(--side-w,248px),40vw);flex:none;background
 .tab.remote .n{color:var(--fg)}
 
 /* Compact quota and local-generation monitor. */
-#integ{margin:4px 8px 8px;min-width:0}
+#integ{margin:2px 8px 4px;min-width:0}
 .quota-heading{display:block;font-size:11px;color:var(--mut)}
-.quota-heading summary{display:grid;grid-template-columns:22px 64px 48px 1fr;gap:8px;align-items:center;padding:6px;list-style:none;cursor:pointer;border-radius:var(--r-sm)}
+.quota-heading summary{display:grid;grid-template-columns:22px 64px 48px 1fr;gap:8px;align-items:center;padding:2px 6px;list-style:none;cursor:pointer;border-radius:var(--r-sm)}
 .quota-heading summary::-webkit-details-marker{display:none}
 @media (hover:hover){.quota-heading summary:hover{background:var(--side2)}}
 .quota-heading summary>span:first-child{grid-column:2}
@@ -107,7 +107,7 @@ aside{position:relative;width:min(var(--side-w,248px),40vw);flex:none;background
 .quota-github{display:flex;align-items:center;justify-content:flex-end;gap:4px}
 .quota-github svg{width:var(--icon-sm);height:var(--icon-sm)}
 .quota-help{margin:2px 6px 8px;padding:8px 10px;border-radius:var(--r-sm);background:var(--side2);line-height:1.5}
-.quota-strip{display:grid;grid-template-columns:22px 64px 48px 1fr;gap:8px;align-items:center;min-height:30px;padding:0 6px;font-size:12px;font-variant-numeric:tabular-nums}
+.quota-strip{display:grid;grid-template-columns:22px 64px 48px 1fr;gap:8px;align-items:center;min-height:22px;padding:0 6px;font-size:12px;font-variant-numeric:tabular-nums}
 .quota-values{display:contents}
 .quota-percent{font-weight:600}
 .quota-percent.good{color:var(--fg2)} /* Only a quota that needs attention is coloured. */
@@ -115,24 +115,24 @@ aside{position:relative;width:min(var(--side-w,248px),40vw);flex:none;background
 .quota-plan{text-align:right;font-size:11px;color:var(--mut)}
 .quota-reset{text-align:right;white-space:nowrap;color:var(--mut);font-size:11px}
 .good{color:var(--ok)}.dim{color:var(--dim)}
-.compact-local{padding:6px;margin-top:4px;border-top:1px solid var(--bd);min-width:0}
-.local-model{min-width:0;margin:0;font-size:11px;color:var(--mut)}
+.compact-local{display:flex;flex-wrap:wrap;align-items:center;gap:0 8px;padding:4px 6px 0;margin-top:2px;border-top:1px solid var(--bd);min-width:0}
+.local-model{flex:1 1 0;min-width:0;margin:0;font-size:11px;color:var(--mut)}.local-model[open]{flex-basis:100%}
 .local-model summary{display:flex;align-items:center;gap:8px;padding:0;list-style:none;cursor:pointer;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .local-model summary::-webkit-details-marker{display:none}
 .local-model[open] summary{color:var(--fg)}
 .local-model div{padding:4px 0 8px;overflow-wrap:anywhere;line-height:1.5}
 .local-model p{margin:0 0 6px;overflow-wrap:anywhere}
 .local-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--fg);font-weight:500}
-.local-live-line{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-top:4px;min-height:18px;font-size:11px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.local-live-line{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-left:auto;min-width:0;min-height:22px;font-size:11px;font-variant-numeric:tabular-nums;white-space:nowrap}
 .local-state{color:var(--mut);overflow:hidden;text-overflow:ellipsis}
 .local-rate{flex:none;color:var(--fg)}
 .local-active{animation:local-opacity 1.4s ease-in-out infinite}
 @keyframes local-opacity{50%{opacity:.5}}
 
-.side-foot{display:grid;grid-template-columns:1fr auto;align-items:center;gap:8px;padding:12px;border-top:1px solid var(--bd);color:var(--mut);font-size:11px}
+.side-foot{display:grid;grid-template-columns:1fr auto;align-items:center;gap:6px 8px;padding:6px 8px;border-top:1px solid var(--bd);color:var(--mut);font-size:11px}
 #ver{min-width:0;font:11px var(--mono);color:var(--dim);text-align:right}
 #ver button{display:block;max-width:100%;margin-top:3px;color:var(--acc-text);text-align:right;overflow-wrap:anywhere;font:inherit}
-.side-foot>button{grid-column:1/-1;display:flex;align-items:center;gap:8px;min-height:40px;padding:8px 12px;border-radius:9px;background:var(--side2);color:var(--fg);font-size:12px;text-align:left;white-space:normal}
+.side-foot>button{grid-column:1/-1;display:flex;align-items:center;gap:8px;min-height:32px;padding:4px 10px;border-radius:9px;background:var(--side2);color:var(--fg);font-size:12px;text-align:left;white-space:normal}
 @media (hover:hover){.side-foot>button:hover{background:var(--sel)}}
 .side-foot>button svg{width:var(--icon-md);height:var(--icon-md)}
 
@@ -157,7 +157,7 @@ main{flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;backgrou
 #stage iframe{position:absolute;inset:0;width:100%;height:100%;border:0;display:none;background:var(--bg)}
 #stage iframe.on{display:block}
 .screen-skeleton{display:grid;gap:12px;padding:16px 4px}
-.integ-skeleton{display:grid;gap:8px;padding:8px 6px}.integ-skeleton .sk-line:last-child{width:45%}
+.integ-skeleton{display:block;padding:9px 6px 5px}.integ-skeleton .sk-line:last-child{display:none}
 .sk-line{display:block;height:12px;border-radius:6px;background:linear-gradient(90deg,var(--side2) 0%,var(--sel) 50%,var(--side2) 100%);background-size:200% 100%;animation:shimmer 1.2s ease-in-out infinite}
 .sk-label{margin-top:6px;color:var(--mut);font:12.5px/1.4 -apple-system,BlinkMacSystemFont,system-ui,sans-serif}
 @keyframes shimmer{from{background-position:100% 0}to{background-position:-100% 0}}
