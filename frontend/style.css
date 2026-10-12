@@ -151,6 +151,8 @@ main{flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;backgrou
 .seg button{padding:4px 12px;border-radius:7px;color:var(--mut);font-size:12.5px}
 @media (hover:hover){.seg button:hover{color:var(--fg)}}
 .seg button.on{background:var(--sel);color:var(--fg2)}
+.bar .act.stale{color:var(--acc-text);border:1px solid var(--acc);flex:none}.bar .act.stale[hidden]{display:none}.bar .act.stale .ui-icon{width:14px;height:14px}
+@media (max-width:760px){.bar .act.stale span{display:none}}
 .bar .act{height:30px;padding:0 10px;border-radius:var(--r-sm);color:var(--mut);font-size:12.5px;white-space:nowrap;display:inline-flex;align-items:center;gap:6px}
 @media (hover:hover){.bar .act:hover{background:var(--side2);color:var(--fg)}}
 #menuBadge{position:absolute;top:6px;right:6px;min-width:16px;height:16px;border-radius:8px;background:var(--acc-strong);color:#fff;font-size:10.5px;font-weight:700;display:none;place-items:center;padding:0 4px}
@@ -169,6 +171,10 @@ main{flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;backgrou
 .sk-dot{width:8px;height:8px;border-radius:50%;flex:none}.sk-icon{width:18px;height:18px;flex:none}
 .foot-skeleton,.ver-skeleton,.sk-metric{display:inline-block;height:10px;vertical-align:middle}.foot-skeleton{width:120px}.ver-skeleton{width:44px}.sk-metric{width:3ch}
 #metric_cpu,#metric_ram{display:inline-block;min-width:3ch;text-align:right}
+/* Receives a paste out of sight; it must stay focusable, so it is moved away, not hidden. */
+#paste_catch{position:fixed;left:-9999px;top:0;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none}
+.paste-box{min-height:120px;max-height:40dvh;overflow:auto;margin:10px 0 14px;padding:10px;border:1px dashed var(--bd-strong);border-radius:var(--r-sm);background:var(--bg);font-size:16px;outline:none}
+.paste-box:focus{border-color:var(--acc)}.paste-box img{max-width:100%;height:auto}
 .sk-label{margin-top:6px;color:var(--mut);font:12.5px/1.4 -apple-system,BlinkMacSystemFont,system-ui,sans-serif}
 @keyframes shimmer{from{background-position:100% 0}to{background-position:-100% 0}}
 .term-loading{position:absolute;inset:0;z-index:4;display:flex;align-items:center;justify-content:center;gap:10px;background:var(--bg);color:var(--mut);font-size:13px}

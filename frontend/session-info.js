@@ -46,6 +46,12 @@ async function loadSessionInfo(){
   // A failed poll keeps what is shown. A computer without this version has had nothing to show since the key changed.
   catch(e){if(e.message===STALE)return;data=sessionInfo.data}
   if(seq!==sessionInfo.seq)return;
+  // One answer without a conversation after ones with it is a hiccup far more often than a change (the id is
+  // read from tmux at that moment): the line under the field stays until a second answer says the same.
+  if(data&&!data.supported&&sessionInfo.data?.supported&&!sessionInfo.doubt){
+    sessionInfo.doubt=true;if(!document.hidden)sessionInfo.timer=setTimeout(loadSessionInfo,5000);return;
+  }
+  sessionInfo.doubt=false;
   sessionInfo.data=data;keepAnswer(sessionInfoKnown,key,data);renderSessionInfo();
   // A summary being written is asked for again soon; otherwise the conversation changes slowly.
   if(!document.hidden)sessionInfo.timer=setTimeout(loadSessionInfo,data?.summary?.updating?8000:SESSION_INFO_POLL);

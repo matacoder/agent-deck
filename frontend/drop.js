@@ -113,7 +113,10 @@ async function attachPastedPictures(sources,ready){
 }
 // A paste anywhere on the page or in the live terminal attaches the picture, not only in the message field.
 function onFilePaste(e){
-  const data=e.clipboardData,files=pastedFiles(data),sources=files.length?[]:pastedPictures(data);
+  // A paste caught for its pictures (richpaste.js) reads them from what the browser inserts; only bare files
+  // are handled here, so nothing is attached twice.
+  const caught=Boolean(e.target?.closest?.("#paste_catch,#paste_box"));
+  const data=e.clipboardData,files=pastedFiles(data),sources=files.length||caught?[]:pastedPictures(data);
   if(!files.length&&!sources.length)return;
   const target=dropTarget(cur(),dropBlocked());
   if(sources.length){

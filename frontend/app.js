@@ -693,6 +693,8 @@ async function send(){
     if(messageDrafts.get(name)===text)messageDrafts.delete(name);
     if(active===name&&t.value===text){t.value="";t.style.height=""}
     sendStates.set(name,{text:tr("Отправлено в ")+agentLabel(sessions.find(s=>s.name===name))+" · "+new Date().toLocaleTimeString(DATE_LOCALE,{hour:"2-digit",minute:"2-digit"}),phase:"success"});
+    // The pictures leave with the text, not a list request later.
+    renderAttachments();renderSendState();
     await load();
     if(active===name)$("pre").scrollTop=$("pre").scrollHeight;
   }catch(e){
@@ -1322,14 +1324,18 @@ async function checkInterfaceVersion(){
     const response=await fetch("/api/ui-version",{cache:"no-store",signal:controller.signal});
     if(!response.ok)return;
     const data=await response.json();
-    if(typeof data.revision==="string"&&data.revision!==UI_REVISION&&canAutoRefresh())refreshInterface();
+    if(typeof data.revision!=="string"||data.revision===UI_REVISION)return;
+    if(canAutoRefresh())return refreshInterface();
+    // A page in use is not reloaded under the hands (a terminal, a draft, a dialog); it says that it is old
+    // instead, or its owner goes on looking at last week's interface and at bugs fixed since.
+    $("b_stale").hidden=false;
   }catch(e){/* A temporary disconnect should leave the current interface usable. */}
   finally{clearTimeout(timeout);checkingVersion=false}
 }
 // Manual reloads and iOS page eviction skip the explicit stash paths.
 addEventListener("pagehide",()=>{try{stashDrafts()}catch(e){}});
 setInterval(checkInterfaceVersion,30000);
-checkInterfaceVersion();
+checkInterfaceVersion();setInterval(checkInterfaceVersion,300000);
 
 let loadingMetrics=false;
 async function loadMetrics(){
@@ -1403,7 +1409,7 @@ loadInbox();setInterval(loadInbox,5000);
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)loadInbox()});
 // Last: everything above is declared. What this browser showed before is on screen before the first answer.
 showRemembered();showRememberedDecks();renderTabs();show();renderInteg();
-addEventListener("pagehide",keepScreens);
+addEventListener("pagehide",keepScreens);watchRichPaste();
 // A row that appears above or below the screen (summary, context, a question) makes it shorter: text that
 // was being followed stays followed instead of losing its last lines.
 {

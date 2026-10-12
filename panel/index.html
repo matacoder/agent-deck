@@ -162,6 +162,8 @@ main{flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;backgrou
 .seg button{padding:4px 12px;border-radius:7px;color:var(--mut);font-size:12.5px}
 @media (hover:hover){.seg button:hover{color:var(--fg)}}
 .seg button.on{background:var(--sel);color:var(--fg2)}
+.bar .act.stale{color:var(--acc-text);border:1px solid var(--acc);flex:none}.bar .act.stale[hidden]{display:none}.bar .act.stale .ui-icon{width:14px;height:14px}
+@media (max-width:760px){.bar .act.stale span{display:none}}
 .bar .act{height:30px;padding:0 10px;border-radius:var(--r-sm);color:var(--mut);font-size:12.5px;white-space:nowrap;display:inline-flex;align-items:center;gap:6px}
 @media (hover:hover){.bar .act:hover{background:var(--side2);color:var(--fg)}}
 #menuBadge{position:absolute;top:6px;right:6px;min-width:16px;height:16px;border-radius:8px;background:var(--acc-strong);color:#fff;font-size:10.5px;font-weight:700;display:none;place-items:center;padding:0 4px}
@@ -180,6 +182,10 @@ main{flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;backgrou
 .sk-dot{width:8px;height:8px;border-radius:50%;flex:none}.sk-icon{width:18px;height:18px;flex:none}
 .foot-skeleton,.ver-skeleton,.sk-metric{display:inline-block;height:10px;vertical-align:middle}.foot-skeleton{width:120px}.ver-skeleton{width:44px}.sk-metric{width:3ch}
 #metric_cpu,#metric_ram{display:inline-block;min-width:3ch;text-align:right}
+/* Receives a paste out of sight; it must stay focusable, so it is moved away, not hidden. */
+#paste_catch{position:fixed;left:-9999px;top:0;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none}
+.paste-box{min-height:120px;max-height:40dvh;overflow:auto;margin:10px 0 14px;padding:10px;border:1px dashed var(--bd-strong);border-radius:var(--r-sm);background:var(--bg);font-size:16px;outline:none}
+.paste-box:focus{border-color:var(--acc)}.paste-box img{max-width:100%;height:auto}
 .sk-label{margin-top:6px;color:var(--mut);font:12.5px/1.4 -apple-system,BlinkMacSystemFont,system-ui,sans-serif}
 @keyframes shimmer{from{background-position:100% 0}to{background-position:-100% 0}}
 .term-loading{position:absolute;inset:0;z-index:4;display:flex;align-items:center;justify-content:center;gap:10px;background:var(--bg);color:var(--mut);font-size:13px}
@@ -1163,6 +1169,7 @@ body.resizing iframe{pointer-events:none}
       <div id="title">—</div>
       <span class="bar-tools" id="bar_tools"><button class="iconbtn d-only" id="b_help" onclick="openHelp()" aria-label="Как это работает" title="Как это работает"><svg class="ui-icon"><use href="#i-help"/></svg></button><form class="bar-search" id="search_form" role="search"><svg class="ui-icon"><use href="#i-search"/></svg><input id="search_q" type="search" maxlength="200" placeholder="Поиск в выводе" aria-label="Поиск в выводе" title="Поиск по всему выводу сессии, включая прокрутку" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search"><button type="button" class="m-only search-close" onclick="closeOutputSearch()" aria-label="Закрыть поиск"><svg class="ui-icon"><use href="#i-x"/></svg></button></form><button class="iconbtn m-only" id="b_search" onclick="openOutputSearch()" aria-label="Поиск в выводе" title="Поиск в выводе"><svg class="ui-icon"><use href="#i-search"/></svg></button></span>
       <button class="iconbtn" id="b_actions" onclick="sheet(true)" aria-label="Действия" title="Действия" aria-haspopup="menu"><svg class="ui-icon"><use href="#i-more"/></svg></button>
+      <button class="act stale" id="b_stale" onclick="refreshInterface()" title="Интерфейс обновился, а эта страница открыта от прошлой версии. Черновики сохранятся" hidden><svg class="ui-icon"><use href="#i-refresh"/></svg><span>Обновить страницу</span></button>
       <button class="iconbtn" id="b_settings" onclick="openSettings()" aria-label="Настройки" title="Настройки"><svg class="ui-icon"><use href="#i-gear"/></svg></button>
       <div id="search_pop" class="search-pop" hidden><div id="search_body" role="region" aria-label="Поиск в выводе"></div></div>
       <button class="iconbtn" id="b_project" onclick="toggleProject(PROJECT_TABS)" aria-pressed="false" aria-label="Скрыть или показать панель проекта" title="Скрыть или показать панель проекта"><svg class="ui-icon"><use href="#i-sidebar-right"/></svg></button>
@@ -1277,6 +1284,7 @@ body.resizing iframe{pointer-events:none}
   <div class="sheet-group" id="s_session">
     <button class="agent-only" onclick="sheet(false);restart('new')"><svg class="ui-icon"><use href="#i-chat-plus"/></svg><span>Перезапустить — новый разговор</span></button>
     <button class="agent-only" onclick="sheet(false);restart('continue')"><svg class="ui-icon"><use href="#i-restart"/></svg><span>Перезапустить — продолжить разговор</span></button>
+    <button id="s_paste" onclick="sheet(false);openRichPaste()"><svg class="ui-icon"><use href="#i-image"/></svg><span>Вставить с картинками</span></button>
     <button id="s_later" onclick="sheet(false);openLater()"><svg class="ui-icon"><use href="#i-clock"/></svg><span id="s_later_label">Отправить позже</span></button>
     <button onclick="sheet(false);duplicateSession()"><svg class="ui-icon"><use href="#i-copy"/></svg><span>Дублировать сессию — новый разговор</span></button>
   </div>
@@ -1328,6 +1336,11 @@ body.resizing iframe{pointer-events:none}
   <div class="acts"><button type="button" onclick="$('dlg').close()">Отмена</button><button class="pri" id="n_go">Создать</button></div>
 </form></dialog>
 
+<div id="paste_catch" contenteditable="true" aria-hidden="true" tabindex="-1"></div>
+<dialog id="paste_dlg"><form class="dlg" method="dialog"><div class="dlg-body"><h3>Вставить с картинками</h3>
+<p class="hint">Вставьте сюда скопированные сообщения: текст попадёт в поле сообщения, картинки приложатся.</p>
+<div id="paste_box" class="paste-box" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Вставить с картинками"></div>
+<div class="acts"><button type="submit">Отмена</button></div></div></form></dialog>
 <dialog id="later_dlg"><form class="dlg" onsubmit="event.preventDefault();saveLater()"><div class="dlg-body"><h3 id="later_title">Отправить позже</h3>
 <textarea id="later_text" rows="3" maxlength="20000" aria-label="Сообщение агенту…" placeholder="Сообщение агенту…" autocapitalize="sentences"></textarea>
 <div class="later-when" role="radiogroup" aria-label="Когда отправить" onchange="syncLaterTime()">
@@ -3259,6 +3272,12 @@ async function loadSessionInfo(){
   // A failed poll keeps what is shown. A computer without this version has had nothing to show since the key changed.
   catch(e){if(e.message===STALE)return;data=sessionInfo.data}
   if(seq!==sessionInfo.seq)return;
+  // One answer without a conversation after ones with it is a hiccup far more often than a change (the id is
+  // read from tmux at that moment): the line under the field stays until a second answer says the same.
+  if(data&&!data.supported&&sessionInfo.data?.supported&&!sessionInfo.doubt){
+    sessionInfo.doubt=true;if(!document.hidden)sessionInfo.timer=setTimeout(loadSessionInfo,5000);return;
+  }
+  sessionInfo.doubt=false;
   sessionInfo.data=data;keepAnswer(sessionInfoKnown,key,data);renderSessionInfo();
   // A summary being written is asked for again soon; otherwise the conversation changes slowly.
   if(!document.hidden)sessionInfo.timer=setTimeout(loadSessionInfo,data?.summary?.updating?8000:SESSION_INFO_POLL);
@@ -4761,7 +4780,10 @@ async function attachPastedPictures(sources,ready){
 }
 // A paste anywhere on the page or in the live terminal attaches the picture, not only in the message field.
 function onFilePaste(e){
-  const data=e.clipboardData,files=pastedFiles(data),sources=files.length?[]:pastedPictures(data);
+  // A paste caught for its pictures (richpaste.js) reads them from what the browser inserts; only bare files
+  // are handled here, so nothing is attached twice.
+  const caught=Boolean(e.target?.closest?.("#paste_catch,#paste_box"));
+  const data=e.clipboardData,files=pastedFiles(data),sources=files.length||caught?[]:pastedPictures(data);
   if(!files.length&&!sources.length)return;
   const target=dropTarget(cur(),dropBlocked());
   if(sources.length){
@@ -5057,6 +5079,77 @@ function showRememberedDecks(){
 }
 
 if(typeof module!=="undefined")module.exports={shown,keepShown,sessionsToKeep,keptSessions,decksToKeep,forgetShown,screenToKeep,knownAnswer,keepAnswer,terminalsToWarm};
+// Pictures inside copied messages (Telegram and other apps on a Mac or an iPhone). Safari gives a text field
+// only the text of such a copy — no files, no <img> — but pastes the pictures too into an editable block, the
+// way Notes receives them. So a paste meant for the message field is caught by such a block: the text goes on
+// into the field as always, the pictures found in the block are attached. Bundled before app.js.
+const rich={timer:null};
+// Sources of the pictures a paste left in a block, each once. Pure for tests.
+function pastedImageSources(box){
+  const sources=Array.from(box.querySelectorAll("img[src]"),img=>img.getAttribute("src"));
+  return [...new Set(sources.filter(src=>/^(data:image\/|https?:\/\/|blob:)/i.test(src)))];
+}
+// ⌘V or Ctrl+V as typed, on any keyboard layout; with Shift or Alt it is "paste as plain text". Pure for tests.
+function isPasteKey(event){
+  return Boolean((event.metaKey||event.ctrlKey)&&!(event.metaKey&&event.ctrlKey)&&!event.shiftKey&&!event.altKey&&event.code==="KeyV");
+}
+// Copied messages name their pictures in the text where a text field receives none. Pure for tests.
+function mentionsPictures(text){return /\[ ?(Photo|Фото|Album|Альбом|Picture|Image)[^\]\n]{0,40}\]/i.test(text||"")}
+function insertIntoMessage(text){
+  const field=$("msg");field.focus({preventScroll:true});
+  if(!text)return;
+  let done=false;
+  // Typed, not assigned: undo keeps working and the field grows as with any input.
+  try{done=document.execCommand("insertText",false,text)}catch(e){}
+  if(!done){field.setRangeText(text,field.selectionStart,field.selectionEnd,"end");field.dispatchEvent(new Event("input",{bubbles:true}))}
+}
+// The paste shortcut in the message field: the paste lands in the hidden block instead. If none arrives (an
+// empty clipboard), the field simply gets the keyboard back.
+function catchPaste(event){
+  if(!isPasteKey(event)||isTouch()||!active)return;
+  const box=$("paste_catch");box.replaceChildren();box.focus({preventScroll:true});
+  clearTimeout(rich.timer);rich.timer=setTimeout(()=>{if(document.activeElement===box)$("msg").focus({preventScroll:true})},400);
+}
+// Runs for the hidden block and for the visible one of the dialog. The browser's own paste follows this
+// event at once, so the block is read right after it.
+function takeRichPaste(event){
+  const box=event.currentTarget,data=event.clipboardData;
+  clearTimeout(rich.timer);
+  if(event.defaultPrevented)return void $("msg").focus({preventScroll:true});  // Files alone: already attached.
+  const text=data?.getData?data.getData("text/plain"):"";
+  const table=/<table/i.test(data?.getData?data.getData("text/html"):"");
+  const files=table?[]:Array.from(data?.files||[]).filter(file=>file.type.startsWith("image/"));
+  setTimeout(()=>{
+    const sources=pastedImageSources(box);box.replaceChildren();
+    if($("paste_dlg").open)$("paste_dlg").close();
+    insertIntoMessage(text);
+    if(!sources.length&&!files.length)return;
+    const target=dropTarget(cur(),dropBlocked());
+    if(target.ok)attachPastedPictures(files.length?[]:sources,files);else toast(tr(target.text));
+  },0);
+}
+// A paste by the menu (a phone, a right click) goes straight into the field and brings no pictures: when its
+// text says there were some, the dialog with an editable block is one tap away.
+function offerRichPaste(event){
+  const data=event.clipboardData;
+  if(event.target!==$("msg")||!data?.getData||Array.from(data.files||[]).length)return;
+  if(mentionsPictures(data.getData("text/plain")))toast(tr("Картинки из этой вставки не попали в поле"),true,{label:tr("Вставить с картинками"),run:openRichPaste});
+}
+function openRichPaste(){
+  if(!active)return;
+  $("paste_box").replaceChildren();
+  if(!$("paste_dlg").open)$("paste_dlg").showModal();
+  if(!isMobile()&&!isTouch())$("paste_box").focus({preventScroll:true});
+}
+function watchRichPaste(){
+  $("msg").addEventListener("keydown",catchPaste);
+  $("msg").addEventListener("paste",offerRichPaste);
+  for(const id of ["paste_catch","paste_box"])$(id).addEventListener("paste",takeRichPaste);
+  // Nothing is ever typed there: a stray key goes back to the field.
+  $("paste_catch").addEventListener("input",()=>setTimeout(()=>{$("paste_catch").replaceChildren()},50));
+}
+
+if(typeof module!=="undefined")module.exports={pastedImageSources,isPasteKey,mentionsPictures};
 const I18N=__PANEL_I18N__;
 const DATE_LOCALE=(()=>{try{return Intl.getCanonicalLocales(I18N.language)[0]}catch(e){return "en"}})();
 const $=id=>document.getElementById(id);
@@ -5752,6 +5845,8 @@ async function send(){
     if(messageDrafts.get(name)===text)messageDrafts.delete(name);
     if(active===name&&t.value===text){t.value="";t.style.height=""}
     sendStates.set(name,{text:tr("Отправлено в ")+agentLabel(sessions.find(s=>s.name===name))+" · "+new Date().toLocaleTimeString(DATE_LOCALE,{hour:"2-digit",minute:"2-digit"}),phase:"success"});
+    // The pictures leave with the text, not a list request later.
+    renderAttachments();renderSendState();
     await load();
     if(active===name)$("pre").scrollTop=$("pre").scrollHeight;
   }catch(e){
@@ -6381,14 +6476,18 @@ async function checkInterfaceVersion(){
     const response=await fetch("/api/ui-version",{cache:"no-store",signal:controller.signal});
     if(!response.ok)return;
     const data=await response.json();
-    if(typeof data.revision==="string"&&data.revision!==UI_REVISION&&canAutoRefresh())refreshInterface();
+    if(typeof data.revision!=="string"||data.revision===UI_REVISION)return;
+    if(canAutoRefresh())return refreshInterface();
+    // A page in use is not reloaded under the hands (a terminal, a draft, a dialog); it says that it is old
+    // instead, or its owner goes on looking at last week's interface and at bugs fixed since.
+    $("b_stale").hidden=false;
   }catch(e){/* A temporary disconnect should leave the current interface usable. */}
   finally{clearTimeout(timeout);checkingVersion=false}
 }
 // Manual reloads and iOS page eviction skip the explicit stash paths.
 addEventListener("pagehide",()=>{try{stashDrafts()}catch(e){}});
 setInterval(checkInterfaceVersion,30000);
-checkInterfaceVersion();
+checkInterfaceVersion();setInterval(checkInterfaceVersion,300000);
 
 let loadingMetrics=false;
 async function loadMetrics(){
@@ -6462,7 +6561,7 @@ loadInbox();setInterval(loadInbox,5000);
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)loadInbox()});
 // Last: everything above is declared. What this browser showed before is on screen before the first answer.
 showRemembered();showRememberedDecks();renderTabs();show();renderInteg();
-addEventListener("pagehide",keepScreens);
+addEventListener("pagehide",keepScreens);watchRichPaste();
 // A row that appears above or below the screen (summary, context, a question) makes it shorter: text that
 // was being followed stays followed instead of losing its last lines.
 {

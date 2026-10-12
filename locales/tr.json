@@ -985,6 +985,11 @@
     "Открыть этот компьютер напрямую": "Open this computer directly",
     "Открыть этот компьютер напрямую, без шлюза: нужен доступ к его адресу в Tailscale": "Open this computer directly, without the gateway: its Tailscale address must be reachable from here",
     "Это не этот компьютер": "This is not this computer",
-    "Браузер открыт на этом компьютере": "The browser runs on this computer"
+    "Браузер открыт на этом компьютере": "The browser runs on this computer",
+    "Обновить страницу": "Reload the page",
+    "Интерфейс обновился, а эта страница открыта от прошлой версии. Черновики сохранятся": "The interface was updated and this page is still the previous version. Drafts are kept",
+    "Вставить с картинками": "Paste with pictures",
+    "Вставьте сюда скопированные сообщения: текст попадёт в поле сообщения, картинки приложатся.": "Paste the copied messages here: the text goes into the message field and the pictures are attached.",
+    "Картинки из этой вставки не попали в поле": "The pictures of this paste did not reach the field"
   }
 }

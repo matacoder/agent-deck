@@ -474,7 +474,7 @@ test('the actions menu keeps restarts, duplicate, rename and close; duplicate ke
   const doc=window.document;
   window.eval('sheet(true)');
   const labels=[...doc.querySelectorAll('#sheet .panel button')].filter(b=>b.style.display!=='none'&&!b.closest('[hidden]')&&!b.classList.contains('sheet-cancel')).map(b=>b.textContent);
-  expect(labels).toEqual(['Перезапустить — новый разговор','Перезапустить — продолжить разговор','Отправить позже','Дублировать сессию — новый разговор','Переименовать сессию','Закрыть сессию']);
+  expect(labels).toEqual(['Перезапустить — новый разговор','Перезапустить — продолжить разговор','Вставить с картинками','Отправить позже','Дублировать сессию — новый разговор','Переименовать сессию','Закрыть сессию']);
   // Nothing waits: the button by the field stays out of the way, Settings is a gear in the top row on any screen.
   expect(doc.getElementById('b_later').hidden).toBe(true);
   expect(doc.getElementById('b_settings').classList.contains('d-only')).toBe(false);

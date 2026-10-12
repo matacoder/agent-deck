@@ -2,6 +2,13 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.51.0 — 2026-10-12
+
+- **Pictures of messages copied from Telegram (and other apps) are attached.** Safari gives a text field only the text of such a copy — no files, no pictures — but pastes the pictures too into an editable block, as Notes receives them. A paste by ⌘V / Ctrl+V into the message field is now caught by such a block out of sight: the text goes into the field as before (undo included), the pictures are attached. A paste by the menu (a phone, a right click) cannot be caught that way: when its text names a picture, a notice offers **Paste with pictures**, a dialog with an editable block, also in the **⋯** menu.
+- **A page left open says when it is outdated.** The interface reloads itself for a new version only when nothing is in use, which on a desktop with a terminal open was never: the page stayed on an old version for days and went on showing what later versions had fixed. A **Reload the page** button now appears in the top bar when the interface was updated and the page could not reload itself; drafts and attachments are kept. The check also runs every five minutes, not only when the tab comes back.
+- **The line under the message field no longer disappears by itself.** One answer saying the session has no conversation hid the context, age and restart buttons until the next check half a minute later; the line now goes only when a second answer says the same.
+- **A sent picture leaves the field together with the text**, not a moment later when the session list comes back.
+
 ## 1.50.0 — 2026-10-12
 
 - **The message field no longer loses the keyboard in the middle of typing.** Every refresh of the session view put the whole message area back where it already was, which takes it out of the page for a moment, and the field lost focus: right after the page opened (now that it opens with the remembered list, typing starts before the first answer), after a session switch, whenever the view was redrawn. It is moved only when it really changes place, and then keeps focus and caret.

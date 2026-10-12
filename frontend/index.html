@@ -75,6 +75,7 @@ __PANEL_STYLE__</style></head><body>
       <div id="title">—</div>
       <span class="bar-tools" id="bar_tools"><button class="iconbtn d-only" id="b_help" onclick="openHelp()" aria-label="Как это работает" title="Как это работает"><svg class="ui-icon"><use href="#i-help"/></svg></button><form class="bar-search" id="search_form" role="search"><svg class="ui-icon"><use href="#i-search"/></svg><input id="search_q" type="search" maxlength="200" placeholder="Поиск в выводе" aria-label="Поиск в выводе" title="Поиск по всему выводу сессии, включая прокрутку" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search"><button type="button" class="m-only search-close" onclick="closeOutputSearch()" aria-label="Закрыть поиск"><svg class="ui-icon"><use href="#i-x"/></svg></button></form><button class="iconbtn m-only" id="b_search" onclick="openOutputSearch()" aria-label="Поиск в выводе" title="Поиск в выводе"><svg class="ui-icon"><use href="#i-search"/></svg></button></span>
       <button class="iconbtn" id="b_actions" onclick="sheet(true)" aria-label="Действия" title="Действия" aria-haspopup="menu"><svg class="ui-icon"><use href="#i-more"/></svg></button>
+      <button class="act stale" id="b_stale" onclick="refreshInterface()" title="Интерфейс обновился, а эта страница открыта от прошлой версии. Черновики сохранятся" hidden><svg class="ui-icon"><use href="#i-refresh"/></svg><span>Обновить страницу</span></button>
       <button class="iconbtn" id="b_settings" onclick="openSettings()" aria-label="Настройки" title="Настройки"><svg class="ui-icon"><use href="#i-gear"/></svg></button>
       <div id="search_pop" class="search-pop" hidden><div id="search_body" role="region" aria-label="Поиск в выводе"></div></div>
       <button class="iconbtn" id="b_project" onclick="toggleProject(PROJECT_TABS)" aria-pressed="false" aria-label="Скрыть или показать панель проекта" title="Скрыть или показать панель проекта"><svg class="ui-icon"><use href="#i-sidebar-right"/></svg></button>
@@ -189,6 +190,7 @@ __PANEL_STYLE__</style></head><body>
   <div class="sheet-group" id="s_session">
     <button class="agent-only" onclick="sheet(false);restart('new')"><svg class="ui-icon"><use href="#i-chat-plus"/></svg><span>Перезапустить — новый разговор</span></button>
     <button class="agent-only" onclick="sheet(false);restart('continue')"><svg class="ui-icon"><use href="#i-restart"/></svg><span>Перезапустить — продолжить разговор</span></button>
+    <button id="s_paste" onclick="sheet(false);openRichPaste()"><svg class="ui-icon"><use href="#i-image"/></svg><span>Вставить с картинками</span></button>
     <button id="s_later" onclick="sheet(false);openLater()"><svg class="ui-icon"><use href="#i-clock"/></svg><span id="s_later_label">Отправить позже</span></button>
     <button onclick="sheet(false);duplicateSession()"><svg class="ui-icon"><use href="#i-copy"/></svg><span>Дублировать сессию — новый разговор</span></button>
   </div>
@@ -240,6 +242,11 @@ __PANEL_STYLE__</style></head><body>
   <div class="acts"><button type="button" onclick="$('dlg').close()">Отмена</button><button class="pri" id="n_go">Создать</button></div>
 </form></dialog>
 
+<div id="paste_catch" contenteditable="true" aria-hidden="true" tabindex="-1"></div>
+<dialog id="paste_dlg"><form class="dlg" method="dialog"><div class="dlg-body"><h3>Вставить с картинками</h3>
+<p class="hint">Вставьте сюда скопированные сообщения: текст попадёт в поле сообщения, картинки приложатся.</p>
+<div id="paste_box" class="paste-box" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Вставить с картинками"></div>
+<div class="acts"><button type="submit">Отмена</button></div></div></form></dialog>
 <dialog id="later_dlg"><form class="dlg" onsubmit="event.preventDefault();saveLater()"><div class="dlg-body"><h3 id="later_title">Отправить позже</h3>
 <textarea id="later_text" rows="3" maxlength="20000" aria-label="Сообщение агенту…" placeholder="Сообщение агенту…" autocapitalize="sentences"></textarea>
 <div class="later-when" role="radiogroup" aria-label="Когда отправить" onchange="syncLaterTime()">

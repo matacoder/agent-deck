@@ -111,7 +111,7 @@ The **?** next to the search field in the session bar shows the same picture ins
 
 **Getting things to the agent**
 
-- Drop files onto the window or paste a message copied from a chat: the text goes into the field and its pictures are attached. A picture its site does not let a page read is fetched by the panel itself — only from a public https address, never from your network.
+- Drop files onto the window or paste messages copied from a chat (Telegram included): the text goes into the field and its pictures are attached. After a paste by the menu on a phone, **Paste with pictures** in **⋯** takes them. A picture its site does not let a page read is fetched by the panel itself — only from a public https address, never from your network.
 - **Quick prompts:** your own messages and the agent's `/compact` and `/clear` as one-tap buttons.
 - **Send later:** hold a message until a set time, until the agent is free, or until the limit resets; a session can also continue by itself after a limit.
 - Attachments up to 200 MB with upload progress.
