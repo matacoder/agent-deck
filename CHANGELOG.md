@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.43.2 — 2026-10-12
+
+- **The bottom line changes after a restart.** It was drawn only when a session was opened, so a session moved to another computer's Docker kept showing the old name until the page was reloaded.
+
 ## 1.43.1 — 2026-10-11
 
 - **One "…" on a phone instead of two.** Where the keys row has its own three-dots button, it now opens the agent commands (`/compact`, `/clear`, `/new`) together with the other keys; the second button is gone, and so is the row that held only the pencil (it appears with the commands).

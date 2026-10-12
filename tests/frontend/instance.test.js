@@ -60,6 +60,22 @@ function routesFor(state){
   };
 }
 
+test('the bar follows the Docker of the open session when the list is refreshed, not only when it is opened',async()=>{
+  let docker='';
+  const state={local:()=>({sessions:[session('alpha',{agent:'claude',docker})]})};
+  const machines=[{id:DECK,name:'Mac Studio',address:'100.64.0.2',host:true,state:'ok',docker:{version:'28',cpus:8,memory:2**34}}];
+  const window=boot({...routesFor(state),'/api/containers':()=>({host:false,docker:null,can_start:false,use:DECK,machines})});
+  try{
+  await settle();await settle();
+  const name=()=>window.document.getElementById('session_containers_name').textContent;
+  // Started before a computer was chosen: the default is not what this agent has.
+  expect(name()).toBe('gateway');
+  docker=DECK;  // Restarted: the agent now has the other computer's Docker.
+  await window.load();await settle();
+  expect(name()).toBe('Mac Studio');
+  }finally{window.close()}
+});
+
 test('switching computers keeps each draft on its own machine without reloading',async()=>{
   const state={local:()=>({sessions:[session('alpha')]})};
   const window=boot(routesFor(state));
