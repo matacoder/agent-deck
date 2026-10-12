@@ -171,6 +171,10 @@ main{flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;backgrou
 .screen-skeleton{display:grid;gap:12px;padding:16px 4px}
 .integ-skeleton{display:block;padding:9px 6px 5px}.integ-skeleton .sk-line:last-child{display:none}
 .sk-line{display:block;height:12px;border-radius:6px;background:linear-gradient(90deg,var(--side2) 0%,var(--sel) 50%,var(--side2) 100%);background-size:200% 100%;animation:shimmer 1.2s ease-in-out infinite}
+.tab-skeleton{pointer-events:none}.tab-skeleton .t{display:grid;gap:7px;padding:4px 0}.tab-skeleton .t .sk-line:first-child{width:62%}.tab-skeleton .t .sk-line:last-child{width:38%;height:9px}
+.sk-dot{width:8px;height:8px;border-radius:50%;flex:none}.sk-icon{width:18px;height:18px;flex:none}
+.foot-skeleton,.ver-skeleton,.sk-metric{display:inline-block;height:10px;vertical-align:middle}.foot-skeleton{width:120px}.ver-skeleton{width:44px}.sk-metric{width:3ch}
+#metric_cpu,#metric_ram{display:inline-block;min-width:3ch;text-align:right}
 .sk-label{margin-top:6px;color:var(--mut);font:12.5px/1.4 -apple-system,BlinkMacSystemFont,system-ui,sans-serif}
 @keyframes shimmer{from{background-position:100% 0}to{background-position:-100% 0}}
 .term-loading{position:absolute;inset:0;z-index:4;display:flex;align-items:center;justify-content:center;gap:10px;background:var(--bg);color:var(--mut);font-size:13px}
@@ -1197,8 +1201,8 @@ body.resizing iframe{pointer-events:none}
           <div class="composer-status">
           <div id="send_state" class="send-state" role="status" aria-live="polite">Enter ↵ · ↑ отправить</div>
           <div id="server_metrics" class="server-metrics" role="img" aria-label="CPU: нет данных; RAM: нет данных" title="CPU: нет данных; RAM: нет данных">
-            <span class="server-metric" aria-hidden="true"><svg class="ui-icon"><use href="#i-cpu"/></svg><span id="metric_cpu">—</span></span>
-            <span class="server-metric" aria-hidden="true"><svg class="ui-icon"><use href="#i-ram"/></svg><span id="metric_ram">—</span></span>
+            <span class="server-metric" aria-hidden="true"><svg class="ui-icon"><use href="#i-cpu"/></svg><span id="metric_cpu"><span class="sk-line sk-metric"></span></span></span>
+            <span class="server-metric" aria-hidden="true"><svg class="ui-icon"><use href="#i-ram"/></svg><span id="metric_ram"><span class="sk-line sk-metric"></span></span></span>
           </div>
           </div>
         </div>
@@ -2877,15 +2881,19 @@ function startHistory(tab){
   renderHistory();loadChanges();loadHistoryPage();if(tab==="groups")loadGroups();
 }
 async function loadChanges(){
-  const seq=++hist.changesSeq;hist.changes=null;hist.changesError="";
+  // What this repository showed last time stays up while it is read again; another session never shows through.
+  const seq=++hist.changesSeq,key=sessionInfoKey()+"|"+hist.tree,before=hist.changesFor===key?hist.changes:knownAnswer(changesKnown,key);
+  hist.changes=before;hist.changesFor=key;hist.changesError="";
   if(hist.tab==="changes"&&!hist.view)renderHistory();
   try{
     const data=await api(gitPath("changes",{tree:hist.tree}),null,false,{timeout:60000});
     // A clean tree shows the last commit instead, so the tab is never empty right after a commit.
     if(!data.files.length&&data.head&&seq===hist.changesSeq)data.last=await lastCommit(data.head);
-    if(seq!==hist.changesSeq)return;hist.changes=data;
+    if(seq!==hist.changesSeq)return;hist.changes=data;keepAnswer(changesKnown,key,data);
     // The agent moved to another worktree: the commit list follows it.
     if(data.tree&&hist.log?.tree&&hist.log.tree!==data.tree){freshList();loadHistoryPage()}
+    // The same answer leaves the diff alone: no flicker, and a comment being typed stays.
+    if(before&&JSON.stringify(before)===JSON.stringify(data))return;
   }catch(e){if(seq!==hist.changesSeq)return;hist.changesError=e.message===STALE?"":e.message||tr("Не удалось загрузить")}
   if(hist.tab==="changes"&&!hist.view)renderHistory();
 }
@@ -2901,7 +2909,7 @@ async function pollChanges(){
     const data=await api(gitPath("changes",{tree:hist.tree}),null,false,{timeout:60000});
     if(!data.files.length&&data.head)data.last=data.head===old.head&&old.last&&!old.last.error?old.last:await lastCommit(data.head);
     if(seq!==hist.changesSeq||hist.changes!==old||JSON.stringify(data)===JSON.stringify(old)||typing())return;
-    hist.changes=data;
+    hist.changes=data;keepAnswer(changesKnown,hist.changesFor,data);
     if(data.tree&&hist.log?.tree&&hist.log.tree!==data.tree){freshList();loadHistoryPage()}
     if(project.tab==="changes"&&!hist.view)renderHistory();
   }catch(e){}
@@ -3204,14 +3212,15 @@ function watchSessionInfo(){if(sessionInfo.session!==sessionInfoKey())loadSessio
 async function loadSessionInfo(){
   clearTimeout(sessionInfo.timer);
   const key=sessionInfoKey(),seq=++sessionInfo.seq;
-  if(sessionInfo.session!==key){sessionInfo.session=key;sessionInfo.data=null;renderSessionInfo()}
+  // A session seen before shows what was known about it at once; the answer below replaces it.
+  if(sessionInfo.session!==key){sessionInfo.session=key;sessionInfo.data=knownAnswer(sessionInfoKnown,key);renderSessionInfo()}
   if(!key)return;
   let data;
   try{data=await api("/api/session_info?name="+encodeURIComponent(active))}
   // A failed poll keeps what is shown. A computer without this version has had nothing to show since the key changed.
   catch(e){if(e.message===STALE)return;data=sessionInfo.data}
   if(seq!==sessionInfo.seq)return;
-  sessionInfo.data=data;renderSessionInfo();
+  sessionInfo.data=data;keepAnswer(sessionInfoKnown,key,data);renderSessionInfo();
   // A summary being written is asked for again soon; otherwise the conversation changes slowly.
   if(!document.hidden)sessionInfo.timer=setTimeout(loadSessionInfo,data?.summary?.updating?8000:SESSION_INFO_POLL);
 }
@@ -3282,14 +3291,15 @@ function watchLater(){
 async function loadLater(){
   clearTimeout(later.timer);
   const key=laterKey(),seq=++later.seq;
-  if(later.session!==key){later.session=key;later.data=null;renderLater()}
+  // The count by the field is shown from what was known; the dialog always reads the list again before it opens.
+  if(later.session!==key){later.session=key;later.data=knownAnswer(laterKnown,key);renderLater()}
   if(!key)return;
   let data;
   // A computer without this version has no schedule: the button then explains it instead of failing silently.
   try{data=await api("/api/schedule?name="+encodeURIComponent(active));later.failed=false}
   catch(e){if(e.message===STALE)return;data=later.data;later.failed=true}
   if(seq!==later.seq)return;
-  later.data=data&&Array.isArray(data.prompts)?data:null;renderLater();
+  later.data=data&&Array.isArray(data.prompts)?data:null;keepAnswer(laterKnown,key,later.data);renderLater();
   if(!document.hidden)later.timer=setTimeout(loadLater,LATER_POLL);
 }
 function formatLaterTime(seconds){
@@ -4190,7 +4200,7 @@ function versionState(v){
   return {status:tr("Установлена последняя версия"),tone:"ok"};
 }
 function renderVersion(v){
-  panelVersion=v;const job=v.job||{},state=versionState(v),box=$("ver"),mobile=$("s_update");
+  panelVersion=v;keepShown(deckLocalStorage,selectedDeck,"version",{version:v.version});const job=v.job||{},state=versionState(v),box=$("ver"),mobile=$("s_update");
   panelUpdating=UPDATE_PHASES.has(job.phase);
   box.replaceChildren("v"+v.version);box.title=v.latest?tr("последний релиз: v{0}",[v.latest]):"";
   const blocked=Boolean(state.run===startPanelUpdate&&!v.can_update);
@@ -4273,7 +4283,7 @@ async function refreshLMModels(){
   lmRefreshPending=(async()=>{try{lmData=await refreshModelCatalog(api);if($("settings_dlg").open)renderHub();renderDiscovery();renderSources()}catch(e){if(!e.offline)toast(e.message)}finally{lmRefreshPending=null}})();
   return lmRefreshPending;
 }
-async function loadLM(refresh=true){try{lmData=await api("/api/lmstudio");if($("settings_dlg").open&&refresh)renderHub();renderDiscovery()}catch(e){if(e.message!==STALE)$("lm_progress").textContent=e.message}finally{integReady.lm=true}}
+async function loadLM(refresh=true){try{lmData=await api("/api/lmstudio");keepShown(deckLocalStorage,selectedDeck,"models",(lmData.profiles||[]).map(({activity,...profile})=>profile));if($("settings_dlg").open&&refresh)renderHub();renderDiscovery()}catch(e){if(e.message!==STALE)$("lm_progress").textContent=e.message}finally{integReady.lm=true}}
 function editLM(p={}){
   $("lm_id").value=p.id||"";$("lm_name").value=p.name||"";$("lm_url").value=p.url||"";$("lm_key").value="";$("lm_clear_key").checked=false;
   $("lm_clear_row").hidden=!p.id;
@@ -4668,15 +4678,26 @@ async function isSmallPicture(blob){
 }
 // A site that lets other pages read its pictures, the clipboard's own data, or this page's blob. The
 // address of this panel stays out of the request.
-async function fetchPicture(src,index){
+async function readPicture(src){
   const stop=new AbortController(),timer=setTimeout(()=>stop.abort(),PICTURE_WAIT);
-  let blob;
   try{
     const response=await fetch(src,{credentials:"omit",referrerPolicy:"no-referrer",signal:stop.signal});
     if(!response.ok)throw new Error("HTTP "+response.status);
     if(Number(response.headers.get("Content-Length"))>PICTURE_BYTES)throw new Error("too large");
-    blob=await response.blob();
+    return await response.blob();
   }finally{clearTimeout(timer)}
+}
+// Most sites do not let another page read their pictures. The panel may: it fetches a public https address
+// itself (integrations/pictures.py), always on the gateway, which is the machine this page talks to.
+async function panelPicture(src){
+  const answer=await gatewayApi("/api/fetch_picture",{url:src});
+  const bytes=Uint8Array.from(atob(answer.data),c=>c.charCodeAt(0));
+  return new Blob([bytes],{type:answer.type});
+}
+async function fetchPicture(src,index){
+  let blob;
+  try{blob=await readPicture(src)}
+  catch(e){if(!/^https:/i.test(src))throw e;blob=await panelPicture(src)}
   if(blob.size>PICTURE_BYTES)throw new Error("too large");
   if(!blob.type.startsWith("image/"))throw new Error("not a picture");
   if(await isSmallPicture(blob))return null;
@@ -4805,6 +4826,134 @@ function findHere(network,decks){
 }
 
 if(typeof module!=="undefined")module.exports={hereCandidates,hereName};
+// What the page showed last time, kept in the browser per computer. The next start draws it at once and the
+// fresh answer replaces it in place, so nothing appears late and pushes the rest. Screens of sessions are
+// never kept; sign-out forgets everything. Bundled before app.js.
+const SHOWN="cc.shown.",SHOWN_SESSIONS=200;
+function shown(storage,name){
+  try{const value=JSON.parse(storage.getItem(SHOWN+name)||"null");return value&&typeof value==="object"?value:null}catch(e){return null}
+}
+// Written only when it differs: lists are polled every few seconds and mostly stay the same.
+const shownWritten=new Map();
+function keepShown(storage,scope,name,value){
+  const text=JSON.stringify(value),key=scope+"/"+name;
+  if(shownWritten.get(key)===text)return;
+  shownWritten.set(key,text);
+  try{storage.setItem(SHOWN+name,text)}catch(e){}
+}
+// A list as it is kept: no screen text, and no clock values that would rewrite it on every poll. Pure for tests.
+function sessionsToKeep(list){
+  return (Array.isArray(list)?list:[]).slice(0,SHOWN_SESSIONS).map(({preview,preview_ansi,activity,attached,...rest})=>rest);
+}
+function keptSessions(storage){
+  const list=shown(storage,"sessions");
+  return Array.isArray(list)?list.filter(s=>s&&typeof s.name==="string"):null;
+}
+// The computers of a gateway as the list shows them: nothing that signs in. Pure for tests.
+function decksToKeep(data,network){
+  return {name:network?.name||"",network:{name:network?.name||"",bind_host:network?.bind_host||"",bind_port:network?.bind_port||"",public_url:network?.public_url||"",instance:network?.instance||""},
+    decks:(data?.decks||[]).map(({id,name,url,instance})=>({id,name,url,instance}))};
+}
+function forgetShown(storage){
+  try{for(const key of Object.keys(storage))if(key.includes(SHOWN))storage.removeItem(key)}catch(e){}
+  shownWritten.clear();
+}
+// The last answer per computer and session, in memory: a switch back shows it while the fresh one is on its way.
+const KNOWN_ANSWERS=60,sessionInfoKnown=new Map(),laterKnown=new Map(),changesKnown=new Map();
+function knownAnswer(known,key){return key&&known.has(key)?known.get(key):null}
+function keepAnswer(known,key,value){
+  if(!key)return;
+  known.delete(key);  // Re-inserted last, so the oldest entry is the one that goes.
+  if(value)known.set(key,value);
+  if(known.size>KNOWN_ANSWERS)known.delete(known.keys().next().value);
+}
+// Rows that stand in for a list still on its way.
+function skeletonRows(count,build){return Array.from({length:count},(_,index)=>build(index))}
+
+function sessionSkeleton(){
+  return el("div","tab tab-skeleton",el("span","sk-line sk-dot"),el("span","sk-line sk-icon"),el("div","t",el("span","sk-line"),el("span","sk-line")));
+}
+function integRow(){return el("div","local-usage compact-local integ-skeleton",el("span","sk-line"),el("span","sk-line"))}
+function pendingMetrics(){for(const id of ["metric_cpu","metric_ram"])$(id).replaceChildren(el("span","sk-line sk-metric"))}
+// Screens live in memory, and for a reload in this tab's own storage: gone with the tab, never on disk for long.
+const SCREENS=12,SCREEN_CHARS=60000;
+// The end of a screen as it is kept: the page draws only its last lines anyway. Pure for tests.
+function screenToKeep(screen){
+  const text=screen?.preview_ansi??screen?.preview??"";
+  if(typeof text!=="string")return null;
+  const cut=text.length>SCREEN_CHARS?text.indexOf("\n",text.length-SCREEN_CHARS)+1:0;
+  return {preview_ansi:text.slice(cut),model:screen.model};
+}
+function keepScreens(){
+  const kept=[...previewCache].slice(-SCREENS).map(([name,screen])=>[name,screenToKeep(screen)]).filter(entry=>entry[1]);
+  try{deckSessionStorage.setItem(SHOWN+"screens",JSON.stringify(kept))}catch(e){try{deckSessionStorage.removeItem(SHOWN+"screens")}catch(e){}}
+  // Summaries and context sizes go the same way: their keys already name the computer.
+  try{sessionStore.setItem(SHOWN+"info",JSON.stringify([...sessionInfoKnown].slice(-SCREENS)))}catch(e){}
+}
+function restoreScreens(){
+  const kept=shown(deckSessionStorage,"screens");
+  for(const entry of Array.isArray(kept)?kept:[]){
+    if(Array.isArray(entry)&&typeof entry[0]==="string"&&entry[1]&&typeof entry[1]==="object"&&!previewCache.has(entry[0]))previewCache.set(entry[0],entry[1]);
+  }
+  const info=shown(sessionStore,"info");
+  for(const entry of Array.isArray(info)?info:[]){
+    if(Array.isArray(entry)&&typeof entry[0]==="string"&&entry[1]&&typeof entry[1]==="object"&&!sessionInfoKnown.has(entry[0]))sessionInfoKnown.set(entry[0],entry[1]);
+  }
+}
+// The screens of sessions not opened yet are asked for quietly, one at a time, most recent first: a switch
+// then shows text at once and the fresh screen replaces it.
+const WARM_SCREENS=8;let warmingScreens=false;
+async function warmScreens(){
+  if(warmingScreens||document.hidden)return;
+  warmingScreens=true;const epoch=deckEpoch;
+  try{
+    const rest=sessions.filter(s=>s.name!==active&&!previewCache.has(s.name)).sort((a,b)=>Number(b.activity)-Number(a.activity)).slice(0,WARM_SCREENS);
+    for(const s of rest){
+      if(epoch!==deckEpoch||document.hidden)return;
+      const got=(await api("/api/sessions?preview="+encodeURIComponent(s.name))).sessions?.find(x=>x.name===s.name);
+      if(epoch===deckEpoch&&got&&(got.preview!==undefined||got.preview_ansi!==undefined))previewCache.set(s.name,{preview:got.preview,preview_ansi:got.preview_ansi,model:got.model});
+    }
+  }catch(e){/* The next list tries again. */}
+  finally{warmingScreens=false}
+}
+// A switch made while a list request is on its way would wait for it and then for its own: the new session's
+// screen is asked for at once instead.
+async function screenNow(name){
+  if(!loadingSessions||previewCache.has(name))return;
+  const epoch=deckEpoch;
+  try{
+    const got=(await api("/api/sessions?preview="+encodeURIComponent(name))).sessions?.find(x=>x.name===name);
+    if(epoch!==deckEpoch||!got||(got.preview===undefined&&got.preview_ansi===undefined))return;
+    previewCache.set(name,{preview:got.preview,preview_ansi:got.preview_ansi,model:got.model});
+    const s=cur();
+    if(active===name&&s&&s.preview===undefined&&s.preview_ansi===undefined){Object.assign(s,previewCache.get(name));if(curMode()==="screen")updateScreen(s,true)}
+  }catch(e){/* The list request brings it. */}
+}
+// At start and on a computer switch, before the first answer of that computer.
+function showRemembered(){
+  if(!sessions.length){const kept=keptSessions(deckLocalStorage);if(kept)sessions=kept}
+  restoreScreens();
+  for(const s of sessions)Object.assign(s,previewCache.get(s.name)||{});
+  usageData=shown(deckLocalStorage,"usage")||{};
+  const models=shown(deckLocalStorage,"models");
+  if(Array.isArray(models)&&!integReady.lm)lmData={profiles:models,discovery:{}};
+  ghLogin=shown(deckLocalStorage,"github")?.login||null;
+  const version=shown(deckLocalStorage,"version")?.version;
+  $("ver").replaceChildren(typeof version==="string"?"v"+version:el("span","sk-line ver-skeleton"));
+}
+// The switcher and the other computers' lists, so the session list does not move down when they arrive.
+function showRememberedDecks(){
+  const kept=shown(localStore,"decks");
+  if(!kept||!Array.isArray(kept.decks))return;
+  deckDirectory={decks:kept.decks,name:kept.name||"",network:kept.network||{}};
+  populateDeckSelector($("deck_select"),kept.decks,selectedDeck,kept.name||tr("Этот компьютер"));
+  $("deck_switch").hidden=!kept.decks.length&&!selectedDeck;
+  otherDecks=[{id:"",name:kept.name||tr("Этот компьютер")},...kept.decks].filter(d=>d.id!==selectedDeck)
+    .map(d=>({id:d.id,name:d.name,sessions:keptSessions(instanceStorage(localStore,d.id))})).filter(d=>d.sessions);
+  loadOtherDecks();
+}
+
+if(typeof module!=="undefined")module.exports={shown,keepShown,sessionsToKeep,keptSessions,decksToKeep,forgetShown,screenToKeep,knownAnswer,keepAnswer};
 const I18N=__PANEL_I18N__;
 const DATE_LOCALE=(()=>{try{return Intl.getCanonicalLocales(I18N.language)[0]}catch(e){return "en"}})();
 const $=id=>document.getElementById(id);
@@ -4852,6 +5001,23 @@ const frames=new Map(),wasBusy=new Map(),attention=new Set();
 function editableFocused(){
   const a=document.activeElement;
   return Boolean(a&&(a.isContentEditable||/^(INPUT|TEXTAREA|SELECT|IFRAME)$/.test(a.tagName)));
+}
+// A field of the page itself, not a terminal: what is typed there must keep going there.
+function typingOutside(){
+  const a=document.activeElement;
+  return Boolean(a&&(a.isContentEditable||/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)));
+}
+// ttyd focuses its terminal every time its connection opens, which may be seconds after the frame appeared
+// and again after each reconnect. Its terminal is wrapped the moment it is created, before that first call.
+function keepPageFocus(w){
+  const wrap=t=>{
+    if(!t||t._ccFocus||typeof t.focus!=="function")return t;
+    const focus=t.focus.bind(t);t._ccFocus=true;t.focus=(...args)=>{if(!typingOutside())focus(...args)};
+    return t;
+  };
+  if(w.term)return void wrap(w.term);
+  let term;
+  Object.defineProperty(w,"term",{configurable:true,enumerable:true,get:()=>term,set:value=>{term=wrap(value)}});
 }
 function fitViewport(){
   const vv=window.visualViewport;if(!vv)return;
@@ -5093,6 +5259,7 @@ function renderCurrentSessions(box,list){
     t.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();select(s.name)}};
     box.append(t);
   }
+  if(!sessions.length&&!load.done){box.append(...skeletonRows(4,sessionSkeleton));return}
   if(!sessions.length){
     const start=el("button","empty-new",svgIcon("plus"),el("span","",tr("Новая сессия")));start.type="button";start.onclick=openNew;
     box.append(el("div","empty-list",el("span","",tr("Сессий пока нет")),start));
@@ -5104,7 +5271,8 @@ function finishTabs(view,box,focused){
     if(focused)view.querySelector(focused)?.focus({preventScroll:true});
   }
   const busy=sessions.filter(s=>state(s)==="busy").length;
-  $("foot").textContent=tr("{0} сессий · {1} работают",[sessions.length,busy])+(attention.size?tr(" · {0} готово",[attention.size]):"");
+  if(!sessions.length&&!load.done)$("foot").replaceChildren(el("span","sk-line foot-skeleton"));
+  else $("foot").textContent=tr("{0} сессий · {1} работают",[sessions.length,busy])+(attention.size?tr(" · {0} готово",[attention.size]):"");
   const ready=renderInboxBadge();
   $("menuBadge").textContent=ready;$("menuBadge").classList.toggle("on",ready>0);
   document.title=(ready?`(${ready}) `:"")+"DeckAway";
@@ -5130,7 +5298,7 @@ function frameFor(name){
     f=document.createElement("iframe");f.src=activePath("/t/?arg="+encodeURIComponent("=cc-"+name));
     // Only the overlay reacts: a full show() would scroll the Screen view or move focus into the terminal.
     f.dataset.loading="1";f.addEventListener("load",()=>{delete f.dataset.loading;if(frames.get(active)===f&&curMode()==="term")$("term_loading").hidden=true},{once:true});
-    f.onload=()=>{try{f.contentWindow.addEventListener("keydown",hotkeys,true);watchFileDrops(f.contentWindow);hookClipboard(f.contentWindow);darkScrollbars(f.contentDocument);attachDrawerSwipe(f.contentDocument,drawerSwipe);attachDrawerSwipe(f.contentDocument,projectSwipe)}catch(e){}};
+    f.onload=()=>{try{keepPageFocus(f.contentWindow);f.contentWindow.addEventListener("keydown",hotkeys,true);watchFileDrops(f.contentWindow);hookClipboard(f.contentWindow);darkScrollbars(f.contentDocument);attachDrawerSwipe(f.contentDocument,drawerSwipe);attachDrawerSwipe(f.contentDocument,projectSwipe)}catch(e){}};
     $("stage").append(f);frames.set(name,f);
   }
   return f;
@@ -5148,7 +5316,7 @@ function show(){
   placeSessionKeys({row:$("session_keys"),composer:$("session_composer"),screen:$("screen"),terminal:$("terminal_keys"),wrap:$("b_wrap"),reconnect:$("b_reconnect"),mode:m,active:!!s});
   $("screen").classList.toggle("on",!!s&&m==="screen");
   $("term_loading").hidden=!(s&&m==="term"&&frameFor(active).dataset.loading);
-  if(s&&m==="term"){const f=frameFor(active);f.classList.add("on");f.inert=isLocal(s)&&!s.running;if(!isMobile()&&!isTouch()&&!f.inert&&document.activeElement!==$("msg"))setTimeout(()=>{try{f.contentWindow.focus();f.contentWindow.term&&f.contentWindow.term.focus()}catch(e){}},30)}
+  if(s&&m==="term"){const f=frameFor(active);f.classList.add("on");f.inert=isLocal(s)&&!s.running;if(!isMobile()&&!isTouch()&&!f.inert&&!typingOutside())setTimeout(()=>{try{if(typingOutside())return;f.contentWindow.focus();f.contentWindow.term&&f.contentWindow.term.focus()}catch(e){}},30)}
   if(s&&m==="screen")updateScreen(s,true);
   $("b_mode").setAttribute("aria-pressed",String(!!s&&m==="term"));
   fitKeys();syncProject();searchSession();
@@ -5191,7 +5359,12 @@ function activate(name){
 function select(name){
   if(!sessions.some(s=>s.name===name))return;
   if(name===active){drawer(false);return}
-  activate(name);drawer(false);renderTabs();show();load();
+  activate(name);
+  // A screen fetched quietly since the last list is shown now, not after the next one.
+  Object.assign(cur(),previewCache.get(name)||{});
+  drawer(false);renderTabs();show();screenNow(name);load();
+  // The question card is asked for alongside the list, not after it.
+  if(question.name!==name)loadQuestion();
 }
 function openHelp(){if(!$("help_dlg").open)$("help_dlg").showModal()}
 function showClosedDrafts(){
@@ -5224,7 +5397,7 @@ async function loadSessions(){
     if(!Array.isArray(list))throw new OfflineError(tr("Панель вернула неожиданный ответ"));
     setConnection("online");
     for(const s of list){
-      if(s.preview!==undefined||s.preview_ansi!==undefined)previewCache.set(s.name,{preview:s.preview,preview_ansi:s.preview_ansi});
+      if(s.preview!==undefined||s.preview_ansi!==undefined)previewCache.set(s.name,{preview:s.preview,preview_ansi:s.preview_ansi,model:s.model});
       else Object.assign(s,previewCache.get(s.name)||{});
     }
     for(const s of list){
@@ -5235,7 +5408,7 @@ async function loadSessions(){
     const names=new Set(list.map(s=>s.name));
     for(const[n,f]of frames)if(!names.has(n)){f.remove();frames.delete(n);attention.delete(n)}
     const first=!load.done,previousActive=active;load.done=true;
-    sessions=list;
+    sessions=list;keepShown(deckLocalStorage,selectedDeck,"sessions",sessionsToKeep(list));
     for(const[n,f]of frames){const session=sessions.find(x=>x.name===n);f.inert=isLocal(session)&&!session.running}
     if(!active||!names.has(active)){
       activate(sessions.length?sessions.reduce((latest,s)=>Number(s.activity)>Number(latest.activity)?s:latest).name:null);
@@ -5249,6 +5422,7 @@ async function loadSessions(){
     saveClosedDrafts();
     if(active!==requested)sessionsQueued=true;
     if(first&&!active&&isMobile())drawer(true);
+    warmScreens();
     renderTabs();renderTitle();renderSessionContainers();
     const s=cur(),m=curMode();
     if(first||active!==previousActive||!s||(m==="term"&&!frames.has(active)))show();
@@ -5498,6 +5672,7 @@ function key(k){if(active&&!sending&&!uploading&&!panelUpdating)post("/api/send"
 async function logout(){
   try{stashDrafts()}catch(e){}
   try{await fetch("/logout",{method:"POST"})}catch(e){toast(tr("Нет связи с панелью"));return}
+  forgetShown(localStore);forgetShown(sessionStore);
   location.href="/login";
 }
 function toggleKeys(){const expanded=$("keys").classList.toggle("expanded");$("b_keymore").setAttribute("aria-expanded",String(expanded));fitKeys();renderQuickPrompts()}
@@ -5552,7 +5727,7 @@ $("palette_dlg").addEventListener("click",e=>{if(e.target===$("palette_dlg"))$("
 /* ---------- GitHub ---------- */
 const GH_ICON='<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>';
 let repos=[],ghLogin=null;
-async function ghStatus(){try{const st=await api("/api/github/status");ghLogin=st.connected?st.login:null}catch(e){ghLogin=null}return ghLogin}
+async function ghStatus(){try{const st=await api("/api/github/status");ghLogin=st.connected?st.login:null;keepShown(deckLocalStorage,selectedDeck,"github",{login:ghLogin})}catch(e){ghLogin=null}return ghLogin}
 async function ghConnect(){if(await post("/api/github_login",{})){if($("dlg").open)$("dlg").close();select("github-login");setMode("screen")}}
 function btn(label,cls,fn,title){const b=el("button",cls||"",label);b.onclick=fn;if(title)b.title=title;return b}
 let lastGh=0,lastAg={},usageData={};
@@ -5562,7 +5737,7 @@ async function checkGithubFoot(force){
   if(force===true||Date.now()-lastGh>30000||sessions.some(s=>s.name==="github-login")){await ghStatus();lastGh=Date.now()}
   renderInteg();
 }
-async function loadUsage(){if(document.hidden)return;try{usageData=await api("/api/usage")}catch(e){}integReady.usage=true;renderInteg()}
+async function loadUsage(){if(document.hidden)return;try{usageData=await api("/api/usage");keepShown(deckLocalStorage,selectedDeck,"usage",usageData)}catch(e){}integReady.usage=true;renderInteg()}
 
 function fmtReset(ts){
   if(!ts)return"";
@@ -5619,6 +5794,8 @@ function renderInteg(){
     if(w)rows.push(row);
     if(w||u?.error)help.append(el("div","",row.title));
   }
+  // The very first time on a computer nothing is known yet: two rows stand in for the limits.
+  if(!integReady.usage&&rows.length===1)rows.push(...skeletonRows(2,integRow));
   for(const p of lmData.profiles||[])rows.push(localUsage(p));
   rows.push(...integSkeleton());
   // Rebuilding identical nodes every second drops hover, focus and screen-reader position.
@@ -5632,9 +5809,9 @@ function renderInteg(){
 // Limits and local models arrive after the session list; until both answered, the block keeps the height and
 // model rows it had last time (per computer), so the session list above does not jump when they appear.
 function integSkeleton(){
-  if(integReady.lm)return [];
+  if(integReady.lm||lmData.profiles?.length)return [];
   let count=0;try{count=Math.min(4,+deckLocalStorage.getItem("cc.integ-models")||0)}catch(e){}
-  return Array.from({length:count},()=>el("div","local-usage compact-local integ-skeleton",el("span","sk-line"),el("span","sk-line")));
+  return skeletonRows(count,integRow);
 }
 function keepIntegHeight(){
   const box=$("integ");
@@ -5686,6 +5863,7 @@ async function loadDeckSettings(){
   // Most installs have a single machine; the switcher appears once another DeckAway is connected.
   $("deck_switch").hidden=!data.decks.length&&!selectedDeck;
   deckDirectory={decks:data.decks,name:network.name,network};loadOtherDecks();
+  keepShown(localStore,"","decks",decksToKeep(data,network));
   if(Date.now()-fleet.loadedAt>10*60*1000||$("settings_dlg").open)loadFleet();else renderFleet();
   renderComputers(data,network);
   if(selectedDeck&&!data.decks.some(d=>d.id===selectedDeck))switchDeck("");
@@ -5708,6 +5886,7 @@ async function loadOtherDecks(){
     // Built for the computer we just left; switchDeck already placed it in the sidebar.
     if(epoch!==deckEpoch)return;
     otherDecks=loaded;
+    for(const d of loaded)if(!d.error)keepShown(instanceStorage(localStore,d.id),d.id,"sessions",sessionsToKeep(d.sessions));
   }finally{loadingOthers=false}
   // Same "done" signal as local tabs: a session that stopped working since the last poll.
   for(const deck of otherDecks)for(const s of deck.sessions){
@@ -5788,6 +5967,7 @@ setInterval(pollChanges,15000);
 function switchDeck(identity){
   if(identity===selectedDeck)return;
   if(uploading||choosingImages||question.busy!==null){$("deck_select").value=selectedDeck;toast(tr("Дождитесь окончания отправки или загрузки"));return}
+  keepScreens();
   try{stashDrafts();localStore.setItem("cc.deck",identity)}catch(e){$("deck_select").value=selectedDeck;toast(tr("Не удалось сохранить черновик. Очистите поле перед обновлением."));return}
   for(const dialog of document.querySelectorAll("dialog[open]"))dialog.close();
   drawer(false);sheet(false);hideToast();closeViewer();
@@ -5799,7 +5979,7 @@ function switchDeck(identity){
   history.replaceState(null,"","#");
   const previousMode=curMode();
   resetInstanceState(target?target.sessions:[]);
-  restoreInstance();
+  restoreInstance();showRemembered();
   if(mode===null)mode=previousMode;  // A computer without its own choice keeps the current view.
   renderTabs();show();
   load();checkGithubFoot(true);loadUsage();loadLM().then(renderInteg);showCachedServer();loadServer();loadVersion();loadMetrics();loadIntegrations();
@@ -5808,6 +5988,8 @@ function switchDeck(identity){
 // Everything below belongs to one computer; a switch must not carry any of it to the next.
 function resetInstanceState(known){
   for(const key of [...otherAttention,...otherBusy.keys()])if(key.startsWith(selectedDeck+"/")){otherAttention.delete(key);otherBusy.delete(key)}
+  // The same session name on another computer is another repository: its panel starts over.
+  hist.session=null;if(!filesDirty())files.session=null;
   for(const frame of frames.values())frame.remove();
   frames.clear();wasBusy.clear();attention.clear();previewCache.clear();sendStates.clear();
   sessions=known;
@@ -5821,7 +6003,7 @@ function resetInstanceState(known){
   for(const id of ["backup_state","backup_status","backup_meta","version_status","version_meta","hub_version"])$(id).replaceChildren();
   $("s_update").style.display="none";
   $("pre").dataset.raw="";$("pre").replaceChildren();$("ver").replaceChildren();
-  $("metric_cpu").textContent=$("metric_ram").textContent="—";
+  pendingMetrics();
 }
 function renderSources(){
   const old=$("n_source").value;$("source_row").hidden=!["claude","kimi","pi"].includes(newAgent);
@@ -5939,8 +6121,9 @@ async function openNew(preset){
   returnToNew=false;if($("settings_dlg").open)$("settings_dlg").close();drawer(false);renderAgentPicker();
   newPreset=typeof preset?.path==="string"?preset:null;
   if(newPreset){$("n_proj").value=newPreset.project;if(!$("n_name").value||$("n_name").dataset.auto){$("n_name").value=newPreset.project.replace(/[^A-Za-z0-9_-]/g,"-").slice(0,32);$("n_name").dataset.auto="1"}}
-  try{const{projects}=await api("/api/projects");$("projlist").replaceChildren(...projects.map(p=>{const o=document.createElement("option");o.value=p;return o}))}catch(e){}
+  // The dialog opens at once; the list of folders only feeds the suggestions of its field.
   if(!$("dlg").open){delete $("n_containers").dataset.touched;$("dlg").showModal()}
+  api("/api/projects").then(({projects})=>$("projlist").replaceChildren(...projects.map(p=>{const o=document.createElement("option");o.value=p;return o}))).catch(()=>{});
   renderNewContainers();ensureContainers();loadGithub();await refreshLMModels();renderSources();
 }
 async function createSession(){
@@ -6146,5 +6329,15 @@ load();setInterval(load,2500);
 loadDeckSettings().catch(e=>{if(!e.offline)toast(e.message)});
 loadInbox();setInterval(loadInbox,5000);
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)loadInbox()});
+// Last: everything above is declared. What this browser showed before is on screen before the first answer.
+showRemembered();showRememberedDecks();renderTabs();show();renderInteg();
+addEventListener("pagehide",keepScreens);
+// A row that appears above or below the screen (summary, context, a question) makes it shorter: text that
+// was being followed stays followed instead of losing its last lines.
+{
+  const p=$("pre");let following=true;
+  p.addEventListener("scroll",()=>{following=atBottom(p)},{passive:true});
+  if(window.ResizeObserver)new ResizeObserver(()=>{if(following)p.scrollTop=p.scrollHeight}).observe(p);
+}
 </script>
 </body></html>

@@ -35,14 +35,15 @@ function watchLater(){
 async function loadLater(){
   clearTimeout(later.timer);
   const key=laterKey(),seq=++later.seq;
-  if(later.session!==key){later.session=key;later.data=null;renderLater()}
+  // The count by the field is shown from what was known; the dialog always reads the list again before it opens.
+  if(later.session!==key){later.session=key;later.data=knownAnswer(laterKnown,key);renderLater()}
   if(!key)return;
   let data;
   // A computer without this version has no schedule: the button then explains it instead of failing silently.
   try{data=await api("/api/schedule?name="+encodeURIComponent(active));later.failed=false}
   catch(e){if(e.message===STALE)return;data=later.data;later.failed=true}
   if(seq!==later.seq)return;
-  later.data=data&&Array.isArray(data.prompts)?data:null;renderLater();
+  later.data=data&&Array.isArray(data.prompts)?data:null;keepAnswer(laterKnown,key,later.data);renderLater();
   if(!document.hidden)later.timer=setTimeout(loadLater,LATER_POLL);
 }
 function formatLaterTime(seconds){

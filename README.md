@@ -82,6 +82,8 @@ The **?** next to the search field in the session bar shows the same picture ins
 - Search the whole output of a session (including scrollback) from the field in the session bar (the search icon on a phone); results drop down under it; quick switcher for sessions and actions with Alt+K, Ctrl+K or ⌘K.
 - Project files: browse, edit text, read Markdown rendered, preview images and PDF.
 - Drop screenshots and files onto the window (desktop, iPad Split View) to attach them to the open session.
+- Paste a message copied from a chat or a page: the text goes into the field and its pictures are attached. A picture its site does not let a page read is fetched by the panel itself — only from a public https address, never from your network; one that needs the site's sign-in (or exists only inside that page) cannot be fetched: save it and attach the file.
+- The page opens with what it showed last time — sessions, computers, limits — and replaces it as fresh answers arrive, so nothing jumps while it loads. Screens of sessions are kept only while the tab is open; signing out forgets all of it.
 - Claude / Codex subscription limits with a pace forecast; Kimi usage windows and reset times.
 - Under the message field: the running agent and model (including after `/model`), remaining quota and today's plan, so limits stay visible on phones.
 - Server CPU/RAM indicators beside the message composer.

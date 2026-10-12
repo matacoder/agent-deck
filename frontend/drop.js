@@ -71,15 +71,26 @@ async function isSmallPicture(blob){
 }
 // A site that lets other pages read its pictures, the clipboard's own data, or this page's blob. The
 // address of this panel stays out of the request.
-async function fetchPicture(src,index){
+async function readPicture(src){
   const stop=new AbortController(),timer=setTimeout(()=>stop.abort(),PICTURE_WAIT);
-  let blob;
   try{
     const response=await fetch(src,{credentials:"omit",referrerPolicy:"no-referrer",signal:stop.signal});
     if(!response.ok)throw new Error("HTTP "+response.status);
     if(Number(response.headers.get("Content-Length"))>PICTURE_BYTES)throw new Error("too large");
-    blob=await response.blob();
+    return await response.blob();
   }finally{clearTimeout(timer)}
+}
+// Most sites do not let another page read their pictures. The panel may: it fetches a public https address
+// itself (integrations/pictures.py), always on the gateway, which is the machine this page talks to.
+async function panelPicture(src){
+  const answer=await gatewayApi("/api/fetch_picture",{url:src});
+  const bytes=Uint8Array.from(atob(answer.data),c=>c.charCodeAt(0));
+  return new Blob([bytes],{type:answer.type});
+}
+async function fetchPicture(src,index){
+  let blob;
+  try{blob=await readPicture(src)}
+  catch(e){if(!/^https:/i.test(src))throw e;blob=await panelPicture(src)}
   if(blob.size>PICTURE_BYTES)throw new Error("too large");
   if(!blob.type.startsWith("image/"))throw new Error("not a picture");
   if(await isSmallPicture(blob))return null;

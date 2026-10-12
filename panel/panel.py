@@ -128,6 +128,7 @@ except (OSError, ValueError) as _error:
 from integrations.gateway import Gateway
 from integrations import lan
 from integrations import agents as cli_agents
+from integrations import pictures
 from integrations import usage as usage_limits
 gateway = Gateway(lambda: remote_decks)  # Looked up on each call: the service can be replaced.
 
@@ -2214,7 +2215,7 @@ def action_git_fetch(d):
 ACTIONS.update(file_save=action_file_save, git_group=action_git_group, git_fetch=action_git_fetch,
                telegram_config=lambda d: {'telegram': telegram_service().save(d)},
                telegram_pair=lambda d: {'telegram': telegram_service().pair()},
-               answer=action_answer,
+               answer=action_answer, fetch_picture=pictures.action,
                backup_setup=lambda d: backup_service().setup(d.get('code') or None),
                backup_now=action_backup_now,
                backup_run=lambda d: {'report': run_backups()},

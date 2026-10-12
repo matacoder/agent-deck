@@ -46,6 +46,23 @@ function editableFocused(){
   const a=document.activeElement;
   return Boolean(a&&(a.isContentEditable||/^(INPUT|TEXTAREA|SELECT|IFRAME)$/.test(a.tagName)));
 }
+// A field of the page itself, not a terminal: what is typed there must keep going there.
+function typingOutside(){
+  const a=document.activeElement;
+  return Boolean(a&&(a.isContentEditable||/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)));
+}
+// ttyd focuses its terminal every time its connection opens, which may be seconds after the frame appeared
+// and again after each reconnect. Its terminal is wrapped the moment it is created, before that first call.
+function keepPageFocus(w){
+  const wrap=t=>{
+    if(!t||t._ccFocus||typeof t.focus!=="function")return t;
+    const focus=t.focus.bind(t);t._ccFocus=true;t.focus=(...args)=>{if(!typingOutside())focus(...args)};
+    return t;
+  };
+  if(w.term)return void wrap(w.term);
+  let term;
+  Object.defineProperty(w,"term",{configurable:true,enumerable:true,get:()=>term,set:value=>{term=wrap(value)}});
+}
 function fitViewport(){
   const vv=window.visualViewport;if(!vv)return;
   if(Math.abs(vv.scale-1)>0.01)return; // Pinch zoom must not resize the document layout.
@@ -286,6 +303,7 @@ function renderCurrentSessions(box,list){
     t.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();select(s.name)}};
     box.append(t);
   }
+  if(!sessions.length&&!load.done){box.append(...skeletonRows(4,sessionSkeleton));return}
   if(!sessions.length){
     const start=el("button","empty-new",svgIcon("plus"),el("span","",tr("Новая сессия")));start.type="button";start.onclick=openNew;
     box.append(el("div","empty-list",el("span","",tr("Сессий пока нет")),start));
@@ -297,7 +315,8 @@ function finishTabs(view,box,focused){
     if(focused)view.querySelector(focused)?.focus({preventScroll:true});
   }
   const busy=sessions.filter(s=>state(s)==="busy").length;
-  $("foot").textContent=tr("{0} сессий · {1} работают",[sessions.length,busy])+(attention.size?tr(" · {0} готово",[attention.size]):"");
+  if(!sessions.length&&!load.done)$("foot").replaceChildren(el("span","sk-line foot-skeleton"));
+  else $("foot").textContent=tr("{0} сессий · {1} работают",[sessions.length,busy])+(attention.size?tr(" · {0} готово",[attention.size]):"");
   const ready=renderInboxBadge();
   $("menuBadge").textContent=ready;$("menuBadge").classList.toggle("on",ready>0);
   document.title=(ready?`(${ready}) `:"")+"DeckAway";
@@ -323,7 +342,7 @@ function frameFor(name){
     f=document.createElement("iframe");f.src=activePath("/t/?arg="+encodeURIComponent("=cc-"+name));
     // Only the overlay reacts: a full show() would scroll the Screen view or move focus into the terminal.
     f.dataset.loading="1";f.addEventListener("load",()=>{delete f.dataset.loading;if(frames.get(active)===f&&curMode()==="term")$("term_loading").hidden=true},{once:true});
-    f.onload=()=>{try{f.contentWindow.addEventListener("keydown",hotkeys,true);watchFileDrops(f.contentWindow);hookClipboard(f.contentWindow);darkScrollbars(f.contentDocument);attachDrawerSwipe(f.contentDocument,drawerSwipe);attachDrawerSwipe(f.contentDocument,projectSwipe)}catch(e){}};
+    f.onload=()=>{try{keepPageFocus(f.contentWindow);f.contentWindow.addEventListener("keydown",hotkeys,true);watchFileDrops(f.contentWindow);hookClipboard(f.contentWindow);darkScrollbars(f.contentDocument);attachDrawerSwipe(f.contentDocument,drawerSwipe);attachDrawerSwipe(f.contentDocument,projectSwipe)}catch(e){}};
     $("stage").append(f);frames.set(name,f);
   }
   return f;
@@ -341,7 +360,7 @@ function show(){
   placeSessionKeys({row:$("session_keys"),composer:$("session_composer"),screen:$("screen"),terminal:$("terminal_keys"),wrap:$("b_wrap"),reconnect:$("b_reconnect"),mode:m,active:!!s});
   $("screen").classList.toggle("on",!!s&&m==="screen");
   $("term_loading").hidden=!(s&&m==="term"&&frameFor(active).dataset.loading);
-  if(s&&m==="term"){const f=frameFor(active);f.classList.add("on");f.inert=isLocal(s)&&!s.running;if(!isMobile()&&!isTouch()&&!f.inert&&document.activeElement!==$("msg"))setTimeout(()=>{try{f.contentWindow.focus();f.contentWindow.term&&f.contentWindow.term.focus()}catch(e){}},30)}
+  if(s&&m==="term"){const f=frameFor(active);f.classList.add("on");f.inert=isLocal(s)&&!s.running;if(!isMobile()&&!isTouch()&&!f.inert&&!typingOutside())setTimeout(()=>{try{if(typingOutside())return;f.contentWindow.focus();f.contentWindow.term&&f.contentWindow.term.focus()}catch(e){}},30)}
   if(s&&m==="screen")updateScreen(s,true);
   $("b_mode").setAttribute("aria-pressed",String(!!s&&m==="term"));
   fitKeys();syncProject();searchSession();
@@ -384,7 +403,12 @@ function activate(name){
 function select(name){
   if(!sessions.some(s=>s.name===name))return;
   if(name===active){drawer(false);return}
-  activate(name);drawer(false);renderTabs();show();load();
+  activate(name);
+  // A screen fetched quietly since the last list is shown now, not after the next one.
+  Object.assign(cur(),previewCache.get(name)||{});
+  drawer(false);renderTabs();show();screenNow(name);load();
+  // The question card is asked for alongside the list, not after it.
+  if(question.name!==name)loadQuestion();
 }
 function openHelp(){if(!$("help_dlg").open)$("help_dlg").showModal()}
 function showClosedDrafts(){
@@ -417,7 +441,7 @@ async function loadSessions(){
     if(!Array.isArray(list))throw new OfflineError(tr("Панель вернула неожиданный ответ"));
     setConnection("online");
     for(const s of list){
-      if(s.preview!==undefined||s.preview_ansi!==undefined)previewCache.set(s.name,{preview:s.preview,preview_ansi:s.preview_ansi});
+      if(s.preview!==undefined||s.preview_ansi!==undefined)previewCache.set(s.name,{preview:s.preview,preview_ansi:s.preview_ansi,model:s.model});
       else Object.assign(s,previewCache.get(s.name)||{});
     }
     for(const s of list){
@@ -428,7 +452,7 @@ async function loadSessions(){
     const names=new Set(list.map(s=>s.name));
     for(const[n,f]of frames)if(!names.has(n)){f.remove();frames.delete(n);attention.delete(n)}
     const first=!load.done,previousActive=active;load.done=true;
-    sessions=list;
+    sessions=list;keepShown(deckLocalStorage,selectedDeck,"sessions",sessionsToKeep(list));
     for(const[n,f]of frames){const session=sessions.find(x=>x.name===n);f.inert=isLocal(session)&&!session.running}
     if(!active||!names.has(active)){
       activate(sessions.length?sessions.reduce((latest,s)=>Number(s.activity)>Number(latest.activity)?s:latest).name:null);
@@ -442,6 +466,7 @@ async function loadSessions(){
     saveClosedDrafts();
     if(active!==requested)sessionsQueued=true;
     if(first&&!active&&isMobile())drawer(true);
+    warmScreens();
     renderTabs();renderTitle();renderSessionContainers();
     const s=cur(),m=curMode();
     if(first||active!==previousActive||!s||(m==="term"&&!frames.has(active)))show();
@@ -691,6 +716,7 @@ function key(k){if(active&&!sending&&!uploading&&!panelUpdating)post("/api/send"
 async function logout(){
   try{stashDrafts()}catch(e){}
   try{await fetch("/logout",{method:"POST"})}catch(e){toast(tr("Нет связи с панелью"));return}
+  forgetShown(localStore);forgetShown(sessionStore);
   location.href="/login";
 }
 function toggleKeys(){const expanded=$("keys").classList.toggle("expanded");$("b_keymore").setAttribute("aria-expanded",String(expanded));fitKeys();renderQuickPrompts()}
@@ -745,7 +771,7 @@ $("palette_dlg").addEventListener("click",e=>{if(e.target===$("palette_dlg"))$("
 /* ---------- GitHub ---------- */
 const GH_ICON='<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>';
 let repos=[],ghLogin=null;
-async function ghStatus(){try{const st=await api("/api/github/status");ghLogin=st.connected?st.login:null}catch(e){ghLogin=null}return ghLogin}
+async function ghStatus(){try{const st=await api("/api/github/status");ghLogin=st.connected?st.login:null;keepShown(deckLocalStorage,selectedDeck,"github",{login:ghLogin})}catch(e){ghLogin=null}return ghLogin}
 async function ghConnect(){if(await post("/api/github_login",{})){if($("dlg").open)$("dlg").close();select("github-login");setMode("screen")}}
 function btn(label,cls,fn,title){const b=el("button",cls||"",label);b.onclick=fn;if(title)b.title=title;return b}
 let lastGh=0,lastAg={},usageData={};
@@ -755,7 +781,7 @@ async function checkGithubFoot(force){
   if(force===true||Date.now()-lastGh>30000||sessions.some(s=>s.name==="github-login")){await ghStatus();lastGh=Date.now()}
   renderInteg();
 }
-async function loadUsage(){if(document.hidden)return;try{usageData=await api("/api/usage")}catch(e){}integReady.usage=true;renderInteg()}
+async function loadUsage(){if(document.hidden)return;try{usageData=await api("/api/usage");keepShown(deckLocalStorage,selectedDeck,"usage",usageData)}catch(e){}integReady.usage=true;renderInteg()}
 
 function fmtReset(ts){
   if(!ts)return"";
@@ -812,6 +838,8 @@ function renderInteg(){
     if(w)rows.push(row);
     if(w||u?.error)help.append(el("div","",row.title));
   }
+  // The very first time on a computer nothing is known yet: two rows stand in for the limits.
+  if(!integReady.usage&&rows.length===1)rows.push(...skeletonRows(2,integRow));
   for(const p of lmData.profiles||[])rows.push(localUsage(p));
   rows.push(...integSkeleton());
   // Rebuilding identical nodes every second drops hover, focus and screen-reader position.
@@ -825,9 +853,9 @@ function renderInteg(){
 // Limits and local models arrive after the session list; until both answered, the block keeps the height and
 // model rows it had last time (per computer), so the session list above does not jump when they appear.
 function integSkeleton(){
-  if(integReady.lm)return [];
+  if(integReady.lm||lmData.profiles?.length)return [];
   let count=0;try{count=Math.min(4,+deckLocalStorage.getItem("cc.integ-models")||0)}catch(e){}
-  return Array.from({length:count},()=>el("div","local-usage compact-local integ-skeleton",el("span","sk-line"),el("span","sk-line")));
+  return skeletonRows(count,integRow);
 }
 function keepIntegHeight(){
   const box=$("integ");
@@ -879,6 +907,7 @@ async function loadDeckSettings(){
   // Most installs have a single machine; the switcher appears once another DeckAway is connected.
   $("deck_switch").hidden=!data.decks.length&&!selectedDeck;
   deckDirectory={decks:data.decks,name:network.name,network};loadOtherDecks();
+  keepShown(localStore,"","decks",decksToKeep(data,network));
   if(Date.now()-fleet.loadedAt>10*60*1000||$("settings_dlg").open)loadFleet();else renderFleet();
   renderComputers(data,network);
   if(selectedDeck&&!data.decks.some(d=>d.id===selectedDeck))switchDeck("");
@@ -901,6 +930,7 @@ async function loadOtherDecks(){
     // Built for the computer we just left; switchDeck already placed it in the sidebar.
     if(epoch!==deckEpoch)return;
     otherDecks=loaded;
+    for(const d of loaded)if(!d.error)keepShown(instanceStorage(localStore,d.id),d.id,"sessions",sessionsToKeep(d.sessions));
   }finally{loadingOthers=false}
   // Same "done" signal as local tabs: a session that stopped working since the last poll.
   for(const deck of otherDecks)for(const s of deck.sessions){
@@ -981,6 +1011,7 @@ setInterval(pollChanges,15000);
 function switchDeck(identity){
   if(identity===selectedDeck)return;
   if(uploading||choosingImages||question.busy!==null){$("deck_select").value=selectedDeck;toast(tr("Дождитесь окончания отправки или загрузки"));return}
+  keepScreens();
   try{stashDrafts();localStore.setItem("cc.deck",identity)}catch(e){$("deck_select").value=selectedDeck;toast(tr("Не удалось сохранить черновик. Очистите поле перед обновлением."));return}
   for(const dialog of document.querySelectorAll("dialog[open]"))dialog.close();
   drawer(false);sheet(false);hideToast();closeViewer();
@@ -992,7 +1023,7 @@ function switchDeck(identity){
   history.replaceState(null,"","#");
   const previousMode=curMode();
   resetInstanceState(target?target.sessions:[]);
-  restoreInstance();
+  restoreInstance();showRemembered();
   if(mode===null)mode=previousMode;  // A computer without its own choice keeps the current view.
   renderTabs();show();
   load();checkGithubFoot(true);loadUsage();loadLM().then(renderInteg);showCachedServer();loadServer();loadVersion();loadMetrics();loadIntegrations();
@@ -1001,6 +1032,8 @@ function switchDeck(identity){
 // Everything below belongs to one computer; a switch must not carry any of it to the next.
 function resetInstanceState(known){
   for(const key of [...otherAttention,...otherBusy.keys()])if(key.startsWith(selectedDeck+"/")){otherAttention.delete(key);otherBusy.delete(key)}
+  // The same session name on another computer is another repository: its panel starts over.
+  hist.session=null;if(!filesDirty())files.session=null;
   for(const frame of frames.values())frame.remove();
   frames.clear();wasBusy.clear();attention.clear();previewCache.clear();sendStates.clear();
   sessions=known;
@@ -1014,7 +1047,7 @@ function resetInstanceState(known){
   for(const id of ["backup_state","backup_status","backup_meta","version_status","version_meta","hub_version"])$(id).replaceChildren();
   $("s_update").style.display="none";
   $("pre").dataset.raw="";$("pre").replaceChildren();$("ver").replaceChildren();
-  $("metric_cpu").textContent=$("metric_ram").textContent="—";
+  pendingMetrics();
 }
 function renderSources(){
   const old=$("n_source").value;$("source_row").hidden=!["claude","kimi","pi"].includes(newAgent);
@@ -1132,8 +1165,9 @@ async function openNew(preset){
   returnToNew=false;if($("settings_dlg").open)$("settings_dlg").close();drawer(false);renderAgentPicker();
   newPreset=typeof preset?.path==="string"?preset:null;
   if(newPreset){$("n_proj").value=newPreset.project;if(!$("n_name").value||$("n_name").dataset.auto){$("n_name").value=newPreset.project.replace(/[^A-Za-z0-9_-]/g,"-").slice(0,32);$("n_name").dataset.auto="1"}}
-  try{const{projects}=await api("/api/projects");$("projlist").replaceChildren(...projects.map(p=>{const o=document.createElement("option");o.value=p;return o}))}catch(e){}
+  // The dialog opens at once; the list of folders only feeds the suggestions of its field.
   if(!$("dlg").open){delete $("n_containers").dataset.touched;$("dlg").showModal()}
+  api("/api/projects").then(({projects})=>$("projlist").replaceChildren(...projects.map(p=>{const o=document.createElement("option");o.value=p;return o}))).catch(()=>{});
   renderNewContainers();ensureContainers();loadGithub();await refreshLMModels();renderSources();
 }
 async function createSession(){
@@ -1339,3 +1373,13 @@ load();setInterval(load,2500);
 loadDeckSettings().catch(e=>{if(!e.offline)toast(e.message)});
 loadInbox();setInterval(loadInbox,5000);
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)loadInbox()});
+// Last: everything above is declared. What this browser showed before is on screen before the first answer.
+showRemembered();showRememberedDecks();renderTabs();show();renderInteg();
+addEventListener("pagehide",keepScreens);
+// A row that appears above or below the screen (summary, context, a question) makes it shorter: text that
+// was being followed stays followed instead of losing its last lines.
+{
+  const p=$("pre");let following=true;
+  p.addEventListener("scroll",()=>{following=atBottom(p)},{passive:true});
+  if(window.ResizeObserver)new ResizeObserver(()=>{if(following)p.scrollTop=p.scrollHeight}).observe(p);
+}

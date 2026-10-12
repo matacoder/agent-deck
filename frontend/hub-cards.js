@@ -170,7 +170,7 @@ function versionState(v){
   return {status:tr("Установлена последняя версия"),tone:"ok"};
 }
 function renderVersion(v){
-  panelVersion=v;const job=v.job||{},state=versionState(v),box=$("ver"),mobile=$("s_update");
+  panelVersion=v;keepShown(deckLocalStorage,selectedDeck,"version",{version:v.version});const job=v.job||{},state=versionState(v),box=$("ver"),mobile=$("s_update");
   panelUpdating=UPDATE_PHASES.has(job.phase);
   box.replaceChildren("v"+v.version);box.title=v.latest?tr("последний релиз: v{0}",[v.latest]):"";
   const blocked=Boolean(state.run===startPanelUpdate&&!v.can_update);

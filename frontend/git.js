@@ -94,15 +94,19 @@ function startHistory(tab){
   renderHistory();loadChanges();loadHistoryPage();if(tab==="groups")loadGroups();
 }
 async function loadChanges(){
-  const seq=++hist.changesSeq;hist.changes=null;hist.changesError="";
+  // What this repository showed last time stays up while it is read again; another session never shows through.
+  const seq=++hist.changesSeq,key=sessionInfoKey()+"|"+hist.tree,before=hist.changesFor===key?hist.changes:knownAnswer(changesKnown,key);
+  hist.changes=before;hist.changesFor=key;hist.changesError="";
   if(hist.tab==="changes"&&!hist.view)renderHistory();
   try{
     const data=await api(gitPath("changes",{tree:hist.tree}),null,false,{timeout:60000});
     // A clean tree shows the last commit instead, so the tab is never empty right after a commit.
     if(!data.files.length&&data.head&&seq===hist.changesSeq)data.last=await lastCommit(data.head);
-    if(seq!==hist.changesSeq)return;hist.changes=data;
+    if(seq!==hist.changesSeq)return;hist.changes=data;keepAnswer(changesKnown,key,data);
     // The agent moved to another worktree: the commit list follows it.
     if(data.tree&&hist.log?.tree&&hist.log.tree!==data.tree){freshList();loadHistoryPage()}
+    // The same answer leaves the diff alone: no flicker, and a comment being typed stays.
+    if(before&&JSON.stringify(before)===JSON.stringify(data))return;
   }catch(e){if(seq!==hist.changesSeq)return;hist.changesError=e.message===STALE?"":e.message||tr("Не удалось загрузить")}
   if(hist.tab==="changes"&&!hist.view)renderHistory();
 }
@@ -118,7 +122,7 @@ async function pollChanges(){
     const data=await api(gitPath("changes",{tree:hist.tree}),null,false,{timeout:60000});
     if(!data.files.length&&data.head)data.last=data.head===old.head&&old.last&&!old.last.error?old.last:await lastCommit(data.head);
     if(seq!==hist.changesSeq||hist.changes!==old||JSON.stringify(data)===JSON.stringify(old)||typing())return;
-    hist.changes=data;
+    hist.changes=data;keepAnswer(changesKnown,hist.changesFor,data);
     if(data.tree&&hist.log?.tree&&hist.log.tree!==data.tree){freshList();loadHistoryPage()}
     if(project.tab==="changes"&&!hist.view)renderHistory();
   }catch(e){}

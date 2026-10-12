@@ -38,14 +38,15 @@ function watchSessionInfo(){if(sessionInfo.session!==sessionInfoKey())loadSessio
 async function loadSessionInfo(){
   clearTimeout(sessionInfo.timer);
   const key=sessionInfoKey(),seq=++sessionInfo.seq;
-  if(sessionInfo.session!==key){sessionInfo.session=key;sessionInfo.data=null;renderSessionInfo()}
+  // A session seen before shows what was known about it at once; the answer below replaces it.
+  if(sessionInfo.session!==key){sessionInfo.session=key;sessionInfo.data=knownAnswer(sessionInfoKnown,key);renderSessionInfo()}
   if(!key)return;
   let data;
   try{data=await api("/api/session_info?name="+encodeURIComponent(active))}
   // A failed poll keeps what is shown. A computer without this version has had nothing to show since the key changed.
   catch(e){if(e.message===STALE)return;data=sessionInfo.data}
   if(seq!==sessionInfo.seq)return;
-  sessionInfo.data=data;renderSessionInfo();
+  sessionInfo.data=data;keepAnswer(sessionInfoKnown,key,data);renderSessionInfo();
   // A summary being written is asked for again soon; otherwise the conversation changes slowly.
   if(!document.hidden)sessionInfo.timer=setTimeout(loadSessionInfo,data?.summary?.updating?8000:SESSION_INFO_POLL);
 }

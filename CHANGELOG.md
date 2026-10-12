@@ -2,6 +2,19 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.49.0 — 2026-10-12
+
+The page stops jumping while it loads and stops showing "loading" for what it already knew.
+
+- **The page opens with what it showed last time.** Sessions, the computer switcher and the other computers' lists, limits, local models, the version: all are drawn at once from what this browser saw before, per computer, and replaced in place by the fresh answers. Before, the list was empty, the switcher and the computer headings arrived a second later and pushed everything down. The very first time on a computer, placeholders of the final size stand in for the session list, the limits, the footer and the CPU/RAM figures. Signing out forgets all of it.
+- **Switching sessions shows the screen at once.** The screens of sessions not opened yet are fetched quietly after the list (the eight most recent), so a switch shows text immediately and the fresh screen replaces it. A switch made while a list request was on its way no longer waits for that one and then for its own. Screens survive a reload of the tab (kept only in the tab's own storage, the end of each screen, gone with the tab).
+- **A switch back keeps the summary, the context bar, the "send later" count and the Changes tab** of that session on screen while they are read again, instead of collapsing and reappearing. An unchanged diff is not redrawn, so a comment being typed under it stays.
+- **The last lines of the screen are no longer cut off after a switch.** A row appearing above or below the screen (summary, context, a question) made it shorter without scrolling it; text that was being followed now stays followed.
+- **Pictures of a pasted chat message are attached more often.** Most sites do not let another page read their pictures, so the pictures of rich text copied from a chat were silently left out. The panel now fetches such a picture itself: only from a public https address on the usual port (every address of the name is checked and the checked one is dialled, so a name cannot lead into your network), without cookies, up to 12 MB, and only if the bytes are a picture. A picture that needs its site's sign-in, or exists only inside that page, still cannot be fetched: save it and attach the file.
+- **A terminal that finishes connecting no longer takes the keyboard away.** The terminal focused itself when its connection opened, seconds after the session was shown and again after every reconnect, so text being typed into the message field, the search or an answer went nowhere from that moment. It now leaves the focus alone while a field of the page is in use; a click on the terminal focuses it as before.
+- The New session dialog opens at once instead of after the list of folders; the question card is asked for alongside the session list, not after it.
+- With the project panel docked, switching to another computer that has a session of the same name no longer leaves the previous computer's changes on screen.
+
 ## 1.48.1 — 2026-10-12
 
 - **The session list no longer slides sideways on a phone.** The enlarged touch area of the "+" in a group's row reached past the right edge of the list, so the sidebar could be dragged left and right. The area now stays inside the row, and the sidebar does not scroll horizontally at all.
