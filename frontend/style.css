@@ -275,7 +275,9 @@ body.is-codex .question-key{display:inline-flex!important;align-items:center;jus
   .composer>*{flex:0 0 100%;min-width:0}
   .composer>#screen_keys{flex:0 1 auto;max-width:100%}
   /* Room for the quick prompts, so collapsed keys never push them to a row of their own. */
-  .composer:has(>.quick-prompts:not([hidden]))>#screen_keys{max-width:calc(100% - 140px)}
+  /* The same room whether the quick prompts show or not: a width that depended on them made the row and the
+     prompts take turns hiding each other. */
+  .composer>#screen_keys{max-width:calc(100% - 140px)}
   .composer>#screen_keys:has(.keys.expanded){flex:0 0 100%;max-width:100%}
   .composer>.quick-prompts{flex:1 1 0}
   .composer>[hidden]{display:none}

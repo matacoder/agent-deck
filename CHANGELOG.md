@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.49.1 — 2026-10-12
+
+- **The key row no longer blinks.** At some window widths the row hid a key that did not fit, became narrower by that, was measured again, showed the key, and so on without end; the last key was drawn cut in half. The row is now fitted when the room it is given changes, not when its own width does, and that room no longer depends on whether the quick prompts are shown.
+
 ## 1.49.0 — 2026-10-12
 
 The page stops jumping while it loads and stops showing "loading" for what it already knew.

@@ -363,7 +363,7 @@ function show(){
   if(s&&m==="term"){const f=frameFor(active);f.classList.add("on");f.inert=isLocal(s)&&!s.running;if(!isMobile()&&!isTouch()&&!f.inert&&!typingOutside())setTimeout(()=>{try{if(typingOutside())return;f.contentWindow.focus();f.contentWindow.term&&f.contentWindow.term.focus()}catch(e){}},30)}
   if(s&&m==="screen")updateScreen(s,true);
   $("b_mode").setAttribute("aria-pressed",String(!!s&&m==="term"));
-  fitKeys();syncProject();searchSession();
+  fitKeyRow();syncProject();searchSession();
 }
 function reconnectTerminal(){
   if(!active)return;
@@ -719,7 +719,7 @@ async function logout(){
   forgetShown(localStore);forgetShown(sessionStore);
   location.href="/login";
 }
-function toggleKeys(){const expanded=$("keys").classList.toggle("expanded");$("b_keymore").setAttribute("aria-expanded",String(expanded));fitKeys();renderQuickPrompts()}
+function toggleKeys(){const expanded=$("keys").classList.toggle("expanded");$("b_keymore").setAttribute("aria-expanded",String(expanded));fitKeyRow()}
 function fitKeys(){
   const box=$("keys"),more=$("b_keymore"),keys=[...box.children].filter(k=>k!==more);
   for(const k of keys)k.classList.remove("key-overflow");
@@ -730,7 +730,18 @@ function fitKeys(){
   for(const k of keys.reverse()){if(box.scrollWidth<=box.clientWidth)break;if(k.offsetParent)k.classList.add("key-overflow")}
 }
 // The quick prompts follow: they share "…" with the keys whenever the keys show it.
-if(window.ResizeObserver)new ResizeObserver(()=>{fitKeys();renderQuickPrompts()}).observe($("keys"));
+function fitKeyRow(){fitKeys();renderQuickPrompts()}
+// Watched: the room the row is given, never the row itself. Its own width follows what fitKeys() hides, so a
+// row that watches itself fits, shrinks, is fitted again and blinks without end.
+if(window.ResizeObserver){
+  const room=new Map();
+  const watch=new ResizeObserver(entries=>{
+    let changed=false;
+    for(const entry of entries){const width=Math.round(entry.contentRect.width);if(room.get(entry.target)!==width){room.set(entry.target,width);changed=true}}
+    if(changed)fitKeyRow();
+  });
+  for(const id of ["session_composer","terminal_keys"])watch.observe($(id));
+}
 function hideKeyboard(){
   const focused=document.activeElement;
   if(focused&&typeof focused.blur==="function")focused.blur();
@@ -1258,7 +1269,7 @@ addEventListener("resize",()=>{
     try{mode=deckLocalStorage.getItem("cc.mode."+(lastMobile?"m":"d"))}catch(e){mode=null}
     show();
   }
-  fitViewport();fitKeys();
+  fitViewport();fitKeyRow();
 });
 
 /* Update installed home-screen pages too, without interrupting input. */
