@@ -2,6 +2,11 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.45.0 — 2026-10-12
+
+- **Text copied together with pictures (a chat message, a page fragment) is pasted with them.** The text goes where a paste always goes; the pictures are attached beside it, up to four. Emoji and avatars drawn as small pictures are left out. A picture its site does not let other pages read cannot be fetched by the browser: the panel says how many were attached, the rest are saved and attached as files.
+- **A "compact the conversation" button** sits third in the bottom line of a session, after the two restarts; it sends `/compact` to Claude Code or Codex.
+
 ## 1.44.1 — 2026-10-12
 
 - **A computer that takes a few seconds to answer is no longer reported as "did not respond".** 1.44.0 gave every connection four seconds; a waking Mac needs longer over Tailscale. The short wait now applies only when the computer has another address to try.

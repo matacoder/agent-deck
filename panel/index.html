@@ -1082,6 +1082,7 @@ body.resizing iframe{pointer-events:none}
   <symbol id="i-gear" viewBox="0 0 24 24"><path d="m9.5 3-.6 2.4-2 .9-2.2-.7-2.5 4.3 1.7 1.7v2.3l-1.7 1.7 2.5 4.3 2.2-.7 2 .9.6 2.4h5l.6-2.4 2-.9 2.2.7 2.5-4.3-1.7-1.7v-2.3l1.7-1.7-2.5-4.3-2.2.7-2-.9L14.5 3z"/><circle cx="12" cy="12" r="3"/></symbol>
   <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></symbol>
   <symbol id="i-terminal" viewBox="0 0 24 24"><path d="m4 17 6-6-6-6M12 19h8"/></symbol>
+  <symbol id="i-compact" viewBox="0 0 24 24"><path d="M4 9h5V4M9 9 3 3M20 15h-5v5M15 15l6 6"/></symbol>
   <symbol id="i-restart" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></symbol>
   <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
   <symbol id="i-chat-plus" viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.4A8 8 0 1 1 21 12z"/><path d="M12 9v6M9 12h6"/></symbol>
@@ -1191,7 +1192,7 @@ body.resizing iframe{pointer-events:none}
       </div>
     </div>
     <div id="terminal_keys" hidden></div>
-    <div id="session_meta" class="session-meta" hidden><button type="button" class="iconbtn" onclick="restart('new')" aria-label="Перезапустить — новый разговор" title="Перезапустить — новый разговор"><svg class="ui-icon"><use href="#i-chat-plus"/></svg></button><button type="button" class="iconbtn" onclick="restart('continue')" aria-label="Перезапустить — продолжить разговор" title="Перезапустить — продолжить разговор"><svg class="ui-icon"><use href="#i-restart"/></svg></button><span class="ctx" id="ctx" role="img"><span class="ctx-age" id="ctx_age_box" hidden><svg class="ui-icon"><use href="#i-clock"/></svg><span id="ctx_age"></span></span><span class="ctx-bar"><i id="ctx_fill"></i></span><span id="ctx_text"></span></span><div class="session-where" id="session_where" hidden><span class="where-item" id="session_computer_box"><svg class="ui-icon" aria-hidden="true"><use href="#i-monitor"/></svg><span id="session_computer"></span></span><label class="where-item where-containers" id="session_containers_box" hidden><svg class="ui-icon" aria-hidden="true"><use href="#i-docker"/></svg><span id="session_containers_name"></span><select id="session_containers" aria-label="Контейнеры" onchange="saveSessionContainers()"></select></label></div></div>
+    <div id="session_meta" class="session-meta" hidden><button type="button" class="iconbtn" onclick="restart('new')" aria-label="Перезапустить — новый разговор" title="Перезапустить — новый разговор"><svg class="ui-icon"><use href="#i-chat-plus"/></svg></button><button type="button" class="iconbtn" onclick="restart('continue')" aria-label="Перезапустить — продолжить разговор" title="Перезапустить — продолжить разговор"><svg class="ui-icon"><use href="#i-restart"/></svg></button><button type="button" class="iconbtn" id="b_compact" onclick="compactConversation()" aria-label="Сжать разговор" title="Сжать разговор"><svg class="ui-icon"><use href="#i-compact"/></svg></button><span class="ctx" id="ctx" role="img"><span class="ctx-age" id="ctx_age_box" hidden><svg class="ui-icon"><use href="#i-clock"/></svg><span id="ctx_age"></span></span><span class="ctx-bar"><i id="ctx_fill"></i></span><span id="ctx_text"></span></span><div class="session-where" id="session_where" hidden><span class="where-item" id="session_computer_box"><svg class="ui-icon" aria-hidden="true"><use href="#i-monitor"/></svg><span id="session_computer"></span></span><label class="where-item where-containers" id="session_containers_box" hidden><svg class="ui-icon" aria-hidden="true"><use href="#i-docker"/></svg><span id="session_containers_name"></span><select id="session_containers" aria-label="Контейнеры" onchange="saveSessionContainers()"></select></label></div></div>
   </main>
   <dialog id="help_dlg"><div class="dlg"><div class="hub-heading"><h3 tabindex="-1" autofocus>Как это работает</h3><button type="button" onclick="$('help_dlg').close()" aria-label="Закрыть"><svg class="ui-icon"><use href="#i-x"/></svg></button></div><div class="dlg-body">
     <div class="arch-scroll"><svg class="arch-map" viewBox="0 0 960 610" role="img" aria-label="Как это работает">
@@ -3281,6 +3282,7 @@ function renderQuickPrompts(){
   const shared=$("b_keymore").offsetParent!==null,open=shared?$("keys").classList.contains("expanded"):quick.more;
   const box=$("quick_prompts"),session=cur(),prompts=session?quickChips(agentOf(session),quick.saved,open,shared):[];
   box.hidden=!session||agentOf(session)==="shell"||!prompts.length&&shared;
+  $("b_compact").hidden=!session||!compactCommand(agentOf(session));
   const signature=JSON.stringify(prompts);
   if(box.dataset.signature===signature)return;  // Rebuilt on every refresh otherwise: a tap in progress would be lost.
   box.dataset.signature=signature;
@@ -3310,6 +3312,9 @@ async function sendQuick(prompt){
     else toast(tr("Не отправлено: ")+e.message);
   }finally{sending=false;quick.more=false;renderAttachments();renderSendState();renderQuickPrompts()}
 }
+// The agent's own command for a shorter conversation, or nothing for an agent without one. Pure for tests.
+function compactCommand(agent){return (QUICK_COMMANDS[agent]||[]).find(c=>c.text==="/compact")||null}
+function compactConversation(){const command=cur()&&compactCommand(agentOf(cur()));if(command)sendQuick(command)}
 function quickEditorRow(prompt){
   const label=el("input"),text=el("textarea"),remove=btn("","later-remove",()=>row.remove(),tr("Удалить"));
   label.type="text";label.maxLength=30;label.value=prompt.label||"";label.placeholder=tr("Подпись кнопки");label.setAttribute("aria-label",tr("Подпись кнопки"));
@@ -3337,7 +3342,7 @@ async function saveQuickPrompts(){
 }
 if(typeof document!=="undefined")document.addEventListener("visibilitychange",()=>{if(!document.hidden&&later.session)loadLater()});
 
-if(typeof module!=="undefined")module.exports={quickChips,quickRows,laterWhen,defaultLaterTime,laterCount};
+if(typeof module!=="undefined")module.exports={quickChips,quickRows,laterWhen,defaultLaterTime,laterCount,compactCommand};
 // Changes, commits, feature groups, files and pictures of the open session in one panel: a right sidebar on wide screens that stays
 // open while sessions switch (remembered in this browser), a full-screen dialog on phones. Each tab keeps
 // its own state and scroll; a tab loads for the open session only when shown.
@@ -4515,11 +4520,56 @@ function pastedFiles(data){
   const files=Array.from(data?.files||[]);
   return files.length&&!(data.getData&&data.getData("text/plain"))?files:[];
 }
+// Pictures inside copied rich text (a chat message, a page fragment): the sources of its <img> tags, each
+// once. A copied table has none, so its rendering stays out. Pure for tests.
+function pastedPictures(data){
+  const html=data?.getData?data.getData("text/html"):"";
+  if(!html||!/<img/i.test(html))return [];
+  const page=new DOMParser().parseFromString(html,"text/html");  // Inert: nothing is loaded while parsing.
+  const sources=Array.from(page.querySelectorAll("img[src]"),img=>img.getAttribute("src"));
+  return [...new Set(sources.filter(src=>/^(data:image\/|https?:\/\/|blob:)/i.test(src)))];
+}
+// How many of the pictures fit, given what is already attached. Pure for tests.
+function pictureRoom(attached,wanted){return Math.max(0,Math.min(wanted,4-attached))}
+const SMALL_PICTURE=48;
+// Chats draw emoji and avatars as pictures too; those are not what was copied.
+async function isSmallPicture(blob){
+  try{const bitmap=await createImageBitmap(blob),small=Math.max(bitmap.width,bitmap.height)<SMALL_PICTURE;bitmap.close();return small}
+  catch(e){return false}
+}
+// A site that lets other pages read its pictures, the clipboard's own data, or this page's blob. The
+// address of this panel stays out of the request.
+async function fetchPicture(src,index){
+  const response=await fetch(src,{credentials:"omit",referrerPolicy:"no-referrer"});
+  if(!response.ok)throw new Error("HTTP "+response.status);
+  const blob=await response.blob();
+  if(!blob.type.startsWith("image/"))throw new Error("not a picture");
+  if(await isSmallPicture(blob))return null;
+  return new File([blob],"pasted-"+index+"."+blob.type.slice(6).split(/[+;]/)[0],{type:blob.type});
+}
+async function attachPastedPictures(sources,ready){
+  const name=active,deck=selectedDeck,files=ready.slice();
+  let wanted=ready.length;
+  for(const [index,src] of sources.entries()){
+    try{const file=await fetchPicture(src,index+1);if(file){files.push(file);wanted++}}
+    catch(e){wanted++}
+  }
+  if(name!==active||deck!==selectedDeck||!wanted)return;
+  const fit=files.slice(0,pictureRoom(attachmentsFor(name).length,files.length));
+  if(fit.length<wanted)toast(tr("Картинок приложено: {0} из {1}. Остальные сохраните и приложите файлами",[fit.length,wanted]));
+  if(fit.length)await uploadImages(fit);
+}
 // A paste anywhere on the page or in the live terminal attaches the picture, not only in the message field.
 function onFilePaste(e){
-  const files=pastedFiles(e.clipboardData);
-  if(!files.length)return;
+  const data=e.clipboardData,files=pastedFiles(data),sources=files.length?[]:pastedPictures(data);
+  if(!files.length&&!sources.length)return;
   const target=dropTarget(cur(),dropBlocked());
+  if(sources.length){
+    // The text goes where a paste always goes; its pictures are attached beside it.
+    const ready=Array.from(data.files||[]).filter(file=>file.type.startsWith("image/"));
+    if(target.ok)attachPastedPictures(ready.length?[]:sources,ready);
+    return;
+  }
   // Otherwise the terminal would receive an empty paste, and a field of an open dialog the file's name.
   e.preventDefault();e.stopPropagation();
   if(!target.ok){toast(tr(target.text));return}
@@ -4534,7 +4584,7 @@ function watchFileDrops(win){
   win.addEventListener("dragend",()=>{dragFromPage=false;hideDropZone()});
 }
 
-if(typeof module!=="undefined")module.exports={dropTarget,dragHasFiles,pastedFiles};
+if(typeof module!=="undefined")module.exports={dropTarget,dragHasFiles,pastedFiles,pastedPictures,pictureRoom};
 const I18N=__PANEL_I18N__;
 const DATE_LOCALE=(()=>{try{return Intl.getCanonicalLocales(I18N.language)[0]}catch(e){return "en"}})();
 const $=id=>document.getElementById(id);

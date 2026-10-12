@@ -124,6 +124,7 @@ function renderQuickPrompts(){
   const shared=$("b_keymore").offsetParent!==null,open=shared?$("keys").classList.contains("expanded"):quick.more;
   const box=$("quick_prompts"),session=cur(),prompts=session?quickChips(agentOf(session),quick.saved,open,shared):[];
   box.hidden=!session||agentOf(session)==="shell"||!prompts.length&&shared;
+  $("b_compact").hidden=!session||!compactCommand(agentOf(session));
   const signature=JSON.stringify(prompts);
   if(box.dataset.signature===signature)return;  // Rebuilt on every refresh otherwise: a tap in progress would be lost.
   box.dataset.signature=signature;
@@ -153,6 +154,9 @@ async function sendQuick(prompt){
     else toast(tr("Не отправлено: ")+e.message);
   }finally{sending=false;quick.more=false;renderAttachments();renderSendState();renderQuickPrompts()}
 }
+// The agent's own command for a shorter conversation, or nothing for an agent without one. Pure for tests.
+function compactCommand(agent){return (QUICK_COMMANDS[agent]||[]).find(c=>c.text==="/compact")||null}
+function compactConversation(){const command=cur()&&compactCommand(agentOf(cur()));if(command)sendQuick(command)}
 function quickEditorRow(prompt){
   const label=el("input"),text=el("textarea"),remove=btn("","later-remove",()=>row.remove(),tr("Удалить"));
   label.type="text";label.maxLength=30;label.value=prompt.label||"";label.placeholder=tr("Подпись кнопки");label.setAttribute("aria-label",tr("Подпись кнопки"));
@@ -180,4 +184,4 @@ async function saveQuickPrompts(){
 }
 if(typeof document!=="undefined")document.addEventListener("visibilitychange",()=>{if(!document.hidden&&later.session)loadLater()});
 
-if(typeof module!=="undefined")module.exports={quickChips,quickRows,laterWhen,defaultLaterTime,laterCount};
+if(typeof module!=="undefined")module.exports={quickChips,quickRows,laterWhen,defaultLaterTime,laterCount,compactCommand};

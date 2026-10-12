@@ -955,6 +955,8 @@
     "сейчас через локальную сеть": "sekarang lewat jaringan lokal",
     "Открыть «{0}» в локальной сети?": "Buka “{0}” ke jaringan lokal?",
     "Пароль панели и содержимое сессий пойдут по этой сети без шифрования. Включайте только в сети, которой доверяете.": "Kata sandi panel dan isi sesi akan melewati jaringan ini tanpa enkripsi. Nyalakan hanya di jaringan yang Anda percayai.",
-    "По адресу локальной сети пароль отправляется без шифрования.": "Ke alamat jaringan lokal, kata sandi dikirim tanpa enkripsi."
+    "По адресу локальной сети пароль отправляется без шифрования.": "Ke alamat jaringan lokal, kata sandi dikirim tanpa enkripsi.",
+    "Сжать разговор": "Compact the conversation",
+    "Картинок приложено: {0} из {1}. Остальные сохраните и приложите файлами": "Pictures attached: {0} of {1}. Save the rest and attach them as files"
   }
 }

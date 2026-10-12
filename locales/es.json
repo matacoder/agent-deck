@@ -955,6 +955,8 @@
     "сейчас через локальную сеть": "ahora por la red local",
     "Открыть «{0}» в локальной сети?": "¿Abrir «{0}» a la red local?",
     "Пароль панели и содержимое сессий пойдут по этой сети без шифрования. Включайте только в сети, которой доверяете.": "La contraseña del panel y el contenido de las sesiones viajarán por esta red sin cifrar. Actívalo solo en una red de confianza.",
-    "По адресу локальной сети пароль отправляется без шифрования.": "A una dirección de la red local la contraseña se envía sin cifrar."
+    "По адресу локальной сети пароль отправляется без шифрования.": "A una dirección de la red local la contraseña se envía sin cifrar.",
+    "Сжать разговор": "Compact the conversation",
+    "Картинок приложено: {0} из {1}. Остальные сохраните и приложите файлами": "Pictures attached: {0} of {1}. Save the rest and attach them as files"
   }
 }

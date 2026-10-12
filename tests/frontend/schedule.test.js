@@ -46,3 +46,11 @@ test('the badge counts waiting prompts and auto-continue',()=>{
  expect(laterCount({prompts:[],auto_resume:false})).toBe(0);
  expect(laterCount({prompts:[{},{}],auto_resume:true})).toBe(3);
 });
+
+test('the compact button exists only for an agent that has the command',()=>{
+  const {compactCommand}=require('../../frontend/schedule');
+  expect(compactCommand('claude').text).toBe('/compact');
+  expect(compactCommand('claude-kimi').text).toBe('/compact');
+  expect(compactCommand('codex').confirm).toBeUndefined();
+  expect(compactCommand('shell')).toBeNull();
+});
