@@ -383,7 +383,7 @@ class SingleFlightCacheTests(PanelCase):
 
 class FreshReleaseCheckTests(PanelCase):
     def test_network_asks_github_again_but_at_most_once_a_minute(self):
-        self.enterContext(patch.object(self.panel, 'UPDATE_REPO', 'matacoder/agent-deck'))
+        self.enterContext(patch.object(self.panel, 'UPDATE_REPO', 'matacoder/deckaway'))
         self.enterContext(patch.object(self.panel.updater, 'available', return_value=True))
         self.panel.http_json = Mock(return_value={'tag_name': 'v99.0.0', 'html_url': 'https://example.test'})
         self.panel._cache.pop('release', None)

@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.46.1 — 2026-10-12
+
+- **The repository is now `matacoder/deckaway`.** Install commands, the update check and the installers use the new address. The old address keeps working: GitHub redirects it, so installed panels update as before and earlier install commands still run.
+
 ## 1.46.0 — 2026-10-12
 
 - **Away Deck is now DeckAway.** The name changed in the panel, its 16 languages, the sign-in page, the installed app, Telegram messages, the installers and the documentation. Nothing moves on disk: `/opt/agent-deck`, `~/.config/cc-panel/` and the service names stay. Computers on earlier versions are still found and connected; Docker contexts created as `Away Deck: ...` are still kept in step and removed, new ones are described `DeckAway: ...`.

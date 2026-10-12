@@ -1,7 +1,7 @@
 # Agent Deck for Windows 11, running in WSL2 (Ubuntu) with the regular Linux installer.
 #
 # Run in PowerShell opened with "Run as administrator":
-#   irm https://raw.githubusercontent.com/matacoder/agent-deck/main/install-windows.ps1 | iex
+#   irm https://raw.githubusercontent.com/matacoder/deckaway/main/install-windows.ps1 | iex
 # Options are environment variables set before the same command, e.g.:
 #   $env:AGENT_DECK_LANGUAGE = 'ru'
 # Rerunning the command updates an existing installation; settings and sessions are kept.
@@ -15,7 +15,7 @@ $AgentDeck = @{
     Distro     = if ($env:AGENT_DECK_DISTRO) { $env:AGENT_DECK_DISTRO } else { 'Ubuntu-24.04' }
     Port       = if ($env:AGENT_DECK_PORT) { [int]$env:AGENT_DECK_PORT } else { 8790 }
     WithDocker = $env:AGENT_DECK_WITH_DOCKER -eq '1'
-    GetSh      = 'https://raw.githubusercontent.com/matacoder/agent-deck/main/get.sh'
+    GetSh      = 'https://raw.githubusercontent.com/matacoder/deckaway/main/get.sh'
     MinBuild   = 22621   # mirrored WSL networking needs Windows 11 22H2
     TaskName   = 'Agent Deck'
     # Hyper-V firewall rules address WSL by this fixed VM creator id.

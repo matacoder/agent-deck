@@ -112,7 +112,7 @@ The same installer works on Ubuntu, Debian and a Raspberry Pi 4/5 with the 64-bi
 (32-bit systems are not supported: Claude Code needs 64-bit). Run as root on a fresh server:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/matacoder/agent-deck/main/get.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/matacoder/deckaway/main/get.sh | sudo bash
 ```
 
 The installer prints the panel address, login and password. By default the panel is private:
@@ -122,14 +122,14 @@ log in, or pass `TS_AUTHKEY=tskey-...`).
 Russian interface from the first launch:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/matacoder/agent-deck/main/get.sh | sudo PANEL_LANGUAGE=ru bash
+curl -fsSL https://raw.githubusercontent.com/matacoder/deckaway/main/get.sh | sudo PANEL_LANGUAGE=ru bash
 ```
 
 Your own domain with automatic HTTPS (needed for [phone notifications](#notifications)). Point a DNS
 A record (for example `cli.example.com`) to the server first:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/matacoder/agent-deck/main/get.sh | sudo PUBLIC_DOMAIN=cli.example.com bash
+curl -fsSL https://raw.githubusercontent.com/matacoder/deckaway/main/get.sh | sudo PUBLIC_DOMAIN=cli.example.com bash
 ```
 
 Certificates are issued and renewed automatically (via Dokploy's Traefik if the server has it,
@@ -151,7 +151,7 @@ Other options go before `bash` the same way, for example `sudo MEM_MAX=8G bash`:
 Run in Terminal **without sudo**:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/matacoder/agent-deck/main/get.sh | bash
+curl -fsSL https://raw.githubusercontent.com/matacoder/deckaway/main/get.sh | bash
 ```
 
 The installer sets up Homebrew if needed (follow its prompts), Python, tmux, ttyd,
@@ -163,26 +163,26 @@ Homebrew may ask to install Apple's command-line tools on a fresh Mac.
 Russian interface from the first launch:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/matacoder/agent-deck/main/get.sh | PANEL_LANGUAGE=ru bash
+curl -fsSL https://raw.githubusercontent.com/matacoder/deckaway/main/get.sh | PANEL_LANGUAGE=ru bash
 ```
 
 Choose the project directory (saved for future reinstalls; also changeable in
 **Settings → Application → Project directory**):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/matacoder/agent-deck/main/get.sh | bash -s -- --projects-dir "$HOME/dev"
+curl -fsSL https://raw.githubusercontent.com/matacoder/deckaway/main/get.sh | bash -s -- --projects-dir "$HOME/dev"
 ```
 
 Another port:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/matacoder/agent-deck/main/get.sh | BIND_PORT=8791 bash
+curl -fsSL https://raw.githubusercontent.com/matacoder/deckaway/main/get.sh | BIND_PORT=8791 bash
 ```
 
 Keep the panel local-only (no Tailscale access):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/matacoder/agent-deck/main/get.sh | BIND_HOST=127.0.0.1 bash
+curl -fsSL https://raw.githubusercontent.com/matacoder/deckaway/main/get.sh | BIND_HOST=127.0.0.1 bash
 ```
 
 `WITH_CLAUDE=0` or `WITH_CODEX=0` before `bash` skips either agent. For phone access, install
@@ -208,7 +208,7 @@ Requirements: Windows 11 22H2 or newer and virtualization enabled (it is on most
 **PowerShell as administrator** (Start → type *PowerShell* → *Run as administrator*) and run:
 
 ```powershell
-irm https://raw.githubusercontent.com/matacoder/agent-deck/main/install-windows.ps1 | iex
+irm https://raw.githubusercontent.com/matacoder/deckaway/main/install-windows.ps1 | iex
 ```
 
 The script installs WSL (on a fresh PC it asks you to restart Windows once and run the command
@@ -226,7 +226,7 @@ $env:AGENT_DECK_LANGUAGE = 'ru'
 ```
 
 ```powershell
-irm https://raw.githubusercontent.com/matacoder/agent-deck/main/install-windows.ps1 | iex
+irm https://raw.githubusercontent.com/matacoder/deckaway/main/install-windows.ps1 | iex
 ```
 
 Other options are set the same way before the command: `AGENT_DECK_PORT` (default `8790`),
@@ -250,7 +250,7 @@ One container runs tmux, the terminal and the panel as an unprivileged user; set
 sessions and projects live in the `agent-deck-home` volume. Requires Docker with Compose v2:
 
 ```bash
-git clone https://github.com/matacoder/agent-deck.git && cd agent-deck && docker compose up -d --build
+git clone https://github.com/matacoder/deckaway.git && cd deckaway && docker compose up -d --build
 ```
 
 The first start installs Claude Code and Codex into the volume and creates a login password; show it with:
@@ -285,7 +285,7 @@ SteamOS erases system packages on every update, so DeckAway runs as a rootless P
 updates. No sudo password is needed. In Desktop Mode open Konsole and run:
 
 ```bash
-git clone https://github.com/matacoder/agent-deck.git ~/agent-deck && ~/agent-deck/install-steamos.sh
+git clone https://github.com/matacoder/deckaway.git ~/agent-deck && ~/agent-deck/install-steamos.sh
 ```
 
 The script prints the address and password. Useful options (add before the command):
@@ -331,13 +331,13 @@ sudo /opt/agent-deck/update.sh
 Full update on Windows 11 — rerun the installer in PowerShell as administrator:
 
 ```powershell
-irm https://raw.githubusercontent.com/matacoder/agent-deck/main/install-windows.ps1 | iex
+irm https://raw.githubusercontent.com/matacoder/deckaway/main/install-windows.ps1 | iex
 ```
 
 Full update on macOS — rerun the installer:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/matacoder/agent-deck/main/get.sh | bash
+curl -fsSL https://raw.githubusercontent.com/matacoder/deckaway/main/get.sh | bash
 ```
 
 ## Phone

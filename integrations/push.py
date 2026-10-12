@@ -16,7 +16,7 @@ try:
 except ModuleNotFoundError:
     locales = None
 
-SUBJECT = 'https://github.com/matacoder/agent-deck'
+SUBJECT = 'https://github.com/matacoder/deckaway'
 AGENT_LABELS = {'claude': 'Claude', 'codex': 'Codex', 'claude-kimi': 'Claude · Kimi', 'kimi': 'Kimi Code', 'pi': 'Pi'}
 MAX_DEVICES = 20
 IDLE_LOCAL, IDLE_REMOTE, MIN_BUSY = 8, 25, 20

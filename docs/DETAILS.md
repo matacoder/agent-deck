@@ -77,7 +77,7 @@ remembered in `/etc/agent-deck/install.conf`, so later runs keep them unless ove
 `get.sh` additionally honours `AGENT_DECK_DIR` (default `/opt/agent-deck`) and `AGENT_DECK_REPO`.
 
 Manual system installation requires a root-owned checkout and protected parent directories:
-`sudo git clone https://github.com/matacoder/agent-deck /opt/agent-deck`, then
+`sudo git clone https://github.com/matacoder/deckaway /opt/agent-deck`, then
 `sudo /opt/agent-deck/install.sh`. The bootstrap handles this automatically. Root entrypoints reject
 user-owned, group/world-writable or symlinked source files. Files in the panel user's home and runtime
 are written as that user, so a symlink cannot redirect a root write into a protected file.

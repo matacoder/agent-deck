@@ -29,9 +29,9 @@ Check 'commenting it is idempotent' ((Merge-WslConfig $forwarding) -eq $forwardi
 Check 'tailscale address is picked from CLI output' ((Select-TailscaleIPv4 @('', '100.101.12.7 ')) -eq '100.101.12.7')
 Check 'non-tailnet addresses are ignored' ($null -eq (Select-TailscaleIPv4 @('192.168.1.5', '100.128.0.1', '100.63.1.1')))
 
-$options = @{ Language = 'pt-BR'; Distro = 'Ubuntu-24.04'; Port = 8790; WithDocker = $false; GetSh = 'https://raw.githubusercontent.com/matacoder/agent-deck/main/get.sh' }
+$options = @{ Language = 'pt-BR'; Distro = 'Ubuntu-24.04'; Port = 8790; WithDocker = $false; GetSh = 'https://raw.githubusercontent.com/matacoder/deckaway/main/get.sh' }
 Test-InstallOptions $options
-Check 'linux command carries only validated values' ((Get-LinuxCommand $options '100.64.0.9') -eq 'curl -fsSL https://raw.githubusercontent.com/matacoder/agent-deck/main/get.sh | BIND_HOST=100.64.0.9 PANEL_PORT=8790 PANEL_LANGUAGE=pt-BR WITH_DOCKER=0 bash')
+Check 'linux command carries only validated values' ((Get-LinuxCommand $options '100.64.0.9') -eq 'curl -fsSL https://raw.githubusercontent.com/matacoder/deckaway/main/get.sh | BIND_HOST=100.64.0.9 PANEL_PORT=8790 PANEL_LANGUAGE=pt-BR WITH_DOCKER=0 bash')
 foreach ($bad in @(@{ Language = 'en; rm -rf /' }, @{ Distro = 'Ubuntu; calc' }, @{ Port = 80 })) {
     $copy = $options.Clone(); foreach ($k in $bad.Keys) { $copy[$k] = $bad[$k] }
     $rejected = $false

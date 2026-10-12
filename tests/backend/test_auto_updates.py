@@ -85,8 +85,8 @@ class AutoUpdateTests(unittest.TestCase):
 
 class PanelUpdateTests(PanelCase):
     def test_explicit_check_bypasses_a_cached_old_release(self):
-        self.panel.UPDATE_REPO='matacoder/agent-deck';self.panel.VERSION='1.0.7'
-        self.panel.http_json=Mock(return_value={'tag_name':'v1.2.0','html_url':'https://github.com/matacoder/agent-deck/releases/tag/v1.2.0'})
+        self.panel.UPDATE_REPO='matacoder/deckaway';self.panel.VERSION='1.0.7'
+        self.panel.http_json=Mock(return_value={'tag_name':'v1.2.0','html_url':'https://github.com/matacoder/deckaway/releases/tag/v1.2.0'})
         self.panel._cache['release']=(self.panel.time.time(),{'latest':'1.0.7','url':'old'})
         self.assertFalse(self.panel.version_info()['update'])
         data=self.panel.ACTIONS['check_update']({})

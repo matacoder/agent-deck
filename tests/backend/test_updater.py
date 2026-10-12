@@ -61,15 +61,15 @@ class UpdaterTests(unittest.TestCase):
 
     def test_rejects_root_development_checkout_symlink_and_invalid_repository(self):
         with patch.object(updater.os, "geteuid", return_value=1000):
-            self.assertTrue(updater.available(self.target, "matacoder/agent-deck"))
+            self.assertTrue(updater.available(self.target, "matacoder/deckaway"))
             self.assertFalse(updater.available(self.target, "../other"))
             (self.directory / ".git").mkdir()
-            self.assertFalse(updater.available(self.target, "matacoder/agent-deck"))
+            self.assertFalse(updater.available(self.target, "matacoder/deckaway"))
         with patch.object(updater.os, "geteuid", return_value=0):
-            self.assertFalse(updater.available(self.target, "matacoder/agent-deck"))
+            self.assertFalse(updater.available(self.target, "matacoder/deckaway"))
         link = self.directory / "link"
         link.symlink_to(self.target)
-        self.assertFalse(updater.available(link, "matacoder/agent-deck"))
+        self.assertFalse(updater.available(link, "matacoder/deckaway"))
 
     def test_lock_prevents_duplicate_jobs_and_detects_interrupted_job(self):
         updater.write_state(self.state, "downloading", version="0.2.0")
@@ -176,7 +176,7 @@ class UpdaterTests(unittest.TestCase):
         (self.target / ".update-link").symlink_to(outside)
         (self.target / ".update-file").write_text("not a directory")
         with patch.object(updater, "available", return_value=True), patch.object(updater, "fetch", return_value=b'{"tag_name":"v0.1.0"}'):
-            updater.run("matacoder/agent-deck", self.target, self.state, "http://127.0.0.1:8790")
+            updater.run("matacoder/deckaway", self.target, self.state, "http://127.0.0.1:8790")
         self.assertFalse(stale.exists())
         self.assertTrue((self.target / ".update-link").is_symlink())
         self.assertTrue((outside / "keep").exists())
@@ -197,7 +197,7 @@ class UpdaterTests(unittest.TestCase):
 
     def test_download_failure_does_not_stop_the_running_panel(self):
         with patch.object(updater, "available", return_value=True), patch.object(updater, "fetch", side_effect=OSError("offline")), patch.object(updater, "service") as service:
-            updater.run("matacoder/agent-deck", self.target, self.state, "http://127.0.0.1:8790")
+            updater.run("matacoder/deckaway", self.target, self.state, "http://127.0.0.1:8790")
         service.assert_not_called()
         self.assertEqual(updater.status(self.state)["phase"], "error")
         self.assertEqual(updater.status(self.state)["message"], "offline")
@@ -211,19 +211,19 @@ class UpdaterTests(unittest.TestCase):
                 raise answer
             return answer
         with patch.object(updater, "available", return_value=True), patch.object(updater, "fetch", side_effect=fetch):
-            updater.run("matacoder/agent-deck", self.target, self.state, "http://127.0.0.1:8790")
+            updater.run("matacoder/deckaway", self.target, self.state, "http://127.0.0.1:8790")
         # Nothing was replaced or restarted: automatic updates may retry this release.
         self.assertNotIn("version", updater.status(self.state))
         with patch.object(updater, "available", return_value=True), \
                 patch.object(updater, "fetch", side_effect=[b'{"tag_name":"v0.2.0"}', self.archive()]), \
                 patch.object(updater, "install", side_effect=RuntimeError("did not start")):
-            updater.run("matacoder/agent-deck", self.target, self.state, "http://127.0.0.1:8790")
+            updater.run("matacoder/deckaway", self.target, self.state, "http://127.0.0.1:8790")
         self.assertEqual({k: updater.status(self.state)[k] for k in ("phase", "version")}, {"phase": "error", "version": "0.2.0"})
 
     def test_existing_or_older_release_never_downgrades(self):
         (self.target / "VERSION").write_text("0.2.0")
         with patch.object(updater, "available", return_value=True), patch.object(updater, "fetch", return_value=b'{"tag_name":"v0.1.0"}') as fetch, patch.object(updater, "service") as service:
-            updater.run("matacoder/agent-deck", self.target, self.state, "http://127.0.0.1:8790")
+            updater.run("matacoder/deckaway", self.target, self.state, "http://127.0.0.1:8790")
         fetch.assert_called_once()
         service.assert_not_called()
         self.assertEqual(updater.status(self.state)["phase"], "done")
@@ -232,10 +232,10 @@ class UpdaterTests(unittest.TestCase):
         (self.target / "VERSION").write_text("0.1.0")
         release = json.dumps({"tag_name": "v0.2.0", "tarball_url": "https://ignored.example/malicious"}).encode()
         with patch.object(updater, "available", return_value=True), patch.object(updater, "fetch", side_effect=[release, self.archive()]) as fetch, patch.object(updater, "service"), patch.object(updater, "healthy"):
-            updater.run("matacoder/agent-deck", self.target, self.state, "http://127.0.0.1:8790")
+            updater.run("matacoder/deckaway", self.target, self.state, "http://127.0.0.1:8790")
         self.assertEqual([call.args[0] for call in fetch.call_args_list], [
-            "https://api.github.com/repos/matacoder/agent-deck/releases/latest",
-            "https://api.github.com/repos/matacoder/agent-deck/tarball/v0.2.0",
+            "https://api.github.com/repos/matacoder/deckaway/releases/latest",
+            "https://api.github.com/repos/matacoder/deckaway/tarball/v0.2.0",
         ])
         self.assertEqual(updater.status(self.state)["phase"], "done")
         self.assertEqual((self.target / "VERSION").read_text(), "0.2.0")
@@ -244,7 +244,7 @@ class UpdaterTests(unittest.TestCase):
         (self.target/'VERSION').write_text('0.2.0')
         release=json.dumps({'tag_name':'v0.2.0'}).encode()
         with patch.object(updater,'available',return_value=True),patch.object(updater,'fetch',side_effect=[release,self.archive()]),patch.object(updater,'service'),patch.object(updater,'healthy'):
-            updater.run('matacoder/agent-deck',self.target,self.state,'http://127.0.0.1:8790')
+            updater.run('matacoder/deckaway',self.target,self.state,'http://127.0.0.1:8790')
         self.assertTrue(all((self.target/name).is_file() for name in updater.REQUIRED))
         self.assertEqual(updater.status(self.state)['phase'],'done')
 
@@ -258,7 +258,7 @@ class UpdaterTests(unittest.TestCase):
 
 class UpdateActionTests(PanelCase):
     def test_spawns_fixed_detached_helper_without_forwarding_password(self):
-        self.panel.UPDATE_REPO = "matacoder/agent-deck"
+        self.panel.UPDATE_REPO = "matacoder/deckaway"
         with patch.object(self.panel.updater, "available", return_value=True), patch.object(self.panel.subprocess, "Popen") as start:
             result = self.panel.action_update({"command": "ignored", "version": "ignored"})
         args, kwargs = start.call_args
@@ -280,7 +280,7 @@ class UpdateActionTests(PanelCase):
             os.close(fd)
 
     def test_development_checkout_cannot_update_itself(self):
-        self.panel.UPDATE_REPO = "matacoder/agent-deck"
+        self.panel.UPDATE_REPO = "matacoder/deckaway"
         with self.assertRaises(ValueError):
             self.panel.action_update({})
 

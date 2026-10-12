@@ -220,7 +220,7 @@ try:
         VERSION = version_file.read().strip()
 except OSError:
     VERSION = "dev"
-UPDATE_REPO = os.environ.get("UPDATE_REPO", "matacoder/agent-deck")   # "" disables the update check
+UPDATE_REPO = os.environ.get("UPDATE_REPO", "matacoder/deckaway")   # "" disables the update check
 CHECKOUT = os.environ.get("CHECKOUT", "")                             # where install.sh ran from
 UPDATE_STATE = os.path.expanduser("~/.config/cc-panel/update.json")
 action_lock = threading.Lock()
