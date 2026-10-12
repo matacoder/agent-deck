@@ -103,3 +103,9 @@ class PiPanelTests(PanelCase):
         self.assertNotIn('--continue', cmd)
         self.assertTrue(self.panel.is_running('pi', 'node'))
         self.assertFalse(self.panel.is_running('pi', 'bash'))
+        # macOS names a natively installed Claude Code by its version file.
+        for agent in ('claude', 'claude-kimi'):
+            self.assertTrue(self.panel.is_running(agent, '2.1.296'))
+            self.assertFalse(self.panel.is_running(agent, 'zsh'))
+        self.assertFalse(self.panel.is_running('codex', '2.1.296'))
+        self.assertFalse(self.panel.is_running('claude', '2.1'))

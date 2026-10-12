@@ -1,5 +1,7 @@
 /* ---------- tokens ---------- */
 :root{
+  /* The panel is dark only: native controls and scrollbars must not fall back to the light system look. */
+  color-scheme:dark;scrollbar-color:#4d4d52 transparent;
   --bg:#1e1e1e;--side:#252526;--side2:#2d2d30;--sel:#37373d;--bd:#333336;--bd-soft:#ffffff12;
   /* Text tokens keep WCAG AA (≥4.5:1) on --side, the darkest surface they sit on. */
   --fg:#d4d4d4;--fg2:#ececec;--mut:#a1a1a6;--dim:#929298;

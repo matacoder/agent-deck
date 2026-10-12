@@ -34,7 +34,24 @@ function onFileDrop(e){
   if(!target.ok){toast(tr(target.text));return}
   uploadImages(files);
 }
+// Files in a paste: a screenshot or a copied picture. Text with a picture beside it (a copied table, a
+// document fragment) stays text. Pure for tests.
+function pastedFiles(data){
+  const files=Array.from(data?.files||[]);
+  return files.length&&!(data.getData&&data.getData("text/plain"))?files:[];
+}
+// A paste anywhere on the page or in the live terminal attaches the picture, not only in the message field.
+function onFilePaste(e){
+  const files=pastedFiles(e.clipboardData);
+  if(!files.length)return;
+  const target=dropTarget(cur(),dropBlocked());
+  // Otherwise the terminal would receive an empty paste, and a field of an open dialog the file's name.
+  e.preventDefault();e.stopPropagation();
+  if(!target.ok){toast(tr(target.text));return}
+  uploadImages(files);
+}
 function watchFileDrops(win){
+  win.addEventListener("paste",onFilePaste,true);
   win.addEventListener("dragenter",onFileDrag);win.addEventListener("dragover",onFileDrag);
   win.addEventListener("drop",onFileDrop);
   win.addEventListener("dragleave",e=>{if(!e.relatedTarget)hideDropZone()});
@@ -42,4 +59,4 @@ function watchFileDrops(win){
   win.addEventListener("dragend",()=>{dragFromPage=false;hideDropZone()});
 }
 
-if(typeof module!=="undefined")module.exports={dropTarget,dragHasFiles};
+if(typeof module!=="undefined")module.exports={dropTarget,dragHasFiles,pastedFiles};

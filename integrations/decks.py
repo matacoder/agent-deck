@@ -28,7 +28,7 @@ PUBLIC = ('id', 'name', 'url', 'username')
 IDENTITY = re.compile(r'[0-9a-f]{24}\Z')
 TAILNET = ipaddress.ip_network('100.64.0.0/10')
 MAX_ADDRESSES = 4
-CONNECT_TIMEOUT = 4   # A sleeping address must not hold a request for the whole read timeout.
+CONNECT_TIMEOUT = 4   # With another address to try, a sleeping one must not hold the request for the whole timeout.
 RETRY_AFTER = 60      # An address that did not answer is left alone this long while another one works.
 BAD_URL = ('Use an http:// URL with a Tailscale or local network IPv4 address and port; '
            'https:// is not supported for bare addresses')
@@ -84,10 +84,10 @@ PROXY_LIMIT = 48 * 1024 * 1024
 POLL_LIMIT = 8 * 1024 * 1024
 
 
-def http_request(url, method, path, body=None, headers=None, timeout=30, limit=300*1024*1024):
+def http_request(url, method, path, body=None, headers=None, timeout=30, limit=300*1024*1024, connect=None):
     """No redirects, environment proxies, DNS targets or credential-bearing exceptions."""
     parsed = urlsplit(url)
-    connection = http.client.HTTPConnection(parsed.hostname, parsed.port, timeout=min(timeout, CONNECT_TIMEOUT))
+    connection = http.client.HTTPConnection(parsed.hostname, parsed.port, timeout=min(timeout, connect or timeout))
     try:
         try:
             connection.connect()
@@ -393,7 +393,7 @@ class RemoteDecks:
             try:
                 result = http_request(profile['url'], method, path, body,
                     {'Cookie': cookie, 'Origin': profile['url'], 'Content-Type': content_type, 'Accept-Encoding': 'identity'},
-                    timeout=timeout, limit=limit)
+                    timeout=timeout, limit=limit, connect=CONNECT_TIMEOUT if profile.get('urls') else None)
             except Unreachable:
                 # Nothing was sent, so the request may go to the computer's other address.
                 self.fail(identity, profile['url'])
@@ -435,7 +435,8 @@ class RemoteDecks:
             profile, cookie = self.authentication(identity, language)
             parsed = urlsplit(profile['url'])
             try:
-                link = socket.create_connection((parsed.hostname, parsed.port), timeout=CONNECT_TIMEOUT)
+                # A computer with one address may take its time: Tailscale builds the path to a waking machine.
+                link = socket.create_connection((parsed.hostname, parsed.port), timeout=CONNECT_TIMEOUT if profile.get('urls') else 10)
                 link.settimeout(10)
                 return link, profile['url'], cookie
             except OSError:

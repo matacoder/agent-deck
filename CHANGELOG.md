@@ -2,6 +2,13 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.44.1 — 2026-10-12
+
+- **A computer that takes a few seconds to answer is no longer reported as "did not respond".** 1.44.0 gave every connection four seconds; a waking Mac needs longer over Tailscale. The short wait now applies only when the computer has another address to try.
+- **A picture is pasted from the clipboard anywhere on the page**, the live terminal included, not only with the cursor in the message field.
+- **Scrollbars are dark on Windows**, in the panel and in the live terminal.
+- **Claude Code on a Mac is no longer shown as "not running".** Its own installer starts the program from a file named after the version (`2.1.296`), and macOS reports that name; the panel took it for a stopped agent, so the state, "finished" notifications and resuming after a restart were wrong for such sessions.
+
 ## 1.44.0 — 2026-10-12
 
 - **Works in an ordinary local network, next to Tailscale.** **Settings → Computers → Local network** has a switch per computer: when on, the panel also answers at the computer's local address (`192.168.x`, `10.x`, `172.16–31.x`). It is off by default and asks first, because the connection there is plain HTTP. The gateway can switch it for every connected computer.

@@ -1,6 +1,14 @@
 global.agentOf=s=>s.agent||'claude';
 global.sessionTitle=s=>s.title||s.name;
-const {dropTarget,dragHasFiles}=require('../../frontend/drop');
+const {dropTarget,dragHasFiles,pastedFiles}=require('../../frontend/drop');
+
+test('a pasted picture is a file; text copied with a picture beside it stays text',()=>{
+  const shot={name:'image.png'};
+  expect(pastedFiles({files:[shot],getData:()=>''})).toEqual([shot]);
+  expect(pastedFiles({files:[shot],getData:type=>type==='text/plain'?'cell A1':''})).toEqual([]);
+  expect(pastedFiles({files:[],getData:()=>'plain text'})).toEqual([]);
+  expect(pastedFiles(null)).toEqual([]);
+});
 
 test('a drop names the session it lands in, or says why it cannot',()=>{
   expect(dropTarget({name:'api',agent:'codex'},false)).toEqual({ok:true,text:'Отпустите, чтобы приложить к «{0}»',args:['api']});

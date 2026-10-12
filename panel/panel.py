@@ -470,10 +470,15 @@ LOGINS = {
 }
 
 
+VERSION_NAME = re.compile(r'\d+\.\d+\.\d+[\w.+-]{0,24}')
+
+
 def is_running(agent, cmd):
     if agent == "shell":
         return cmd not in SHELLS
-    return cmd in AGENTS[agent][1]
+    # Claude Code's own installer runs the binary from a file named after its version (versions/2.1.296),
+    # and macOS reports that file name instead of "claude".
+    return cmd in AGENTS[agent][1] or ('claude' in AGENTS[agent][1] and VERSION_NAME.fullmatch(cmd) is not None)
 
 
 def agent_cmd(agent, sid=None, resume=False, skip=False, name=None, source=None):

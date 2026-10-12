@@ -47,10 +47,11 @@ class FakeDeck:
 class Network:
     """Which machine answers at which address; an address without one does not accept connections."""
     def __init__(self):
-        self.hosts, self.calls = {}, []
+        self.hosts, self.calls, self.connects = {}, [], []
 
-    def __call__(self, url, method, path, body=None, headers=None, timeout=30, limit=0):
+    def __call__(self, url, method, path, body=None, headers=None, timeout=30, limit=0, connect=None):
         self.calls.append((url, method, path, body or b'', headers or {}))
+        self.connects.append(connect)
         if url not in self.hosts:
             raise Unreachable('no route')
         return self.hosts[url](method, path, body or b'', headers or {})
@@ -79,6 +80,7 @@ class SeveralAddressesTests(PanelCase):
         self.assertEqual(self.decks.status()['decks'][0]['urls'], [TAIL, LOCAL])
         self.assertEqual(self.decks.request(self.id, 'GET', '/api/sessions')[0], 200)
         self.assertEqual(self.decks.status()['decks'][0]['route'], TAIL)
+        self.assertEqual(self.net.connects[-1], 4)  # Another address waits: this one gets a short connect.
         del self.net.hosts[TAIL]
         self.assertEqual(self.decks.request(self.id, 'POST', '/api/send', b'{}')[0], 200)
         self.assertEqual(self.decks.status()['decks'][0]['route'], LOCAL)
@@ -141,6 +143,9 @@ class SeveralAddressesTests(PanelCase):
 
     def test_a_single_unreachable_address_fails_as_before_and_a_mutation_is_not_replayed(self):
         self.connect()
+        # One address: the full wait, as before. Tailscale needs seconds to reach a machine that just woke up.
+        self.decks.request(self.id, 'GET', '/api/sessions')
+        self.assertIsNone(self.net.connects[-1])
         del self.net.hosts[TAIL]
         with self.assertRaisesRegex(ValueError, 'did not respond'):
             self.decks.request(self.id, 'POST', '/api/send', b'{}')

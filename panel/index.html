@@ -11,6 +11,8 @@
 <style>
 /* ---------- tokens ---------- */
 :root{
+  /* The panel is dark only: native controls and scrollbars must not fall back to the light system look. */
+  color-scheme:dark;scrollbar-color:#4d4d52 transparent;
   --bg:#1e1e1e;--side:#252526;--side2:#2d2d30;--sel:#37373d;--bd:#333336;--bd-soft:#ffffff12;
   /* Text tokens keep WCAG AA (≥4.5:1) on --side, the darkest surface they sit on. */
   --fg:#d4d4d4;--fg2:#ececec;--mut:#a1a1a6;--dim:#929298;
@@ -4507,7 +4509,24 @@ function onFileDrop(e){
   if(!target.ok){toast(tr(target.text));return}
   uploadImages(files);
 }
+// Files in a paste: a screenshot or a copied picture. Text with a picture beside it (a copied table, a
+// document fragment) stays text. Pure for tests.
+function pastedFiles(data){
+  const files=Array.from(data?.files||[]);
+  return files.length&&!(data.getData&&data.getData("text/plain"))?files:[];
+}
+// A paste anywhere on the page or in the live terminal attaches the picture, not only in the message field.
+function onFilePaste(e){
+  const files=pastedFiles(e.clipboardData);
+  if(!files.length)return;
+  const target=dropTarget(cur(),dropBlocked());
+  // Otherwise the terminal would receive an empty paste, and a field of an open dialog the file's name.
+  e.preventDefault();e.stopPropagation();
+  if(!target.ok){toast(tr(target.text));return}
+  uploadImages(files);
+}
 function watchFileDrops(win){
+  win.addEventListener("paste",onFilePaste,true);
   win.addEventListener("dragenter",onFileDrag);win.addEventListener("dragover",onFileDrag);
   win.addEventListener("drop",onFileDrop);
   win.addEventListener("dragleave",e=>{if(!e.relatedTarget)hideDropZone()});
@@ -4515,7 +4534,7 @@ function watchFileDrops(win){
   win.addEventListener("dragend",()=>{dragFromPage=false;hideDropZone()});
 }
 
-if(typeof module!=="undefined")module.exports={dropTarget,dragHasFiles};
+if(typeof module!=="undefined")module.exports={dropTarget,dragHasFiles,pastedFiles};
 const I18N=__PANEL_I18N__;
 const DATE_LOCALE=(()=>{try{return Intl.getCanonicalLocales(I18N.language)[0]}catch(e){return "en"}})();
 const $=id=>document.getElementById(id);
@@ -4662,6 +4681,12 @@ async function copyToClipboard(text,w){
   try{w.term.focus()}catch(e){}
   if(ok)return done();
   toast(tr("Выделение из терминала готово"),true,{label:tr("Копировать"),run:()=>{execCopy(text,document)?done():toast(tr("Браузер запретил копирование"))}});
+}
+// The terminal page is ttyd's own: without this Windows draws its scrollbar light on the dark screen.
+function darkScrollbars(doc){
+  const style=doc.createElement("style");
+  style.textContent=":root{color-scheme:dark}*{scrollbar-color:#4d4d52 transparent}";
+  doc.head.append(style);
 }
 function hookClipboard(w,tries=0){
   const t=w.term;
@@ -4838,7 +4863,7 @@ function frameFor(name){
     f=document.createElement("iframe");f.src=activePath("/t/?arg="+encodeURIComponent("=cc-"+name));
     // Only the overlay reacts: a full show() would scroll the Screen view or move focus into the terminal.
     f.dataset.loading="1";f.addEventListener("load",()=>{delete f.dataset.loading;if(frames.get(active)===f&&curMode()==="term")$("term_loading").hidden=true},{once:true});
-    f.onload=()=>{try{f.contentWindow.addEventListener("keydown",hotkeys,true);watchFileDrops(f.contentWindow);hookClipboard(f.contentWindow);attachDrawerSwipe(f.contentDocument,drawerSwipe);attachDrawerSwipe(f.contentDocument,projectSwipe)}catch(e){}};
+    f.onload=()=>{try{f.contentWindow.addEventListener("keydown",hotkeys,true);watchFileDrops(f.contentWindow);hookClipboard(f.contentWindow);darkScrollbars(f.contentDocument);attachDrawerSwipe(f.contentDocument,drawerSwipe);attachDrawerSwipe(f.contentDocument,projectSwipe)}catch(e){}};
     $("stage").append(f);frames.set(name,f);
   }
   return f;
@@ -5144,10 +5169,6 @@ addEventListener("focus",settleImageChoice);
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)settleImageChoice()});
 $("image_files").addEventListener("change",e=>{choosingImages=false;const files=Array.from(e.target.files||[]);e.target.value="";uploadImages(files)});
 watchFileDrops(window);
-$("msg").addEventListener("paste",e=>{
-  const files=Array.from(e.clipboardData&&e.clipboardData.files||[]);
-  if(files.length){e.preventDefault();uploadImages(files)}
-});
 
 let sending=false;
 const sendStates=new Map();
