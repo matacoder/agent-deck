@@ -6,59 +6,7 @@
  */
 const fs=require('fs');
 const path=require('path');
-const {JSDOM,VirtualConsole}=require('jsdom');
-
-const DECK='a'.repeat(24);
-const page=fs.readFileSync(path.resolve(__dirname,'../../panel/index.html'),'utf8')
-  .replace('__PANEL_I18N__',JSON.stringify({language:'en',messages:{}})).replace(/__PANEL_REVISION__/g,'test');
-const session=(name,extra={})=>({name,title:name,agent:'codex',group:'demo',path:'/home/demo/projects/'+name,running:true,activity:1,created:1,...extra});
-
-function boot(routes,opened,setup){
-  // jsdom cannot replace location.reload; a reload shows up as a "navigation" not-implemented error.
-  const console=new VirtualConsole(),problems=[];
-  console.on('jsdomError',error=>problems.push(String(error.message)));
-  const dom=new JSDOM(page,{url:'https://panel.test/',runScripts:'dangerously',pretendToBeVisual:true,virtualConsole:console,beforeParse(window){
-    window.focus=()=>{};
-    // The 25 s read timeout fires at once here, so a parked request can be tested quickly.
-    const nativeTimeout=window.setTimeout.bind(window);
-    window.setTimeout=(fn,ms,...args)=>nativeTimeout(fn,ms===25000?0:ms,...args);
-    // A tapped notification as the service worker leaves it in Cache Storage.
-    const store=new Map(opened?[['/__agent-deck-open',JSON.stringify({...opened,at:Date.now()})]]:[]);
-    window.notificationTargets=store;
-    window.caches={open:async()=>({match:async key=>store.has(key)?{json:async()=>JSON.parse(store.get(key))}:undefined,delete:async key=>store.delete(key)})};
-    Object.defineProperty(window.navigator,'serviceWorker',{value:{addEventListener(){},startMessages(){},register:()=>Promise.resolve()}});
-    Object.defineProperty(window,'isSecureContext',{value:true});
-    window.matchMedia=()=>({matches:false,addEventListener(){},removeEventListener(){}});
-    window.ResizeObserver=class{observe(){}};
-    window.HTMLDialogElement.prototype.showModal=function(){this.open=true};
-    window.HTMLDialogElement.prototype.close=function(){this.open=false;this.dispatchEvent(new window.Event('close'))};
-    window.HTMLElement.prototype.scrollIntoView=()=>{};
-    if(setup)setup(window);
-    window.fetch=async(url,options={})=>{
-      const target=new URL(url,'https://panel.test/');
-      if(routes.__parked&&target.pathname===routes.__parked)return new Promise((_,reject)=>options.signal?.addEventListener('abort',()=>reject(new Error('aborted'))));
-      const handler=routes[target.pathname];
-      const body=handler?await handler(target,options):{};
-      if(body&&body.__network)throw new TypeError('Load failed');
-      if(body&&body.__html)return {ok:true,status:200,headers:{get:()=>null},json:async()=>{throw new SyntaxError('Unexpected token <')}};
-      if(body&&body.__blob)return {ok:true,status:200,headers:{get:()=>null},blob:async()=>new window.Blob([body.__blob])};
-      if(body&&body.__status)return {ok:false,status:body.__status,headers:{get:()=>null},json:async()=>({error:body.error})};
-      return {ok:true,status:200,headers:{get:()=>null},json:async()=>body};
-    };
-  }});
-  dom.window.problems=problems;
-  return dom.window;
-}
-const settle=()=>new Promise(resolve=>setTimeout(resolve,30));
-
-function routesFor(state){
-  return {
-    '/api/sessions':()=>state.local(),
-    ['/deck/'+DECK+'/api/sessions']:()=>({sessions:[session('beta')]}),
-    '/api/decks':()=>({decks:[{id:DECK,name:'Mac Studio',url:'http://100.64.0.2:8790',username:'demo'}],discovery:{phase:'idle',results:[]}}),
-    '/api/network':()=>({name:'gateway',public_url:'',bind_host:'100.64.0.1',bind_port:8790}),
-  };
-}
+const {DECK,boot,session,settle,routesFor}=require('./harness');
 
 test('the bar follows the Docker of the open session when the list is refreshed, not only when it is opened',async()=>{
   let docker='';
@@ -526,7 +474,10 @@ test('the actions menu keeps restarts, duplicate, rename and close; duplicate ke
   const doc=window.document;
   window.eval('sheet(true)');
   const labels=[...doc.querySelectorAll('#sheet .panel button')].filter(b=>b.style.display!=='none'&&!b.closest('[hidden]')&&!b.classList.contains('sheet-cancel')).map(b=>b.textContent);
-  expect(labels).toEqual(['Перезапустить — новый разговор','Перезапустить — продолжить разговор','Дублировать сессию — новый разговор','Переименовать сессию','Закрыть сессию']);
+  expect(labels).toEqual(['Перезапустить — новый разговор','Перезапустить — продолжить разговор','Отправить позже','Дублировать сессию — новый разговор','Переименовать сессию','Закрыть сессию']);
+  // Nothing waits: the button by the field stays out of the way, Settings is a gear in the top row on any screen.
+  expect(doc.getElementById('b_later').hidden).toBe(true);
+  expect(doc.getElementById('b_settings').classList.contains('d-only')).toBe(false);
   expect(doc.getElementById('b_link')).toBeNull();
   window.eval('duplicateSession()');await settle();
   expect(created).toEqual([{name:'alpha',path:'/home/demo/projects/alpha',agent:'claude',skip:true,source:{kind:'kimi',model:'k2'}}]);
@@ -886,6 +837,24 @@ test('Escape closes an open settings editor first and asks before dropping a typ
   dialog.dispatchEvent(new window.Event('cancel',{cancelable:true}));await settle();
   expect(doc.getElementById('confirm_dlg').open).toBe(true);
   expect(doc.getElementById('kimi_dlg').hidden).toBe(false);
+  }finally{window.close()}
+});
+
+test('a typed service key asks before Escape drops it and never outlives the settings dialog',async()=>{
+  const state={local:()=>({sessions:[session('alpha')]})};
+  const window=boot(settingsRoutes(state,{claude:{installed:true,logged_in:true}}));
+  try{
+  await settle();await settle();
+  const doc=window.document,dialog=doc.getElementById('settings_dlg');
+  await window.eval('openSettings("agents")');await settle();
+  window.eval('openProvider(null,PROVIDER_PRESETS.glm)');doc.getElementById('provider_key').value='sk-typed';
+  dialog.dispatchEvent(new window.Event('cancel',{cancelable:true}));await settle();
+  expect(doc.getElementById('confirm_dlg').open).toBe(true);
+  expect(doc.getElementById('provider_dlg').hidden).toBe(false);
+  // Closed by a computer switch or any other way: the key is not left in a hidden field for the next computer.
+  doc.getElementById('confirm_dlg').close();dialog.close();dialog.dispatchEvent(new window.Event('close'));await settle();
+  expect(doc.getElementById('provider_dlg').hidden).toBe(true);
+  expect(doc.getElementById('provider_key').value).toBe('');
   }finally{window.close()}
 });
 
@@ -1355,5 +1324,10 @@ test('a redraw of the screen keeps the thumbnails already drawn; a failed one is
   second.querySelector('img').onerror();
   draw('done\n/tmp/shots/two.png\nBrewed for 4s');
   expect(doc.querySelector('#pre .img-strip')).not.toBe(second);
+  expect(doc.querySelectorAll('#pre .img-strip img').length).toBe(0);
+  // The pause is over (the file was written a moment after its path was printed): the picture is tried again.
+  window.eval('missingImages.clear()');
+  draw('done\n/tmp/shots/two.png\nBrewed for 5s');
+  expect(doc.querySelectorAll('#pre .img-strip img').length).toBe(1);
   }finally{window.close()}
 });

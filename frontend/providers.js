@@ -8,16 +8,16 @@ function providerSources(providers){
   return providers.filter(p=>p.configured).map(p=>[{kind:"provider",provider:p.id,model:p.model},p.name+" · "+p.model]);
 }
 function providerRow(provider){
-  const edit=btn(tr("Изменить"),"",()=>openProvider(provider));edit.type="button";
+  const edit=labelledButton(tr("Изменить"),"",()=>openProvider(provider),provider.name);edit.type="button";
   return el("div","provider-row",el("span","provider-name",provider.name),el("span","card-meta",provider.model),edit);
 }
 function providersCard(){
   const list=savedProviders(),hasGlm=list.some(p=>p.url===PROVIDER_PRESETS.glm.url);
-  const other=[tr("Добавить другой сервис"),()=>openProvider(null,{name:"",url:"",model:""})];
+  const other=btn(tr("Добавить другой сервис"),"quick-add",()=>openProvider(null,{name:"",url:"",model:""}));other.type="button";
   return hubCard({key:"providers",icon:agentIcon({agent:"claude"}),title:tr("Claude на других моделях"),
     status:list.length?tr("Сервисов: {0}",[list.length]):tr("Не настроено"),tone:list.length?"ok":"idle",
-    primary:hasGlm?null:{label:tr("Добавить GLM"),run:()=>openProvider(null,PROVIDER_PRESETS.glm),quiet:true},more:[other],
-    body:[el("p","hint",tr("Claude Code работает на моделях другого сервиса с Anthropic-совместимым адресом. Сервис выбирается в новой сессии Claude, в поле «Источник модели».")),...list.map(providerRow)]});
+    primary:hasGlm?null:{label:tr("Добавить GLM"),run:()=>openProvider(null,PROVIDER_PRESETS.glm),quiet:true},
+    body:[el("p","hint",tr("Claude Code работает на моделях другого сервиса с Anthropic-совместимым адресом. Сервис выбирается в новой сессии Claude, в поле «Источник модели».")),...list.map(providerRow),other]});
 }
 function openProvider(provider,preset){
   const from=provider||preset;providerEditing=provider?provider.id:null;

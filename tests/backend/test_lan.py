@@ -14,6 +14,7 @@ from integrations.lan import Listener, Pairs, deck_proof, gateway_proof
 ID = 'a' * 24
 TAIL, LOCAL, OTHER = 'http://100.68.39.62:8790', 'http://192.168.1.20:8790', 'http://192.168.1.77:8790'
 PASSWORD = 'test-password-only'
+AT = '192.168.1.20:8790'
 PROFILE = {'name': 'Mac', 'url': TAIL, 'username': 'denis', 'password': PASSWORD}
 
 
@@ -21,6 +22,7 @@ class FakeDeck:
     """A panel on the other side: signs in by password, hands out pair keys and proves them."""
     def __init__(self, directory, instance='b' * 24, pairing=True):
         self.pairs, self.instance, self.pairing = Pairs(directory / (instance + '.json')), instance, pairing
+        self.at = None  # Its own address, once a test says it: a question dialled elsewhere is not answered.
 
     def __call__(self, method, path, body, headers):
         route, query = urlsplit(path).path, parse_qs(urlsplit(path).query)
@@ -32,8 +34,8 @@ class FakeDeck:
             return answer({'app': 'away-deck', 'id': self.instance, 'name': 'Mac  Studio'})
         if route == '/api/pair' and self.pairing:
             return answer({**self.pairs.create(), 'instance': self.instance})
-        if route == '/api/pair_challenge' and self.pairing:
-            found = self.pairs.challenge(query['id'][0], query['nonce'][0])
+        if route == '/api/pair_challenge' and self.pairing and self.at in (None, query['at'][0]):
+            found = self.pairs.challenge(query['id'][0], query['nonce'][0], query['at'][0])
             return answer(found) if found else (404, {}, b'{}')
         if route == '/api/pair_login' and self.pairing:
             data = json.loads(body)
@@ -64,13 +66,18 @@ class SeveralAddressesTests(PanelCase):
     def setUp(self):
         super().setUp()
         self.net = Network()
-        self.enterContext(patch('integrations.decks.http_request', self.net))
+        self.enterContext(patch('integrations.deck_transport.http_request', self.net))
         self.mac = FakeDeck(self.home)
         self.net.hosts[TAIL] = self.net.hosts[LOCAL] = self.mac
         self.decks = RemoteDecks(self.home / 'decks', 'http://100.109.113.79:8790', lambda: 'c' * 24, lambda: None)
 
     def connect(self, **extra):
         self.id = self.decks.save({**PROFILE, **extra})['id']
+
+    def restarted_with_profiles(self):
+        fresh = self.restarted()
+        fresh.profiles = self.decks.profiles
+        return fresh
 
     def restarted(self):
         return RemoteDecks(self.home / 'decks', 'http://100.109.113.79:8790', lambda: 'c' * 24, lambda: None)
@@ -124,6 +131,51 @@ class SeveralAddressesTests(PanelCase):
         with self.assertRaisesRegex(ValueError, 'Another machine answers'):
             fresh.request(self.id, 'GET', '/api/sessions')
         self.assertEqual(logins(), 1)
+
+    def test_a_rename_of_a_saved_local_connection_does_not_send_the_password_again(self):
+        del self.net.hosts[TAIL]
+        self.connect(url=LOCAL)
+        logins = lambda: sum(path == '/login' for _, _, path, _, _ in self.net.calls)
+        keys = lambda: len(self.mac.pairs.load())
+        self.assertEqual((logins(), keys()), (1, 1))
+        saved = self.decks.save({'id': self.id, 'name': 'Studio', 'url': LOCAL, 'username': 'denis', 'password': ''})
+        self.assertEqual((saved['name'], logins(), keys()), ('Studio', 1, 1))  # Nor a new key on every edit.
+        self.net.hosts[LOCAL] = FakeDeck(self.home, 'd' * 24)   # Another network: a stranger holds the address.
+        with self.assertRaises(ValueError):
+            self.restarted().save({'id': self.id, 'name': 'Mac', 'url': LOCAL, 'username': 'denis', 'password': ''})
+        self.assertEqual(logins(), 1)
+
+    def test_a_proof_is_asked_again_after_its_time_and_in_another_network(self):
+        self.connect(urls=[LOCAL])
+        del self.net.hosts[TAIL]
+        proofs = lambda: sum(url == LOCAL and '/api/pair_challenge' in path for url, _, path, _, _ in self.net.calls)
+        for _ in range(3):
+            self.assertEqual(self.decks.request(self.id, 'GET', '/api/sessions')[0], 200)
+        self.assertEqual(proofs(), 1)
+        self.decks.proven[self.id][LOCAL] -= 61     # A minute later the address is asked again.
+        self.decks.request(self.id, 'GET', '/api/sessions')
+        self.assertEqual(proofs(), 2)
+        self.decks.local_address = lambda: '10.0.0.5'  # The gateway moved: the same numbers may be someone else.
+        self.net.hosts[LOCAL] = FakeDeck(self.home, 'd' * 24)
+        with self.assertRaises(ValueError):
+            self.decks.request(self.id, 'GET', '/api/sessions')
+        self.assertNotIn(b'cc_auth', self.net.sent_to(LOCAL).split(b'/api/pair_challenge')[-1])
+
+    def test_a_machine_that_passes_the_question_on_gets_no_cookie(self):
+        self.connect(urls=[LOCAL])
+        self.mac.at = LOCAL[len('http://'):]
+        self.decks.profiles[self.id]['urls'] = [OTHER]   # Claimed by an answer to the search.
+        self.net.hosts = {OTHER: self.mac}               # It relays everything to the real computer.
+        with self.assertRaises(ValueError):
+            self.restarted_with_profiles().request(self.id, 'GET', '/api/sessions')
+        self.assertNotIn(b'cc_auth', self.net.sent_to(OTHER))
+        self.assertNotIn(b'/api/pair_login', self.net.sent_to(OTHER))
+
+    def test_a_search_answer_never_pushes_out_a_kept_address(self):
+        kept = ['http://192.168.1.%d:8790' % n for n in (21, 22, 23, 24)]
+        self.connect(urls=kept)
+        self.decks.remember([{'url': OTHER, 'instance': 'b' * 24}])
+        self.assertEqual(self.decks.profiles[self.id]['urls'], kept)
 
     def test_older_panel_cannot_be_connected_over_the_local_network_and_keeps_one_address_over_tailscale(self):
         self.net.hosts[TAIL] = self.net.hosts[LOCAL] = FakeDeck(self.home, pairing=False)
@@ -209,23 +261,42 @@ class LanBasicsTests(PanelCase):
         pair = pairs.create()
         self.assertEqual(pairs.path.stat().st_mode & 0o777, 0o600)
         ours = 'a' * 32
-        answer = pairs.challenge(pair['id'], ours)
-        self.assertEqual(answer['proof'], deck_proof(pair['key'], answer['nonce'], ours))
-        proof = gateway_proof(pair['key'], answer['nonce'], ours)
+        answer = pairs.challenge(pair['id'], ours, AT)
+        self.assertEqual(answer['proof'], deck_proof(pair['key'], answer['nonce'], ours, AT))
+        proof = gateway_proof(pair['key'], answer['nonce'], ours, AT)
         self.assertFalse(pairs.accept(pair['id'], answer['nonce'], 'b' * 64))
         self.assertFalse(pairs.accept(pair['id'], answer['nonce'], proof))  # The challenge was spent by the wrong answer.
-        answer = pairs.challenge(pair['id'], ours)
-        self.assertTrue(pairs.accept(pair['id'], answer['nonce'], gateway_proof(pair['key'], answer['nonce'], ours)))
-        self.assertFalse(pairs.accept(pair['id'], answer['nonce'], gateway_proof(pair['key'], answer['nonce'], ours)))
-        answer = pairs.challenge(pair['id'], ours)
+        answer = pairs.challenge(pair['id'], ours, AT)
+        self.assertTrue(pairs.accept(pair['id'], answer['nonce'], gateway_proof(pair['key'], answer['nonce'], ours, AT)))
+        self.assertFalse(pairs.accept(pair['id'], answer['nonce'], gateway_proof(pair['key'], answer['nonce'], ours, AT)))
+        answer = pairs.challenge(pair['id'], ours, AT)
         now[0] += 61
-        self.assertFalse(pairs.accept(pair['id'], answer['nonce'], gateway_proof(pair['key'], answer['nonce'], ours)))
-        self.assertIsNone(pairs.challenge('0' * 16, ours))
+        self.assertFalse(pairs.accept(pair['id'], answer['nonce'], gateway_proof(pair['key'], answer['nonce'], ours, AT)))
+        self.assertIsNone(pairs.challenge('0' * 16, ours, AT))
         # The oldest keys make room: the file does not grow with every reconnection.
         for _ in range(20):
             pairs.create()
         self.assertEqual(len(pairs.load()), 16)
-        self.assertIsNone(pairs.challenge(pair['id'], ours))
+        self.assertIsNone(pairs.challenge(pair['id'], ours, AT))
+
+    def test_pair_keys_stop_working_when_the_password_changes(self):
+        path = self.home / 'pairs.json'
+        old = {'id': '1' * 16, 'key': '2' * 64}         # From before keys were tied to the password.
+        path.write_text(json.dumps({old['id']: {'key': old['key'], 'created': 1}}))
+        mine = Pairs(path, owner='first')               # The first start adopts it.
+        new = mine.create()
+        self.assertTrue(mine.challenge(old['id'], 'a' * 32, AT) and mine.challenge(new['id'], 'a' * 32, AT))
+        changed = Pairs(path, owner='second')
+        self.assertIsNone(changed.challenge(old['id'], 'a' * 32, AT))
+        self.assertIsNone(changed.challenge(new['id'], 'a' * 32, AT))
+        self.assertEqual(changed.load(), {})
+
+    def test_one_key_cannot_fill_the_table_of_questions(self):
+        pairs = Pairs(self.home / 'pairs.json')
+        one, other = pairs.create(), pairs.create()
+        answers = [pairs.challenge(one['id'], 'a' * 32, AT) for _ in range(20)]
+        self.assertEqual(sum(a is not None for a in answers), 16)
+        self.assertIsNotNone(pairs.challenge(other['id'], 'a' * 32, AT))
 
     def test_listener_follows_the_switch_and_the_address(self):
         state = {'on': False, 'address': '192.168.1.5'}
@@ -325,16 +396,20 @@ class LanHTTPTests(PanelCase):
         # A public domain's proxy does not introduce the computer to the internet.
         self.assertNotEqual(self.request('GET', '/api/hello', headers={'X-Forwarded-For': '203.0.113.9'})[0], 200)
         cookie = 'cc_auth=' + self.panel.make_token()
+        self.enterContext(patch.object(lan, 'forwarded', return_value=False))
         status, _, body = self.request('POST', '/api/pair', b'{}', {'Origin': self.origin, 'Cookie': cookie})
         pair = json.loads(body)
         self.assertEqual((status, pair['instance']), (200, 'b' * 24))
         ours = '1' * 32
-        status, _, body = self.request('GET', f"/api/pair_challenge?id={pair['id']}&nonce={ours}")
+        status, _, body = self.request('GET', f"/api/pair_challenge?id={pair['id']}&nonce={ours}&at={AT}")
+        self.assertEqual(status, 404)   # Asked as another address than the one reached: a relayed question.
+        here = self.origin[len('http://'):]
+        status, _, body = self.request('GET', f"/api/pair_challenge?id={pair['id']}&nonce={ours}&at={here}")
         answer = json.loads(body)
-        self.assertEqual(answer['proof'], deck_proof(pair['key'], answer['nonce'], ours))
+        self.assertEqual(answer['proof'], deck_proof(pair['key'], answer['nonce'], ours, here))
         login = lambda proof, origin=self.origin: self.request('POST', '/api/pair_login', json.dumps(
             {'id': pair['id'], 'nonce': answer['nonce'], 'proof': proof}).encode(), {'Origin': origin})
-        proof = gateway_proof(pair['key'], answer['nonce'], ours)
+        proof = gateway_proof(pair['key'], answer['nonce'], ours, here)
         self.assertEqual(login(proof, 'http://evil.example')[0], 403)
         status, headers, _ = login(proof)
         self.assertEqual(status, 200)
@@ -344,6 +419,12 @@ class LanHTTPTests(PanelCase):
         for wrong in ('/api/pair_challenge?id=zz&nonce=' + ours, '/api/pair_challenge?id=' + '0' * 16 + '&nonce=' + ours,
                       f"/api/pair_challenge?id={pair['id']}&nonce=short"):
             self.assertEqual(self.request('GET', wrong)[0], 404)
+
+    def test_neighbours_of_a_panel_installed_on_its_local_address_are_not_its_proxy(self):
+        seen = lambda client: self.panel.Handler.via_proxy(Mock(client_address=(client, 1), server=Mock(lan=False)))
+        self.assertTrue(seen('192.168.1.9'))            # Bound to Tailscale: a private client is Docker's proxy.
+        with patch.object(self.panel, 'BIND_HOST', '192.168.1.5'):
+            self.assertEqual([seen(c) for c in ('192.168.1.9', '127.0.0.1', '192.168.1.5')], [False, True, True])
 
     def test_wrong_keys_are_rate_limited_like_passwords(self):
         codes = [self.request('POST', '/api/pair_login', b'{"id":"x","nonce":"y","proof":"z"}', {'Origin': self.origin})[0] for _ in range(7)]

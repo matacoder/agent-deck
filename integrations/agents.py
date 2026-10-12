@@ -124,7 +124,9 @@ def signed_in(agent, home=None):
 def command(agent, sid=None, resume=False, skip=False, home=None):
     """The shell command for a pane. The full path: an installer's PATH line is not in a running tmux."""
     spec, home = CLI[agent], Path(home or Path.home())
-    program = shlex.quote(executable(agent, home) or spec['binary'])
+    if not executable(agent, home):
+        raise ValueError(f"Install {spec['label']} first: Settings → Agents")
+    program = shlex.quote(executable(agent, home))
     flag = spec['skip'] if skip else ''
     if not spec['start']:
         return program + (spec['resume'] if resume else '') + flag

@@ -35,7 +35,7 @@ input,textarea,select{font:inherit}
 .ag{display:inline-flex;align-items:center;justify-content:center;flex:none;width:var(--icon-lg);height:var(--icon-lg);font:600 var(--icon-lg)/1 var(--mono)}
 .ag svg{display:block;width:var(--icon-lg);height:var(--icon-lg)}
 .ag.claude{color:var(--orange)}.ag.codex,.ag.local{color:var(--teal)}.provider-row{display:flex;align-items:center;gap:10px;min-height:36px;padding:2px 0;border-top:1px solid var(--bd)}.provider-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--fg)}.provider-row button{flex:none;color:var(--acc-text)}
-.ag.pi{color:var(--fg)}.ag.qwen{color:#9d8cf7}.ag.gemini{color:#6ea8fe}.ag.copilot{color:#8fd16a}.ag.opencode{color:var(--fg2)}.ag.cursor{color:var(--fg)}.ag.shell{color:var(--mut)}
+.ag.pi{color:var(--fg)}.ag.qwen{color:#9d8cf7}.ag.gemini{color:#6ea8fe}.ag.copilot{color:#8fd16a;display:inline-block;transform:scale(1.6)}.ag.opencode{color:var(--fg2)}.ag.cursor{color:var(--fg)}.ag.shell{color:var(--mut)}
 
 /* ---------- sidebar ---------- */
 aside{position:relative;width:min(var(--side-w,248px),40vw);flex:none;background:var(--side);border-right:1px solid var(--bd);display:flex;flex-direction:column;min-height:0}
@@ -207,6 +207,11 @@ iframe[inert]{pointer-events:none}
 .keys-row{display:flex;gap:8px;align-items:flex-start}
 .keys{flex:1;min-width:0;display:flex;flex-wrap:wrap;gap:6px;padding-bottom:8px}
 .keys::-webkit-scrollbar{display:none}
+/* One row on any screen; fitKeys() hides what does not fit and "…" reveals it. */
+.keys:not(.expanded){flex-wrap:nowrap;overflow:hidden}
+.keys:not(.expanded) .key-overflow{display:none!important}
+.keys #b_keymore{order:1;display:inline-grid;place-items:center}
+.keys #b_keymore.all-fit{display:none}
 .key{flex:none;background:var(--side2);border:1px solid var(--bd);border-radius:8px;min-width:38px;height:32px;padding:0 10px;font:12.5px var(--mono);color:var(--fg)}
 @media (hover:hover){.key:hover{border-color:var(--bd-strong)}}
 .key:active{background:var(--sel)}
@@ -253,7 +258,7 @@ body.is-codex .question-key{display:inline-flex!important;align-items:center;jus
 .sendbtn:active{opacity:.8}
 .sendbtn:disabled,.attachbtn:disabled{opacity:.45}
 /* send later + quick prompts */
-.laterbtn{position:relative}
+.laterbtn{position:relative}.laterbtn[hidden]{display:none}
 .laterbtn.on{color:var(--acc-text);border-color:var(--acc)}
 .later-count{position:absolute;top:-5px;right:-5px;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:var(--acc-strong);color:#fff;font-size:10.5px;font-weight:600;line-height:16px;text-align:center}
 .later-count:empty{display:none}
@@ -265,6 +270,9 @@ body.is-codex .question-key{display:inline-flex!important;align-items:center;jus
   .composer{display:flex;flex-wrap:wrap;align-items:flex-start;column-gap:10px}
   .composer>*{flex:0 0 100%;min-width:0}
   .composer>#screen_keys{flex:0 1 auto;max-width:100%}
+  /* Room for the quick prompts, so collapsed keys never push them to a row of their own. */
+  .composer:has(>.quick-prompts:not([hidden]))>#screen_keys{max-width:calc(100% - 140px)}
+  .composer>#screen_keys:has(.keys.expanded){flex:0 0 100%;max-width:100%}
   .composer>.quick-prompts{flex:1 1 0}
   .composer>[hidden]{display:none}
 }
@@ -424,6 +432,9 @@ dialog:focus,dialog:focus-visible{outline:none}
 .hub-nav button.on{background:var(--acc-soft);color:var(--acc-text);font-weight:600}
 .hub-content{padding:20px;overflow-y:auto;min-width:0}
 .hub-section-title{margin:0 0 4px;font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--dim)}
+.more-agents{margin-bottom:12px}.more-agents>summary{display:flex;flex-direction:column;gap:2px;padding:12px 16px;border:1px dashed var(--bd);border-radius:12px;color:var(--fg2);cursor:pointer;list-style:none}
+.more-agents>summary::-webkit-details-marker{display:none}.more-agents>summary small{color:var(--mut);font-size:12px}
+.more-agents[open]>summary{margin-bottom:12px}
 .hub-card{border:1px solid var(--bd);border-radius:12px;padding:16px;margin-bottom:12px;background:#ffffff03;min-width:0;overflow-wrap:anywhere}
 /* One card anatomy: icon, title, coloured status, meta; body; actions with danger on the left. */
 .hub-section-head{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:4px 12px;margin:0 0 16px}
@@ -540,6 +551,8 @@ dialog:focus,dialog:focus-visible{outline:none}
    rather than shrinking the words. */
 #help_dlg{width:min(1000px,calc(100vw - 32px))}
 .arch-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+/* The map is wider than a phone: its right edge fades, so the rest is found by a swipe. */
+@media (max-width:760px){.arch-scroll{-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 36px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 36px),transparent)}}
 .arch-map{display:block;width:100%;min-width:720px;height:auto;font-family:-apple-system,BlinkMacSystemFont,system-ui,sans-serif}
 .arch-map .a-box{fill:var(--bg);stroke:var(--bd-strong)}
 .arch-map .a-box.host{stroke:var(--acc)}
@@ -855,11 +868,8 @@ body.resizing iframe{pointer-events:none}
 
   .composer{padding-top:10px}
   .keys{gap:4px}
-  /* One row filled to the screen edge; fitKeys() hides what does not fit and "…" reveals it. */
-  .keys:not(.expanded){flex-wrap:nowrap;overflow:hidden}
-  .keys:not(.expanded) .key-overflow{display:none!important}
-  .keys #b_keymore{order:1;flex:none}
-  .keys #b_keymore.all-fit{display:none!important}
+  /* The keys that fit share the whole width; they never shrink, so fitKeys() still sees what overflows. */
+  .keys:not(.expanded) .key{flex:1 0 auto}
   .key{flex:none;height:var(--tap);min-width:var(--tap);padding:0 8px;font-size:15px;border-radius:var(--r)}
   .keys .key-primary{min-width:var(--tap)}
   body.message-focused .keyboard-hide{display:inline-grid}
@@ -988,13 +998,14 @@ body.resizing iframe{pointer-events:none}
   #app{position:fixed;top:var(--app-top);left:0;right:0}
   .iconbtn,.bar .act,.deck-switch button{min-width:var(--tap);height:var(--tap)}
   .key{min-height:40px;min-width:44px}
+  /* Small marks keep their look; the finger gets a full-size target around them. */
+  .row-add{position:relative}.row-add::after{content:"";position:absolute;inset:-9px}
+  .later-when .chk{min-height:var(--tap)}
+  .dlg textarea,.later-when input[type=datetime-local]{font-size:16px}
   .tab{padding-top:9px;padding-bottom:9px}
   #sheet .panel button{min-height:var(--tap)}
   .files-up,.git-more,.git-behind button,.git-fetch,.git-tabs button,.git-font button{min-height:var(--tap)}
-  .keys:not(.expanded){flex-wrap:nowrap;overflow:hidden}
-  .keys:not(.expanded) .key-overflow{display:none!important}
-  #b_keymore.m-only{display:inline-grid!important}
-  .keys #b_keymore.all-fit{display:none!important}
+  .keys:not(.expanded) .key{flex:1 0 auto}
 }
 @media (min-width:761px){
   .settings-hub .hub-card{max-width:760px}

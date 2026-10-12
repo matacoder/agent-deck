@@ -8,10 +8,11 @@ function instanceStorage(storage,identity){
   const key=name=>identity?'deck.'+identity+'.'+name:name;
   return {getItem:name=>storage.getItem(key(name)),setItem:(name,value)=>storage.setItem(key(name),value),removeItem:name=>storage.removeItem(key(name))};
 }
-function populateDeckSelector(select,decks,current,localName){
+// `label` may add to a name what the page knows about that computer (e.g. that the browser runs on it).
+function populateDeckSelector(select,decks,current,localName,label=(name=>name)){
   select.replaceChildren();
   for(const deck of [{id:'',name:localName},...decks]){
-    const option=document.createElement('option');option.value=deck.id;option.textContent=deck.name;select.append(option);
+    const option=document.createElement('option');option.value=deck.id;option.textContent=label(deck.name,deck.id);select.append(option);
   }
   select.value=current;
 }

@@ -2,6 +2,27 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.48.0 — 2026-10-12
+
+Fixes from a review of the last week, a first step towards talking to your own computer directly, and a tidier screen.
+
+**Both sides must be updated for a computer to be reached at an address of the local network** (or at any address other than the Tailscale one it was connected by): the proof of the pair key changed. Until then such a computer is reached over Tailscale as before; one connected only by its local address does not answer the gateway until both have updated, which each does by itself within six hours.
+
+- **"Continue after the limit resets" answers a limit notice once.** A notice without a date ("resets 3pm") left on an idle screen was answered with `continue` again the next day and after every panel restart; what was answered is now kept in the file and forgotten only when the notice leaves the screen.
+- **A typed service key no longer outlives Settings.** The editor of "Claude on other models" stayed open behind a closed Settings dialog, so a key typed for one computer could be saved to another after a switch. It now closes with Settings and asks before dropping a typed key, like the other editors.
+- **Local network sign-in is stricter.** An address that proved the pair key is asked again after a minute and in every other network; the proof names the address the gateway dialled, so a machine that only passes the question on to the real computer gets nothing; pair keys stop working when the panel password changes; a search answer no longer pushes out an address already kept; renaming a saved connection does not send its password again; a panel installed on its local address no longer trusts `X-Forwarded-For` from its neighbours.
+- **Sessions come back after a reboot as they were:** Claude Code on another service's model resumes instead of opening a bare terminal, and an agent keeps the Docker it was started with.
+- **"Send later" stays with its session.** The dialog names the session, a shortcut does not switch sessions under an open dialog, and if another session is on screen by the time you press the button nothing is sent until you press again. It moved from the message field into the three-dots menu; while something waits, the clock with the count is back by the field.
+- **The quick message editor reads the list before it opens**, so a list that did not load, or was changed on another device, is not replaced by an empty or old one.
+- **"This computer".** When the browser runs on one of the connected computers, the list and the bottom line of a session say so. The page asks `127.0.0.1` whether the installation with that id is here; only the right id gets a readable answer, and nothing else is served there. Asked on a desktop with more than one computer.
+- **Keys that do not fit go behind "…" on a desktop too**, instead of wrapping into three half-empty rows in a narrow window; on a phone the row is spread over the whole width. Settings is a gear in the top row on a phone as well.
+- **Settings → Agents is shorter:** agents that are not installed wait folded under "Other agents", a working agent's card drops its line about signing in, and "Add another service" is a visible button. A session on another service's model says so in the header and in the message field.
+- A picture that failed to load once is tried again after a minute instead of never; a pasted fragment with dozens of pictures downloads only the ones that fit, never asks addresses inside the local network, and gives up on a slow or huge one.
+- An update no longer restarts the panel in the middle of a `docker build` or a pull going through it; a computer that fell asleep is noticed by the Docker tunnel in about two minutes.
+- A terminal-only agent that is not installed is refused with a message instead of opening a session on `command not found`; one that hangs on `--version` no longer holds up the list of agents; Codex is no longer told to hand a task to Codex.
+- `sudo ./update.sh` points an existing checkout at the renamed repository.
+- `integrations/decks.py` is split into connections, transport (`deck_transport.py`) and search (`deck_discovery.py`).
+
 ## 1.47.0 — 2026-10-12
 
 - **Five more agents: Cursor, Gemini CLI, GitHub Copilot, OpenCode and Qwen Code.** Settings → Agents installs each with its vendor's own command and opens its sign-in; an installed one appears in the new session dialog with its "without questions" switch. A session keeps its conversation across restarts (OpenCode continues the last one of the folder), and the agent's own compact and "new conversation" commands sit behind the "more" chip. Context size, summaries and limits are not shown for them yet.

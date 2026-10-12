@@ -29,7 +29,7 @@ class Schedule:
         self.lock = threading.RLock()
         self.activity = {}   # session -> [activity, changed_at]
         self.missing = {}    # session -> first time it was not found
-        self.resumed = {}    # session -> reset time already acted on
+        self.resumed = {}    # session -> the limit notice already acted on, kept in the file
         self.limits = {}     # session -> {'notice', 'at'} while a limit notice is on its screen
         self.errors = {}     # session -> why the last prompt was not sent
         self.started = False
@@ -40,6 +40,8 @@ class Schedule:
         saved = saved if isinstance(saved, dict) else {}
         self.prompts = [p for p in saved.get("prompts", []) if self.valid(p)]
         self.auto = {name for name in saved.get("auto_resume", []) if isinstance(name, str)}
+        resumed = saved.get("resumed", {})
+        self.resumed = {k: v for k, v in (resumed if isinstance(resumed, dict) else {}).items() if isinstance(v, str)}
 
     @staticmethod
     def valid(prompt):
@@ -48,8 +50,8 @@ class Schedule:
                 and isinstance(prompt.get("at", 0), (int, float)))
 
     def save(self):
-        write_private(self.path, json.dumps({"prompts": self.prompts, "auto_resume": sorted(self.auto)},
-                                            ensure_ascii=False).encode())
+        write_private(self.path, json.dumps({"prompts": self.prompts, "auto_resume": sorted(self.auto),
+                                             "resumed": self.resumed}, ensure_ascii=False).encode())
 
     def status(self, name):
         with self.lock:
@@ -108,7 +110,7 @@ class Schedule:
     def forget(self, name):
         with self.lock:
             kept = [p for p in self.prompts if p["session"] != name]
-            changed = len(kept) != len(self.prompts) or name in self.auto
+            changed = len(kept) != len(self.prompts) or name in self.auto or name in self.resumed
             self.prompts = kept
             self.auto.discard(name)
             for memory in (self.activity, self.missing, self.resumed, self.limits, self.errors):
@@ -138,6 +140,9 @@ class Schedule:
                 self.limits[name] = found
             else:
                 self.limits.pop(name, None)
+                # The notice left the screen: the next one, even with the same words, is a new limit.
+                if self.resumed.pop(name, None) is not None:
+                    self.save()
         return found
 
     def due(self, session, now):
@@ -149,8 +154,9 @@ class Schedule:
         lifted = None
         if free and waits_for_limit and session.get("running"):
             found = self.limit(session, now)
-            if found and found["at"] and now >= found["at"] + AFTER_RESET and self.resumed.get(name) != found["at"]:
-                lifted = found["at"]
+            # A notice without a date reads as today's hour again tomorrow: it is acted on once, by its text.
+            if found and found["at"] and now >= found["at"] + AFTER_RESET and self.resumed.get(name) != found["notice"]:
+                lifted = found["notice"]
         chosen = [p for p in mine if p["trigger"] == "time" and now >= p["at"]]
         if lifted:
             chosen += [p for p in mine if p["trigger"] == "limit"]
@@ -166,7 +172,7 @@ class Schedule:
             self.prompts = [p for p in self.prompts if p["id"] not in gone]
             if lifted:
                 self.resumed[name] = lifted
-            if gone:
+            if gone or lifted:
                 self.save()
         return texts
 

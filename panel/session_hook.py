@@ -115,14 +115,24 @@ def containers_note(environ=os.environ):
                                   local=LOCAL_KNOWN.format(local) if local else LOCAL_UNKNOWN)
 
 
-def other_agents_note():
-    """Claude Code leads: it learns which other agents here take a task in one command."""
+def session_agent(pane):
+    """The agent the panel started in this pane, as it named it; '' when tmux does not say."""
+    command = ["tmux"] + (["-L", os.environ["TMUX_SOCKET_NAME"]] if os.environ.get("TMUX_SOCKET_NAME") else [])
+    try:
+        return subprocess.run([*command, "display-message", "-p", "-t", pane, "#{@cc_agent}"],
+                              capture_output=True, text=True, timeout=3).stdout.strip()
+    except (OSError, subprocess.SubprocessError):
+        return ""
+
+
+def other_agents_note(host=""):
+    """The leading agent learns which other agents here take a task in one command; never itself."""
     try:
         here = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         if os.path.isdir(os.path.join(here, 'integrations')) and here not in sys.path:
             sys.path.insert(0, here)
         from integrations.agents import leader_note
-        return leader_note()
+        return leader_note(hosts=(host,))
     except Exception:  # The hook must never prevent a conversation from starting.
         return None
 
@@ -135,7 +145,7 @@ def main():
         data = json.load(sys.stdin)
         # Kimi's own CLI is left out: what it does with hook output is not known.
         if remember(data, pane, os.getppid()) and data.get("client_type") != "kimi_code_cli":
-            notes = [note for note in (results_note() if show_results() else None, containers_note(), other_agents_note()) if note]
+            notes = [note for note in (results_note() if show_results() else None, containers_note(), other_agents_note(session_agent(pane))) if note]
             if notes:
                 print(json.dumps({"hookSpecificOutput": {"hookEventName": "SessionStart",
                                                          "additionalContext": "\n\n".join(notes)}}))

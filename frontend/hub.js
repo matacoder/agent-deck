@@ -117,12 +117,12 @@ async function openSettings(section="agents"){
   renderHub();
   clearInterval(lmTimer);lmTimer=setInterval(()=>{if(!document.hidden&&$("settings_dlg").open){if(lmData.discovery?.phase==="running")loadLM(false);if(hubSection==="models"&&Date.now()-lmModelsChecked>30000)refreshLMModels()}},2000);
 }
-const HUB_EDITORS=["kimi_dlg","integrations_dlg","lm_editor","deck_editor","backup_join_card"];
+const HUB_EDITORS=["kimi_dlg","provider_dlg","integrations_dlg","lm_editor","deck_editor","backup_join_card"];
 // The open editor of the section on screen; one left open in another section is not what Escape means.
 function openHubEditor(){return HUB_EDITORS.map($).find(e=>!e.hidden&&$("hub_"+hubSection).contains(e))}
 function hubEditorDirty(editor){return Boolean(editor&&!editor.hidden&&editor.dataset.initial!==undefined&&editorValues(editor)!==editor.dataset.initial)}
 function closeHubEditor(editor){
-  ({kimi_dlg:closeKimi,integrations_dlg:closeIntegrations,lm_editor:resetLM,deck_editor:closeDeckEditor,backup_join_card:closeBackupJoin})[editor.id]();
+  ({kimi_dlg:closeKimi,provider_dlg:closeProvider,integrations_dlg:closeIntegrations,lm_editor:resetLM,deck_editor:closeDeckEditor,backup_join_card:closeBackupJoin})[editor.id]();
 }
 // Escape first closes an open editor; typed keys and passwords are never dropped without asking.
 async function settingsCancel(e){
@@ -138,7 +138,7 @@ async function closeSettings(){
 function settingsClosed(){
   if($("settings_dlg").open)return;
   clearInterval(lmTimer);clearInterval(deckTimer);clearTimeout(pushTimer);pushUnavailableSince=0;
-  closeKimi();closeIntegrations();resetLM();closeDeckEditor();closeBackupJoin();
+  closeKimi();closeProvider();closeIntegrations();resetLM();closeDeckEditor();closeBackupJoin();
   if(returnToNew){returnToNew=false;$("dlg").showModal();renderSources()}
 }
 function hubInit(){

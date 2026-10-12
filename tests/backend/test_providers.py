@@ -4,7 +4,7 @@ import stat
 import tempfile
 import uuid
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from support import PanelCase
 from integrations.providers import Providers, clean_url, environment
@@ -18,9 +18,9 @@ class ProviderTests(PanelCase):
         self.folder = tempfile.TemporaryDirectory()
         self.addCleanup(self.folder.cleanup)
         self.store = Providers(Path(self.folder.name) / 'cc-panel/providers.json')
-        patcher = patch.object(self.panel, 'provider_store', return_value=self.store)
-        patcher.start()
-        self.addCleanup(patcher.stop)
+        self.patcher = patch.object(self.panel, 'provider_store', return_value=self.store)
+        self.patcher.start()
+        self.addCleanup(patch.stopall)
 
     def test_the_key_is_kept_private_and_never_returned(self):
         identity = self.store.save(dict(GLM))
@@ -62,6 +62,32 @@ class ProviderTests(PanelCase):
         self.store.remove(identity)
         with self.assertRaisesRegex(ValueError, 'not saved or has no key'):
             self.panel.agent_cmd('claude-provider', sid, False, False, None, source)
+
+    def test_a_provider_session_comes_back_after_a_reboot_with_its_containers(self):
+        identity, sid = self.store.save(dict(GLM)), str(uuid.uuid4())
+        source = {'kind': 'provider', 'provider': identity, 'model': 'glm-5.3', 'label': 'GLM · glm-5.3'}
+        self.panel.create_session, self.panel.tmux = Mock(), Mock()
+        self.panel.transcript_exists = Mock(return_value=True)
+        self.panel.with_containers = Mock(side_effect=lambda command, choice=None: f'DOCKER_HOST={choice} {command}')
+        self.panel.note_containers = Mock()
+        info = {'path': self.folder.name, 'agent': 'claude-provider', 'sid': sid, 'skip': False, 'running': True,
+                'source': source, 'containers': 'a' * 24}
+        self.panel.restore_session('glm', info)
+        command = self.panel.create_session.call_args.args[5]
+        self.assertIn(f'session_hook.py claude-provider {identity} glm-5.3 --resume {sid}', command)
+        self.assertTrue(command.startswith('DOCKER_HOST=' + 'a' * 24))
+        self.assertIn(('@cc_containers', 'a' * 24), [call.args[-2:] for call in self.panel.tmux.call_args_list])
+        self.panel.note_containers.assert_called_once_with('glm', 'a' * 24)
+
+    def test_two_saves_share_one_lock_and_a_damaged_file_shows_no_providers(self):
+        self.patcher.stop()
+        with patch.dict(os.environ, {'HOME': self.folder.name}):
+            self.panel._providers = None
+            self.assertIs(self.panel.provider_store(), self.panel.provider_store())
+            self.panel._providers = None
+        self.store.path.parent.mkdir(parents=True, exist_ok=True)
+        self.store.path.write_text('{not json')
+        self.assertEqual(self.store.public(), [])
 
     def test_claude_code_starts_on_the_provider_and_not_on_an_inherited_login(self):
         env = environment({**GLM}, 'glm-5.3', {'ANTHROPIC_API_KEY': 'old', 'CLAUDE_CODE_USE_BEDROCK': '1', 'PATH': '/bin'})

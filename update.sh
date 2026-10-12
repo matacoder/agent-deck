@@ -27,6 +27,10 @@ require_root_checkout "$PWD"
 g() { git -c core.hooksPath=/dev/null "$@"; }
 [ -z "$(g status --porcelain --untracked-files=no)" ] || die "local changes in $(pwd); commit or stash them first"
 from=$(cat panel/VERSION 2>/dev/null || echo "?")
+# The repository was renamed; the old address only works while GitHub redirects it.
+case "$(g remote get-url origin 2>/dev/null)" in
+    *matacoder/agent-deck|*matacoder/agent-deck.git) g remote set-url origin https://github.com/matacoder/deckaway.git ;;
+esac
 g fetch -q --tags --force origin
 target=${1:-$(g tag -l 'v*' --sort=-v:refname | awk '/^v[0-9]+\.[0-9]+\.[0-9]+$/ && !found {print; found=1}')}
 target=${target:-main}

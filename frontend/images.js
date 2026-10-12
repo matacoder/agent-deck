@@ -52,11 +52,13 @@ function keptStrips(box){
   return kept;
 }
 function imageStrip(session,paths,kept){
-  const key=stripKey(selectedDeck,session,paths),old=kept?.get(key);
+  // The pictures left out are part of the key: when one may be tried again, the strip is built anew for it.
+  const skipped=new Set([...new Set(paths)].filter(path=>imageMissing(session,path)));
+  const key=stripKey(selectedDeck,session,paths)+JSON.stringify([...skipped]),old=kept?.get(key);
   if(old){kept.delete(key);return old}
   const strip=el("div","img-strip");strip.dataset.key=key;
   for(const path of new Set(paths)){
-    if(imageMissing(session,path))continue;
+    if(skipped.has(path))continue;
     const thumb=el("button","img-thumb"),img=document.createElement("img");
     thumb.type="button";thumb.title=path;thumb.setAttribute("aria-label",tr("Открыть картинку {0}",[path.split("/").pop()]));
     img.loading="lazy";img.decoding="async";img.alt="";img.src=imageUrl(session,path,true);

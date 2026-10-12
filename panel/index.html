@@ -46,7 +46,7 @@ input,textarea,select{font:inherit}
 .ag{display:inline-flex;align-items:center;justify-content:center;flex:none;width:var(--icon-lg);height:var(--icon-lg);font:600 var(--icon-lg)/1 var(--mono)}
 .ag svg{display:block;width:var(--icon-lg);height:var(--icon-lg)}
 .ag.claude{color:var(--orange)}.ag.codex,.ag.local{color:var(--teal)}.provider-row{display:flex;align-items:center;gap:10px;min-height:36px;padding:2px 0;border-top:1px solid var(--bd)}.provider-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--fg)}.provider-row button{flex:none;color:var(--acc-text)}
-.ag.pi{color:var(--fg)}.ag.qwen{color:#9d8cf7}.ag.gemini{color:#6ea8fe}.ag.copilot{color:#8fd16a}.ag.opencode{color:var(--fg2)}.ag.cursor{color:var(--fg)}.ag.shell{color:var(--mut)}
+.ag.pi{color:var(--fg)}.ag.qwen{color:#9d8cf7}.ag.gemini{color:#6ea8fe}.ag.copilot{color:#8fd16a;display:inline-block;transform:scale(1.6)}.ag.opencode{color:var(--fg2)}.ag.cursor{color:var(--fg)}.ag.shell{color:var(--mut)}
 
 /* ---------- sidebar ---------- */
 aside{position:relative;width:min(var(--side-w,248px),40vw);flex:none;background:var(--side);border-right:1px solid var(--bd);display:flex;flex-direction:column;min-height:0}
@@ -218,6 +218,11 @@ iframe[inert]{pointer-events:none}
 .keys-row{display:flex;gap:8px;align-items:flex-start}
 .keys{flex:1;min-width:0;display:flex;flex-wrap:wrap;gap:6px;padding-bottom:8px}
 .keys::-webkit-scrollbar{display:none}
+/* One row on any screen; fitKeys() hides what does not fit and "…" reveals it. */
+.keys:not(.expanded){flex-wrap:nowrap;overflow:hidden}
+.keys:not(.expanded) .key-overflow{display:none!important}
+.keys #b_keymore{order:1;display:inline-grid;place-items:center}
+.keys #b_keymore.all-fit{display:none}
 .key{flex:none;background:var(--side2);border:1px solid var(--bd);border-radius:8px;min-width:38px;height:32px;padding:0 10px;font:12.5px var(--mono);color:var(--fg)}
 @media (hover:hover){.key:hover{border-color:var(--bd-strong)}}
 .key:active{background:var(--sel)}
@@ -264,7 +269,7 @@ body.is-codex .question-key{display:inline-flex!important;align-items:center;jus
 .sendbtn:active{opacity:.8}
 .sendbtn:disabled,.attachbtn:disabled{opacity:.45}
 /* send later + quick prompts */
-.laterbtn{position:relative}
+.laterbtn{position:relative}.laterbtn[hidden]{display:none}
 .laterbtn.on{color:var(--acc-text);border-color:var(--acc)}
 .later-count{position:absolute;top:-5px;right:-5px;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:var(--acc-strong);color:#fff;font-size:10.5px;font-weight:600;line-height:16px;text-align:center}
 .later-count:empty{display:none}
@@ -276,6 +281,9 @@ body.is-codex .question-key{display:inline-flex!important;align-items:center;jus
   .composer{display:flex;flex-wrap:wrap;align-items:flex-start;column-gap:10px}
   .composer>*{flex:0 0 100%;min-width:0}
   .composer>#screen_keys{flex:0 1 auto;max-width:100%}
+  /* Room for the quick prompts, so collapsed keys never push them to a row of their own. */
+  .composer:has(>.quick-prompts:not([hidden]))>#screen_keys{max-width:calc(100% - 140px)}
+  .composer>#screen_keys:has(.keys.expanded){flex:0 0 100%;max-width:100%}
   .composer>.quick-prompts{flex:1 1 0}
   .composer>[hidden]{display:none}
 }
@@ -435,6 +443,9 @@ dialog:focus,dialog:focus-visible{outline:none}
 .hub-nav button.on{background:var(--acc-soft);color:var(--acc-text);font-weight:600}
 .hub-content{padding:20px;overflow-y:auto;min-width:0}
 .hub-section-title{margin:0 0 4px;font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--dim)}
+.more-agents{margin-bottom:12px}.more-agents>summary{display:flex;flex-direction:column;gap:2px;padding:12px 16px;border:1px dashed var(--bd);border-radius:12px;color:var(--fg2);cursor:pointer;list-style:none}
+.more-agents>summary::-webkit-details-marker{display:none}.more-agents>summary small{color:var(--mut);font-size:12px}
+.more-agents[open]>summary{margin-bottom:12px}
 .hub-card{border:1px solid var(--bd);border-radius:12px;padding:16px;margin-bottom:12px;background:#ffffff03;min-width:0;overflow-wrap:anywhere}
 /* One card anatomy: icon, title, coloured status, meta; body; actions with danger on the left. */
 .hub-section-head{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:4px 12px;margin:0 0 16px}
@@ -551,6 +562,8 @@ dialog:focus,dialog:focus-visible{outline:none}
    rather than shrinking the words. */
 #help_dlg{width:min(1000px,calc(100vw - 32px))}
 .arch-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+/* The map is wider than a phone: its right edge fades, so the rest is found by a swipe. */
+@media (max-width:760px){.arch-scroll{-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 36px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 36px),transparent)}}
 .arch-map{display:block;width:100%;min-width:720px;height:auto;font-family:-apple-system,BlinkMacSystemFont,system-ui,sans-serif}
 .arch-map .a-box{fill:var(--bg);stroke:var(--bd-strong)}
 .arch-map .a-box.host{stroke:var(--acc)}
@@ -866,11 +879,8 @@ body.resizing iframe{pointer-events:none}
 
   .composer{padding-top:10px}
   .keys{gap:4px}
-  /* One row filled to the screen edge; fitKeys() hides what does not fit and "…" reveals it. */
-  .keys:not(.expanded){flex-wrap:nowrap;overflow:hidden}
-  .keys:not(.expanded) .key-overflow{display:none!important}
-  .keys #b_keymore{order:1;flex:none}
-  .keys #b_keymore.all-fit{display:none!important}
+  /* The keys that fit share the whole width; they never shrink, so fitKeys() still sees what overflows. */
+  .keys:not(.expanded) .key{flex:1 0 auto}
   .key{flex:none;height:var(--tap);min-width:var(--tap);padding:0 8px;font-size:15px;border-radius:var(--r)}
   .keys .key-primary{min-width:var(--tap)}
   body.message-focused .keyboard-hide{display:inline-grid}
@@ -999,13 +1009,14 @@ body.resizing iframe{pointer-events:none}
   #app{position:fixed;top:var(--app-top);left:0;right:0}
   .iconbtn,.bar .act,.deck-switch button{min-width:var(--tap);height:var(--tap)}
   .key{min-height:40px;min-width:44px}
+  /* Small marks keep their look; the finger gets a full-size target around them. */
+  .row-add{position:relative}.row-add::after{content:"";position:absolute;inset:-9px}
+  .later-when .chk{min-height:var(--tap)}
+  .dlg textarea,.later-when input[type=datetime-local]{font-size:16px}
   .tab{padding-top:9px;padding-bottom:9px}
   #sheet .panel button{min-height:var(--tap)}
   .files-up,.git-more,.git-behind button,.git-fetch,.git-tabs button,.git-font button{min-height:var(--tap)}
-  .keys:not(.expanded){flex-wrap:nowrap;overflow:hidden}
-  .keys:not(.expanded) .key-overflow{display:none!important}
-  #b_keymore.m-only{display:inline-grid!important}
-  .keys #b_keymore.all-fit{display:none!important}
+  .keys:not(.expanded) .key{flex:1 0 auto}
 }
 @media (min-width:761px){
   .settings-hub .hub-card{max-width:760px}
@@ -1131,7 +1142,7 @@ body.resizing iframe{pointer-events:none}
     </div>
     <div id="tabs"></div>
     <div id="integ"></div>
-    <div class="side-foot"><span id="foot"></span><span id="ver"></span><button id="b_drafts" onclick="showClosedDrafts()" style="display:none"><svg class="ui-icon"><use href="#i-file"/></svg><span>Черновики закрытых сессий</span></button><button class="settingsbtn help-side" onclick="drawer(false);openHelp()"><svg class="ui-icon"><use href="#i-help"/></svg><span>Как это работает</span></button><button class="settingsbtn help-side" onclick="openSettings()"><svg class="ui-icon"><use href="#i-gear"/></svg><span>Настройки</span></button></div>
+    <div class="side-foot"><span id="foot"></span><span id="ver"></span><button id="b_drafts" onclick="showClosedDrafts()" style="display:none"><svg class="ui-icon"><use href="#i-file"/></svg><span>Черновики закрытых сессий</span></button><button class="settingsbtn help-side" onclick="drawer(false);openHelp()"><svg class="ui-icon"><use href="#i-help"/></svg><span>Как это работает</span></button></div>
   </aside>
   <div id="scrim" onclick="if(document.body.classList.contains('project-drawer'))closeProject();else drawer(false)"></div>
   <main>
@@ -1141,7 +1152,7 @@ body.resizing iframe{pointer-events:none}
       <div id="title">—</div>
       <span class="bar-tools" id="bar_tools"><button class="iconbtn d-only" id="b_help" onclick="openHelp()" aria-label="Как это работает" title="Как это работает"><svg class="ui-icon"><use href="#i-help"/></svg></button><form class="bar-search" id="search_form" role="search"><svg class="ui-icon"><use href="#i-search"/></svg><input id="search_q" type="search" maxlength="200" placeholder="Поиск в выводе" aria-label="Поиск в выводе" title="Поиск по всему выводу сессии, включая прокрутку" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search"><button type="button" class="m-only search-close" onclick="closeOutputSearch()" aria-label="Закрыть поиск"><svg class="ui-icon"><use href="#i-x"/></svg></button></form><button class="iconbtn m-only" id="b_search" onclick="openOutputSearch()" aria-label="Поиск в выводе" title="Поиск в выводе"><svg class="ui-icon"><use href="#i-search"/></svg></button></span>
       <button class="iconbtn" id="b_actions" onclick="sheet(true)" aria-label="Действия" title="Действия" aria-haspopup="menu"><svg class="ui-icon"><use href="#i-more"/></svg></button>
-      <button class="iconbtn d-only" id="b_settings" onclick="openSettings()" aria-label="Настройки" title="Настройки"><svg class="ui-icon"><use href="#i-gear"/></svg></button>
+      <button class="iconbtn" id="b_settings" onclick="openSettings()" aria-label="Настройки" title="Настройки"><svg class="ui-icon"><use href="#i-gear"/></svg></button>
       <div id="search_pop" class="search-pop" hidden><div id="search_body" role="region" aria-label="Поиск в выводе"></div></div>
       <button class="iconbtn" id="b_project" onclick="toggleProject(PROJECT_TABS)" aria-pressed="false" aria-label="Скрыть или показать панель проекта" title="Скрыть или показать панель проекта"><svg class="ui-icon"><use href="#i-sidebar-right"/></svg></button>
     </div>
@@ -1161,7 +1172,7 @@ body.resizing iframe{pointer-events:none}
             <button class="key key-primary question-key" onclick="key('S-Right')" aria-label="Следующий вопрос" title="Вопросы Codex: Shift+→">?→</button>
             <button class="key key-primary" onclick="key('Up')" aria-label="Вариант выше">↑</button><button class="key key-primary" onclick="key('Down')" aria-label="Вариант ниже">↓</button>
             <button class="key key-primary" onclick="key('Enter')" aria-label="Подтвердить выбор" title="Enter — подтвердить выбранный ответ">⏎</button>
-            <button class="key key-primary m-only" id="b_keymore" onclick="toggleKeys()" aria-expanded="false" aria-label="Другие клавиши">…</button>
+            <button class="key key-primary" id="b_keymore" onclick="toggleKeys()" aria-expanded="false" aria-label="Другие клавиши">…</button>
             <button class="key key-extra num" onclick="key('1')" aria-label="Вариант 1">1</button><button class="key key-extra num" onclick="key('2')" aria-label="Вариант 2">2</button><button class="key key-extra num" onclick="key('3')" aria-label="Вариант 3">3</button>
             <button class="key key-extra" onclick="key('Left')" aria-label="Влево">←</button><button class="key key-extra" onclick="key('Right')" aria-label="Вправо">→</button>
             <button class="key key-extra" onclick="key('Escape')" aria-label="Отмена (Esc)" title="Отмена (Esc)">Esc</button>
@@ -1180,7 +1191,7 @@ body.resizing iframe{pointer-events:none}
           <div class="inrow">
             <button class="attachbtn agent-only" id="b_attach" onclick="chooseImages()" aria-label="Приложить файл" title="Приложить файл до 200 МБ · хранится 7 дней"><svg class="ui-icon"><use href="#i-paperclip"/></svg></button>
             <textarea id="msg" rows="1" aria-label="Сообщение агенту…" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" placeholder="Сообщение агенту…" enterkeyhint="enter"></textarea>
-            <button class="attachbtn laterbtn" id="b_later" onclick="openLater()" aria-label="Отправить позже" title="Отправить позже: в указанное время, когда агент освободится или когда сбросится лимит"><svg class="ui-icon"><use href="#i-clock"/></svg><span id="later_count" class="later-count" aria-hidden="true"></span></button>
+            <button class="attachbtn laterbtn" id="b_later" hidden onclick="openLater()" aria-label="Отправить позже" title="Отправить позже: в указанное время, когда агент освободится или когда сбросится лимит"><svg class="ui-icon"><use href="#i-clock"/></svg><span id="later_count" class="later-count" aria-hidden="true"></span></button>
             <button class="sendbtn" id="b_send" onclick="send()" aria-label="Отправить" title="Enter — отправить, Shift+Enter — новая строка"><svg class="ui-icon" style="stroke-width:2.6"><use href="#i-arrow-up"/></svg></button>
           </div>
           <div class="composer-status">
@@ -1255,6 +1266,7 @@ body.resizing iframe{pointer-events:none}
   <div class="sheet-group" id="s_session">
     <button class="agent-only" onclick="sheet(false);restart('new')"><svg class="ui-icon"><use href="#i-chat-plus"/></svg><span>Перезапустить — новый разговор</span></button>
     <button class="agent-only" onclick="sheet(false);restart('continue')"><svg class="ui-icon"><use href="#i-restart"/></svg><span>Перезапустить — продолжить разговор</span></button>
+    <button id="s_later" onclick="sheet(false);openLater()"><svg class="ui-icon"><use href="#i-clock"/></svg><span id="s_later_label">Отправить позже</span></button>
     <button onclick="sheet(false);duplicateSession()"><svg class="ui-icon"><use href="#i-copy"/></svg><span>Дублировать сессию — новый разговор</span></button>
   </div>
   <div class="sheet-group" id="s_manage">
@@ -1305,7 +1317,7 @@ body.resizing iframe{pointer-events:none}
   <div class="acts"><button type="button" onclick="$('dlg').close()">Отмена</button><button class="pri" id="n_go">Создать</button></div>
 </form></dialog>
 
-<dialog id="later_dlg"><form class="dlg" onsubmit="event.preventDefault();saveLater()"><div class="dlg-body"><h3>Отправить позже</h3>
+<dialog id="later_dlg"><form class="dlg" onsubmit="event.preventDefault();saveLater()"><div class="dlg-body"><h3 id="later_title">Отправить позже</h3>
 <textarea id="later_text" rows="3" maxlength="20000" aria-label="Сообщение агенту…" placeholder="Сообщение агенту…" autocapitalize="sentences"></textarea>
 <div class="later-when" role="radiogroup" aria-label="Когда отправить" onchange="syncLaterTime()">
 <label class="chk"><input type="radio" name="later_trigger" value="idle" checked><span>Когда агент освободится</span></label>
@@ -1313,12 +1325,12 @@ body.resizing iframe{pointer-events:none}
 <label class="chk"><input type="radio" name="later_trigger" value="time"><span>В указанное время</span></label>
 <input type="datetime-local" id="later_at" aria-label="Время отправки" hidden>
 </div>
-<p class="hint">Пока в сессии открыт вопрос агента, сообщение ждёт: иначе оно стало бы ответом.</p>
+<p class="hint">Если агент задал вопрос, сообщение подождёт ответа на него. Вложения не откладываются: они уйдут со следующим обычным сообщением.</p>
 <div id="later_waiting" hidden><h4>Ждут отправки</h4><div id="later_list"></div></div>
 <p id="later_error" class="later-error" role="status" hidden></p>
 <label class="toggle later-auto" id="later_auto_row"><span>Продолжать после сброса лимита<small>Когда лимит подписки сбросится, панель сама напишет агенту «continue».</small></span><input type="checkbox" role="switch" id="later_auto" onchange="saveAutoResume()"></label>
 <p id="later_limit" class="hint" role="status" hidden></p>
-</div><div class="acts"><button type="button" onclick="$('later_dlg').close()">Закрыть</button><button class="pri" id="later_save">Запланировать</button></div></form></dialog>
+</div><div class="acts"><button type="button" onclick="$('later_dlg').close()">Отмена</button><button class="pri" id="later_save">Отправить позже</button></div></form></dialog>
 <dialog id="quick_dlg"><form class="dlg" onsubmit="event.preventDefault();saveQuickPrompts()"><div class="dlg-body"><h3>Быстрые сообщения</h3>
 <p class="hint">Кнопки над полем ввода: одно нажатие отправляет сообщение в открытую сессию. Список общий для всех компьютеров.</p>
 <div id="quick_rows"></div>
@@ -1501,9 +1513,9 @@ const AGENT_LIST=[
     hint:"Нужна подписка Cursor: «Войти» открывает вход в браузере."},
   {id:"gemini",label:"Gemini CLI",glyph:"✦",skip:"--yolo",compact:"/compress",fresh:"/clear",cli:true,
     hint:"Вход — в самом Gemini CLI: аккаунт Google или ключ API."},
-  {id:"copilot",label:"GitHub Copilot",glyph:"◉",skip:"--allow-all",compact:"/compact",fresh:"/new",cli:true,
+  {id:"copilot",label:"GitHub Copilot",glyph:"◉",skip:"--allow-all",compact:"/compact",fresh:"/new",cli:true,short:"Copilot",
     hint:"Использует вход GitHub CLI, если он есть; иначе — «Войти»."},
-  {id:"opencode",label:"OpenCode",glyph:"▣",skip:"--auto",compact:"/compact",fresh:"/new",cli:true,
+  {id:"opencode",label:"OpenCode",glyph:"▣",skip:"--auto",compact:"/compact",fresh:"/new",cli:true,always:true,
     hint:"Работает без аккаунта на бесплатной модели; «Войти» подключает ваших провайдеров. После перезапуска продолжает последний разговор в папке."},
   {id:"qwen",label:"Qwen Code",glyph:"⬢",skip:"--yolo",compact:"/compress",fresh:"/clear",cli:true,
     hint:"Ключ и модель выбираются в самом Qwen Code: команды /auth и /model."},
@@ -1521,8 +1533,10 @@ function pickableAgents(status){
   return AGENT_LIST.filter(a=>!a.hidden&&(!a.cli||status?.[a.id]?.installed));
 }
 function renderAgentPicker(){
+  // The agent chosen on another computer may not be installed on this one: nothing would be highlighted.
+  if(!pickableAgents(lastAg).some(a=>a.id===newAgent)){pickAgent("claude");return}
   const buttons=pickableAgents(lastAg).map(a=>{
-    const button=el("button","",agentIcon({agent:a.id}),el("span","",AGENTS[a.id].label));
+    const button=el("button","",agentIcon({agent:a.id}),el("span","",a.short||AGENTS[a.id].label));button.title=AGENTS[a.id].label;
     button.type="button";button.dataset.a=a.id;button.onclick=()=>pickAgent(a.id);button.classList.toggle("on",a.id===newAgent);
     return button;
   });
@@ -1530,8 +1544,9 @@ function renderAgentPicker(){
 }
 // A terminal-only agent in Settings: install, sign in, update, and one line on where its key lives.
 function cliAgentCard(spec){
-  const card=agentCard(spec.id);
-  if(spec.hint)card.append(el("p","hint",tr(spec.hint)));
+  const state=lastAg[spec.id]||{},card=agentCard(spec.id,tr("Установлен"));
+  // The line on signing in is for an agent that still needs it; a working one does not repeat it.
+  if(spec.hint&&!(state.installed&&state.logged_in&&!spec.always))card.append(el("p","hint",tr(spec.hint)));
   return card;
 }
 
@@ -1638,10 +1653,11 @@ function instanceStorage(storage,identity){
   const key=name=>identity?'deck.'+identity+'.'+name:name;
   return {getItem:name=>storage.getItem(key(name)),setItem:(name,value)=>storage.setItem(key(name),value),removeItem:name=>storage.removeItem(key(name))};
 }
-function populateDeckSelector(select,decks,current,localName){
+// `label` may add to a name what the page knows about that computer (e.g. that the browser runs on it).
+function populateDeckSelector(select,decks,current,localName,label=(name=>name)){
   select.replaceChildren();
   for(const deck of [{id:'',name:localName},...decks]){
-    const option=document.createElement('option');option.value=deck.id;option.textContent=deck.name;select.append(option);
+    const option=document.createElement('option');option.value=deck.id;option.textContent=label(deck.name,deck.id);select.append(option);
   }
   select.value=current;
 }
@@ -2053,11 +2069,13 @@ function keptStrips(box){
   return kept;
 }
 function imageStrip(session,paths,kept){
-  const key=stripKey(selectedDeck,session,paths),old=kept?.get(key);
+  // The pictures left out are part of the key: when one may be tried again, the strip is built anew for it.
+  const skipped=new Set([...new Set(paths)].filter(path=>imageMissing(session,path)));
+  const key=stripKey(selectedDeck,session,paths)+JSON.stringify([...skipped]),old=kept?.get(key);
   if(old){kept.delete(key);return old}
   const strip=el("div","img-strip");strip.dataset.key=key;
   for(const path of new Set(paths)){
-    if(imageMissing(session,path))continue;
+    if(skipped.has(path))continue;
     const thumb=el("button","img-thumb"),img=document.createElement("img");
     thumb.type="button";thumb.title=path;thumb.setAttribute("aria-label",tr("Открыть картинку {0}",[path.split("/").pop()]));
     img.loading="lazy";img.decoding="async";img.alt="";img.src=imageUrl(session,path,true);
@@ -3229,7 +3247,7 @@ function renderContext(context,started){
 if(typeof document!=="undefined")document.addEventListener("visibilitychange",()=>{if(!document.hidden&&sessionInfo.session)loadSessionInfo()});
 // Sending without typing or waiting: quick prompts (one tap), prompts held for later (a time, a free
 // session, a limit reset) and continuing by itself after a subscription limit. Bundled before app.js.
-const later={session:null,data:null,seq:0,timer:null};
+const later={session:null,data:null,seq:0,timer:null,failed:false,opened:null};
 const quick={saved:[],loaded:false,more:false};
 const LATER_POLL=30000;
 // The user's own prompts, then the agent's commands behind "more": they are rare and one of them drops the
@@ -3268,8 +3286,8 @@ async function loadLater(){
   if(!key)return;
   let data;
   // A computer without this version has no schedule: the button then explains it instead of failing silently.
-  try{data=await api("/api/schedule?name="+encodeURIComponent(active))}
-  catch(e){if(e.message===STALE)return;data=later.data}
+  try{data=await api("/api/schedule?name="+encodeURIComponent(active));later.failed=false}
+  catch(e){if(e.message===STALE)return;data=later.data;later.failed=true}
   if(seq!==later.seq)return;
   later.data=data&&Array.isArray(data.prompts)?data:null;renderLater();
   if(!document.hidden)later.timer=setTimeout(loadLater,LATER_POLL);
@@ -3280,9 +3298,12 @@ function formatLaterTime(seconds){
 function renderLater(){
   const count=laterCount(later.data),button=$("b_later");
   $("later_count").textContent=count||"";button.classList.toggle("on",count>0);
-  button.setAttribute("aria-label",count?tr("Отправить позже · ждут: {0}",[count]):tr("Отправить позже"));
+  const label=count?tr("Отправить позже · ждут: {0}",[count]):tr("Отправить позже");
+  // The button by the field appears only while something waits; otherwise the action lives in the menu.
+  button.hidden=!count;button.setAttribute("aria-label",label);$("s_later_label").textContent=label;
   if(!$("later_dlg").open)return;
   const data=later.data,shell=agentOf(cur())==="shell";
+  $("later_title").textContent=cur()?tr("Отправить позже · {0}",[sessionTitle(cur())]):tr("Отправить позже");
   $("later_limit_option").hidden=shell;$("later_auto_row").hidden=shell;
   if(document.activeElement!==$("later_auto"))$("later_auto").checked=Boolean(data?.auto_resume);
   const limit=data?.limit;
@@ -3301,7 +3322,12 @@ function renderLater(){
 }
 function openLater(){
   if(!active)return;
-  if(!later.data){toast(tr("На этом компьютере нужна новая версия панели, чтобы отправлять позже"));loadLater();return}
+  if(!later.data){
+    // A read that failed is not an old panel: saying so would send the owner to update for nothing.
+    toast(later.failed?tr("Не удалось прочитать отложенные сообщения. Проверьте связь и повторите"):tr("На этом компьютере нужна новая версия панели, чтобы отправлять позже"));
+    loadLater();return;
+  }
+  later.opened=laterKey();
   $("later_text").value=$("msg").value;
   $("later_at").value=defaultLaterTime(Date.now());
   $("later_dlg").querySelector("input[name=later_trigger][value=idle]").checked=true;
@@ -3311,7 +3337,16 @@ function openLater(){
 function syncLaterTime(){
   $("later_at").hidden=$("later_dlg").querySelector("input[name=later_trigger]:checked").value!=="time";
 }
+// The dialog belongs to the session it was opened for. If another one is on screen by now (a notification
+// tap, a closed session), nothing is sent: the heading already names the new one, the next press goes there.
+function laterMoved(){
+  if(later.opened===laterKey())return false;
+  later.opened=laterKey();renderLater();
+  toast(tr("Открыта другая сессия. Проверьте, куда уйдёт сообщение, и повторите"));
+  return true;
+}
 async function saveLater(){
+  if(laterMoved())return;
   const name=active,text=$("later_text").value,trigger=$("later_dlg").querySelector("input[name=later_trigger]:checked").value;
   if(!text.trim()){toast(tr("Введите сообщение"));$("later_text").focus();return}
   const at=trigger==="time"?Math.floor(new Date($("later_at").value).getTime()/1000):undefined;
@@ -3332,6 +3367,7 @@ async function removeLater(id){
 }
 async function saveAutoResume(){
   const box=$("later_auto"),enabled=box.checked;
+  if(laterMoved()){box.checked=!enabled;return}
   try{later.data=await api("/api/auto_resume",{name:active,enabled});renderLater()}
   catch(e){box.checked=!enabled;if(e.message!==STALE)toast(e.message)}
 }
@@ -3388,7 +3424,12 @@ function quickEditorRow(prompt){
   const row=el("div","quick-row",el("div","quick-fields",label,text),remove);
   return row;
 }
-function openQuickEditor(){
+async function openQuickEditor(){
+  // Saving writes the whole list: it is read first, so a list that did not load, or was changed on another
+  // device, is never replaced by an empty or old one.
+  try{quick.saved=(await api("/api/quick_prompts",null,true)).prompts||[]}
+  catch(e){if(e.message!==STALE)toast(tr("Не удалось прочитать быстрые сообщения. Проверьте связь и повторите"));return}
+  renderQuickPrompts();
   $("quick_rows").replaceChildren(...quick.saved.map(quickEditorRow));
   if(!quick.saved.length)addQuickRow();
   $("quick_dlg").showModal();
@@ -3893,12 +3934,12 @@ async function openSettings(section="agents"){
   renderHub();
   clearInterval(lmTimer);lmTimer=setInterval(()=>{if(!document.hidden&&$("settings_dlg").open){if(lmData.discovery?.phase==="running")loadLM(false);if(hubSection==="models"&&Date.now()-lmModelsChecked>30000)refreshLMModels()}},2000);
 }
-const HUB_EDITORS=["kimi_dlg","integrations_dlg","lm_editor","deck_editor","backup_join_card"];
+const HUB_EDITORS=["kimi_dlg","provider_dlg","integrations_dlg","lm_editor","deck_editor","backup_join_card"];
 // The open editor of the section on screen; one left open in another section is not what Escape means.
 function openHubEditor(){return HUB_EDITORS.map($).find(e=>!e.hidden&&$("hub_"+hubSection).contains(e))}
 function hubEditorDirty(editor){return Boolean(editor&&!editor.hidden&&editor.dataset.initial!==undefined&&editorValues(editor)!==editor.dataset.initial)}
 function closeHubEditor(editor){
-  ({kimi_dlg:closeKimi,integrations_dlg:closeIntegrations,lm_editor:resetLM,deck_editor:closeDeckEditor,backup_join_card:closeBackupJoin})[editor.id]();
+  ({kimi_dlg:closeKimi,provider_dlg:closeProvider,integrations_dlg:closeIntegrations,lm_editor:resetLM,deck_editor:closeDeckEditor,backup_join_card:closeBackupJoin})[editor.id]();
 }
 // Escape first closes an open editor; typed keys and passwords are never dropped without asking.
 async function settingsCancel(e){
@@ -3914,7 +3955,7 @@ async function closeSettings(){
 function settingsClosed(){
   if($("settings_dlg").open)return;
   clearInterval(lmTimer);clearInterval(deckTimer);clearTimeout(pushTimer);pushUnavailableSince=0;
-  closeKimi();closeIntegrations();resetLM();closeDeckEditor();closeBackupJoin();
+  closeKimi();closeProvider();closeIntegrations();resetLM();closeDeckEditor();closeBackupJoin();
   if(returnToNew){returnToNew=false;$("dlg").showModal();renderSources()}
 }
 function hubInit(){
@@ -3980,12 +4021,13 @@ function renderHub(){
 // Settings cards for agents (with Kimi and GitHub), Telegram and the version. Bundled before app.js.
 
 /* ---------- agents ---------- */
-function agentCard(a){
+// `ready` is what a usable agent is called: the panel sees a subscription sign-in for some, only the program for others.
+function agentCard(a,ready=tr("Подключён")){
   const st=lastAg[a]||{},title=AGENTS[a].label,icon=agentIcon({agent:a}),update=[tr("Обновить"),()=>agentAction("install",a)];
   if(!st.installed)return hubCard({key:a,icon,title,status:tr("Не установлен"),primary:{label:tr("Установить"),run:()=>agentAction("install",a)}});
   if(!st.logged_in)return hubCard({key:a,icon,title,status:tr("Вход не выполнен"),tone:"warn",meta:st.version,
     primary:{label:tr("Войти"),run:()=>agentAction("login",a)},more:[update]});
-  return hubCard({key:a,icon,title,status:tr("Подключён"),tone:"ok",meta:st.version,more:[update]});
+  return hubCard({key:a,icon,title,status:ready,tone:"ok",meta:st.version,more:[update]});
 }
 // One Kimi key serves Claude on Kimi models and Kimi Code, so both live on this card.
 function kimiCard(){
@@ -4010,9 +4052,18 @@ function githubCard(){
     body:[el("p","hint",tr("Чтобы выбирать репозиторий при создании сессии."))]});
   return hubCard({key:"github",icon,title:"GitHub",status:"@"+ghLogin,tone:"ok",more:[[tr("Новая сессия из репозитория"),leave(openNew)]]});
 }
+// Agents that are not installed wait folded at the end: five more cards of equal weight bury the ones in use.
+let moreAgentsOpen=false;
+function moreAgents(specs){
+  if(!specs.length)return null;
+  const box=el("details","more-agents",el("summary","",tr("Другие агенты · {0}",[specs.length]),el("small","",specs.map(a=>a.label).join(", "))),...specs.map(cliAgentCard));
+  box.open=moreAgentsOpen;box.dataset.card="more-agents";box.addEventListener("toggle",()=>{moreAgentsOpen=box.open});
+  return box;
+}
 function renderAgentCards(){
   if(editorInUse($("kimi_dlg"))||editorInUse($("provider_dlg")))return;
-  const cards=[agentCard("claude"),agentCard("codex"),providersCard(),kimiCard(),...AGENT_LIST.filter(a=>a.cli).map(cliAgentCard),piCard(),githubCard()];
+  const cli=AGENT_LIST.filter(a=>a.cli),installed=cli.filter(a=>lastAg[a.id]?.installed),rest=cli.filter(a=>!lastAg[a.id]?.installed);
+  const cards=[agentCard("claude"),agentCard("codex"),providersCard(),kimiCard(),...installed.map(cliAgentCard),piCard(),githubCard(),moreAgents(rest)].filter(Boolean);
   $("agent_cards").replaceChildren(...placeEditor(placeEditor(cards,"kimi",$("kimi_dlg")).filter(c=>c!==$("provider_dlg")),"providers",$("provider_dlg")));
 }
 function openKimi(){
@@ -4415,7 +4466,7 @@ function renderSessionContainers(){
   const session=cur(),hosts=session?containerHostsFor(agentOf(session)):[],select=$("session_containers");
   // One computer and nobody marked: both names would say the obvious.
   $("session_where").hidden=!session||(!hosts.length&&!deckDirectory.decks.length);
-  $("session_computer").textContent=currentDeckName();
+  $("session_computer").textContent=hereName(currentDeckName(),selectedDeck,here.found,tr);
   $("session_containers_box").hidden=!hosts.length;
   if(!hosts.length||document.activeElement===select)return;
   containerOptions(select,hosts);
@@ -4424,13 +4475,14 @@ function renderSessionContainers(){
   $("session_containers_name").textContent=select.value?select.selectedOptions[0].textContent:deckDirectory.name;
 }
 async function saveSessionContainers(){
-  const select=$("session_containers"),name=active,session=cur(),value=select.value;
+  // Read now: a refresh during the request puts the list back on the Docker the agent is running with.
+  const select=$("session_containers"),name=active,session=cur(),value=select.value,chosen=select.selectedOptions[0].textContent;
   if(!session)return;
   select.blur();
   try{
     await api("/api/session_containers",{name,containers:value});
     session.containers=value||"local";
-    toast(tr("Контейнеры этой сессии: {0}. Действует после перезапуска.",[select.selectedOptions[0].textContent]),"success");
+    toast(tr("Контейнеры этой сессии: {0}. Действует после перезапуска.",[chosen]),"success");
     // The running agent keeps the Docker it started with; offer the restart that keeps the conversation.
     if(session.running&&active===name)restart("continue");
   }catch(e){if(e.message!==STALE)toast(e.message)}
@@ -4553,7 +4605,7 @@ function dragHasFiles(e){return !dragFromPage&&Array.from(e.dataTransfer?.types|
 function dropTarget(session,blocked){
   if(blocked)return {ok:false,text:"Дождитесь окончания отправки или загрузки"};
   if(!session)return {ok:false,text:"Сначала откройте сессию"};
-  if(agentOf(session)==="shell")return {ok:false,text:"Выберите сессию Claude или Codex"};
+  if(agentOf(session)==="shell")return {ok:false,text:"Откройте сессию агента: в терминал файлы не прикладываются"};
   return {ok:true,text:"Отпустите, чтобы приложить к «{0}»",args:[sessionTitle(session)]};
 }
 function showDropZone(target){
@@ -4596,7 +4648,19 @@ function pastedPictures(data){
 }
 // How many of the pictures fit, given what is already attached. Pure for tests.
 function pictureRoom(attached,wanted){return Math.max(0,Math.min(wanted,4-attached))}
-const SMALL_PICTURE=48;
+const SMALL_PICTURE=48,PICTURE_TRIES=12,PICTURE_BYTES=25*1024*1024,PICTURE_WAIT=10000;
+// Copied text names its pictures by address. One that points into this network (a router, this machine)
+// is not a picture from a chat, and the page is not made to ask for it. Pure for tests.
+function pictureAllowed(src){
+  if(/^(data:image\/|blob:)/i.test(src))return true;
+  let host;
+  try{host=new URL(src).hostname.toLowerCase()}catch(e){return false}
+  if(host==="localhost"||host.endsWith(".local")||host.endsWith(".internal")||host.includes(":")||host.startsWith("["))return false;
+  const ip=/^(\d+)\.(\d+)\.\d+\.\d+$/.exec(host);
+  if(!ip)return true;
+  const [a,b]=[Number(ip[1]),Number(ip[2])];
+  return !(a===0||a===10||a===127||a===169&&b===254||a===172&&b>=16&&b<=31||a===192&&b===168||a===100&&b>=64&&b<=127);
+}
 // Chats draw emoji and avatars as pictures too; those are not what was copied.
 async function isSmallPicture(blob){
   try{const bitmap=await createImageBitmap(blob),small=Math.max(bitmap.width,bitmap.height)<SMALL_PICTURE;bitmap.close();return small}
@@ -4605,9 +4669,15 @@ async function isSmallPicture(blob){
 // A site that lets other pages read its pictures, the clipboard's own data, or this page's blob. The
 // address of this panel stays out of the request.
 async function fetchPicture(src,index){
-  const response=await fetch(src,{credentials:"omit",referrerPolicy:"no-referrer"});
-  if(!response.ok)throw new Error("HTTP "+response.status);
-  const blob=await response.blob();
+  const stop=new AbortController(),timer=setTimeout(()=>stop.abort(),PICTURE_WAIT);
+  let blob;
+  try{
+    const response=await fetch(src,{credentials:"omit",referrerPolicy:"no-referrer",signal:stop.signal});
+    if(!response.ok)throw new Error("HTTP "+response.status);
+    if(Number(response.headers.get("Content-Length"))>PICTURE_BYTES)throw new Error("too large");
+    blob=await response.blob();
+  }finally{clearTimeout(timer)}
+  if(blob.size>PICTURE_BYTES)throw new Error("too large");
   if(!blob.type.startsWith("image/"))throw new Error("not a picture");
   if(await isSmallPicture(blob))return null;
   return new File([blob],"pasted-"+index+"."+blob.type.slice(6).split(/[+;]/)[0],{type:blob.type});
@@ -4615,7 +4685,10 @@ async function fetchPicture(src,index){
 async function attachPastedPictures(sources,ready){
   const name=active,deck=selectedDeck,files=ready.slice();
   let wanted=ready.length;
+  const room=pictureRoom(attachmentsFor(name).length,4);
   for(const [index,src] of sources.entries()){
+    // A copied page may name dozens: only what can still be attached is asked for, the rest is counted.
+    if(files.length>=room||index>=PICTURE_TRIES||!pictureAllowed(src)){wanted++;continue}
     try{const file=await fetchPicture(src,index+1);if(file){files.push(file);wanted++}}
     catch(e){wanted++}
   }
@@ -4649,7 +4722,7 @@ function watchFileDrops(win){
   win.addEventListener("dragend",()=>{dragFromPage=false;hideDropZone()});
 }
 
-if(typeof module!=="undefined")module.exports={dropTarget,dragHasFiles,pastedFiles,pastedPictures,pictureRoom};
+if(typeof module!=="undefined")module.exports={dropTarget,dragHasFiles,pastedFiles,pastedPictures,pictureRoom,pictureAllowed};
 // Claude Code on the models of another service that speaks Anthropic's API: GLM, or any address the owner
 // adds. The key is typed here once and never comes back from the server. Bundled before app.js.
 const PROVIDER_PRESETS={glm:{name:"GLM",url:"https://api.z.ai/api/anthropic",model:"glm-5.3"}};
@@ -4660,16 +4733,16 @@ function providerSources(providers){
   return providers.filter(p=>p.configured).map(p=>[{kind:"provider",provider:p.id,model:p.model},p.name+" · "+p.model]);
 }
 function providerRow(provider){
-  const edit=btn(tr("Изменить"),"",()=>openProvider(provider));edit.type="button";
+  const edit=labelledButton(tr("Изменить"),"",()=>openProvider(provider),provider.name);edit.type="button";
   return el("div","provider-row",el("span","provider-name",provider.name),el("span","card-meta",provider.model),edit);
 }
 function providersCard(){
   const list=savedProviders(),hasGlm=list.some(p=>p.url===PROVIDER_PRESETS.glm.url);
-  const other=[tr("Добавить другой сервис"),()=>openProvider(null,{name:"",url:"",model:""})];
+  const other=btn(tr("Добавить другой сервис"),"quick-add",()=>openProvider(null,{name:"",url:"",model:""}));other.type="button";
   return hubCard({key:"providers",icon:agentIcon({agent:"claude"}),title:tr("Claude на других моделях"),
     status:list.length?tr("Сервисов: {0}",[list.length]):tr("Не настроено"),tone:list.length?"ok":"idle",
-    primary:hasGlm?null:{label:tr("Добавить GLM"),run:()=>openProvider(null,PROVIDER_PRESETS.glm),quiet:true},more:[other],
-    body:[el("p","hint",tr("Claude Code работает на моделях другого сервиса с Anthropic-совместимым адресом. Сервис выбирается в новой сессии Claude, в поле «Источник модели».")),...list.map(providerRow)]});
+    primary:hasGlm?null:{label:tr("Добавить GLM"),run:()=>openProvider(null,PROVIDER_PRESETS.glm),quiet:true},
+    body:[el("p","hint",tr("Claude Code работает на моделях другого сервиса с Anthropic-совместимым адресом. Сервис выбирается в новой сессии Claude, в поле «Источник модели».")),...list.map(providerRow),other]});
 }
 function openProvider(provider,preset){
   const from=provider||preset;providerEditing=provider?provider.id:null;
@@ -4697,6 +4770,41 @@ async function removeProvider(){
 }
 
 if(typeof module!=="undefined")module.exports={providerSources,PROVIDER_PRESETS};
+// Is this browser on one of the computers it shows? The page of a gateway may be opened from anywhere; a
+// panel on the same machine answers one question on 127.0.0.1 (integrations/here.py), and only to the right
+// installation id. A phone is never one of these computers, so it does not ask. Bundled before app.js.
+const here={found:undefined,asking:null};  // found: a computer's id, "" for the gateway itself, null for none
+// Who could be this machine: an installation id and the port its panel listens on. Pure for tests.
+function hereCandidates(network,decks){
+  const port=url=>{try{return new URL(url).port||"80"}catch(e){return ""}};
+  return [{id:"",instance:network?.instance,port:String(network?.bind_port||"")},...(decks||[]).map(d=>({id:d.id,instance:d.instance,port:port(d.url)}))]
+    .filter(c=>/^[0-9a-f]{24}$/.test(c.instance||"")&&/^\d{1,5}$/.test(c.port));
+}
+// A computer's name as lists show it. Pure for tests.
+function hereName(name,id,found,translate){return found===id?name+" · "+translate("этот компьютер"):name}
+async function askHere(candidate){
+  const stop=new AbortController(),timer=setTimeout(()=>stop.abort(),1500);
+  try{
+    const answer=await fetch(`http://127.0.0.1:${candidate.port}/api/here?id=${candidate.instance}`,
+      {mode:"cors",credentials:"omit",referrerPolicy:"no-referrer",cache:"no-store",signal:stop.signal});
+    return answer.ok&&(await answer.json()).same===true;
+  }catch(e){return false}  // No panel here, or the browser does not let a public page ask this machine.
+  finally{clearTimeout(timer)}
+}
+// Asked once per page: the answer does not change while it is open. With one computer there is nothing to
+// tell apart, and no reason for the browser's "local network" question.
+function findHere(network,decks){
+  if(here.found!==undefined||!decks?.length||isMobile()||isTouch())return Promise.resolve(here.found??null);
+  here.asking=here.asking||(async()=>{
+    const candidates=hereCandidates(network,decks),answers=await Promise.all(candidates.map(askHere));
+    const index=answers.indexOf(true);
+    here.found=index<0?null:candidates[index].id;
+    return here.found;
+  })();
+  return here.asking;
+}
+
+if(typeof module!=="undefined")module.exports={hereCandidates,hereName};
 const I18N=__PANEL_I18N__;
 const DATE_LOCALE=(()=>{try{return Intl.getCanonicalLocales(I18N.language)[0]}catch(e){return "en"}})();
 const $=id=>document.getElementById(id);
@@ -5007,11 +5115,13 @@ function renderTitle(){
   const s=cur(),t=$("title");t.replaceChildren();
   document.body.classList.toggle("is-shell",!!s&&agentOf(s)==="shell");
   document.body.classList.toggle("is-codex",!!s&&agentOf(s)==="codex");
-  $("msg").placeholder=s?tr("Сообщение в ")+agentLabel(s)+"…":tr("Сообщение агенту…");
+  // Claude Code on another service's model says so where the message is typed.
+  $("msg").placeholder=s?tr("Сообщение в ")+(s.source?.kind==="provider"&&s.source.label?s.source.label:agentLabel(s))+"…":tr("Сообщение агенту…");
   $("bar_tools").hidden=!s;
   if(!s){t.textContent=isMobile()?"DeckAway":"";return}
   const st=state(s);
-  t.append(el("b","",sessionTitle(s)),el("span","path"," — "+s.path.replace(/^\/(?:home|Users)\/[^/]+/,"~")),el("span","st",stateText(s)+" · "+shortPath(s.path)+(s.source?.label?" · "+s.source.label:"")));
+  t.append(el("b","",sessionTitle(s)),el("span","path"," — "+s.path.replace(/^\/(?:home|Users)\/[^/]+/,"~")),// The model's source goes before the folder: a narrow header cuts the end, and "which model" matters more.
+    el("span","st",stateText(s)+(s.source?.label?" · "+s.source.label:"")+" · "+shortPath(s.path)));
 }
 
 function frameFor(name){
@@ -5297,7 +5407,7 @@ async function prepareImage(file){
 async function uploadImages(files){
   if(!active||sending||uploading||panelUpdating||!files.length)return;
   const name=active;
-  if(agentOf(cur())==="shell"){toast(tr("Выберите сессию Claude или Codex"));return}
+  if(agentOf(cur())==="shell"){toast(tr("Откройте сессию агента: в терминал файлы не прикладываются"));return}
   if(attachmentsFor(name).length+files.length>4){toast(tr("Можно приложить до 4 файлов"));return}
   uploading=true;renderAttachments();
   sendStates.set(name,{text:tr("Загружаю файлы…"),phase:"pending"});renderSendState();
@@ -5395,12 +5505,13 @@ function fitKeys(){
   const box=$("keys"),more=$("b_keymore"),keys=[...box.children].filter(k=>k!==more);
   for(const k of keys)k.classList.remove("key-overflow");
   more.classList.remove("all-fit");
-  if(!(isMobile()||isTouch())||box.classList.contains("expanded")||!box.clientWidth)return;
+  if(box.classList.contains("expanded")||!box.clientWidth)return;
   if(box.scrollWidth<=box.clientWidth){more.classList.add("all-fit");return}
   // Hide from the end so the answer keys (↑ ↓ ⏎) stay reachable on the narrowest screens.
   for(const k of keys.reverse()){if(box.scrollWidth<=box.clientWidth)break;if(k.offsetParent)k.classList.add("key-overflow")}
 }
-if(window.ResizeObserver)new ResizeObserver(()=>fitKeys()).observe($("keys"));
+// The quick prompts follow: they share "…" with the keys whenever the keys show it.
+if(window.ResizeObserver)new ResizeObserver(()=>{fitKeys();renderQuickPrompts()}).observe($("keys"));
 function hideKeyboard(){
   const focused=document.activeElement;
   if(focused&&typeof focused.blur==="function")focused.blur();
@@ -5447,7 +5558,7 @@ function btn(label,cls,fn,title){const b=el("button",cls||"",label);b.onclick=fn
 let lastGh=0,lastAg={},usageData={};
 async function checkGithubFoot(force){
   if(document.hidden)return;
-  try{lastAg=await api("/api/agents")}catch(e){}
+  try{lastAg=await api("/api/agents");if($("dlg").open)renderAgentPicker()}catch(e){}
   if(force===true||Date.now()-lastGh>30000||sessions.some(s=>s.name==="github-login")){await ghStatus();lastGh=Date.now()}
   renderInteg();
 }
@@ -5568,7 +5679,10 @@ async function loadDeckSettings(){
   const current=data.decks.find(deck=>deck.id===selectedDeck);
   panelOrigins=current?[current.url,location.origin]:[location.origin,"http://"+network.bind_host+":"+network.bind_port,"http://127.0.0.1:"+network.bind_port,"http://localhost:"+network.bind_port];
   if(!current&&network.public_url)panelOrigins.push(network.public_url);
-  populateDeckSelector($("deck_select"),data.decks,selectedDeck,network.name);
+  const names=()=>populateDeckSelector($("deck_select"),data.decks,selectedDeck,network.name,(name,id)=>hereName(name,id,here.found,tr));
+  names();
+  // The computer this browser runs on is named so: with it selected, nothing on screen is far away.
+  findHere(network,data.decks).then(found=>{if(found!==null&&deckDirectory.decks===data.decks){names();renderSessionContainers()}});
   // Most installs have a single machine; the switcher appears once another DeckAway is connected.
   $("deck_switch").hidden=!data.decks.length&&!selectedDeck;
   deckDirectory={decks:data.decks,name:network.name,network};loadOtherDecks();
@@ -5711,7 +5825,7 @@ function resetInstanceState(known){
 }
 function renderSources(){
   const old=$("n_source").value;$("source_row").hidden=!["claude","kimi","pi"].includes(newAgent);
-  const values=[];if(newAgent==="claude")values.push([{kind:"default"},"Claude"]);
+  const values=[];if(newAgent==="claude")values.push([{kind:"default"},tr("Подписка Claude")]);
   if(lastAg.kimi_config?.configured&&["claude","kimi"].includes(newAgent))for(const m of ["k3","kimi-for-coding","kimi-for-coding-highspeed"])values.push([{kind:"kimi",model:m},"Kimi · "+m]);
   if(newAgent==="claude")values.push(...providerSources(savedProviders()));
   if(["claude","pi"].includes(newAgent))for(const p of lmData.profiles||[])for(const m of p.models||[])values.push([{kind:"lmstudio",profile:p.id,model:m.id},p.name+" · "+m.name]);
@@ -5852,6 +5966,8 @@ function hotkeys(e){
   const commandKey=/Mac|iPhone|iPad/.test(navigator.platform||"")?e.metaKey&&!e.ctrlKey:e.ctrlKey&&!e.metaKey;
   if(commandKey&&!e.altKey&&!e.shiftKey&&e.code==="KeyK"&&e.target?.ownerDocument===document){e.preventDefault();e.stopPropagation();openPalette();return}
   if(!e.altKey||e.ctrlKey||e.metaKey)return;
+  // An open dialog belongs to the session under it: a shortcut must not put another one there.
+  if(document.querySelector("dialog[open]:not(.docked)"))return;
   const vis=[...$("tabs").querySelectorAll(".tab:not(.remote)")].map(t=>t.dataset.session);
   let target=null;
   if(/^Digit[1-9]$/.test(e.code)&&!e.shiftKey){
@@ -5933,7 +6049,7 @@ function refreshInterface(){
   location.reload();
 }
 function canAutoRefresh(){
-  return !document.hidden&&!panelUpdating&&!sending&&!uploading&&!choosingImages&&!Array.from(imageAttachments.values()).some(images=>images.length)&&!Array.from(messageDrafts.values()).some(Boolean)&&!$("msg").value&&!$("dlg").open&&!$("draft_dlg").open&&!$("settings_dlg").open&&!$("rename_dlg").open&&
+  return !document.hidden&&!panelUpdating&&!sending&&!uploading&&!choosingImages&&!Array.from(imageAttachments.values()).some(images=>images.length)&&!Array.from(messageDrafts.values()).some(Boolean)&&!$("msg").value&&!document.querySelector("dialog[open]:not(.docked)")&&
     !$("sheet").classList.contains("on")&&!document.body.classList.contains("drawer")&&
     (!cur()||(curMode()==="screen"&&$("pre").scrollTop+$("pre").clientHeight>=$("pre").scrollHeight-40))&&
     !String(window.getSelection())&&

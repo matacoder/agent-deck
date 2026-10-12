@@ -4,7 +4,7 @@ import re
 import tempfile
 import uuid
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from support import PanelCase
 from integrations import agents
@@ -60,7 +60,8 @@ class RegistryTests(PanelCase):
 
     def test_a_program_that_makes_its_own_ids_continues_its_last_conversation(self):
         with tempfile.TemporaryDirectory() as home:
-            self.assertEqual(agents.command('opencode', None, False, False, home), 'opencode')  # Not installed: PATH decides.
+            with patch.object(agents.shutil, 'which', return_value=None), self.assertRaisesRegex(ValueError, 'Install OpenCode first'):
+                agents.command('opencode', None, False, False, home)  # Said before a session opens on `command not found`.
             path = install(home, 'opencode')
             self.assertEqual(path, str(Path(home) / '.opencode/bin/opencode'))
             self.assertEqual(agents.command('opencode', None, True, True, home), f'{path} --continue --auto')
@@ -109,3 +110,19 @@ class RegistryTests(PanelCase):
             (Path(home) / '.local/bin/codex').write_text('')
             self.assertIn('`codex exec "<task>"` (Codex)', agents.leader_note(home))
             self.assertNotIn('Codex', agents.leader_note(home, hosts=('codex',)))
+
+    def test_the_session_hook_never_offers_an_agent_to_itself_and_survives_a_hanging_version_check(self):
+        import session_hook
+        with patch.object(agents, 'leader_note', return_value='note') as note, \
+                patch.object(session_hook.subprocess, 'run', return_value=Mock(stdout='codex\n')):
+            self.assertEqual(session_hook.other_agents_note(session_hook.session_agent('%1')), 'note')
+        note.assert_called_once_with(hosts=('codex',))
+        # A program that does not answer --version is still installed; the list of agents is not held up twice.
+        with tempfile.TemporaryDirectory() as home:
+            binary = install(home, 'gemini')
+            run = Mock(side_effect=self.panel.subprocess.TimeoutExpired('gemini', 10))
+            with patch.object(agents, 'executable', return_value=str(binary)), patch.object(self.panel.subprocess, 'run', run):
+                self.panel._version_cache.pop('gemini', None)
+                first, second = self.panel.agent_status('gemini'), self.panel.agent_status('gemini')
+            self.assertEqual((first['installed'], first['version'], second['version'], run.call_count), (True, None, None, 1))
+

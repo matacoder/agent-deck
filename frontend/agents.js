@@ -13,9 +13,9 @@ const AGENT_LIST=[
     hint:"Нужна подписка Cursor: «Войти» открывает вход в браузере."},
   {id:"gemini",label:"Gemini CLI",glyph:"✦",skip:"--yolo",compact:"/compress",fresh:"/clear",cli:true,
     hint:"Вход — в самом Gemini CLI: аккаунт Google или ключ API."},
-  {id:"copilot",label:"GitHub Copilot",glyph:"◉",skip:"--allow-all",compact:"/compact",fresh:"/new",cli:true,
+  {id:"copilot",label:"GitHub Copilot",glyph:"◉",skip:"--allow-all",compact:"/compact",fresh:"/new",cli:true,short:"Copilot",
     hint:"Использует вход GitHub CLI, если он есть; иначе — «Войти»."},
-  {id:"opencode",label:"OpenCode",glyph:"▣",skip:"--auto",compact:"/compact",fresh:"/new",cli:true,
+  {id:"opencode",label:"OpenCode",glyph:"▣",skip:"--auto",compact:"/compact",fresh:"/new",cli:true,always:true,
     hint:"Работает без аккаунта на бесплатной модели; «Войти» подключает ваших провайдеров. После перезапуска продолжает последний разговор в папке."},
   {id:"qwen",label:"Qwen Code",glyph:"⬢",skip:"--yolo",compact:"/compress",fresh:"/clear",cli:true,
     hint:"Ключ и модель выбираются в самом Qwen Code: команды /auth и /model."},
@@ -33,8 +33,10 @@ function pickableAgents(status){
   return AGENT_LIST.filter(a=>!a.hidden&&(!a.cli||status?.[a.id]?.installed));
 }
 function renderAgentPicker(){
+  // The agent chosen on another computer may not be installed on this one: nothing would be highlighted.
+  if(!pickableAgents(lastAg).some(a=>a.id===newAgent)){pickAgent("claude");return}
   const buttons=pickableAgents(lastAg).map(a=>{
-    const button=el("button","",agentIcon({agent:a.id}),el("span","",AGENTS[a.id].label));
+    const button=el("button","",agentIcon({agent:a.id}),el("span","",a.short||AGENTS[a.id].label));button.title=AGENTS[a.id].label;
     button.type="button";button.dataset.a=a.id;button.onclick=()=>pickAgent(a.id);button.classList.toggle("on",a.id===newAgent);
     return button;
   });
@@ -42,8 +44,9 @@ function renderAgentPicker(){
 }
 // A terminal-only agent in Settings: install, sign in, update, and one line on where its key lives.
 function cliAgentCard(spec){
-  const card=agentCard(spec.id);
-  if(spec.hint)card.append(el("p","hint",tr(spec.hint)));
+  const state=lastAg[spec.id]||{},card=agentCard(spec.id,tr("Установлен"));
+  // The line on signing in is for an agent that still needs it; a working one does not repeat it.
+  if(spec.hint&&!(state.installed&&state.logged_in&&!spec.always))card.append(el("p","hint",tr(spec.hint)));
   return card;
 }
 

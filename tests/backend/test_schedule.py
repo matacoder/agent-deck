@@ -132,6 +132,26 @@ class ScheduleTests(unittest.TestCase):
         self.tick(20)
         self.assertIsNone(self.schedule.status('api')['limit'])
 
+    def test_auto_resume_is_not_repeated_the_next_day_or_after_a_panel_restart(self):
+        self.schedule.set_auto('api', True)
+        self.screens['api'] = CLAUDE
+        self.tick(); self.tick(10)
+        self.now = at(15, 2)
+        self.tick()
+        self.assertEqual(self.sent, [('api', 'continue')])
+        for day in (1, 2):                  # "resets 3pm" reads as that day's 3pm again.
+            self.now = at(15, 2) + day * 86400
+            self.tick(); self.tick(10); self.tick(10)
+        self.schedule = self.make()         # The panel restarted with the notice still on the screen.
+        self.tick(); self.tick(10); self.tick(10)
+        self.assertEqual(len(self.sent), 1)
+        self.screens['api'] = '> \n'
+        self.tick(10)
+        self.screens['api'] = CLAUDE        # The same words again after the screen moved on: a new limit.
+        self.now = at(15, 2) + 3 * 86400
+        self.tick(); self.tick(10); self.tick(10)
+        self.assertEqual(len(self.sent), 2)
+
     def test_a_prompt_for_the_limit_reset_replaces_the_plain_continue(self):
         self.schedule.set_auto('api', True)
         self.schedule.add('api', 'finish the migration', 'limit')

@@ -32,3 +32,10 @@ test('rich text copied from a chat yields its pictures once; a copied table yiel
   expect(pastedPictures({files:[]})).toEqual([]);
   expect(pictureRoom(0,6)).toBe(4);expect(pictureRoom(3,2)).toBe(1);expect(pictureRoom(4,1)).toBe(0);
 });
+
+test('a pasted picture address inside the local network is not asked for',()=>{
+  const {pictureAllowed}=require('../../frontend/drop');
+  for(const ok of ['https://cdn.example/a.png','http://8.8.8.8/a.png','data:image/png;base64,AAAA','blob:https://panel.test/1'])expect(pictureAllowed(ok)).toBe(true);
+  for(const no of ['http://192.168.1.1/logo.png','http://127.0.0.1:8790/api/image','http://localhost/a.png','http://10.0.0.2/a','http://172.20.1.1/a',
+    'http://100.109.113.79:8790/a','http://169.254.169.254/latest','http://[::1]/a.png','http://router.local/a.png','not a url'])expect(pictureAllowed(no)).toBe(false);
+});

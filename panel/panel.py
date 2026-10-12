@@ -137,9 +137,17 @@ _model_relay = None
 _lm_lock = threading.RLock()
 
 
+_providers, _providers_lock = None, threading.Lock()
+
+
 def provider_store():
+    """One instance: its lock is what keeps two saves from losing one."""
+    global _providers
     from integrations.providers import Providers
-    return Providers(os.path.expanduser('~/.config/cc-panel/providers.json'))
+    with _providers_lock:
+        if _providers is None:
+            _providers = Providers(os.path.expanduser('~/.config/cc-panel/providers.json'))
+        return _providers
 
 
 def action_provider_save(d):
@@ -483,6 +491,9 @@ AGENTS = {
     "shell": ("Терминал", set(), ""),
 }
 SHELLS = {"bash", "zsh", "sh", "fish", "dash"}
+# Claude Code itself, whatever serves its model: one conversation format, one way to start and continue.
+CLAUDE_FAMILY = ("claude", "claude-kimi", "claude-provider")
+SOURCE_KINDS = ('kimi', 'lmstudio', 'provider')  # Where a session's model comes from when not the agent's own.
 INSTALLERS = {
     "claude": "curl -fsSL https://claude.ai/install.sh | bash",
     "codex": "curl -fsSL https://chatgpt.com/codex/install.sh | CODEX_NON_INTERACTIVE=1 sh",
@@ -508,7 +519,9 @@ def is_running(agent, cmd):
         return cmd not in SHELLS
     # Claude Code's own installer runs the binary from a file named after its version (versions/2.1.296),
     # and macOS reports that file name instead of "claude".
-    return cmd in AGENTS[agent][1] or ('claude' in AGENTS[agent][1] and VERSION_NAME.fullmatch(cmd) is not None)
+    # An agent this version does not know (a session left by a newer one) reads as a plain terminal.
+    names = AGENTS.get(agent, AGENTS["shell"])[1]
+    return cmd in names or ('claude' in names and VERSION_NAME.fullmatch(cmd) is not None)
 
 
 def agent_cmd(agent, sid=None, resume=False, skip=False, name=None, source=None):
@@ -516,7 +529,7 @@ def agent_cmd(agent, sid=None, resume=False, skip=False, name=None, source=None)
     if agent == "shell":
         return None
     if source is not None:
-        if not isinstance(source, dict) or source.get('kind') not in ('kimi','lmstudio','provider'):
+        if not isinstance(source, dict) or source.get('kind') not in SOURCE_KINDS:
             raise ValueError('Invalid saved model source')
         if (source['kind'] == 'provider') != (agent == 'claude-provider'):
             raise ValueError('Saved provider source is incompatible with this agent')
@@ -724,7 +737,7 @@ def _action_new(d):
     name = unique_name(name, session_exists, 32)
     path = resolve_path(d, name)
     skip = bool(d.get("skip")) and agent not in ("shell", "pi")
-    sid = str(uuid.uuid4()) if agent in ("claude", "claude-kimi", "claude-provider", "pi") or cli_agents.keeps_id(agent) else None
+    sid = str(uuid.uuid4()) if agent in (*CLAUDE_FAMILY, "pi") or cli_agents.keeps_id(agent) else None
     choice = containers_choice(d.get('containers')) if agent != 'shell' else None
     source = session_source(d, agent)
     if source and source.get('kind') == 'kimi' and agent == 'claude':
@@ -767,7 +780,7 @@ def action_restart(d):
     skip, agent = opt(name, "@cc_skip") == "1", opt(name, "@cc_agent") or "claude"
     sid = opt(name, "@cc_sid")
     new = d.get("mode") == "new"
-    if new and (agent in ("claude", "claude-kimi", "claude-provider", "pi") or cli_agents.keeps_id(agent)):
+    if new and (agent in (*CLAUDE_FAMILY, "pi") or cli_agents.keeps_id(agent)):
         sid = str(uuid.uuid4())
     elif new and agent in ("codex", "kimi"):
         sid = None
@@ -1126,10 +1139,14 @@ def agent_status(agent):
         real = os.path.realpath(path)
         key = (real, os.path.getmtime(real))
         if _version_cache.get(agent, (None,))[0] != key:  # re-run --version only after an install/update
-            r = subprocess.run([path, "--version"], capture_output=True, text=True, timeout=10)
-            v = (r.stdout.strip().split() or [None])[-1] if agent == "codex" else (r.stdout.split() or [None])[0]
+            try:
+                said = subprocess.run([path, "--version"], input="", capture_output=True, text=True, timeout=10).stdout
+            except (OSError, subprocess.SubprocessError):
+                said = ""  # A program that hangs or will not start is installed without a known version;
+                           # remembered below, so the list of agents does not wait for it again.
+            v = (said.strip().split() or [None])[-1] if agent == "codex" else (said.split() or [None])[0]
             if agent in cli_agents.CLI:  # "GitHub Copilot CLI 1.0.95." and the like: the number is what matters
-                found = re.search(r'\d+\.\d+\.\d+[\w-]*', r.stdout)
+                found = re.search(r'\d+\.\d+\.\d+[\w-]*', said)
                 v = found.group(0) if found else None
             _version_cache[agent] = (key, v)
         version = _version_cache[agent][1]
@@ -1267,7 +1284,9 @@ def version_info(force=False, fresh=False):
 def auto_update_idle():
     with action_lock:
         if actions_in_progress:return False
-    return not updater.local_requests_active()
+    from integrations import containers
+    # A restart would cut a `docker build` or a pull going through this panel in either direction.
+    return not containers.busy() and not updater.local_requests_active()
 
 
 def start_auto_update():
@@ -1466,7 +1485,7 @@ def session_model(agent, sid):
 def pending_questions(name):
     agent = opt(name, '@cc_agent') or 'claude'
     sid = opt(name, '@cc_sid')
-    if agent not in ('codex', 'claude', 'claude-kimi', 'claude-provider') or not valid_sid(sid):
+    if agent not in ('codex', *CLAUDE_FAMILY) or not valid_sid(sid):
         return []
     path = transcript_path(agent, sid)
     if not path:
@@ -1678,7 +1697,7 @@ def own_instance():
         return ''
 
 
-pairs = lan.Pairs(os.path.expanduser('~/.config/cc-panel/pairs.json'))
+pairs = lan.Pairs(os.path.expanduser('~/.config/cc-panel/pairs.json'), owner=lan.fingerprint(COOKIE_KEY))
 
 
 def action_pair(d):
@@ -1723,6 +1742,7 @@ def network_status():
     value = network_settings.get()
     everywhere = BIND_HOST in ('0.0.0.0', '::')
     return {**value, 'name': value['name'] or socket.gethostname(), 'bind_host': BIND_HOST, 'bind_port': BIND_PORT,
+            'instance': own_instance(),  # A page asks 127.0.0.1 for this id to learn it is open on this computer.
             # Where the panel answers in the local network now, and where it would if switched on.
             'lan_address': lan_listener.status(), 'lan_found': None if everywhere else lan.lan_address()}
 
@@ -2049,7 +2069,7 @@ def session_info(name, language, fresh=False):
     from integrations.session_info import HEAD, context, dialogue, started, tail_records
     agent = opt(name, "@cc_agent") or "claude"
     sid = opt(name, "@cc_sid")
-    if agent not in ("claude", "claude-kimi", "claude-provider", "codex") or not valid_sid(sid):
+    if agent not in (*CLAUDE_FAMILY, "codex") or not valid_sid(sid):
         return {"supported": False}
     kind = "codex" if agent == "codex" else "claude"
     path = transcript_path(agent, sid)
@@ -2247,7 +2267,10 @@ class Handler(BaseHTTPRequestHandler):
             # Every local network client has a private address: there it is a stranger, not our proxy.
             return False
         # a proxy on this host (Caddy) connects from our own Tailscale address; tailnet peers have other IPs
-        return any(addr in net for net in TRUSTED_PROXIES) or self.client_address[0] == BIND_HOST
+        if self.client_address[0] == BIND_HOST:
+            return True
+        # A panel installed on its local network address: every neighbour there is private, none is our proxy.
+        return addr.is_loopback if lan.is_lan(BIND_HOST) else any(addr in net for net in TRUSTED_PROXIES)
 
     def client_ip(self):
         """Real client IP; behind a trusted proxy take the address the proxy appended (rightmost XFF)."""
@@ -2359,10 +2382,21 @@ class Handler(BaseHTTPRequestHandler):
         secure = "; Secure" if self.is_https() else ""
         self.redirect("/", f"{COOKIE}={make_token()}; Path=/; Max-Age={COOKIE_DAYS * 86400}; HttpOnly; SameSite=Lax{secure}")
 
+    def here(self):
+        from integrations import here
+        status, headers, body = here.answer(self.path, own_instance())
+        self.send_response(status)
+        for name, value in {**headers, 'Content-Type': 'application/json', 'Content-Length': str(len(body))}.items():
+            self.send_header(name, value)
+        self.end_headers()
+        self.wfile.write(body)
+
     def pair_challenge(self):
         query = parse_qs(urlsplit(self.path).query)
-        identity, nonce = query.get('id', [''])[0], query.get('nonce', [''])[0]
-        answer = pairs.challenge(identity, nonce) if re.fullmatch(lan.KEY_ID, identity) and re.fullmatch(lan.NONCE, nonce) else None
+        identity, nonce, address = (query.get(k, [''])[0] for k in ('id', 'nonce', 'at'))
+        asked = (re.fullmatch(lan.KEY_ID, identity) and re.fullmatch(lan.NONCE, nonce) and re.fullmatch(lan.ADDRESS, address)
+                 and lan.own_address(address, self.connection.getsockname()[0]))
+        answer = pairs.challenge(identity, nonce, address) if asked else None
         return self.send_json(200, answer) if answer else self.send_json(404, {'error': 'unknown pair key'})
 
     def pair_login(self):
@@ -2593,6 +2627,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_json(200, {'app': 'away-deck', 'id': own_instance(), 'name': network_status()['name']})
         if self.path.startswith('/api/pair_challenge?'):
             return self.pair_challenge()
+        if self.path.startswith('/api/here?') and 'X-Forwarded-For' not in self.headers:
+            return self.here()  # A panel listening on every address answers the loopback question itself.
         if ISOLATED_ROUTE.match(self.path):
             return self.proxy_isolated_terminal()  # Authorized by its signed path, not by the cookie.
         if not self.authorized():
@@ -3010,10 +3046,10 @@ def tmux_server_pid():
 
 def live_sessions():
     fmt = ("#{session_name}\t#{pane_current_path}\t#{pane_current_command}\t#{@cc_sid}\t#{@cc_skip}\t"
-           "#{session_created}\t#{@cc_agent}\t#{@cc_source}\t#{@cc_title}")
+           "#{session_created}\t#{@cc_agent}\t#{@cc_source}\t#{@cc_title}\t#{@cc_containers}")
     live = {}
     for line in tmux("list-sessions", "-F", fmt, check=False).splitlines():
-        sname, path, cmd, sid, skip, created, agent, raw_source, title = (line.split("\t") + [""] * 9)[:9]
+        sname, path, cmd, sid, skip, created, agent, raw_source, title, containers = (line.split("\t") + [""] * 10)[:10]
         agent = agent or "claude"
         try:
             source = json.loads(raw_source or "null")
@@ -3022,7 +3058,8 @@ def live_sessions():
         if sname.startswith(PREFIX):
             live[sname[len(PREFIX):]] = {"path": path, "sid": sid or None, "skip": skip == "1", "agent": agent,
                                          "running": is_running(agent, cmd) if agent != "shell" else False,
-                                         "created": int(created or 0), "source": source, "title": title or sname[len(PREFIX):]}
+                                         "created": int(created or 0), "source": source, "title": title or sname[len(PREFIX):],
+                                         **({"containers": containers} if containers else {})}
     return live
 
 
@@ -3062,11 +3099,12 @@ def restore_session(name, info):
         print(f"restore {name}: path {path!r} is gone, skipped", flush=True)
         return
     sid, skip, agent = info.get("sid"), bool(info.get("skip")), info.get("agent") or "claude"
-    source = info.get("source")
+    source, choice = info.get("source"), info.get("containers") if isinstance(info.get("containers"), str) else None
     try:
-        if source is not None and (not isinstance(source, dict) or source.get("kind") not in ("kimi", "lmstudio")):
+        if source is not None and (not isinstance(source, dict) or source.get("kind") not in SOURCE_KINDS):
             raise ValueError("Invalid saved model source")
-        resume = agent_cmd(agent, sid, True, skip, source=source) if info.get("running") else None
+        # The agent comes back with the Docker it had: the session's own choice, else this computer's default.
+        resume = with_containers(agent_cmd(agent, sid, True, skip, source=source), choice) if info.get("running") else None
     except ValueError as error:
         print(f"restore {name}: {error}; shell only", flush=True)
         resume = None
@@ -3076,7 +3114,19 @@ def restore_session(name, info):
         create_session(name, path, agent, skip, sid, resume, source)
     if info.get('title'):
         tmux('set-option', '-t', f'={PREFIX}{name}:', '@cc_title', info['title'])
+    if choice:
+        tmux('set-option', '-t', f'={PREFIX}{name}:', '@cc_containers', choice, check=False)
+    if resume:
+        note_containers(name, choice)
     print(f"restored {name} ({agent}{', resumed' if resume else ', shell only'})", flush=True)
+
+
+def containers_ready():
+    """Sockets to the computers marked for containers exist before agents come back and look for their Docker."""
+    try:
+        containers_service().refresh()
+    except Exception as error:  # Restoring sessions matters more than where their containers run.
+        print(f"containers before restore: {type(error).__name__}", flush=True)
 
 
 def sync_state():
@@ -3088,6 +3138,8 @@ def sync_state():
         state = load_state()
         if state.get("server_pid") and state["server_pid"] != pid:
             live = live_sessions()
+            if any(name not in live for name in state.get("sessions") or {}):
+                containers_ready()
             for name, info in (state.get("sessions") or {}).items():
                 if name not in live:
                     try:
@@ -3171,18 +3223,22 @@ def main():
         dependencies.ensure()  # Downloads pinned cryptography in the background when missing.
     except (ImportError, OSError, ValueError) as error:
         print(f'Notification components could not be checked: {error}', flush=True)
-    try:
-        push_service().start()  # Idles until a device subscribes or Telegram wants finished work.
-        schedule_service().start()
-        containers_service().start()  # Sockets and Docker contexts for computers marked for containers.
-    except (ImportError, OSError, ValueError) as error:
-        print(f'Notifications and scheduled prompts could not start: {error}', flush=True)
+    # Each on its own: one that cannot start must not keep the others from starting.
+    for what, service in (('Notifications', push_service),          # Idles until a device subscribes.
+                          ('Scheduled prompts', schedule_service),
+                          ('Containers', containers_service)):    # Sockets and Docker contexts.
+        try:
+            service().start()
+        except (ImportError, OSError, ValueError) as error:
+            print(f'{what} could not start: {error}', flush=True)
     if Telegram:
         try:
             telegram_service().start()
         except (OSError, ValueError):
             print('Telegram integration settings could not be loaded', flush=True)
     lan_listener.start()  # A second door on the local network, only while its switch is on.
+    from integrations import here
+    here.start(BIND_HOST, BIND_PORT, own_instance)  # Tells a page on this machine that it is on this machine.
     httpd = PanelHTTPServer((BIND_HOST, BIND_PORT), Handler)
     httpd.daemon_threads = True
     print(f"cc-panel on http://{BIND_HOST}:{BIND_PORT}", flush=True)

@@ -134,6 +134,7 @@ class ModelSourceTests(PanelCase):
         source={'kind':'lmstudio','profile':'a'*24,'model':'qwen-coder','binding':'b'*24}
         self.panel.agent_cmd=Mock(return_value='local-resume-command')
         self.panel.create_session=Mock()
+        self.panel.note_containers=Mock()
         self.panel.restore_session('demo',{'path':str(path),'agent':'claude','sid':'id','skip':False,'running':True,'source':source})
         self.panel.agent_cmd.assert_called_once_with('claude','id',True,False,source=source)
         self.assertEqual(self.panel.create_session.call_args.args[-1],source)

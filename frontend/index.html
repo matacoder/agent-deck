@@ -65,7 +65,7 @@ __PANEL_STYLE__</style></head><body>
     </div>
     <div id="tabs"></div>
     <div id="integ"></div>
-    <div class="side-foot"><span id="foot"></span><span id="ver"></span><button id="b_drafts" onclick="showClosedDrafts()" style="display:none"><svg class="ui-icon"><use href="#i-file"/></svg><span>Черновики закрытых сессий</span></button><button class="settingsbtn help-side" onclick="drawer(false);openHelp()"><svg class="ui-icon"><use href="#i-help"/></svg><span>Как это работает</span></button><button class="settingsbtn help-side" onclick="openSettings()"><svg class="ui-icon"><use href="#i-gear"/></svg><span>Настройки</span></button></div>
+    <div class="side-foot"><span id="foot"></span><span id="ver"></span><button id="b_drafts" onclick="showClosedDrafts()" style="display:none"><svg class="ui-icon"><use href="#i-file"/></svg><span>Черновики закрытых сессий</span></button><button class="settingsbtn help-side" onclick="drawer(false);openHelp()"><svg class="ui-icon"><use href="#i-help"/></svg><span>Как это работает</span></button></div>
   </aside>
   <div id="scrim" onclick="if(document.body.classList.contains('project-drawer'))closeProject();else drawer(false)"></div>
   <main>
@@ -75,7 +75,7 @@ __PANEL_STYLE__</style></head><body>
       <div id="title">—</div>
       <span class="bar-tools" id="bar_tools"><button class="iconbtn d-only" id="b_help" onclick="openHelp()" aria-label="Как это работает" title="Как это работает"><svg class="ui-icon"><use href="#i-help"/></svg></button><form class="bar-search" id="search_form" role="search"><svg class="ui-icon"><use href="#i-search"/></svg><input id="search_q" type="search" maxlength="200" placeholder="Поиск в выводе" aria-label="Поиск в выводе" title="Поиск по всему выводу сессии, включая прокрутку" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search"><button type="button" class="m-only search-close" onclick="closeOutputSearch()" aria-label="Закрыть поиск"><svg class="ui-icon"><use href="#i-x"/></svg></button></form><button class="iconbtn m-only" id="b_search" onclick="openOutputSearch()" aria-label="Поиск в выводе" title="Поиск в выводе"><svg class="ui-icon"><use href="#i-search"/></svg></button></span>
       <button class="iconbtn" id="b_actions" onclick="sheet(true)" aria-label="Действия" title="Действия" aria-haspopup="menu"><svg class="ui-icon"><use href="#i-more"/></svg></button>
-      <button class="iconbtn d-only" id="b_settings" onclick="openSettings()" aria-label="Настройки" title="Настройки"><svg class="ui-icon"><use href="#i-gear"/></svg></button>
+      <button class="iconbtn" id="b_settings" onclick="openSettings()" aria-label="Настройки" title="Настройки"><svg class="ui-icon"><use href="#i-gear"/></svg></button>
       <div id="search_pop" class="search-pop" hidden><div id="search_body" role="region" aria-label="Поиск в выводе"></div></div>
       <button class="iconbtn" id="b_project" onclick="toggleProject(PROJECT_TABS)" aria-pressed="false" aria-label="Скрыть или показать панель проекта" title="Скрыть или показать панель проекта"><svg class="ui-icon"><use href="#i-sidebar-right"/></svg></button>
     </div>
@@ -95,7 +95,7 @@ __PANEL_STYLE__</style></head><body>
             <button class="key key-primary question-key" onclick="key('S-Right')" aria-label="Следующий вопрос" title="Вопросы Codex: Shift+→">?→</button>
             <button class="key key-primary" onclick="key('Up')" aria-label="Вариант выше">↑</button><button class="key key-primary" onclick="key('Down')" aria-label="Вариант ниже">↓</button>
             <button class="key key-primary" onclick="key('Enter')" aria-label="Подтвердить выбор" title="Enter — подтвердить выбранный ответ">⏎</button>
-            <button class="key key-primary m-only" id="b_keymore" onclick="toggleKeys()" aria-expanded="false" aria-label="Другие клавиши">…</button>
+            <button class="key key-primary" id="b_keymore" onclick="toggleKeys()" aria-expanded="false" aria-label="Другие клавиши">…</button>
             <button class="key key-extra num" onclick="key('1')" aria-label="Вариант 1">1</button><button class="key key-extra num" onclick="key('2')" aria-label="Вариант 2">2</button><button class="key key-extra num" onclick="key('3')" aria-label="Вариант 3">3</button>
             <button class="key key-extra" onclick="key('Left')" aria-label="Влево">←</button><button class="key key-extra" onclick="key('Right')" aria-label="Вправо">→</button>
             <button class="key key-extra" onclick="key('Escape')" aria-label="Отмена (Esc)" title="Отмена (Esc)">Esc</button>
@@ -114,7 +114,7 @@ __PANEL_STYLE__</style></head><body>
           <div class="inrow">
             <button class="attachbtn agent-only" id="b_attach" onclick="chooseImages()" aria-label="Приложить файл" title="Приложить файл до 200 МБ · хранится 7 дней"><svg class="ui-icon"><use href="#i-paperclip"/></svg></button>
             <textarea id="msg" rows="1" aria-label="Сообщение агенту…" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" placeholder="Сообщение агенту…" enterkeyhint="enter"></textarea>
-            <button class="attachbtn laterbtn" id="b_later" onclick="openLater()" aria-label="Отправить позже" title="Отправить позже: в указанное время, когда агент освободится или когда сбросится лимит"><svg class="ui-icon"><use href="#i-clock"/></svg><span id="later_count" class="later-count" aria-hidden="true"></span></button>
+            <button class="attachbtn laterbtn" id="b_later" hidden onclick="openLater()" aria-label="Отправить позже" title="Отправить позже: в указанное время, когда агент освободится или когда сбросится лимит"><svg class="ui-icon"><use href="#i-clock"/></svg><span id="later_count" class="later-count" aria-hidden="true"></span></button>
             <button class="sendbtn" id="b_send" onclick="send()" aria-label="Отправить" title="Enter — отправить, Shift+Enter — новая строка"><svg class="ui-icon" style="stroke-width:2.6"><use href="#i-arrow-up"/></svg></button>
           </div>
           <div class="composer-status">
@@ -189,6 +189,7 @@ __PANEL_STYLE__</style></head><body>
   <div class="sheet-group" id="s_session">
     <button class="agent-only" onclick="sheet(false);restart('new')"><svg class="ui-icon"><use href="#i-chat-plus"/></svg><span>Перезапустить — новый разговор</span></button>
     <button class="agent-only" onclick="sheet(false);restart('continue')"><svg class="ui-icon"><use href="#i-restart"/></svg><span>Перезапустить — продолжить разговор</span></button>
+    <button id="s_later" onclick="sheet(false);openLater()"><svg class="ui-icon"><use href="#i-clock"/></svg><span id="s_later_label">Отправить позже</span></button>
     <button onclick="sheet(false);duplicateSession()"><svg class="ui-icon"><use href="#i-copy"/></svg><span>Дублировать сессию — новый разговор</span></button>
   </div>
   <div class="sheet-group" id="s_manage">
@@ -239,7 +240,7 @@ __PANEL_STYLE__</style></head><body>
   <div class="acts"><button type="button" onclick="$('dlg').close()">Отмена</button><button class="pri" id="n_go">Создать</button></div>
 </form></dialog>
 
-<dialog id="later_dlg"><form class="dlg" onsubmit="event.preventDefault();saveLater()"><div class="dlg-body"><h3>Отправить позже</h3>
+<dialog id="later_dlg"><form class="dlg" onsubmit="event.preventDefault();saveLater()"><div class="dlg-body"><h3 id="later_title">Отправить позже</h3>
 <textarea id="later_text" rows="3" maxlength="20000" aria-label="Сообщение агенту…" placeholder="Сообщение агенту…" autocapitalize="sentences"></textarea>
 <div class="later-when" role="radiogroup" aria-label="Когда отправить" onchange="syncLaterTime()">
 <label class="chk"><input type="radio" name="later_trigger" value="idle" checked><span>Когда агент освободится</span></label>
@@ -247,12 +248,12 @@ __PANEL_STYLE__</style></head><body>
 <label class="chk"><input type="radio" name="later_trigger" value="time"><span>В указанное время</span></label>
 <input type="datetime-local" id="later_at" aria-label="Время отправки" hidden>
 </div>
-<p class="hint">Пока в сессии открыт вопрос агента, сообщение ждёт: иначе оно стало бы ответом.</p>
+<p class="hint">Если агент задал вопрос, сообщение подождёт ответа на него. Вложения не откладываются: они уйдут со следующим обычным сообщением.</p>
 <div id="later_waiting" hidden><h4>Ждут отправки</h4><div id="later_list"></div></div>
 <p id="later_error" class="later-error" role="status" hidden></p>
 <label class="toggle later-auto" id="later_auto_row"><span>Продолжать после сброса лимита<small>Когда лимит подписки сбросится, панель сама напишет агенту «continue».</small></span><input type="checkbox" role="switch" id="later_auto" onchange="saveAutoResume()"></label>
 <p id="later_limit" class="hint" role="status" hidden></p>
-</div><div class="acts"><button type="button" onclick="$('later_dlg').close()">Закрыть</button><button class="pri" id="later_save">Запланировать</button></div></form></dialog>
+</div><div class="acts"><button type="button" onclick="$('later_dlg').close()">Отмена</button><button class="pri" id="later_save">Отправить позже</button></div></form></dialog>
 <dialog id="quick_dlg"><form class="dlg" onsubmit="event.preventDefault();saveQuickPrompts()"><div class="dlg-body"><h3>Быстрые сообщения</h3>
 <p class="hint">Кнопки над полем ввода: одно нажатие отправляет сообщение в открытую сессию. Список общий для всех компьютеров.</p>
 <div id="quick_rows"></div>

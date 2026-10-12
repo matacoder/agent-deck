@@ -83,7 +83,6 @@
     "Вставить или заменить токен": "粘贴或替换令牌",
     "Вставьте ключ; пустое поле сохраняет текущий": "粘贴密钥；留空则保留当前密钥",
     "Выберите PNG или JPEG: этот формат не удалось открыть": "请选择 PNG 或 JPEG：无法打开此格式",
-    "Выберите сессию Claude или Codex": "选择 Claude 或 Codex 会话",
     "Выделение из терминала готово": "终端已选择就绪",
     "Выйти": "退出登录",
     "Данные о лимите": "用量详情",
@@ -890,11 +889,9 @@
     "Когда сбросится лимит": "限额重置时",
     "В указанное время": "在指定时间",
     "Время отправки": "发送时间",
-    "Пока в сессии открыт вопрос агента, сообщение ждёт: иначе оно стало бы ответом.": "会话中有代理的问题未回答时，消息会等待：否则它会被当作答案。",
     "Ждут отправки": "等待发送",
     "Продолжать после сброса лимита": "限额重置后继续",
     "Когда лимит подписки сбросится, панель сама напишет агенту «continue».": "订阅限额重置后，面板会自动向代理发送“continue”。",
-    "Запланировать": "安排",
     "Кнопки над полем ввода: одно нажатие отправляет сообщение в открытую сессию. Список общий для всех компьютеров.": "消息框上方的按钮：点一下即可把消息发送到当前会话。所有电脑共用同一列表。",
     "Сообщать, когда агент закончил": "代理完成时通知",
     "Ответ на такое сообщение уйдёт агенту как следующий запрос.": "回复这类消息，会作为下一条请求发送给代理。",
@@ -975,6 +972,15 @@
     "Вход — в самом Gemini CLI: аккаунт Google или ключ API.": "Sign-in happens inside Gemini CLI: a Google account or an API key.",
     "Использует вход GitHub CLI, если он есть; иначе — «Войти».": "Uses the GitHub CLI sign-in when there is one; otherwise press Sign in.",
     "Работает без аккаунта на бесплатной модели; «Войти» подключает ваших провайдеров. После перезапуска продолжает последний разговор в папке.": "Works without an account on a free model; Sign in connects your providers. After a restart it continues the last conversation in the folder.",
-    "Claude Code работает на моделях другого сервиса с Anthropic-совместимым адресом. Сервис выбирается в новой сессии Claude, в поле «Источник модели».": "Claude Code runs on the models of another service with an Anthropic-compatible address. Choose the service in a new Claude session, in the Model source field."
+    "Claude Code работает на моделях другого сервиса с Anthropic-совместимым адресом. Сервис выбирается в новой сессии Claude, в поле «Источник модели».": "Claude Code runs on the models of another service with an Anthropic-compatible address. Choose the service in a new Claude session, in the Model source field.",
+    "Отправить позже · {0}": "Send later · {0}",
+    "Не удалось прочитать отложенные сообщения. Проверьте связь и повторите": "Could not read the held messages. Check the connection and try again",
+    "Открыта другая сессия. Проверьте, куда уйдёт сообщение, и повторите": "Another session is open now. Check where the message will go and try again",
+    "Не удалось прочитать быстрые сообщения. Проверьте связь и повторите": "Could not read the quick messages. Check the connection and try again",
+    "Если агент задал вопрос, сообщение подождёт ответа на него. Вложения не откладываются: они уйдут со следующим обычным сообщением.": "If the agent has asked a question, the message waits for its answer. Attachments are not held: they go with the next ordinary message.",
+    "Откройте сессию агента: в терминал файлы не прикладываются": "Open an agent session: files are not attached to a terminal",
+    "этот компьютер": "这台电脑",
+    "Другие агенты · {0}": "Other agents · {0}",
+    "Подписка Claude": "Claude subscription"
   }
 }

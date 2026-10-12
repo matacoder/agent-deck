@@ -37,7 +37,10 @@ class Providers:
         self.lock = threading.Lock()
 
     def load(self):
-        saved = read_json(self.path, {})
+        try:
+            saved = read_json(self.path, {})
+        except (OSError, ValueError):
+            saved = {}  # A damaged file shows no providers instead of failing the whole list of agents.
         return {k: v for k, v in saved.items() if IDENTITY.match(k) and isinstance(v, dict)} if isinstance(saved, dict) else {}
 
     def public(self):

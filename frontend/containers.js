@@ -49,7 +49,7 @@ function renderSessionContainers(){
   const session=cur(),hosts=session?containerHostsFor(agentOf(session)):[],select=$("session_containers");
   // One computer and nobody marked: both names would say the obvious.
   $("session_where").hidden=!session||(!hosts.length&&!deckDirectory.decks.length);
-  $("session_computer").textContent=currentDeckName();
+  $("session_computer").textContent=hereName(currentDeckName(),selectedDeck,here.found,tr);
   $("session_containers_box").hidden=!hosts.length;
   if(!hosts.length||document.activeElement===select)return;
   containerOptions(select,hosts);
@@ -58,13 +58,14 @@ function renderSessionContainers(){
   $("session_containers_name").textContent=select.value?select.selectedOptions[0].textContent:deckDirectory.name;
 }
 async function saveSessionContainers(){
-  const select=$("session_containers"),name=active,session=cur(),value=select.value;
+  // Read now: a refresh during the request puts the list back on the Docker the agent is running with.
+  const select=$("session_containers"),name=active,session=cur(),value=select.value,chosen=select.selectedOptions[0].textContent;
   if(!session)return;
   select.blur();
   try{
     await api("/api/session_containers",{name,containers:value});
     session.containers=value||"local";
-    toast(tr("Контейнеры этой сессии: {0}. Действует после перезапуска.",[select.selectedOptions[0].textContent]),"success");
+    toast(tr("Контейнеры этой сессии: {0}. Действует после перезапуска.",[chosen]),"success");
     // The running agent keeps the Docker it started with; offer the restart that keeps the conversation.
     if(session.running&&active===name)restart("continue");
   }catch(e){if(e.message!==STALE)toast(e.message)}

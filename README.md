@@ -383,7 +383,8 @@ Claude, `/compact` and `/new` for Codex). Commands that drop the conversation as
 row edits your prompts (up to 24); the list is kept on the DeckAway you open in the browser and is the
 same for every connected computer.
 
-The clock next to the send button holds a message for later:
+**Send later** in the three-dots menu of a session holds a message for later (while something waits, a
+clock with the count also sits next to the send button):
 
 - **When the agent is free:** sent once the session has been quiet for a few seconds. Several such
   messages go one at a time, each after the previous one is done.
@@ -393,7 +394,8 @@ The clock next to the send button holds a message for later:
 The same dialog lists the messages still waiting (each can be removed) and has the
 **Continue after the limit resets** switch: when the agent stops with a limit notice, the panel reads
 the reset time from the notice (or from the provider's counters when the notice names none), waits a
-minute past it and sends `continue`, once per reset. It is off by default and set per session.
+minute past it and sends `continue`, once per notice: the same notice left on an idle screen is not
+answered again the next day or after a panel restart. It is off by default and set per session.
 
 A waiting message is never typed while an agent question is open in the session, because it would be
 taken as the answer; it goes as soon as the question is closed. Each message is sent at most once: if
@@ -672,6 +674,13 @@ switching environments is one tap and happens in place, without reloading the pa
 gateway. Your browser does not need direct access to the remote Tailscale address.
 The gateway and remote computer must both be connected to the tailnet, or sit in the same local network
 (below).
+
+**This computer.** When the browser runs on one of the connected computers, that computer is marked
+"this computer" in the list and in the bottom line of a session: you are looking at it through the gateway,
+but it is the machine under your hands. The page asks `127.0.0.1` one question (is the installation with
+this id here?) and a panel answers it only for its own id. It is asked on a desktop with more than one
+computer; Chrome may ask once for permission to reach the local network, and a browser that refuses simply
+shows no mark.
 
 **Local network.** Tailscale is not required between computers of one home or office network. In
 **Settings → Computers → Local network** switch on the computers that should also answer at their ordinary

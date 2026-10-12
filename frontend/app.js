@@ -308,11 +308,13 @@ function renderTitle(){
   const s=cur(),t=$("title");t.replaceChildren();
   document.body.classList.toggle("is-shell",!!s&&agentOf(s)==="shell");
   document.body.classList.toggle("is-codex",!!s&&agentOf(s)==="codex");
-  $("msg").placeholder=s?tr("Сообщение в ")+agentLabel(s)+"…":tr("Сообщение агенту…");
+  // Claude Code on another service's model says so where the message is typed.
+  $("msg").placeholder=s?tr("Сообщение в ")+(s.source?.kind==="provider"&&s.source.label?s.source.label:agentLabel(s))+"…":tr("Сообщение агенту…");
   $("bar_tools").hidden=!s;
   if(!s){t.textContent=isMobile()?"DeckAway":"";return}
   const st=state(s);
-  t.append(el("b","",sessionTitle(s)),el("span","path"," — "+s.path.replace(/^\/(?:home|Users)\/[^/]+/,"~")),el("span","st",stateText(s)+" · "+shortPath(s.path)+(s.source?.label?" · "+s.source.label:"")));
+  t.append(el("b","",sessionTitle(s)),el("span","path"," — "+s.path.replace(/^\/(?:home|Users)\/[^/]+/,"~")),// The model's source goes before the folder: a narrow header cuts the end, and "which model" matters more.
+    el("span","st",stateText(s)+(s.source?.label?" · "+s.source.label:"")+" · "+shortPath(s.path)));
 }
 
 function frameFor(name){
@@ -598,7 +600,7 @@ async function prepareImage(file){
 async function uploadImages(files){
   if(!active||sending||uploading||panelUpdating||!files.length)return;
   const name=active;
-  if(agentOf(cur())==="shell"){toast(tr("Выберите сессию Claude или Codex"));return}
+  if(agentOf(cur())==="shell"){toast(tr("Откройте сессию агента: в терминал файлы не прикладываются"));return}
   if(attachmentsFor(name).length+files.length>4){toast(tr("Можно приложить до 4 файлов"));return}
   uploading=true;renderAttachments();
   sendStates.set(name,{text:tr("Загружаю файлы…"),phase:"pending"});renderSendState();
@@ -696,12 +698,13 @@ function fitKeys(){
   const box=$("keys"),more=$("b_keymore"),keys=[...box.children].filter(k=>k!==more);
   for(const k of keys)k.classList.remove("key-overflow");
   more.classList.remove("all-fit");
-  if(!(isMobile()||isTouch())||box.classList.contains("expanded")||!box.clientWidth)return;
+  if(box.classList.contains("expanded")||!box.clientWidth)return;
   if(box.scrollWidth<=box.clientWidth){more.classList.add("all-fit");return}
   // Hide from the end so the answer keys (↑ ↓ ⏎) stay reachable on the narrowest screens.
   for(const k of keys.reverse()){if(box.scrollWidth<=box.clientWidth)break;if(k.offsetParent)k.classList.add("key-overflow")}
 }
-if(window.ResizeObserver)new ResizeObserver(()=>fitKeys()).observe($("keys"));
+// The quick prompts follow: they share "…" with the keys whenever the keys show it.
+if(window.ResizeObserver)new ResizeObserver(()=>{fitKeys();renderQuickPrompts()}).observe($("keys"));
 function hideKeyboard(){
   const focused=document.activeElement;
   if(focused&&typeof focused.blur==="function")focused.blur();
@@ -748,7 +751,7 @@ function btn(label,cls,fn,title){const b=el("button",cls||"",label);b.onclick=fn
 let lastGh=0,lastAg={},usageData={};
 async function checkGithubFoot(force){
   if(document.hidden)return;
-  try{lastAg=await api("/api/agents")}catch(e){}
+  try{lastAg=await api("/api/agents");if($("dlg").open)renderAgentPicker()}catch(e){}
   if(force===true||Date.now()-lastGh>30000||sessions.some(s=>s.name==="github-login")){await ghStatus();lastGh=Date.now()}
   renderInteg();
 }
@@ -869,7 +872,10 @@ async function loadDeckSettings(){
   const current=data.decks.find(deck=>deck.id===selectedDeck);
   panelOrigins=current?[current.url,location.origin]:[location.origin,"http://"+network.bind_host+":"+network.bind_port,"http://127.0.0.1:"+network.bind_port,"http://localhost:"+network.bind_port];
   if(!current&&network.public_url)panelOrigins.push(network.public_url);
-  populateDeckSelector($("deck_select"),data.decks,selectedDeck,network.name);
+  const names=()=>populateDeckSelector($("deck_select"),data.decks,selectedDeck,network.name,(name,id)=>hereName(name,id,here.found,tr));
+  names();
+  // The computer this browser runs on is named so: with it selected, nothing on screen is far away.
+  findHere(network,data.decks).then(found=>{if(found!==null&&deckDirectory.decks===data.decks){names();renderSessionContainers()}});
   // Most installs have a single machine; the switcher appears once another DeckAway is connected.
   $("deck_switch").hidden=!data.decks.length&&!selectedDeck;
   deckDirectory={decks:data.decks,name:network.name,network};loadOtherDecks();
@@ -1012,7 +1018,7 @@ function resetInstanceState(known){
 }
 function renderSources(){
   const old=$("n_source").value;$("source_row").hidden=!["claude","kimi","pi"].includes(newAgent);
-  const values=[];if(newAgent==="claude")values.push([{kind:"default"},"Claude"]);
+  const values=[];if(newAgent==="claude")values.push([{kind:"default"},tr("Подписка Claude")]);
   if(lastAg.kimi_config?.configured&&["claude","kimi"].includes(newAgent))for(const m of ["k3","kimi-for-coding","kimi-for-coding-highspeed"])values.push([{kind:"kimi",model:m},"Kimi · "+m]);
   if(newAgent==="claude")values.push(...providerSources(savedProviders()));
   if(["claude","pi"].includes(newAgent))for(const p of lmData.profiles||[])for(const m of p.models||[])values.push([{kind:"lmstudio",profile:p.id,model:m.id},p.name+" · "+m.name]);
@@ -1153,6 +1159,8 @@ function hotkeys(e){
   const commandKey=/Mac|iPhone|iPad/.test(navigator.platform||"")?e.metaKey&&!e.ctrlKey:e.ctrlKey&&!e.metaKey;
   if(commandKey&&!e.altKey&&!e.shiftKey&&e.code==="KeyK"&&e.target?.ownerDocument===document){e.preventDefault();e.stopPropagation();openPalette();return}
   if(!e.altKey||e.ctrlKey||e.metaKey)return;
+  // An open dialog belongs to the session under it: a shortcut must not put another one there.
+  if(document.querySelector("dialog[open]:not(.docked)"))return;
   const vis=[...$("tabs").querySelectorAll(".tab:not(.remote)")].map(t=>t.dataset.session);
   let target=null;
   if(/^Digit[1-9]$/.test(e.code)&&!e.shiftKey){
@@ -1234,7 +1242,7 @@ function refreshInterface(){
   location.reload();
 }
 function canAutoRefresh(){
-  return !document.hidden&&!panelUpdating&&!sending&&!uploading&&!choosingImages&&!Array.from(imageAttachments.values()).some(images=>images.length)&&!Array.from(messageDrafts.values()).some(Boolean)&&!$("msg").value&&!$("dlg").open&&!$("draft_dlg").open&&!$("settings_dlg").open&&!$("rename_dlg").open&&
+  return !document.hidden&&!panelUpdating&&!sending&&!uploading&&!choosingImages&&!Array.from(imageAttachments.values()).some(images=>images.length)&&!Array.from(messageDrafts.values()).some(Boolean)&&!$("msg").value&&!document.querySelector("dialog[open]:not(.docked)")&&
     !$("sheet").classList.contains("on")&&!document.body.classList.contains("drawer")&&
     (!cur()||(curMode()==="screen"&&$("pre").scrollTop+$("pre").clientHeight>=$("pre").scrollHeight-40))&&
     !String(window.getSelection())&&

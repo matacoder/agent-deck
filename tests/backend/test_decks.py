@@ -54,7 +54,7 @@ class RemoteDeckTests(PanelCase):
         super().setUp()
         self.decks = RemoteDecks(self.home/'decks','http://100.109.113.79:8790')
         self.decks.profiles[ID] = dict(PROFILE)
-        self.transport = self.enterContext(patch('integrations.decks.http_request'))
+        self.transport = self.enterContext(patch('integrations.deck_transport.http_request'))
 
     def test_only_tailnet_ip_origins_and_deck_paths_are_allowed(self):
         self.assertEqual(deck_url(URL+'/'),URL)
@@ -94,10 +94,11 @@ class RemoteDeckTests(PanelCase):
 
     def test_cookie_expiry_reauthenticates_once_before_retrying_an_unauthorized_request(self):
         self.decks.cookies[ID]='cc_auth=old'
-        self.transport.side_effect=[(401,{},b'{}'),(303,{'Set-Cookie':'cc_auth=new','Location':'/'},b''),(200,{},b'{}')]
+        # A connection from before pairing asks for its key at this password sign-in; an old panel has none.
+        self.transport.side_effect=[(401,{},b'{}'),(303,{'Set-Cookie':'cc_auth=new','Location':'/'},b''),(404,{},b'{}'),(200,{},b'{}')]
         self.assertEqual(self.decks.request(ID,'POST','/api/send',b'{"text":"hello"}')[0],200)
-        self.assertEqual([c.args[1] for c in self.transport.call_args_list],['POST','POST','POST'])
-        first,last=self.transport.call_args_list[0],self.transport.call_args_list[2]
+        self.assertEqual([c.args[2] for c in self.transport.call_args_list],['/api/send','/login','/api/pair','/api/send'])
+        first,last=self.transport.call_args_list[0],self.transport.call_args_list[3]
         self.assertEqual(first.args[3],last.args[3])
         self.assertIn('cc_auth=new',last.args[4]['Cookie'])
         self.assertIn('cc_lang=en',last.args[4]['Cookie'])
@@ -121,7 +122,7 @@ class RemoteDeckTests(PanelCase):
             'a':{'HostName':'Mac\xa0','Online':True,'TailscaleIPs':['100.68.39.62','fd7a:115c:a1e0::1','192.168.1.2']},
             'b':{'HostName':'Offline','Online':False,'TailscaleIPs':['100.68.39.63']},
             'c':{'HostName':'Duplicate','Online':True,'TailscaleIPs':['100.68.39.62']}}}
-        with patch('integrations.decks.shutil.which',return_value='/bin/tailscale'),patch('integrations.decks.subprocess.run',return_value=SimpleNamespace(stdout=json.dumps(state))),patch.object(self.decks,'_probe',return_value=True) as probe:
+        with patch('integrations.deck_discovery.shutil.which',return_value='/bin/tailscale'),patch('integrations.deck_discovery.subprocess.run',return_value=SimpleNamespace(stdout=json.dumps(state))),patch.object(self.decks,'_probe',return_value=True) as probe:
             self.decks._discover(8791)
         probe.assert_called_once_with({'name':'Mac','url':'http://100.68.39.62:8791'})
         self.assertEqual(self.decks.status()['discovery']['phase'],'done')
@@ -192,7 +193,7 @@ class RemoteDeckTests(PanelCase):
         service.request.assert_not_called()
 
     def test_streamed_upload_refreshes_the_login_first_and_never_replays(self):
-        from integrations import decks as module
+        from integrations import deck_transport as module
         service=RemoteDecks(self.home,'http://100.64.0.1:8790')
         service.authentication=Mock(return_value=({'url':'http://100.64.0.2:8790'},'cc_auth=remote'))
         service.request=Mock(return_value=(200,{},b'{}'))

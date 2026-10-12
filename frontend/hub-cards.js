@@ -1,12 +1,13 @@
 // Settings cards for agents (with Kimi and GitHub), Telegram and the version. Bundled before app.js.
 
 /* ---------- agents ---------- */
-function agentCard(a){
+// `ready` is what a usable agent is called: the panel sees a subscription sign-in for some, only the program for others.
+function agentCard(a,ready=tr("Подключён")){
   const st=lastAg[a]||{},title=AGENTS[a].label,icon=agentIcon({agent:a}),update=[tr("Обновить"),()=>agentAction("install",a)];
   if(!st.installed)return hubCard({key:a,icon,title,status:tr("Не установлен"),primary:{label:tr("Установить"),run:()=>agentAction("install",a)}});
   if(!st.logged_in)return hubCard({key:a,icon,title,status:tr("Вход не выполнен"),tone:"warn",meta:st.version,
     primary:{label:tr("Войти"),run:()=>agentAction("login",a)},more:[update]});
-  return hubCard({key:a,icon,title,status:tr("Подключён"),tone:"ok",meta:st.version,more:[update]});
+  return hubCard({key:a,icon,title,status:ready,tone:"ok",meta:st.version,more:[update]});
 }
 // One Kimi key serves Claude on Kimi models and Kimi Code, so both live on this card.
 function kimiCard(){
@@ -31,9 +32,18 @@ function githubCard(){
     body:[el("p","hint",tr("Чтобы выбирать репозиторий при создании сессии."))]});
   return hubCard({key:"github",icon,title:"GitHub",status:"@"+ghLogin,tone:"ok",more:[[tr("Новая сессия из репозитория"),leave(openNew)]]});
 }
+// Agents that are not installed wait folded at the end: five more cards of equal weight bury the ones in use.
+let moreAgentsOpen=false;
+function moreAgents(specs){
+  if(!specs.length)return null;
+  const box=el("details","more-agents",el("summary","",tr("Другие агенты · {0}",[specs.length]),el("small","",specs.map(a=>a.label).join(", "))),...specs.map(cliAgentCard));
+  box.open=moreAgentsOpen;box.dataset.card="more-agents";box.addEventListener("toggle",()=>{moreAgentsOpen=box.open});
+  return box;
+}
 function renderAgentCards(){
   if(editorInUse($("kimi_dlg"))||editorInUse($("provider_dlg")))return;
-  const cards=[agentCard("claude"),agentCard("codex"),providersCard(),kimiCard(),...AGENT_LIST.filter(a=>a.cli).map(cliAgentCard),piCard(),githubCard()];
+  const cli=AGENT_LIST.filter(a=>a.cli),installed=cli.filter(a=>lastAg[a.id]?.installed),rest=cli.filter(a=>!lastAg[a.id]?.installed);
+  const cards=[agentCard("claude"),agentCard("codex"),providersCard(),kimiCard(),...installed.map(cliAgentCard),piCard(),githubCard(),moreAgents(rest)].filter(Boolean);
   $("agent_cards").replaceChildren(...placeEditor(placeEditor(cards,"kimi",$("kimi_dlg")).filter(c=>c!==$("provider_dlg")),"providers",$("provider_dlg")));
 }
 function openKimi(){

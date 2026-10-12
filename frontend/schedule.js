@@ -1,6 +1,6 @@
 // Sending without typing or waiting: quick prompts (one tap), prompts held for later (a time, a free
 // session, a limit reset) and continuing by itself after a subscription limit. Bundled before app.js.
-const later={session:null,data:null,seq:0,timer:null};
+const later={session:null,data:null,seq:0,timer:null,failed:false,opened:null};
 const quick={saved:[],loaded:false,more:false};
 const LATER_POLL=30000;
 // The user's own prompts, then the agent's commands behind "more": they are rare and one of them drops the
@@ -39,8 +39,8 @@ async function loadLater(){
   if(!key)return;
   let data;
   // A computer without this version has no schedule: the button then explains it instead of failing silently.
-  try{data=await api("/api/schedule?name="+encodeURIComponent(active))}
-  catch(e){if(e.message===STALE)return;data=later.data}
+  try{data=await api("/api/schedule?name="+encodeURIComponent(active));later.failed=false}
+  catch(e){if(e.message===STALE)return;data=later.data;later.failed=true}
   if(seq!==later.seq)return;
   later.data=data&&Array.isArray(data.prompts)?data:null;renderLater();
   if(!document.hidden)later.timer=setTimeout(loadLater,LATER_POLL);
@@ -51,9 +51,12 @@ function formatLaterTime(seconds){
 function renderLater(){
   const count=laterCount(later.data),button=$("b_later");
   $("later_count").textContent=count||"";button.classList.toggle("on",count>0);
-  button.setAttribute("aria-label",count?tr("Отправить позже · ждут: {0}",[count]):tr("Отправить позже"));
+  const label=count?tr("Отправить позже · ждут: {0}",[count]):tr("Отправить позже");
+  // The button by the field appears only while something waits; otherwise the action lives in the menu.
+  button.hidden=!count;button.setAttribute("aria-label",label);$("s_later_label").textContent=label;
   if(!$("later_dlg").open)return;
   const data=later.data,shell=agentOf(cur())==="shell";
+  $("later_title").textContent=cur()?tr("Отправить позже · {0}",[sessionTitle(cur())]):tr("Отправить позже");
   $("later_limit_option").hidden=shell;$("later_auto_row").hidden=shell;
   if(document.activeElement!==$("later_auto"))$("later_auto").checked=Boolean(data?.auto_resume);
   const limit=data?.limit;
@@ -72,7 +75,12 @@ function renderLater(){
 }
 function openLater(){
   if(!active)return;
-  if(!later.data){toast(tr("На этом компьютере нужна новая версия панели, чтобы отправлять позже"));loadLater();return}
+  if(!later.data){
+    // A read that failed is not an old panel: saying so would send the owner to update for nothing.
+    toast(later.failed?tr("Не удалось прочитать отложенные сообщения. Проверьте связь и повторите"):tr("На этом компьютере нужна новая версия панели, чтобы отправлять позже"));
+    loadLater();return;
+  }
+  later.opened=laterKey();
   $("later_text").value=$("msg").value;
   $("later_at").value=defaultLaterTime(Date.now());
   $("later_dlg").querySelector("input[name=later_trigger][value=idle]").checked=true;
@@ -82,7 +90,16 @@ function openLater(){
 function syncLaterTime(){
   $("later_at").hidden=$("later_dlg").querySelector("input[name=later_trigger]:checked").value!=="time";
 }
+// The dialog belongs to the session it was opened for. If another one is on screen by now (a notification
+// tap, a closed session), nothing is sent: the heading already names the new one, the next press goes there.
+function laterMoved(){
+  if(later.opened===laterKey())return false;
+  later.opened=laterKey();renderLater();
+  toast(tr("Открыта другая сессия. Проверьте, куда уйдёт сообщение, и повторите"));
+  return true;
+}
 async function saveLater(){
+  if(laterMoved())return;
   const name=active,text=$("later_text").value,trigger=$("later_dlg").querySelector("input[name=later_trigger]:checked").value;
   if(!text.trim()){toast(tr("Введите сообщение"));$("later_text").focus();return}
   const at=trigger==="time"?Math.floor(new Date($("later_at").value).getTime()/1000):undefined;
@@ -103,6 +120,7 @@ async function removeLater(id){
 }
 async function saveAutoResume(){
   const box=$("later_auto"),enabled=box.checked;
+  if(laterMoved()){box.checked=!enabled;return}
   try{later.data=await api("/api/auto_resume",{name:active,enabled});renderLater()}
   catch(e){box.checked=!enabled;if(e.message!==STALE)toast(e.message)}
 }
@@ -159,7 +177,12 @@ function quickEditorRow(prompt){
   const row=el("div","quick-row",el("div","quick-fields",label,text),remove);
   return row;
 }
-function openQuickEditor(){
+async function openQuickEditor(){
+  // Saving writes the whole list: it is read first, so a list that did not load, or was changed on another
+  // device, is never replaced by an empty or old one.
+  try{quick.saved=(await api("/api/quick_prompts",null,true)).prompts||[]}
+  catch(e){if(e.message!==STALE)toast(tr("Не удалось прочитать быстрые сообщения. Проверьте связь и повторите"));return}
+  renderQuickPrompts();
   $("quick_rows").replaceChildren(...quick.saved.map(quickEditorRow));
   if(!quick.saved.length)addQuickRow();
   $("quick_dlg").showModal();

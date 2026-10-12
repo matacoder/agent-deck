@@ -8,6 +8,7 @@ machine that happens to hold the address in a different network.
 import hashlib
 import hmac
 import ipaddress
+import os
 import secrets
 import socket
 import threading
@@ -23,6 +24,8 @@ NONCE = r'[0-9a-f]{32}'
 MAX_PAIRS = 16
 CHALLENGE_TTL = 60
 MAX_PENDING = 256
+MAX_PENDING_PER_KEY = 16  # The key's id travels in clear: one who saw it must not fill the table for everyone.
+ADDRESS = r'\d{1,3}(?:\.\d{1,3}){3}:\d{1,5}'
 SCAN_LIMIT = 254
 
 
@@ -60,24 +63,63 @@ def neighbours(address):
     return [str(host) for host in network.hosts() if str(host) != address][:SCAN_LIMIT]
 
 
-def deck_proof(key, ours, theirs):
-    return hmac.new(bytes.fromhex(key), f'deck|{ours}|{theirs}'.encode(), hashlib.sha256).hexdigest()
+def forwarded():
+    """Inside a container or WSL the address a gateway dials is the host's, never one of ours."""
+    if os.environ.get('AGENT_DECK_CONTAINER'):
+        return True
+    try:
+        return 'microsoft' in Path('/proc/version').read_text(errors='replace').lower()
+    except OSError:
+        return False
 
 
-def gateway_proof(key, ours, theirs):
-    return hmac.new(bytes.fromhex(key), f'gateway|{ours}|{theirs}'.encode(), hashlib.sha256).hexdigest()
+def own_address(address, local):
+    """Whether `host:port` a gateway says it dialled is the address its connection really reached: a machine
+    that only passes the question on to the real computer is dialled at another one."""
+    return forwarded() or address.rsplit(':', 1)[0] == local
+
+
+def fingerprint(secret):
+    """Names the sign-in secret without revealing it: pair keys made under another password stop working."""
+    return hashlib.sha256(b'pairs|' + secret).hexdigest()[:32]
+
+
+# Both proofs name the address the gateway dialled, so an answer relayed from another address does not fit.
+def deck_proof(key, ours, theirs, address):
+    return hmac.new(bytes.fromhex(key), f'deck|{ours}|{theirs}|{address}'.encode(), hashlib.sha256).hexdigest()
+
+
+def gateway_proof(key, ours, theirs, address):
+    return hmac.new(bytes.fromhex(key), f'gateway|{ours}|{theirs}|{address}'.encode(), hashlib.sha256).hexdigest()
 
 
 class Pairs:
     """Keys of the gateways that may sign in to this computer without its password."""
-    def __init__(self, path, clock=time.time):
-        self.path, self.clock = Path(path), clock
+    def __init__(self, path, clock=time.time, owner=''):
+        self.path, self.clock, self.owner = Path(path), clock, owner
         self.lock = threading.Lock()
-        self.pending = {}  # our nonce -> (key id, gateway nonce, expires)
+        self.pending = {}  # our nonce -> (key id, gateway nonce, expires, address)
+        self.adopt()
+
+    def adopt(self):
+        """Keys from before they were tied to the password get the current one's mark once, at start."""
+        saved = read_json(self.path, {})
+        if not self.owner or not isinstance(saved, dict) or all(not isinstance(v, dict) or 'owner' in v for v in saved.values()):
+            return
+        for pair in saved.values():
+            if isinstance(pair, dict):
+                pair.setdefault('owner', self.owner)
+        try:
+            private_write(self.path, saved)
+        except OSError:
+            pass  # Marked at the next start; until then they count as current.
 
     def load(self):
+        """Keys made under the current password; ones from before keys were tied to it count as current."""
         saved = read_json(self.path, {})
-        return {k: v for k, v in saved.items() if isinstance(v, dict) and isinstance(v.get('key'), str)} if isinstance(saved, dict) else {}
+        saved = saved if isinstance(saved, dict) else {}
+        return {k: v for k, v in saved.items() if isinstance(v, dict) and isinstance(v.get('key'), str)
+                and v.get('owner', self.owner) == self.owner}
 
     def create(self):
         """Called over a signed-in connection only: the key is the gateway's later proof of that sign-in."""
@@ -86,24 +128,26 @@ class Pairs:
             for old in sorted(pairs, key=lambda k: pairs[k].get('created', 0))[:max(0, len(pairs) - MAX_PAIRS + 1)]:
                 del pairs[old]
             identity, key = secrets.token_hex(8), secrets.token_hex(32)
-            pairs[identity] = {'key': key, 'created': int(self.clock())}
+            for pair in pairs.values():
+                pair.setdefault('owner', self.owner)
+            pairs[identity] = {'key': key, 'created': int(self.clock()), 'owner': self.owner}
             private_write(self.path, pairs)
         return {'id': identity, 'key': key}
 
-    def challenge(self, identity, nonce):
+    def challenge(self, identity, nonce, address):
         """Proves to a gateway that this is the computer it paired with; None for a key it does not have."""
         with self.lock:
             pair = self.load().get(identity)
             if not pair:
                 return None
             now = self.clock()
-            for old in [n for n, (_, _, expires) in self.pending.items() if expires < now]:
+            for old in [n for n, entry in self.pending.items() if entry[2] < now]:
                 del self.pending[old]
-            if len(self.pending) >= MAX_PENDING:
+            if len(self.pending) >= MAX_PENDING or sum(p[0] == identity for p in self.pending.values()) >= MAX_PENDING_PER_KEY:
                 return None
             ours = secrets.token_hex(16)
-            self.pending[ours] = (identity, nonce, now + CHALLENGE_TTL)
-        return {'nonce': ours, 'proof': deck_proof(pair['key'], ours, nonce)}
+            self.pending[ours] = (identity, nonce, now + CHALLENGE_TTL, address)
+        return {'nonce': ours, 'proof': deck_proof(pair['key'], ours, nonce, address)}
 
     def accept(self, identity, nonce, proof):
         """The gateway's answer to our challenge; each challenge is good for one attempt."""
@@ -112,7 +156,7 @@ class Pairs:
             pair = self.load().get(identity)
             if not pending or not pair or pending[0] != identity or pending[2] < self.clock() or not isinstance(proof, str):
                 return False
-            return hmac.compare_digest(proof.encode('ascii', 'replace'), gateway_proof(pair['key'], nonce, pending[1]).encode())
+            return hmac.compare_digest(proof.encode('ascii', 'replace'), gateway_proof(pair['key'], nonce, pending[1], pending[3]).encode())
 
 
 class Listener:

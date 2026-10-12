@@ -109,7 +109,7 @@ class NetworkSettings:
         if not isinstance(lan, bool):
             raise ValueError('Local network access must be on or off')
         if not isinstance(name,str) or not name.strip() or len(name)>100 or not name.isprintable():
-            raise ValueError('Enter an DeckAway name')
+            raise ValueError('Enter a DeckAway name')
         if not isinstance(raw,str) or len(raw)>2048 or any(c in raw for c in ('\r','\n')):
             raise ValueError('Invalid public URL')
         if raw:

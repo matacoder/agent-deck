@@ -99,6 +99,24 @@ def engine_info(path):
             'memory': int(data.get('MemTotal') or 0)}
 
 
+traffic = [0.0]  # When bytes last crossed a tunnel: an update waits while a build or a pull is running.
+
+
+def busy(quiet=120, clock=time.time):
+    return clock() - traffic[0] < quiet
+
+
+def keep_alive(link):
+    """A peer that fell asleep without closing is noticed in about two minutes instead of never."""
+    try:
+        link.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
+        for name, value in (('TCP_KEEPIDLE', 60), ('TCP_KEEPALIVE', 60), ('TCP_KEEPINTVL', 20), ('TCP_KEEPCNT', 3)):
+            if hasattr(socket, name):
+                link.setsockopt(socket.IPPROTO_TCP, getattr(socket, name), value)
+    except OSError:
+        pass  # A unix socket has no such options and needs none.
+
+
 def pump(first, second):
     """Bytes both ways until both sides finish; a half-close is passed on, as `docker run -i` needs."""
     def copy(source, target):
@@ -107,6 +125,7 @@ def pump(first, second):
                 chunk = source.recv(65536)
                 if not chunk:
                     break
+                traffic[0] = time.time()
                 target.sendall(chunk)
             target.shutdown(socket.SHUT_WR)
         except OSError:
@@ -116,6 +135,8 @@ def pump(first, second):
                     link.shutdown(socket.SHUT_RDWR)
                 except OSError:
                     pass
+    keep_alive(first)
+    keep_alive(second)
     back = threading.Thread(target=copy, args=(second, first), daemon=True)
     back.start()
     copy(first, second)
@@ -145,7 +166,10 @@ class Containers:
         self.contexts = None  # What the Docker contexts were last made from.
         self.checked = (0, None)
         self.started = False
-        saved = read_json(self.path, {})
+        try:
+            saved = read_json(self.path, {})
+        except (OSError, ValueError):
+            saved = {}  # A damaged file means nothing is marked; the next save writes a whole one.
         saved = saved if isinstance(saved, dict) else {}
         self.host = saved.get('host') is True
         self.use = saved.get('use') if isinstance(saved.get('use'), str) else ''
@@ -290,7 +314,10 @@ class Containers:
             try:
                 client, _ = server.accept()
             except OSError:
-                return  # Closed: the machine is no longer marked.
+                if server.fileno() < 0:
+                    return  # Closed: the machine is no longer marked.
+                time.sleep(1)  # Out of file descriptors for a moment: the socket itself is still good.
+                continue
             threading.Thread(target=self.serve, args=(identity, client), daemon=True).start()
 
     def serve(self, identity, client):

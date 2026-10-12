@@ -8,7 +8,7 @@ function dragHasFiles(e){return !dragFromPage&&Array.from(e.dataTransfer?.types|
 function dropTarget(session,blocked){
   if(blocked)return {ok:false,text:"Дождитесь окончания отправки или загрузки"};
   if(!session)return {ok:false,text:"Сначала откройте сессию"};
-  if(agentOf(session)==="shell")return {ok:false,text:"Выберите сессию Claude или Codex"};
+  if(agentOf(session)==="shell")return {ok:false,text:"Откройте сессию агента: в терминал файлы не прикладываются"};
   return {ok:true,text:"Отпустите, чтобы приложить к «{0}»",args:[sessionTitle(session)]};
 }
 function showDropZone(target){
@@ -51,7 +51,19 @@ function pastedPictures(data){
 }
 // How many of the pictures fit, given what is already attached. Pure for tests.
 function pictureRoom(attached,wanted){return Math.max(0,Math.min(wanted,4-attached))}
-const SMALL_PICTURE=48;
+const SMALL_PICTURE=48,PICTURE_TRIES=12,PICTURE_BYTES=25*1024*1024,PICTURE_WAIT=10000;
+// Copied text names its pictures by address. One that points into this network (a router, this machine)
+// is not a picture from a chat, and the page is not made to ask for it. Pure for tests.
+function pictureAllowed(src){
+  if(/^(data:image\/|blob:)/i.test(src))return true;
+  let host;
+  try{host=new URL(src).hostname.toLowerCase()}catch(e){return false}
+  if(host==="localhost"||host.endsWith(".local")||host.endsWith(".internal")||host.includes(":")||host.startsWith("["))return false;
+  const ip=/^(\d+)\.(\d+)\.\d+\.\d+$/.exec(host);
+  if(!ip)return true;
+  const [a,b]=[Number(ip[1]),Number(ip[2])];
+  return !(a===0||a===10||a===127||a===169&&b===254||a===172&&b>=16&&b<=31||a===192&&b===168||a===100&&b>=64&&b<=127);
+}
 // Chats draw emoji and avatars as pictures too; those are not what was copied.
 async function isSmallPicture(blob){
   try{const bitmap=await createImageBitmap(blob),small=Math.max(bitmap.width,bitmap.height)<SMALL_PICTURE;bitmap.close();return small}
@@ -60,9 +72,15 @@ async function isSmallPicture(blob){
 // A site that lets other pages read its pictures, the clipboard's own data, or this page's blob. The
 // address of this panel stays out of the request.
 async function fetchPicture(src,index){
-  const response=await fetch(src,{credentials:"omit",referrerPolicy:"no-referrer"});
-  if(!response.ok)throw new Error("HTTP "+response.status);
-  const blob=await response.blob();
+  const stop=new AbortController(),timer=setTimeout(()=>stop.abort(),PICTURE_WAIT);
+  let blob;
+  try{
+    const response=await fetch(src,{credentials:"omit",referrerPolicy:"no-referrer",signal:stop.signal});
+    if(!response.ok)throw new Error("HTTP "+response.status);
+    if(Number(response.headers.get("Content-Length"))>PICTURE_BYTES)throw new Error("too large");
+    blob=await response.blob();
+  }finally{clearTimeout(timer)}
+  if(blob.size>PICTURE_BYTES)throw new Error("too large");
   if(!blob.type.startsWith("image/"))throw new Error("not a picture");
   if(await isSmallPicture(blob))return null;
   return new File([blob],"pasted-"+index+"."+blob.type.slice(6).split(/[+;]/)[0],{type:blob.type});
@@ -70,7 +88,10 @@ async function fetchPicture(src,index){
 async function attachPastedPictures(sources,ready){
   const name=active,deck=selectedDeck,files=ready.slice();
   let wanted=ready.length;
+  const room=pictureRoom(attachmentsFor(name).length,4);
   for(const [index,src] of sources.entries()){
+    // A copied page may name dozens: only what can still be attached is asked for, the rest is counted.
+    if(files.length>=room||index>=PICTURE_TRIES||!pictureAllowed(src)){wanted++;continue}
     try{const file=await fetchPicture(src,index+1);if(file){files.push(file);wanted++}}
     catch(e){wanted++}
   }
@@ -104,4 +125,4 @@ function watchFileDrops(win){
   win.addEventListener("dragend",()=>{dragFromPage=false;hideDropZone()});
 }
 
-if(typeof module!=="undefined")module.exports={dropTarget,dragHasFiles,pastedFiles,pastedPictures,pictureRoom};
+if(typeof module!=="undefined")module.exports={dropTarget,dragHasFiles,pastedFiles,pastedPictures,pictureRoom,pictureAllowed};
