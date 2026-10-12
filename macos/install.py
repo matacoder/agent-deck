@@ -252,7 +252,7 @@ def replace_and_start(home, target, config, agents, definitions, settings, pytho
             time.sleep(.5)
         else:
             raise RuntimeError(f'Panel did not start. Logs: {logs}')
-        print(f'Away Deck is ready: {url}\nLogin: {settings["PANEL_USER"]}\nPassword: {settings["PANEL_PASSWORD"]}')
+        print(f'DeckAway is ready: {url}\nLogin: {settings["PANEL_USER"]}\nPassword: {settings["PANEL_PASSWORD"]}')
         print(f'Projects: {settings["PROJECTS_DIR"]}')
         print('Log into Claude/Codex from the sidebar. Your sessions use a separate tmux server.')
         if open_browser:

@@ -141,6 +141,7 @@ function updateScreen(s,force){
   const selection=getSelection(),selecting=selection&&!selection.isCollapsed&&p.contains(selection.anchorNode);
   const changed=p.dataset.raw!==raw&&!selecting;
   if(changed){
+    const strips=keptStrips(p);
     p.dataset.raw=raw;p.replaceChildren();
     const lines=joinImageLines(joinUrlLines(ansiLines(raw)));screenImages=[];
     // A session known only from another computer's list has no preview yet: show nothing, not "empty".
@@ -166,7 +167,7 @@ function updateScreen(s,force){
       appendStyledRange(d,runs,i,line.length);p.append(d);
       if(images.length){
         for(const m of images)if(!screenImages.includes(m.path))screenImages.push(m.path);
-        p.append(imageStrip(s.name,images.map(m=>m.path)));
+        p.append(imageStrip(s.name,images.map(m=>m.path),strips));
       }
     }
   }

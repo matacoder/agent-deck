@@ -20,7 +20,8 @@ from .gateway import FAILURES, each, get_json
 from .relay import private_write, read_json
 
 TUNNEL, UPGRADE = '/api/docker_tunnel', 'away-deck-docker'
-MARK = 'Away Deck: '   # Only contexts described this way are ever updated or removed.
+MARK = 'DeckAway: '   # Only contexts described this way are ever updated or removed.
+OLD_MARK = 'Away Deck: '   # The name before 1.46: those contexts are still ours.
 REFRESH = 30
 START_EVERY = 60   # Docker Desktop takes this long to come up; asking again sooner only opens it twice.
 START_WAIT = 60
@@ -72,7 +73,7 @@ def read_head(link, limit=65536):
     while b'\r\n\r\n' not in data:
         chunk = link.recv(4096)
         if not chunk or len(data) > limit:
-            raise ValueError('Invalid answer from Docker or Away Deck')
+            raise ValueError('Invalid answer from Docker or DeckAway')
         data += chunk
     head, rest = data.split(b'\r\n\r\n', 1)
     return head.decode('latin-1'), rest
@@ -192,7 +193,7 @@ class Containers:
     def connect(self):
         """A connection into this machine's Docker for another computer; only while marked for containers."""
         if not self.host:
-            raise ValueError('This computer is not marked for containers; turn it on in its Away Deck settings')
+            raise ValueError('This computer is not marked for containers; turn it on in its DeckAway settings')
         path = self.engine()[0]
         if not path and self.start_engine():
             # A command arrived while Docker was closed: open it and let the command wait.
@@ -310,7 +311,7 @@ class Containers:
         with self.lock:
             name = (self.machines.get(identity) or {}).get('name', identity)
         reason = str(error) if isinstance(error, ValueError) else 'it does not answer over Tailscale; it may be asleep'
-        body = json.dumps({'message': f'Away Deck: containers run on {name}, but {reason}'}).encode()
+        body = json.dumps({'message': f'DeckAway: containers run on {name}, but {reason}'}).encode()
         try:
             client.settimeout(5)
             client.recv(65536)  # The request must be read before the answer is believed.
@@ -347,9 +348,9 @@ class Containers:
             link.close()
             if code not in ('401', '302', '303'):
                 # 404 is a panel before this feature; anything else means the machine was unmarked or has no Docker.
-                raise ValueError('it needs a newer Away Deck' if code == '404' else
+                raise ValueError('it needs a newer DeckAway' if code == '404' else
                                  'it is not marked for containers or its Docker is not running')
-        raise ValueError('its saved login expired; reconnect it in the Away Deck settings')
+        raise ValueError('its saved login expired; reconnect it in the DeckAway settings')
 
     # ----- what a session gets -----
     def available(self, identity):
@@ -391,7 +392,7 @@ class Containers:
             rows = [json.loads(line) for line in listed.stdout.splitlines() if line.strip()] if not listed.returncode else None
             if rows is None:
                 return
-            ours = {row['Name']: row for row in rows if str(row.get('Description', '')).startswith(MARK)}
+            ours = {row['Name']: row for row in rows if str(row.get('Description', '')).startswith((MARK, OLD_MARK))}
             taken = {row['Name'] for row in rows} - set(ours)
             keep = {}
             for identity, name in sorted(wanted.items(), key=lambda item: item[1]):

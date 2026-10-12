@@ -20,7 +20,7 @@ class ProjectDirectory:
             try:
                 self.current = self.load()
             except (ValueError, KeyError, TypeError, OSError) as error:
-                print(f'Away Deck: ignoring {self.path} ({error}); using {self.current}. '
+                print(f'DeckAway: ignoring {self.path} ({error}); using {self.current}. '
                       'Choose the project folder again in the panel settings.', file=sys.stderr)
 
     def load(self):
@@ -78,8 +78,8 @@ class NetworkSettings:
             try:
                 self.data.update(self.load())
             except (ValueError, KeyError, TypeError, OSError) as error:
-                print(f'Away Deck: ignoring {self.path} ({error}); using default network settings. '
-                      'Save the Away Deck name again in the panel settings.', file=sys.stderr)
+                print(f'DeckAway: ignoring {self.path} ({error}); using default network settings. '
+                      'Save the DeckAway name again in the panel settings.', file=sys.stderr)
 
     def load(self):
         if self.path.is_symlink():
@@ -109,7 +109,7 @@ class NetworkSettings:
         if not isinstance(lan, bool):
             raise ValueError('Local network access must be on or off')
         if not isinstance(name,str) or not name.strip() or len(name)>100 or not name.isprintable():
-            raise ValueError('Enter an Away Deck name')
+            raise ValueError('Enter an DeckAway name')
         if not isinstance(raw,str) or len(raw)>2048 or any(c in raw for c in ('\r','\n')):
             raise ValueError('Invalid public URL')
         if raw:

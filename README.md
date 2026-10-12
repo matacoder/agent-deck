@@ -1,4 +1,4 @@
-# Away Deck
+# DeckAway
 
 <sub>Formerly Agent Deck. Installed paths, service names and the repository address keep the earlier name for now, so updates continue to work.</sub>
 
@@ -9,7 +9,7 @@ agent questions with one tap or in Telegram.
 Sessions live in tmux, keep working after you close the tab, and can be restored
 after a reboot.
 
-![Away Deck on desktop](docs/screenshots/desktop.png)
+![DeckAway on desktop](docs/screenshots/desktop.png)
 
 | Answer with one tap | Screenshots from agents | Sessions & limits |
 |:---:|:---:|:---:|
@@ -24,12 +24,12 @@ flowchart LR
   U["You<br/>phone or laptop, anywhere"] -- "HTTPS" --> D["agent.example.com<br/>your domain"]
   subgraph NET["Private Tailscale network · encrypted, invisible from the internet"]
     subgraph C1["Server · United Kingdom"]
-      G["Away Deck · gateway"]
+      G["DeckAway · gateway"]
       G1["Claude Code"]
       G2["Codex"]
     end
     subgraph C2["Laptop · Germany"]
-      H["Away Deck"]
+      H["DeckAway"]
       H1["Claude Code"]
       H2["Codex"]
       H3["Kimi"]
@@ -53,7 +53,7 @@ flowchart LR
 
 **Tailscale** is a private encrypted network between your own devices: the computers see each other wherever
 they are (different countries are fine), and nobody on the internet sees them. Your domain leads to one
-computer running Away Deck as the **gateway**; the other computers run their own Away Deck and agents and
+computer running DeckAway as the **gateway**; the other computers run their own DeckAway and agents and
 connect to it inside the network, so all their sessions show in one list. Any computer can serve LM Studio
 models to the others.
 
@@ -203,7 +203,7 @@ rm ~/Library/LaunchAgents/com.agent-deck.{panel,ttyd}.plist
 
 ### Windows 11 (WSL2)
 
-Away Deck runs inside WSL2 (Ubuntu 24.04) with the regular Linux installer; agents work in Linux.
+DeckAway runs inside WSL2 (Ubuntu 24.04) with the regular Linux installer; agents work in Linux.
 Requirements: Windows 11 22H2 or newer and virtualization enabled (it is on most PCs). Open
 **PowerShell as administrator** (Start → type *PowerShell* → *Run as administrator*) and run:
 
@@ -214,7 +214,7 @@ irm https://raw.githubusercontent.com/matacoder/agent-deck/main/install-windows.
 The script installs WSL (on a fresh PC it asks you to restart Windows once and run the command
 again), installs and signs in to Tailscale, switches WSL to mirrored networking with host loopback, so this PC opens the panel at its Tailscale
 address too (other settings in `%UserProfile%\.wslconfig` are kept, the old file is saved as `.wslconfig.agent-deck-backup`), installs
-Ubuntu 24.04 and Away Deck in it, allows the panel port in the firewall for the Tailscale range only,
+Ubuntu 24.04 and DeckAway in it, allows the panel port in the firewall for the Tailscale range only,
 adds the panel to the Start menu (as **Agent Deck**, the name it had before 1.39) and keeps WSL running while you are signed in. The panel login and
 password are printed at the end. If WSL settings had to change, WSL restarts once, which stops other
 running Linux programs.
@@ -276,11 +276,11 @@ in a container:
 git pull && docker compose up -d --build
 ```
 
-To connect this Away Deck to another one, publish the port on the host's Tailscale address (`AGENT_DECK_BIND=100.x.y.z` in `.env`): connections between Away Decks use Tailscale addresses only.
+To connect this DeckAway to another one, publish the port on the host's Tailscale address (`AGENT_DECK_BIND=100.x.y.z` in `.env`): connections between DeckAway computers use Tailscale addresses only.
 
 ### SteamOS (Steam Machine, Steam Deck)
 
-SteamOS erases system packages on every update, so Away Deck runs as a rootless Podman container
+SteamOS erases system packages on every update, so DeckAway runs as a rootless Podman container
 (included in SteamOS 3.5+) with a user service; everything stays in your home folder and survives
 updates. No sudo password is needed. In Desktop Mode open Konsole and run:
 
@@ -380,7 +380,7 @@ Tap a session name to open it, on the right computer.
 The row of buttons above the message field sends a message with one tap: your own saved prompts
 first, then a three-dots button that shows the commands of the open agent (`/compact` and `/clear` for
 Claude, `/compact` and `/new` for Codex). Commands that drop the conversation ask before they are sent. The pencil at the end of the
-row edits your prompts (up to 24); the list is kept on the Away Deck you open in the browser and is the
+row edits your prompts (up to 24); the list is kept on the DeckAway you open in the browser and is the
 same for every connected computer.
 
 The clock next to the send button holds a message for later:
@@ -406,7 +406,7 @@ closing a session removes its waiting messages. Attachments cannot be held for l
 Agents can run on one computer while their containers run on another: for example a small server
 that is always on, and a strong desktop that builds images and runs test stacks.
 
-1. Connect the computers in **Settings → Computers** (each runs its own Away Deck).
+1. Connect the computers in **Settings → Computers** (each runs its own DeckAway).
 2. In the **Containers** card, switch on the computers that may run containers. A Docker that is installed
    but closed is opened by the panel, then and whenever a command arrives (Docker Desktop, OrbStack, Colima,
    rootless Docker); "Docker not found" means it has to be installed or started by hand.
@@ -428,7 +428,7 @@ What is different from local Docker:
   computer's Tailscale address, not at `localhost`.
 - **A sleeping computer runs nothing.** The Docker command then says which computer does not answer;
   it never falls back to the local machine silently.
-- Marking a computer gives every Away Deck connected to it full control of its Docker. Only the
+- Marking a computer gives every DeckAway connected to it full control of its Docker. Only the
   computer the others are connected to can send its containers elsewhere in this version.
 
 ## Project panel: changes, commits, files
@@ -510,7 +510,7 @@ settings, up to 40 MB).
 
 <img src="docs/screenshots/mobile-notifications.png" width="300" alt="Notification settings: devices, events and test message">
 
-Agent questions and finished work from **every connected Away Deck** arrive as system notifications
+Agent questions and finished work from **every connected DeckAway** arrive as system notifications
 on your phone or computer, even when the panel is closed. Tapping one opens that session, on the right
 computer. No account with Apple or Google is needed: the panel signs notifications with its own key and
 encrypts them for your device, so the push service only relays ciphertext.
@@ -518,7 +518,7 @@ encrypts them for your device, so the push service only relays ciphertext.
 Requirements:
 
 - The panel is opened over **HTTPS** (see the `PUBLIC_DOMAIN` install option). Browsers do not allow
-  notifications on plain `http://100.x.y.z:8790` addresses. Only the Away Deck you open in the browser
+  notifications on plain `http://100.x.y.z:8790` addresses. Only the DeckAway you open in the browser
   needs HTTPS: it watches the connected computers and sends notifications for all of them.
 - **iPhone / iPad:** iOS 16.4 or newer, panel added to the Home Screen and opened from its icon.
 - **Android, Mac, Windows, Linux:** a current Chrome, Edge, Firefox or Safari.
@@ -560,8 +560,8 @@ Use a dedicated bot without another polling consumer or webhook. No public serve
 address, webhook endpoint or extra dependency is needed.
 
 **Several computers, one bot.** Telegram delivers button taps to a single receiver,
-so configure the bot only on the Away Deck you open in the browser and connect the
-others in **Settings → Network → Other Away Deck instances**. Their questions arrive
+so configure the bot only on the DeckAway you open in the browser and connect the
+others in **Settings → Network → Other DeckAway instances**. Their questions arrive
 in the same bot, labelled with the computer name, and answers are relayed back through
 the authenticated gateway. Leave Telegram off on the connected computers: if the same bot is
 still on there, Settings warns and offers **Turn off on <computer>** right in the Telegram card,
@@ -578,18 +578,18 @@ after a restart. See [integration setup and architecture](docs/integrations.md).
 
 <img src="docs/screenshots/desktop-backups.png" width="760" alt="Backup settings: status per computer and restore">
 
-**Settings → Backups** protects Away Deck settings, integration keys (Telegram, Kimi,
-LM Studio, connected Away Decks) and agent logins (`~/.codex/auth.json`,
+**Settings → Backups** protects DeckAway settings, integration keys (Telegram, Kimi,
+LM Studio, connected computers) and agent logins (`~/.codex/auth.json`,
 `~/.claude/.credentials.json` on Linux, `~/.config/gh/hosts.yml`). The panel login and
 password are set by the installer and are not part of a backup. On macOS the Claude login is read
 from and restored to the Keychain, so no plaintext copy is written.
 
 1. Click **Turn on backups** and store the recovery code (`AD1-…`) in a password manager.
    It is shown once; without it a backup cannot be decrypted on a new computer.
-2. The Away Deck you open in the browser gives the same key to every connected
+2. The DeckAway you open in the browser gives the same key to every connected
    computer, backs up each of them daily (and on **Back up now**) and keeps every copy on
    every other computer. Each computer keeps its last 14 copies per machine.
-3. To replace a dead computer, install Away Deck on the new one, connect it under
+3. To replace a dead computer, install DeckAway on the new one, connect it under
    **Settings → Network**, then pick its backup and **Restore to** the new computer. To
    rebuild the main computer, connect any surviving one, choose it as the copy source,
    enter the recovery code and restore. **Download this machine's backup** gives an
@@ -658,11 +658,11 @@ loopback relay credentials. A local authenticated relay forwards requests to the
 pinned server and records timing/usage only; it does not store conversation text.
 An in-progress local-model request may need retrying when the panel service updates.
 
-### Multiple Away Deck instances
+### Multiple DeckAway instances
 
 <img src="docs/screenshots/desktop-computers.png" width="760" alt="Sidebar with sessions of a connected Mac">
 
-Use **Settings → Network → Other Away Deck instances** on the server whose
+Use **Settings → Network → Other DeckAway instances** on the server whose
 web address you normally open. Click **Discover** to search online Tailscale peers
 on port 8790 (or a custom port), or enter a remote `http://100.x.y.z:8790` URL.
 Provide that instance's panel login and password, then connect. Select the instance
@@ -691,7 +691,7 @@ computer installed without Tailscale (`BIND_HOST=<its local address>`) answers t
 - The search covers the `/24` around the gateway's address. Larger or routed networks: add the address by
   hand. WSL2 without mirrored networking has no address in the real local network.
 
-Credentials remain in a private file on the gateway. Existing remote Away Deck
+Credentials remain in a private file on the gateway. Existing remote DeckAway
 1.0.7 instances can be connected; only the gateway needs the new UI. Connection
 settings always belong to the gateway; session and project settings belong to the
 currently selected instance. Switching preserves separate drafts on each machine.
@@ -724,8 +724,8 @@ The model setting is the default for new native Kimi sessions; existing sessions
 Kimi quota cards show the account’s returned monthly total/coding and short-period limits,
 with reset dates. Monthly windows do not assume a fixed 30-day duration for pace forecasts.
 
-Installed Away Deck panels automatically check stable releases every 30 minutes.
-Disable this in **Settings → App → Automatically update Away Deck** if desired.
+Installed DeckAway panels automatically check stable releases every 30 minutes.
+Disable this in **Settings → App → Automatically update DeckAway** if desired.
 **Check for updates** bypasses the cached release check. Updates preserve tmux
 sessions, wait for active local-model requests, and roll back after a failed health check.
 Development git checkouts remain excluded. Existing versions need one update to

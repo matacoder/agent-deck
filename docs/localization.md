@@ -1,6 +1,6 @@
 # Localization
 
-Away Deck includes 16 languages:
+DeckAway includes 16 languages:
 
 | Language | Catalog / installer option |
 |---|---|

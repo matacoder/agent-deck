@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Update Away Deck from GitHub and re-run the installer with the remembered options.
+# Update DeckAway from GitHub and re-run the installer with the remembered options.
 #   sudo ./update.sh           # latest release (git tag vX.Y.Z)
 #   sudo ./update.sh v0.2.0    # a specific version
 #   sudo ./update.sh main      # latest development state
@@ -36,6 +36,6 @@ else
     g rev-parse -q --verify "refs/tags/$target" >/dev/null || die "no such version: $target"
     g -c advice.detachedHead=false checkout -q "$target"
 fi
-echo "==> Away Deck $from -> $(cat panel/VERSION) ($target)"
+echo "==> DeckAway $from -> $(cat panel/VERSION) ($target)"
 require_root_checkout "$PWD"
 exec ./install.sh

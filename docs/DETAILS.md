@@ -1,4 +1,4 @@
-# Away Deck — details
+# DeckAway — details
 
 Everything the [README](../README.md) leaves out: how it works, all install options, publishing,
 troubleshooting and development.
@@ -31,7 +31,7 @@ systemd --user (linger):  cc-tmux  (owns the tmux server: restarts of the panel 
   `~/.config/systemd/user/cc-tmux.service.d/agent-deck-oom.conf` and
   `~/.config/systemd/user/tmux-spawn-.scope.d/agent-deck-oom.conf`, so the kernel killing one process ends
   that process and not the tmux session. The second one matches the scopes of every tmux server of this
-  user, not only Away Deck's. They stay after a downgrade or an uninstall; delete the two files and run
+  user, not only DeckAway's. They stay after a downgrade or an uninstall; delete the two files and run
   `systemctl --user daemon-reload` to undo it. Nothing is written without a systemd user manager (Docker,
   macOS).
 - Caches, safe to delete, all under `~/.cache/agent-deck/` and private to the user: `gallery/<session>/`
@@ -211,7 +211,7 @@ sessions. Explicit installer `--projects-dir`/`PROJECTS_DIR` values override the
 saved preference; otherwise macOS reinstalls retain it. Session labels are stored
 in tmux `@cc_title` and restored from session state; internal IDs remain stable.
 
-## Connected Away Deck instances
+## Connected DeckAway instances
 
 `integrations/decks.py` owns profiles in the private
 `~/.config/cc-panel/integrations/decks.json` file (0600). Remote authentication

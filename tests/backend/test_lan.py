@@ -127,14 +127,14 @@ class SeveralAddressesTests(PanelCase):
 
     def test_older_panel_cannot_be_connected_over_the_local_network_and_keeps_one_address_over_tailscale(self):
         self.net.hosts[TAIL] = self.net.hosts[LOCAL] = FakeDeck(self.home, pairing=False)
-        with self.assertRaisesRegex(ValueError, 'Update Away Deck on that computer'):
+        with self.assertRaisesRegex(ValueError, 'Update DeckAway on that computer'):
             self.connect(url=LOCAL)
         self.connect(urls=[LOCAL])
         self.assertEqual(self.decks.status()['decks'][0]['urls'], [TAIL])
 
     def test_own_panel_and_wrong_extra_addresses_are_refused(self):
         self.mac.instance = 'c' * 24
-        with self.assertRaisesRegex(ValueError, 'current Away Deck'):
+        with self.assertRaisesRegex(ValueError, 'current DeckAway'):
             self.connect()
         self.mac.instance = 'b' * 24
         for wrong in (['http://8.8.8.8:8790'], ['https://192.168.1.20:8790'], 'http://192.168.1.20:8790', [LOCAL] * 2 + [OTHER] * 9 + ['x']):

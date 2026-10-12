@@ -113,13 +113,13 @@ def send(private, subject, subscription, payload, ttl=3600, urgency='normal', to
 
 
 SERVICE_WORKER = r"""
-// Away Deck notifications. Served by the panel at /sw.js; no caching, no offline mode.
+// DeckAway notifications. Served by the panel at /sw.js; no caching, no offline mode.
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', event => event.waitUntil(self.clients.claim()));
 self.addEventListener('push', event => {
   let data = {};
   try { data = event.data ? event.data.json() : {}; } catch (e) {}
-  const title = data.title || 'Away Deck';
+  const title = data.title || 'DeckAway';
   event.waitUntil((async () => {
     // Safari ignores renotify: a notification replacing one with the same tag arrives without a banner or
     // sound. Closing the old one first makes the new one alert like any other.

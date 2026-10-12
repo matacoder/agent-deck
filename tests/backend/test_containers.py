@@ -177,7 +177,7 @@ class TunnelTests(PanelCase):
     def test_sleeping_computer_keeps_its_socket(self):
         self.host.save({'host': True})
         self.gateway.refresh()
-        self.decks.request = Mock(side_effect=ValueError('Remote Away Deck did not respond'))
+        self.decks.request = Mock(side_effect=ValueError('Remote DeckAway did not respond'))
         machine = self.gateway.refresh()['machines'][0]
         self.assertEqual((machine['state'], machine['host']), ('offline', True))
         self.assertTrue(self.gateway.socket_path(DECK).exists())
@@ -342,7 +342,7 @@ class ContextTests(PanelCase):
             service.sync_contexts()
             endpoint = 'host=unix://' + str(service.socket_path(DECK))
             self.assertEqual(calls, [['ls', '--format', '{{json .}}'], ['rm', '-f', 'old-mac'],
-                                     ['create', 'red-pc-2', '--description', 'Away Deck: Red PC', '--docker', endpoint]])
+                                     ['create', 'red-pc-2', '--description', 'DeckAway: Red PC', '--docker', endpoint]])
             service.sync_contexts()
             self.assertEqual(len(calls), 3)  # Nothing changed: Docker is not asked again.
 

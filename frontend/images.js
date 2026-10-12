@@ -43,16 +43,26 @@ function imageMissing(session,path,now=Date.now()){
   if(at&&now-at<MISSING_FOR)return true;
   missingImages.delete(key);return false;
 }
-function imageStrip(session,paths){
-  const strip=el("div","img-strip");
+// The screen is rebuilt on every change of its text (a running timer): a strip already drawn for the same
+// pictures is moved into the new screen as it is, so loaded thumbnails do not blink.
+function stripKey(deck,session,paths){return JSON.stringify([deck,session,[...new Set(paths)]])}
+function keptStrips(box){
+  const kept=new Map();
+  for(const strip of box.querySelectorAll(".img-strip[data-key]"))if(!kept.has(strip.dataset.key))kept.set(strip.dataset.key,strip);
+  return kept;
+}
+function imageStrip(session,paths,kept){
+  const key=stripKey(selectedDeck,session,paths),old=kept?.get(key);
+  if(old){kept.delete(key);return old}
+  const strip=el("div","img-strip");strip.dataset.key=key;
   for(const path of new Set(paths)){
     if(imageMissing(session,path))continue;
     const thumb=el("button","img-thumb"),img=document.createElement("img");
     thumb.type="button";thumb.title=path;thumb.setAttribute("aria-label",tr("Открыть картинку {0}",[path.split("/").pop()]));
     img.loading="lazy";img.decoding="async";img.alt="";img.src=imageUrl(session,path,true);
     // Missing files, or paths no longer on screen, simply leave the text without a preview.
-    // Offline or a restarting panel is no reason to stop trying this picture.
-    img.onerror=()=>{if(connection==="online")missingImages.set(selectedDeck+"\n"+session+"\n"+path,Date.now());thumb.remove()};
+    // Offline or a restarting panel is no reason to stop trying this picture. The strip is then built anew.
+    img.onerror=()=>{if(connection==="online")missingImages.set(selectedDeck+"\n"+session+"\n"+path,Date.now());thumb.remove();delete strip.dataset.key};
     thumb.append(img);thumb.onclick=()=>openViewer(path);strip.append(thumb);
   }
   return strip;
@@ -109,4 +119,4 @@ if(typeof document!=="undefined"&&document.getElementById("viewer")){
   },{passive:true});
 }
 
-if(typeof module!=="undefined")module.exports={imageMatches,joinImageLines,IMAGE_PATH_RE,imageMissing,missingImages};
+if(typeof module!=="undefined")module.exports={stripKey,imageMatches,joinImageLines,IMAGE_PATH_RE,imageMissing,missingImages};

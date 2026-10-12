@@ -1,4 +1,4 @@
-"""Authenticated Away Deck connections over known numeric addresses: Tailscale, or the local network.
+"""Authenticated DeckAway connections over known numeric addresses: Tailscale, or the local network.
 
 A connection may know several addresses of one computer. The saved password goes by itself only to the
 Tailscale address its owner entered; every other address must first prove the key agreed at sign-in
@@ -40,7 +40,7 @@ class Unreachable(OSError):
 
 def deck_url(raw):
     if not isinstance(raw, str):
-        raise ValueError('Enter the Away Deck URL')
+        raise ValueError('Enter the DeckAway URL')
     try:
         parsed = urlsplit(raw.strip())
         address = ipaddress.ip_address(parsed.hostname or '')
@@ -71,7 +71,7 @@ def remote_path(raw):
     decoded = unquote(parsed.path)
     if (parsed.scheme or parsed.netloc or '..' in decoded.split('/') or '%' in decoded
             or not re.fullmatch(r'/api/[a-zA-Z0-9_-]+(?:/[a-zA-Z0-9_-]+)?|/t(?:/[a-zA-Z0-9_./-]*)?', decoded)):
-        raise ValueError('Only Away Deck API and terminal paths may be proxied')
+        raise ValueError('Only DeckAway API and terminal paths may be proxied')
     if decoded.startswith('/api/decks') or decoded.startswith('/api/network'):
         raise ValueError('Nested gateway configuration is not supported')
     if decoded.startswith('/t') and not terminal_query_ok(raw):
@@ -107,7 +107,7 @@ def http_request(url, method, path, body=None, headers=None, timeout=30, limit=3
             if size > limit:
                 raise ValueError('Remote response is too large')
             if time.monotonic() > deadline:
-                raise ValueError('Remote Away Deck answered too slowly')
+                raise ValueError('Remote DeckAway answered too slowly')
         return response.status, dict(response.getheaders()), b''.join(chunks)
     finally:
         connection.close()
@@ -180,7 +180,7 @@ class RemoteDecks:
     def get(self, identity):
         with self.lock:
             if not isinstance(identity, str) or not IDENTITY.fullmatch(identity) or identity not in self.profiles:
-                raise ValueError('Away Deck connection not found')
+                raise ValueError('DeckAway connection not found')
             profile = copy.deepcopy(self.profiles[identity])
             profile['url'] = deck_url(profile['url'])
             return profile
@@ -194,7 +194,7 @@ class RemoteDecks:
             cookie = SimpleCookie(next((v for k,v in headers.items() if k.lower() == 'set-cookie'), ''))
             location = next((v for k,v in headers.items() if k.lower() == 'location'), '/')
             if status not in (302, 303) or location != '/' or 'cc_auth' not in cookie:
-                raise ValueError('Could not sign in to Away Deck; check the login and password')
+                raise ValueError('Could not sign in to DeckAway; check the login and password')
             token = cookie['cc_auth'].value
             if not re.fullmatch(r'[A-Za-z0-9_.=-]+', token):
                 raise ValueError('Invalid remote login response')
@@ -202,7 +202,7 @@ class RemoteDecks:
         except Unreachable:
             raise
         except (OSError, http.client.HTTPException):
-            raise ValueError('Remote Away Deck is unavailable') from None
+            raise ValueError('Remote DeckAway is unavailable') from None
 
     def prove(self, url, pair, sign_in):
         """Ask the machine at this address for the pair key's proof before it gets anything of ours; with
@@ -255,7 +255,7 @@ class RemoteDecks:
             return cookie if fresh else self.login(profile, url)
         pair = profile.get('pair')
         if not pair:
-            raise ValueError('Reconnect this Away Deck: its local network address needs a new sign-in')
+            raise ValueError('Reconnect this DeckAway: its local network address needs a new sign-in')
         if proven and fresh:
             return cookie
         cookie = self.prove(url, pair, not fresh) or cookie
@@ -270,15 +270,15 @@ class RemoteDecks:
         username = username.strip()
         url = deck_url(data.get('url'))
         if url == self.local_url:
-            raise ValueError('This is the current Away Deck')
+            raise ValueError('This is the current DeckAway')
         identity = data.get('id') or secrets.token_hex(12)
         old = self.get(identity) if data.get('id') else {}
         if not isinstance(password, str) or len(password) > 4096:
-            raise ValueError('Invalid Away Deck password')
+            raise ValueError('Invalid DeckAway password')
         # Reusing a password is allowed only for the same saved destination and login.
         password = password or (old.get('password', '') if old.get('url') == url and old.get('username') == username else '')
         if not password:
-            raise ValueError('Enter the Away Deck password')
+            raise ValueError('Enter the DeckAway password')
         extras = data.get('urls', old.get('urls', []) if old.get('url') == url else [])
         if not isinstance(extras, list) or len(extras) > MAX_ADDRESSES:
             raise ValueError(BAD_URL)
@@ -288,20 +288,20 @@ class RemoteDecks:
             # The owner's own action: the only time the password goes to an address of the local network.
             cookie = self.login(profile)
         except Unreachable:
-            raise ValueError('Remote Away Deck is unavailable') from None
+            raise ValueError('Remote DeckAway is unavailable') from None
         try:
             status, _, body = http_request(url, 'GET', '/api/version', headers={'Cookie': cookie}, timeout=10, limit=1024*1024)
             if status != 200 or not isinstance(json.loads(body).get('version'), str):
-                raise ValueError('The destination is not an authenticated Away Deck')
+                raise ValueError('The destination is not an authenticated DeckAway')
         except (OSError, http.client.HTTPException, ValueError, AttributeError):
-            raise ValueError('Could not verify the remote Away Deck') from None
+            raise ValueError('Could not verify the remote DeckAway') from None
         paired = self.pair(url, cookie)
         if paired:
             profile['pair'], profile['instance'] = paired
             if profile['instance'] and profile['instance'] == self.instance():
-                raise ValueError('This is the current Away Deck')
+                raise ValueError('This is the current DeckAway')
         elif not is_tailnet(urlsplit(url).hostname):
-            raise ValueError('Update Away Deck on that computer first: this version cannot be connected over the local network')
+            raise ValueError('Update DeckAway on that computer first: this version cannot be connected over the local network')
         if paired and extras:
             profile['urls'] = extras  # Without a pair key another address could never be trusted.
         with self.lock:
@@ -346,7 +346,7 @@ class RemoteDecks:
                     break
                 except Unreachable:
                     self.fail(identity, url)
-                    error = ValueError('Remote Away Deck is unavailable')
+                    error = ValueError('Remote DeckAway is unavailable')
                 except ValueError as failure:
                     if len(self.addresses(profile)) == 1:
                         raise
@@ -356,7 +356,7 @@ class RemoteDecks:
                 raise error
             with self.lock:
                 if self.profiles.get(identity) != profile:
-                    raise ValueError('Away Deck connection changed; retry the request')
+                    raise ValueError('DeckAway connection changed; retry the request')
                 self.cookies[identity] = cookie
                 self.routes[identity] = url
         if re.fullmatch(r'[a-z]{2,3}(?:-[A-Za-z0-9]{2,8})*', language):
@@ -398,11 +398,11 @@ class RemoteDecks:
                 # Nothing was sent, so the request may go to the computer's other address.
                 self.fail(identity, profile['url'])
                 if len(self.addresses(self.get(identity))) == 1:
-                    raise ValueError('Remote Away Deck did not respond; reconnect or retry') from None
+                    raise ValueError('Remote DeckAway did not respond; reconnect or retry') from None
                 continue
             except (OSError, http.client.HTTPException):
                 # Never retry an ambiguous mutation after a transport failure.
-                raise ValueError('Remote Away Deck did not respond; reconnect or retry') from None
+                raise ValueError('Remote DeckAway did not respond; reconnect or retry') from None
             location = next((v for k,v in result[1].items() if k.lower() == 'location'), '')
             if result[0] != 401 and not (result[0] in (302,303) and location == '/login'):
                 if result[0] in (301,302,303,307,308):
@@ -411,8 +411,8 @@ class RemoteDecks:
             stale, rejected = cookie.split('; cc_lang=', 1)[0], rejected + 1
             if rejected == 2:
                 break
-        raise ValueError('Remote authentication expired; reconnect this Away Deck' if rejected else
-                         'Remote Away Deck did not respond; reconnect or retry')
+        raise ValueError('Remote authentication expired; reconnect this DeckAway' if rejected else
+                         'Remote DeckAway did not respond; reconnect or retry')
 
     def request_stream(self, identity, path, stream, length, language='en', timeout=300):
         """Raw upload relayed in chunks, so the gateway never holds a whole file in memory. A streamed body
@@ -425,9 +425,9 @@ class RemoteDecks:
                 {'Cookie': cookie, 'Origin': profile['url'], 'Content-Type': 'application/octet-stream',
                  'Content-Length': str(length), 'Accept-Encoding': 'identity'}, timeout=timeout, limit=1024*1024)
         except (OSError, http.client.HTTPException):
-            raise ValueError('Remote Away Deck did not respond; retry the upload') from None
+            raise ValueError('Remote DeckAway did not respond; retry the upload') from None
         if result[0] in (301,302,303,307,308,401):
-            raise ValueError('Remote Away Deck did not accept the upload; retry it')
+            raise ValueError('Remote DeckAway did not accept the upload; retry it')
         return result
 
     def terminal_socket(self, identity, language='en'):
@@ -447,7 +447,7 @@ class RemoteDecks:
 
     def discover(self, port=8790):
         if isinstance(port, bool) or not isinstance(port, int) or not 1 <= port <= 65535:
-            raise ValueError('Enter a valid Away Deck port')
+            raise ValueError('Enter a valid DeckAway port')
         with self.lock:
             if self.discovery['phase'] == 'running':return copy.deepcopy(self.discovery)
             self.discovery = {'phase':'running','results':[]}
@@ -495,7 +495,7 @@ class RemoteDecks:
                 self.remember(found)
                 self.discovery = {'phase':'done','results':results}
         except (OSError, subprocess.SubprocessError, ValueError, TypeError, AttributeError):
-            with self.lock:self.discovery = {'phase':'error','results':[], 'error':'Could not discover Away Deck instances; check Tailscale or the local network on the gateway'}
+            with self.lock:self.discovery = {'phase':'error','results':[], 'error':'Could not discover DeckAway instances; check Tailscale or the local network on the gateway'}
 
     def merged(self, found):
         """One row per computer: the same one seen over Tailscale and in the local network names itself by
@@ -541,8 +541,8 @@ class RemoteDecks:
             # A panel before 1.44 does not introduce itself; its sign-in page still tells what it is.
             status, headers, body = http_request(profile['url'], 'GET', '/login', timeout=2, limit=1024*1024)
             server = next((v for k,v in headers.items() if k.lower() == 'server'), '')
-            return status == 200 and ('cc-panel/' in server or b'<title>Away Deck' in body
-                                      or b'<title>Agent Deck' in body)  # The name before 1.39.
+            return status == 200 and ('cc-panel/' in server or b'<title>DeckAway' in body
+                                      or b'<title>Away Deck' in body or b'<title>Agent Deck' in body)  # Earlier names.
         except (OSError, http.client.HTTPException, ValueError, AttributeError):return False
 
 

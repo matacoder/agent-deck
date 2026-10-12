@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Install / upgrade Away Deck (web panel for Claude Code / Codex / terminal sessions in tmux)
+# Install / upgrade DeckAway (web panel for Claude Code / Codex / terminal sessions in tmux)
 # for one unprivileged user.
 #
 # Works on a clean Ubuntu 22.04 / 24.04, Debian 12+ or 64-bit Raspberry Pi OS 12+ server: installs Tailscale, tmux, ttyd, gh, Claude Code, Codex CLI,
@@ -417,7 +417,7 @@ fi
 write_conf   # again: BIND_HOST and PUBLIC_PROXY may have been resolved above
 
 echo
-say "Away Deck v$NEW_VERSION — done: http://$BIND_HOST:$PANEL_PORT  (user: $DEV_USER)"
+say "DeckAway v$NEW_VERSION — done: http://$BIND_HOST:$PANEL_PORT  (user: $DEV_USER)"
 [ -z "$PUBLIC_DOMAIN" ] || echo "    public: https://$PUBLIC_DOMAIN"
 if [ -n "$NEW_PASS" ]; then
     echo "    password: $NEW_PASS"

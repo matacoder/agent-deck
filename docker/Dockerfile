@@ -1,4 +1,4 @@
-# Away Deck in one container: tmux server, ttyd and the panel, running as an unprivileged user.
+# DeckAway in one container: tmux server, ttyd and the panel, running as an unprivileged user.
 # Build from the repository root: docker compose up -d --build
 FROM python:3.12-slim-bookworm
 

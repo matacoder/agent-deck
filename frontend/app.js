@@ -22,7 +22,7 @@ let deckLocalStorage=instanceStorage(localStore,selectedDeck);
 let deckSessionStorage=instanceStorage(sessionStore,selectedDeck);
 // Bumped on every computer switch; responses started for the previous computer are dropped.
 let deckEpoch=0;
-const STALE="stale Away Deck response";
+const STALE="stale DeckAway response";
 function activePath(path){return instancePath(selectedDeck,path)}
 async function gatewayApi(path,body){return api(path,body,true)}
 
@@ -105,8 +105,8 @@ async function api(path,body,gateway=false,options={}){
   if([502,503,504].includes(r.status))throw new OfflineError(j?.error||tr("Нет связи с панелью"));
   // A proxy or captive page can answer 200 with HTML; never hand that to code expecting JSON.
   if(!j||typeof j!=="object")throw new OfflineError(controller?.signal.aborted?tr("Панель не ответила за {0} с",[Math.round(limit/1000)]):tr("Панель вернула неожиданный ответ"));
-  // A route this computer's Away Deck does not have yet: say what to do instead of "Not Found".
-  if(r.status===404&&(!j.error||/^(not found|Agent Deck route not found)$/i.test(j.error)))throw new Error(tr("Эта функция недоступна: обновите Away Deck на этом компьютере"));
+  // A route this computer's DeckAway does not have yet: say what to do instead of "Not Found".
+  if(r.status===404&&(!j.error||/^(not found|Agent Deck route not found)$/i.test(j.error)))throw new Error(tr("Эта функция недоступна: обновите DeckAway на этом компьютере"));
   if(!r.ok)throw new Error(j.error||r.statusText);return j;
 }
 // Shown only when connecting takes noticeable time, so a quick resume does not flicker.
@@ -211,7 +211,7 @@ function sheet(on){
     const anchor=$("b_actions").getBoundingClientRect(),panel=$("sheet");
     panel.style.setProperty("--sheet-top",Math.round(anchor.bottom+4)+"px");
     panel.style.setProperty("--sheet-right",Math.max(8,Math.round(innerWidth-anchor.right))+"px");
-    $("sheetCap").textContent=s?sessionTitle(s):"Away Deck";
+    $("sheetCap").textContent=s?sessionTitle(s):"DeckAway";
     $("s_session").hidden=$("s_manage").hidden=!s;
     // Update and closed drafts appear only when there is something to do; an empty group would be a stray line.
     $("s_app").hidden=$("s_update").style.display==="none"&&$("s_drafts").style.display==="none";
@@ -270,7 +270,7 @@ function deckOrder(){
   if(!ids.includes(selectedDeck))ids.push(selectedDeck);
   return ids;
 }
-function deckName(id){return id?deckDirectory.decks.find(d=>d.id===id)?.name||"Away Deck":deckDirectory.name||tr("Этот компьютер")}
+function deckName(id){return id?deckDirectory.decks.find(d=>d.id===id)?.name||"DeckAway":deckDirectory.name||tr("Этот компьютер")}
 function renderCurrentSessions(box,list){
   let grp=null,i=0;
   for(const s of list){
@@ -305,7 +305,7 @@ function finishTabs(view,box,focused){
   $("foot").textContent=tr("{0} сессий · {1} работают",[sessions.length,busy])+(attention.size?tr(" · {0} готово",[attention.size]):"");
   const ready=renderInboxBadge();
   $("menuBadge").textContent=ready;$("menuBadge").classList.toggle("on",ready>0);
-  document.title=(ready?`(${ready}) `:"")+"Away Deck";
+  document.title=(ready?`(${ready}) `:"")+"DeckAway";
   // Home-screen icon badge (iOS 16.4+ with notifications allowed, desktop PWAs); ignored elsewhere.
   try{if(navigator.setAppBadge)ready?navigator.setAppBadge(ready).catch(()=>{}):navigator.clearAppBadge().catch(()=>{})}catch(e){}
 }
@@ -315,7 +315,7 @@ function renderTitle(){
   document.body.classList.toggle("is-codex",!!s&&agentOf(s)==="codex");
   $("msg").placeholder=s?tr("Сообщение в ")+agentLabel(s)+"…":tr("Сообщение агенту…");
   $("bar_tools").hidden=!s;
-  if(!s){t.textContent=isMobile()?"Away Deck":"";return}
+  if(!s){t.textContent=isMobile()?"DeckAway":"";return}
   const st=state(s);
   t.append(el("b","",sessionTitle(s)),el("span","path"," — "+s.path.replace(/^\/(?:home|Users)\/[^/]+/,"~")),el("span","st",stateText(s)+" · "+shortPath(s.path)+(s.source?.label?" · "+s.source.label:"")));
 }
@@ -573,7 +573,7 @@ async function uploadFile(name,file,image,progress){
   try{return await uploadRequest("/api/upload_raw"+query,"application/octet-stream",image,progress)}
   catch(error){
     if(error.status!==404)throw error;
-    // A connected Away Deck older than 1.9 only knows the JSON upload.
+    // A connected DeckAway older than 1.9 only knows the JSON upload.
     return uploadRequest("/api/upload","application/json",JSON.stringify({name,data:await readImageData(image),filename:file.name||"file"}),progress);
   }
 }
@@ -875,7 +875,7 @@ async function loadDeckSettings(){
   panelOrigins=current?[current.url,location.origin]:[location.origin,"http://"+network.bind_host+":"+network.bind_port,"http://127.0.0.1:"+network.bind_port,"http://localhost:"+network.bind_port];
   if(!current&&network.public_url)panelOrigins.push(network.public_url);
   populateDeckSelector($("deck_select"),data.decks,selectedDeck,network.name);
-  // Most installs have a single machine; the switcher appears once another Away Deck is connected.
+  // Most installs have a single machine; the switcher appears once another DeckAway is connected.
   $("deck_switch").hidden=!data.decks.length&&!selectedDeck;
   deckDirectory={decks:data.decks,name:network.name,network};loadOtherDecks();
   if(Date.now()-fleet.loadedAt>10*60*1000||$("settings_dlg").open)loadFleet();else renderFleet();
@@ -886,7 +886,7 @@ async function loadDeckSettings(){
 let deckDirectory={decks:[],name:"",network:{}},otherDecks=[],loadingOthers=false,deckOpen={};
 const otherBusy=new Map(),otherAttention=new Set();
 try{deckOpen=JSON.parse(localStore.getItem("cc.deck-open")||"{}")||{}}catch(e){}
-const currentDeckName=()=>selectedDeck?deckDirectory.decks.find(d=>d.id===selectedDeck)?.name||"Away Deck":deckDirectory.name||tr("Этот компьютер");
+const currentDeckName=()=>selectedDeck?deckDirectory.decks.find(d=>d.id===selectedDeck)?.name||"DeckAway":deckDirectory.name||tr("Этот компьютер");
 async function loadOtherDecks(){
   if(document.hidden||loadingOthers||!deckDirectory.decks.length){if(!deckDirectory.decks.length&&otherDecks.length){otherDecks=[];renderTabs()}return}
   loadingOthers=true;const epoch=deckEpoch;

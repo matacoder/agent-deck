@@ -2,7 +2,7 @@
  * @jest-environment node
  *
  * Runs the real bundled panel (panel/index.html) in jsdom with a fake network to cover switching
- * between connected Away Decks without a page reload.
+ * between connected computers without a page reload.
  */
 const fs=require('fs');
 const path=require('path');
@@ -137,7 +137,7 @@ test('a response from the previous computer that arrives after the switch is rej
   window.openDeckSession(DECK,'beta');
   await settle();
   release();
-  await expect(inFlight).rejects.toThrow('stale Away Deck response');
+  await expect(inFlight).rejects.toThrow('stale DeckAway response');
   expect(window.document.querySelector('#title b').textContent).toBe('beta');
   }finally{window.close()}
 });
@@ -834,7 +834,7 @@ test('an empty gallery explains what will appear, and an older computer asks for
   window.eval('openProject("gallery")');await settle();
   expect(window.document.getElementById('gallery_body').textContent).toMatch(/Здесь появятся картинки|Pictures the agents/);
   old=true;window.eval('gallery.key=null;loadGallery()');await settle();
-  expect(window.document.getElementById('gallery_body').textContent).toMatch(/обновите Away Deck|update Away Deck/i);
+  expect(window.document.getElementById('gallery_body').textContent).toMatch(/обновите DeckAway|update DeckAway/i);
   }finally{window.close()}
 });
 
@@ -1334,5 +1334,26 @@ test('the line-number column is sized for the longer of the two numbers',async()
   // Old numbers 8-10, new ones 100-101: a phone shows the new number on unchanged lines.
   expect([...diff.querySelectorAll('.dl.ctx .ln.n')].map(n=>n.textContent)).toEqual(['100','101']);
   expect(diff.style.getPropertyValue('--ln')).toBe('3');
+  }finally{window.close()}
+});
+
+test('a redraw of the screen keeps the thumbnails already drawn; a failed one is drawn anew',async()=>{
+  const state={local:()=>({sessions:[session('alpha')]})};
+  const window=boot(routesFor(state));
+  try{
+  await settle();await settle();
+  const doc=window.document,draw=text=>window.eval(`updateScreen({name:'alpha',preview:${JSON.stringify(text)}},true)`);
+  draw('done\n/tmp/shots/one.png\nBrewed for 1s');
+  const first=doc.querySelector('#pre .img-strip'),image=first.querySelector('img');
+  draw('done\n/tmp/shots/one.png\nBrewed for 2s');
+  expect(doc.querySelector('#pre').textContent).toContain('Brewed for 2s');
+  expect(doc.querySelectorAll('#pre .img-strip').length).toBe(1);
+  expect(doc.querySelector('#pre .img-strip img')).toBe(image);
+  draw('done\n/tmp/shots/two.png\nBrewed for 3s');
+  expect(doc.querySelector('#pre .img-strip')).not.toBe(first);
+  const second=doc.querySelector('#pre .img-strip');
+  second.querySelector('img').onerror();
+  draw('done\n/tmp/shots/two.png\nBrewed for 4s');
+  expect(doc.querySelector('#pre .img-strip')).not.toBe(second);
   }finally{window.close()}
 });

@@ -120,7 +120,7 @@ try:
     remote_decks = RemoteDecks(_decks_dir, f'http://{BIND_HOST}:{BIND_PORT}', lambda: own_instance())
 except (OSError, ValueError) as _error:
     # A broken connection list must not take the whole panel down; the file is left untouched.
-    _decks_message = (f'Away Deck connections are disabled: {os.path.join(_decks_dir, "decks.json")} '
+    _decks_message = (f'DeckAway connections are disabled: {os.path.join(_decks_dir, "decks.json")} '
                       f'could not be loaded ({_error}). Fix or remove this file (it must be a regular JSON object '
                       'file, not a symlink) and restart cc-panel.')
     print(_decks_message, flush=True)
@@ -1451,7 +1451,7 @@ def questions_payload():
 
 
 def remote_questions():
-    """Questions of connected Away Decks, so one Telegram bot on the gateway serves every machine."""
+    """Questions of connected computers, so one Telegram bot on the gateway serves every machine."""
     return gateway.questions()
 
 
@@ -1764,7 +1764,7 @@ _push_lock = threading.Lock()
 
 
 def push_sessions():
-    """Local sessions plus connected Away Decks' lists (refreshed every 10 s) for notification events."""
+    """Local sessions plus connected computers' lists (refreshed every 10 s) for notification events."""
     return [{**s, 'deck': ''} for s in list_sessions()] + gateway.sessions()
 
 
@@ -1849,7 +1849,7 @@ def containers_service():
 
 
 def telegram_duplicates(bot):
-    """Connected Away Decks polling the same bot: their questions would arrive twice. The id lets the panel
+    """Connected computers polling the same bot: their questions would arrive twice. The id lets the panel
     turn Telegram off there."""
     def scan():
         return [{'id': deck, 'name': name} for deck, name, state in gateway.telegram_states()
@@ -2782,7 +2782,7 @@ class Handler(BaseHTTPRequestHandler):
                 wanted = parse_qs(urlsplit(path).query).get('path', [''])[0]
                 return self.send_download(os.path.basename(wanted.rstrip('/')) or 'download', payload)
             if path.startswith('/api/') and base != 'application/json':
-                raise ValueError('Remote Away Deck returned a non-JSON API response')
+                raise ValueError('Remote DeckAway returned a non-JSON API response')
             # ttyd's absolute base path must stay on the gateway, including its WebSocket URL.
             if path.startswith('/t') and 'text/html' in ctype:
                 prefix = '/deck/'+identity+'/t/'
@@ -2790,7 +2790,7 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_body(status,payload,ctype)
         except (ValueError,OSError,RuntimeError) as error:
             self.close_connection = True
-            return self.send_json(502, {'error':str(error) if isinstance(error,ValueError) else 'Remote Away Deck is unavailable'})
+            return self.send_json(502, {'error':str(error) if isinstance(error,ValueError) else 'Remote DeckAway is unavailable'})
 
     def proxy_isolated_terminal(self):
         identity, token, path = ISOLATED_ROUTE.match(self.path).groups()
@@ -2824,7 +2824,7 @@ class Handler(BaseHTTPRequestHandler):
             self.wfile.write(payload)
         except (ValueError,OSError,RuntimeError) as error:
             self.close_connection = True
-            return self.send_json(502, {'error':str(error) if isinstance(error,ValueError) else 'Remote Away Deck is unavailable'})
+            return self.send_json(502, {'error':str(error) if isinstance(error,ValueError) else 'Remote DeckAway is unavailable'})
 
     def proxy_remote_terminal(self, identity, path):
         backend, origin, cookie = remote_decks.terminal_socket(identity,self.language())
@@ -2843,7 +2843,7 @@ class Handler(BaseHTTPRequestHandler):
             head, pending = incoming.split(b'\r\n\r\n',1)
             rows = head.decode('latin-1').split('\r\n')
             status = rows[0].split()
-            if len(status) < 2 or status[1] != '101':raise ValueError('Remote terminal rejected the connection; reconnect the Away Deck')
+            if len(status) < 2 or status[1] != '101':raise ValueError('Remote terminal rejected the connection; reconnect the DeckAway')
             allowed = {'upgrade','connection','sec-websocket-accept','sec-websocket-protocol','sec-websocket-extensions'}
             clean = [row for row in rows[1:] if ':' in row and row.split(':',1)[0].lower() in allowed]
             self.connection.sendall(('HTTP/1.1 101 Switching Protocols\r\n'+'\r\n'.join(clean)+'\r\n\r\n').encode('latin-1')+pending)
@@ -2861,7 +2861,7 @@ class Handler(BaseHTTPRequestHandler):
         finally:backend.close()
 
     def docker_tunnel(self):
-        """Raw pipe into this computer's Docker for another Away Deck, only while it is marked for containers."""
+        """Raw pipe into this computer's Docker for another DeckAway, only while it is marked for containers."""
         from integrations.containers import UPGRADE, pump
         self.close_connection = True
         if self.headers.get('Upgrade', '').lower() != UPGRADE or not self.same_origin(required=True):
@@ -3074,7 +3074,7 @@ def keep_sessions_on_oom(home=None, run=subprocess.run):
     units, changed = os.path.join(home or os.path.expanduser("~"), ".config", "systemd", "user"), False
     for folder, section in OOM_DROP_INS:
         path = os.path.join(units, folder, "agent-deck-oom.conf")
-        text = f"# Written by Away Deck: out of memory ends one process, not the tmux session.\n[{section}]\nOOMPolicy=continue\n"
+        text = f"# Written by DeckAway: out of memory ends one process, not the tmux session.\n[{section}]\nOOMPolicy=continue\n"
         try:
             with open(path) as stream:
                 if stream.read() == text:

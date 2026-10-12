@@ -1,4 +1,4 @@
-// Settings cards for LM Studio servers and for other computers running Away Deck. Bundled before app.js.
+// Settings cards for LM Studio servers and for other computers running DeckAway. Bundled before app.js.
 
 /* ---------- local models (LM Studio) ---------- */
 const LM_STATUS={online:["Подключён","ok"],needs_key:["Нужен API-ключ","warn"],offline:["Не отвечает","bad"]};
@@ -113,7 +113,7 @@ function editDeck(deck={}){
   // A computer found on two networks is connected with both addresses; an edited one keeps its own.
   deckExtraUrls=deck.id?null:deck.urls||null;
   $("deck_id").value=deck.id||"";$("deck_name").value=deck.name||"";$("deck_url").value=deck.url||"";syncDeckLanHint();$("deck_username").value=deck.username||"";$("deck_password").value="";
-  $("deck_editor_title").textContent=deck.id?tr("Изменить · {0}",[deck.name]):tr("Подключить другой Away Deck");
+  $("deck_editor_title").textContent=deck.id?tr("Изменить · {0}",[deck.name]):tr("Подключить другой DeckAway");
   $("deck_save").textContent=deck.id?tr("Сохранить"):tr("Подключить");
   $("deck_editor").hidden=false;snapshotEditor($("deck_editor"));
   for(const hidden of $("deck_connections").querySelectorAll(".hub-row[hidden]"))hidden.hidden=false;  // Another computer's row.
@@ -137,7 +137,7 @@ function closeDeckEditor(){
 }
 async function saveDeck(){
   const button=$("deck_save");button.disabled=true;
-  try{await gatewayApi("/api/decks_save",{id:$("deck_id").value||undefined,name:$("deck_name").value.trim(),url:$("deck_url").value.trim(),urls:deckExtraUrls?deckExtraUrls.filter(u=>u!==$("deck_url").value.trim()):undefined,username:$("deck_username").value.trim(),password:$("deck_password").value});closeDeckEditor();await loadDeckSettings();toast(tr("Away Deck подключён"),"success")}
+  try{await gatewayApi("/api/decks_save",{id:$("deck_id").value||undefined,name:$("deck_name").value.trim(),url:$("deck_url").value.trim(),urls:deckExtraUrls?deckExtraUrls.filter(u=>u!==$("deck_url").value.trim()):undefined,username:$("deck_username").value.trim(),password:$("deck_password").value});closeDeckEditor();await loadDeckSettings();toast(tr("DeckAway подключён"),"success")}
   catch(e){$("deck_password").value="";toast(e.message)}finally{button.disabled=false}
 }
 async function removeDeck(deck){

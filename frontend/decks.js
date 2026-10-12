@@ -1,6 +1,6 @@
 function instancePath(identity,path){
   if(!identity)return path;
-  if(!/^[0-9a-f]{24}$/.test(identity))throw new Error('Invalid Away Deck identifier');
+  if(!/^[0-9a-f]{24}$/.test(identity))throw new Error('Invalid DeckAway identifier');
   if(!path.startsWith('/api/')&&!path.startsWith('/t/'))throw new Error('Invalid instance path');
   return '/deck/'+identity+path;
 }

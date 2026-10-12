@@ -1,4 +1,4 @@
-"""Away Deck on an ordinary local network, next to Tailscale.
+"""DeckAway on an ordinary local network, next to Tailscale.
 
 A computer answers on its local address only while its owner switched that on: the connection there is plain
 HTTP. A gateway that reaches a computer on an address other than the one its owner typed first asks it to

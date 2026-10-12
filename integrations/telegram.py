@@ -47,7 +47,7 @@ class API:
                 error.close()
             code = error.code
             message = {401: 'Telegram: неверный токен', 403: 'Telegram: откройте чат с ботом и нажмите Start',
-                       409: 'Telegram: этот бот уже получает обновления на другом Away Deck. Отключите Telegram там и подключите тот Away Deck в «Сеть → Другие Away Deck»: его вопросы придут в этот бот',
+                       409: 'Telegram: этот бот уже получает обновления на другом DeckAway. Отключите Telegram там и подключите тот DeckAway в «Сеть → Другие DeckAway»: его вопросы придут в этот бот',
                        429: 'Telegram: слишком много запросов'}.get(code, 'Telegram: запрос не выполнен')
             raise TelegramError(message, payload.get('parameters', {}).get('retry_after', 5)) from None
         except (OSError, ValueError):
@@ -242,7 +242,7 @@ class Telegram:
         with self.lock:
             if not self.eligible(self.config):
                 return
-        # Connected Away Deck scans take network time; never hold the lock that answers button taps.
+        # Connected DeckAway scans take network time; never hold the lock that answers button taps.
         questions = self.scan()
         with self.lock:
             if not self.eligible(self.config):
@@ -329,7 +329,7 @@ class Telegram:
             self.pair_code = None
             atomic_json(self.path, c)
             self.api.call(c['token'], 'sendMessage', chat_id=chat['id'],
-                          text=self.translate('Away Deck подключён. Вопросы агентов придут сюда с кнопками ответа.'))
+                          text=self.translate('DeckAway подключён. Вопросы агентов придут сюда с кнопками ответа.'))
 
     def handle_callback(self, c, callback):
         if not callback:

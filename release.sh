@@ -17,7 +17,7 @@ if [ "$(cat panel/VERSION)" != "$v" ]; then
     echo "$v" > panel/VERSION
     git add panel/VERSION && git commit -q -m "Release v$v"
 fi
-git tag -a "v$v" -m "Away Deck v$v"
+git tag -a "v$v" -m "DeckAway v$v"
 git push -q origin main "v$v"
-gh release create "v$v" --title "Away Deck v$v" --notes "$notes"
+gh release create "v$v" --title "DeckAway v$v" --notes "$notes"
 echo "released v$v — installs see it within ~6 h; they update with: sudo ./update.sh"

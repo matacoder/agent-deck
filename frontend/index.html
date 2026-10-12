@@ -4,10 +4,10 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content">
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
-<meta name="apple-mobile-web-app-title" content="Away Deck">
+<meta name="apple-mobile-web-app-title" content="DeckAway">
 <meta name="theme-color" content="#252526">
 <link rel="apple-touch-icon" href="/icon-180.png"><link rel="icon" href="/icon-192.png"><link rel="manifest" href="/manifest.webmanifest">
-<title>Away Deck</title>
+<title>DeckAway</title>
 <style>
 __PANEL_STYLE__</style></head><body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -57,7 +57,7 @@ __PANEL_STYLE__</style></head><body>
 <div id="app">
   <aside>
     <div class="resizer" id="side_resizer" role="separator" aria-orientation="vertical" tabindex="0" aria-label="Ширина боковой панели" title="Потяните, чтобы изменить ширину; двойной клик — ширина по умолчанию"></div>
-    <div class="deck-switch" id="deck_switch" hidden><label for="deck_select">Away Deck</label><select id="deck_select" onchange="switchDeck(this.value)"><option value="">Этот компьютер</option></select><button type="button" onclick="openSettings('network')" aria-label="Подключить Away Deck" title="Подключить Away Deck"><svg class="ui-icon"><use href="#i-monitor"/></svg></button></div>
+    <div class="deck-switch" id="deck_switch" hidden><label for="deck_select">DeckAway</label><select id="deck_select" onchange="switchDeck(this.value)"><option value="">Этот компьютер</option></select><button type="button" onclick="openSettings('network')" aria-label="Подключить DeckAway" title="Подключить DeckAway"><svg class="ui-icon"><use href="#i-monitor"/></svg></button></div>
     <div class="srv-row" id="srv_row"><div id="srv"><span class="sk-line srv-skeleton"></span></div><button type="button" id="inbox_btn" class="iconbtn inbox-btn" onclick="openInbox()" title="Ждут ответа" aria-label="Ждут ответа"><svg class="ui-icon"><use href="#i-inbox"/></svg><b id="inbox_count"></b></button></div>
     <div class="side-top">
       <input id="q" class="search" placeholder="Поиск…" aria-label="Поиск…" title="Быстрый переход: ⌥K, Ctrl+K или ⌘K" autocomplete="off" autocapitalize="off" spellcheck="false">
@@ -154,13 +154,13 @@ __PANEL_STYLE__</style></head><body>
       <!-- Computer 1: the gateway -->
       <rect class="a-box host" x="40" y="226" width="280" height="190" rx="12"/>
       <g class="a-ic" transform="translate(56 242)"><rect x="0" y="0" width="22" height="9" rx="2"/><rect x="0" y="12" width="22" height="9" rx="2"/><path d="M4 4.5h1M4 16.5h1M10 4.5h8M10 16.5h8"/></g><text class="a-t" x="88" y="256">Сервер · Великобритания</text><rect class="a-flag" x="278" y="378" width="28" height="18" rx="4"/><text class="a-c mono" x="292" y="391" text-anchor="middle">GB</text>
-      <rect class="a-acc" x="56" y="278" width="248" height="30" rx="7"/><text class="a-c strong" x="180" y="298" text-anchor="middle">Away Deck · шлюз</text>
+      <rect class="a-acc" x="56" y="278" width="248" height="30" rx="7"/><text class="a-c strong" x="180" y="298" text-anchor="middle">DeckAway · шлюз</text>
       <rect class="a-chip" x="56" y="326" width="118" height="24" rx="6"/><text class="a-c" x="115.0" y="342" text-anchor="middle">Claude Code</text><rect class="a-chip" x="186" y="326" width="118" height="24" rx="6"/><text class="a-c" x="245.0" y="342" text-anchor="middle">Codex</text>
       <text class="a-s" x="56" y="392">tmux держит сессии</text>
       <!-- Computer 2 -->
       <rect class="a-box" x="370" y="226" width="280" height="190" rx="12"/>
       <g class="a-ic" transform="translate(385 242)"><rect x="3" y="1" width="18" height="13" rx="2"/><path d="M0 19h24M9 19v-1.5h6V19"/></g><text class="a-t" x="418" y="256">Ноутбук · Германия</text><rect class="a-flag" x="608" y="378" width="28" height="18" rx="4"/><text class="a-c mono" x="622" y="391" text-anchor="middle">DE</text>
-      <rect class="a-acc" x="386" y="278" width="248" height="30" rx="7"/><text class="a-c strong" x="510" y="298" text-anchor="middle">Away Deck</text>
+      <rect class="a-acc" x="386" y="278" width="248" height="30" rx="7"/><text class="a-c strong" x="510" y="298" text-anchor="middle">DeckAway</text>
       <rect class="a-chip" x="386" y="326" width="76" height="24" rx="6"/><text class="a-c" x="424.0" y="342" text-anchor="middle">Claude</text><rect class="a-chip" x="472" y="326" width="76" height="24" rx="6"/><text class="a-c" x="510.0" y="342" text-anchor="middle">Codex</text><rect class="a-chip" x="558" y="326" width="76" height="24" rx="6"/><text class="a-c" x="596.0" y="342" text-anchor="middle">Kimi</text>
       <text class="a-s" x="386" y="392">свои проекты и рабочие деревья</text>
       <path class="a-line" d="M322 293H368" marker-start="url(#a-arrow)" marker-end="url(#a-arrow)"/>
@@ -176,8 +176,8 @@ __PANEL_STYLE__</style></head><body>
       <path class="a-line" d="M652 270H818V176" marker-end="url(#a-arrow)"/><text class="a-s mono" x="826" y="226">HTTPS, исходящие</text>
     </svg></div>
     <p class="arch-note">Tailscale — частная зашифрованная сеть между вашими устройствами: компьютеры видят друг друга, где бы ни находились, а из интернета их не видно.</p>
-    <p class="arch-note">Домен ведёт на один компьютер со шлюзом Away Deck. Остальные компьютеры подключены к нему внутри сети, и все их сессии видны в одном списке.</p>
-    <p class="arch-note">На каждом компьютере свой Away Deck и свои агенты; модели LM Studio может отдавать любой компьютер сети.</p>
+    <p class="arch-note">Домен ведёт на один компьютер со шлюзом DeckAway. Остальные компьютеры подключены к нему внутри сети, и все их сессии видны в одном списке.</p>
+    <p class="arch-note">На каждом компьютере свой DeckAway и свои агенты; модели LM Studio может отдавать любой компьютер сети.</p>
     <h4 class="how-title">Как проверить результат удалённо</h4>
     <ul class="how-list"><li>Агенты присылают скриншоты: картинки открываются прямо в выводе.</li><li>Сайт, который запустил агент, открывается по адресу компьютера в Tailscale.</li><li>Изменения, коммиты, файлы и галерея — в панели справа (на телефоне она выезжает свайпом от правого края или кнопкой справа сверху).</li></ul>
   </div></div></dialog>
@@ -341,7 +341,7 @@ __PANEL_STYLE__</style></head><body>
         <p id="lm_progress" class="hint" role="status"></p><div id="lm_results"></div></div>
     </section>
     <section id="hub_computers" role="tabpanel" aria-labelledby="tab_computers" hidden>
-      <header class="hub-section-head"><h3>Компьютеры</h3><p>Другие компьютеры с Away Deck: их сессии видны в списке, а уведомления и бэкапы работают для всех.</p></header>
+      <header class="hub-section-head"><h3>Компьютеры</h3><p>Другие компьютеры с DeckAway: их сессии видны в списке, а уведомления и бэкапы работают для всех.</p></header>
       <div class="hub-card" data-card="decks">
         <div class="card-top"><span class="card-icon" aria-hidden="true"><svg class="ui-icon"><use href="#i-monitor"/></svg></span><div class="card-main"><h4>Другие компьютеры</h4><p id="deck_summary" class="card-status"></p></div></div>
         <div id="fleet_bar" class="fleet-bar"></div><div id="deck_connections"></div>
@@ -358,7 +358,7 @@ __PANEL_STYLE__</style></head><body>
       <div class="hub-card" id="lan_card" data-card="lan"><h4>Локальная сеть</h4><p class="hint">Компьютер с включённым переключателем отвечает и по адресу обычной локальной сети, без Tailscale. Соединение там не шифруется: включайте только в сети, которой доверяете.</p>
         <div id="lan_machines"></div></div>
       <form id="deck_editor" class="hub-card editor" hidden onsubmit="event.preventDefault();saveDeck()">
-        <h4 id="deck_editor_title">Подключить другой Away Deck</h4>
+        <h4 id="deck_editor_title">Подключить другой DeckAway</h4>
         <input type="hidden" id="deck_id"><label for="deck_name">Название</label><input type="text" id="deck_name" required maxlength="100" autocomplete="off">
         <label for="deck_url">Адрес компьютера</label><input type="url" id="deck_url" required oninput="syncDeckLanHint()" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="http://100.68.39.62:8790">
         <label for="deck_username">Логин панели на том компьютере</label><input type="text" id="deck_username" required autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false">
@@ -375,7 +375,7 @@ __PANEL_STYLE__</style></head><body>
         <div class="acts"><button class="pri" id="network_save">Сохранить</button></div></form>
     </section>
     <section id="hub_backups" role="tabpanel" aria-labelledby="tab_backups" hidden>
-      <header class="hub-section-head"><h3>Бэкапы</h3><p>Настройки Away Deck, ключи интеграций и логины агентов. Копии шифруются кодом восстановления и хранятся на всех подключённых компьютерах. Логин и пароль панели в бэкап не входят.</p></header>
+      <header class="hub-section-head"><h3>Бэкапы</h3><p>Настройки DeckAway, ключи интеграций и логины агентов. Копии шифруются кодом восстановления и хранятся на всех подключённых компьютерах. Логин и пароль панели в бэкап не входят.</p></header>
       <div class="hub-card" data-card="backups">
         <div class="card-top"><span class="card-icon" aria-hidden="true"><svg class="ui-icon"><use href="#i-lock"/></svg></span><div class="card-main"><h4>Бэкап этого компьютера</h4><p id="backup_status" class="card-status" role="status"></p><p id="backup_meta" class="card-meta"></p></div></div>
         <div id="backup_state"></div>

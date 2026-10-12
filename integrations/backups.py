@@ -1,4 +1,4 @@
-"""Encrypted backups of Away Deck settings, integration keys and agent logins.
+"""Encrypted backups of DeckAway settings, integration keys and agent logins.
 
 New backups use AES-256-GCM from `cryptography` (format ADBK2). Files written by 1.5.0 (ADBK1,
 keyed BLAKE2b) remain readable so existing copies can still be restored.
@@ -104,7 +104,7 @@ def seal(key, meta, data):
 
 def read_meta(blob):
     if not isinstance(blob, bytes) or not blob.startswith((MAGIC, LEGACY_MAGIC)) or len(blob) > MAX_SEALED:
-        raise ValueError('Это не файл бэкапа Away Deck')
+        raise ValueError('Это не файл бэкапа DeckAway')
     size = int.from_bytes(blob[len(MAGIC):len(MAGIC) + 4], 'big')
     start = len(MAGIC) + 4
     if size > 4096 or len(blob) < start + size + 12 + 16:
@@ -391,7 +391,7 @@ def remote_json(decks, deck, method, path, body=None):
         data = {}
     if status != 200:
         if status == 404:
-            raise ValueError('Обновите этот Away Deck до версии с бэкапами')
+            raise ValueError('Обновите этот DeckAway до версии с бэкапами')
         raise ValueError(data.get('error') or f'HTTP {status}')
     return data
 

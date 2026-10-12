@@ -1,6 +1,6 @@
 {
-  "name": "Away Deck",
-  "short_name": "Away Deck",
+  "name": "DeckAway",
+  "short_name": "DeckAway",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

@@ -2,6 +2,11 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.46.0 — 2026-10-12
+
+- **Away Deck is now DeckAway.** The name changed in the panel, its 16 languages, the sign-in page, the installed app, Telegram messages, the installers and the documentation. Nothing moves on disk: `/opt/agent-deck`, `~/.config/cc-panel/` and the service names stay. Computers on earlier versions are still found and connected; Docker contexts created as `Away Deck: ...` are still kept in step and removed, new ones are described `DeckAway: ...`.
+- **Pictures on the session screen no longer blink** while the agent's timer runs: the screen was rebuilt on every change of its text, and each thumbnail with it. Thumbnails already drawn are now kept.
+
 ## 1.45.1 — 2026-10-12
 
 - **The bottom of the session list takes less room on a desktop.** Limit rows are lower, a local model is one line (its name, the last answer and the speed), and Settings is a gear in the top row next to the actions and the search instead of a wide button below. A phone keeps its Settings button in the session list.
