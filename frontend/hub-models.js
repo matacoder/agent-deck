@@ -34,7 +34,7 @@ function renderModelCards(){
   if(editorInUse($("lm_editor")))return;
   const selections=new Map([...$("model_cards").querySelectorAll("select")].map(x=>[x.dataset.profile,x.value]));
   const cards=(lmData.profiles||[]).map(p=>lmCard(p,selections.get(p.id)));
-  if(!cards.length&&$("lm_editor").hidden)cards.push(el("p","hub-empty",tr("Серверов пока нет. Добавьте адрес LM Studio или найдите его в Tailscale ниже.")));
+  if(!cards.length&&$("lm_editor").hidden)cards.push(el("p","hub-empty",tr("Серверов пока нет. Добавьте адрес LM Studio или найдите его в сети ниже.")));
   $("model_cards").replaceChildren(...placeEditor(cards,"lm:"+$("lm_id").value,$("lm_editor")));
 }
 async function refreshLMModels(){
@@ -92,17 +92,17 @@ function configureSource(){returnToNew=true;$("dlg").close();openSettings("model
 /* ---------- computers ---------- */
 function renderComputers(data,network){
   syncField($("network_name"),network.name);syncField($("network_public_url"),network.public_url);$("network_isolate").checked=network.isolate_terminals===true;$("show_results").checked=network.show_results!==false;
-  $("network_bind").textContent="http://"+network.bind_host+":"+network.bind_port;
+  $("network_bind").textContent="http://"+network.bind_host+":"+network.bind_port+(network.lan_address?" · http://"+network.lan_address+":"+network.bind_port:"");
   $("network_browser").textContent=location.origin;
   const count=data.decks.length;
   $("deck_summary").textContent=count?tr("Подключено: {0}",[count]):tr("Пока не подключены");
   $("deck_summary").className="card-status "+(count?"ok":"idle");
   $("network_isolate_row").hidden=$("network_isolate_hint").hidden=!count;
-  if($("settings_dlg").open)loadContainers();else renderContainers();
+  if($("settings_dlg").open){loadContainers();loadLan()}else renderContainers();
   renderDeckDiscovery(data.discovery);
   if(editorInUse($("deck_editor")))return;
   const rows=data.decks.map(deck=>{
-    const row=hubRow({title:deck.name,meta:deck.url,status:"…",
+    const row=hubRow({title:deck.name,meta:deckAddresses(deck,tr),status:"…",
       actions:[deck.id===selectedDeck?el("span","card-meta",tr("открыт")):labelledButton(tr("Открыть"),"",()=>switchDeck(deck.id),deck.name),
         moreMenu([[tr("Изменить"),()=>editDeck(deck)],[tr("Отключить"),()=>removeDeck(deck),true]],deck.name)]});
     row.querySelector(".card-status").dataset.deckVersion=deck.id;row.dataset.card="deck:"+deck.id;return row;
@@ -110,7 +110,9 @@ function renderComputers(data,network){
   $("deck_connections").replaceChildren(...placeEditor(rows,"deck:"+$("deck_id").value,$("deck_editor")));
 }
 function editDeck(deck={}){
-  $("deck_id").value=deck.id||"";$("deck_name").value=deck.name||"";$("deck_url").value=deck.url||"";$("deck_username").value=deck.username||"";$("deck_password").value="";
+  // A computer found on two networks is connected with both addresses; an edited one keeps its own.
+  deckExtraUrls=deck.id?null:deck.urls||null;
+  $("deck_id").value=deck.id||"";$("deck_name").value=deck.name||"";$("deck_url").value=deck.url||"";syncDeckLanHint();$("deck_username").value=deck.username||"";$("deck_password").value="";
   $("deck_editor_title").textContent=deck.id?tr("Изменить · {0}",[deck.name]):tr("Подключить другой Away Deck");
   $("deck_save").textContent=deck.id?tr("Сохранить"):tr("Подключить");
   $("deck_editor").hidden=false;snapshotEditor($("deck_editor"));
@@ -119,6 +121,11 @@ function editDeck(deck={}){
   if(row){row.hidden=true;row.after($("deck_editor"))}else $("deck_connections").prepend($("deck_editor"));
   $("deck_editor").scrollIntoView({block:"nearest"});
   if(!isMobile()&&lastPointer!=="touch")$(deck.url?"deck_username":"deck_name").focus({preventScroll:true});
+}
+let deckExtraUrls=null;
+function syncDeckLanHint(){
+  let host="";try{host=new URL($("deck_url").value.trim()).hostname}catch(e){}
+  $("deck_lan_hint").hidden=!isLanHost(host);
 }
 function closeDeckEditor(){
   const key=$("deck_id").value;
@@ -130,7 +137,7 @@ function closeDeckEditor(){
 }
 async function saveDeck(){
   const button=$("deck_save");button.disabled=true;
-  try{await gatewayApi("/api/decks_save",{id:$("deck_id").value||undefined,name:$("deck_name").value.trim(),url:$("deck_url").value.trim(),username:$("deck_username").value.trim(),password:$("deck_password").value});closeDeckEditor();await loadDeckSettings();toast(tr("Away Deck подключён"),"success")}
+  try{await gatewayApi("/api/decks_save",{id:$("deck_id").value||undefined,name:$("deck_name").value.trim(),url:$("deck_url").value.trim(),urls:deckExtraUrls?deckExtraUrls.filter(u=>u!==$("deck_url").value.trim()):undefined,username:$("deck_username").value.trim(),password:$("deck_password").value});closeDeckEditor();await loadDeckSettings();toast(tr("Away Deck подключён"),"success")}
   catch(e){$("deck_password").value="";toast(e.message)}finally{button.disabled=false}
 }
 async function removeDeck(deck){
@@ -143,7 +150,7 @@ function renderDeckDiscovery(discovery){
   $("deck_discovery_results").replaceChildren(...(discovery.results||[]).map(found=>{
     // The same machine may be connected under another name; the address tells them apart.
     const known=deckDirectory.decks.find(d=>deckAddress(d.url)===deckAddress(found.url));
-    if(!known)return hubRow({title:found.name,meta:found.url,actions:[labelledButton(tr("Подключить"),"",()=>editDeck(found),found.name)]});
+    if(!known)return hubRow({title:found.name,meta:deckAddresses(found,tr),actions:[labelledButton(tr("Подключить"),"",()=>editDeck(found),found.name)]});
     const status=known.name===found.name?tr("Подключено"):tr("Подключено как «{0}»",[known.name]);
     return hubRow({title:found.name,meta:found.url,status,tone:"ok",
       actions:[known.id===selectedDeck?el("span","card-meta",tr("открыт")):labelledButton(tr("Открыть"),"",()=>switchDeck(known.id),known.name)]});

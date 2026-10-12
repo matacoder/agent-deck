@@ -1,4 +1,4 @@
-"""Private LM Studio profiles and bounded discovery of known Tailscale peers."""
+"""Private LM Studio profiles and bounded discovery: known Tailscale peers and the local network."""
 import concurrent.futures
 import copy
 import http.client
@@ -9,10 +9,13 @@ from pathlib import Path
 import secrets
 from .names import unique_name
 import shutil
+import socket
 import subprocess
 import threading
 import time
 from urllib.parse import urlsplit
+from . import lan
+from .lan import is_lan, neighbours
 from .relay import IDENTITY, private_write, read_json
 
 
@@ -84,7 +87,7 @@ METRICS = ('tokens_per_second', 'time_to_first_token_seconds', 'input_tokens', '
 
 
 class LMStudio:
-    def __init__(self, directory):
+    def __init__(self, directory, local_address=lambda: lan.lan_address()):
         self.directory = Path(directory)
         self.path = self.directory / 'lmstudio.json'
         if self.directory.is_symlink() or self.path.is_symlink():
@@ -93,6 +96,7 @@ class LMStudio:
         self.profiles = read_json(self.path, {})
         self.job = {'phase': 'idle', 'results': [], 'checked': 0, 'total': 0, 'error': ''}
         self.cancel = threading.Event()
+        self.local_address = local_address
 
     def public(self, profile):
         return copy.deepcopy({k: v for k, v in profile.items() if k != 'key'}) | {'key_saved': bool(profile.get('key'))}
@@ -224,6 +228,24 @@ class LMStudio:
             result = {'ok': False, 'error': 'Benchmark unavailable; requires native LM Studio chat statistics'}
         return {'profile': self.public(self.get(p['id'])), 'result': result}
 
+    def merge_local(self, ports):
+        """One row per server: a machine found both over Tailscale and in the local network keeps its
+        Tailscale row; one found only locally gets its Tailscale name when Tailscale knows it."""
+        try:
+            names = self.local_names(self.tailscale_nodes(), self.local_address())  # Read again: probing made the direct paths.
+        except (OSError, subprocess.SubprocessError, ValueError, TypeError, AttributeError):
+            names = {}
+        with self.lock:
+            over_tailscale = {(row['name'], urlsplit(row['url']).port) for row in self.job['results'] if not is_lan(urlsplit(row['url']).hostname)}
+            kept = []
+            for row in self.job['results']:
+                parsed = urlsplit(row['url'])
+                name = names.get(parsed.hostname) if is_lan(parsed.hostname) else None
+                if name and (name, parsed.port) in over_tailscale:
+                    continue
+                kept.append({**row, 'name': name} if name else row)
+            self.job['results'] = kept
+
     def discover(self, data):
         if data.get('cancel') is True:
             self.cancel.set()
@@ -239,34 +261,79 @@ class LMStudio:
         threading.Thread(target=self._discover, args=(list(dict.fromkeys(ports)),), daemon=True).start()
         return self.status()['discovery']
 
+    def tailscale_nodes(self):
+        binary = shutil.which('tailscale')
+        mac = Path('/Applications/Tailscale.app/Contents/MacOS/Tailscale')
+        binary = binary or (str(mac) if mac.is_file() else None)
+        if not binary:
+            raise ValueError('Tailscale is not installed')
+        result = subprocess.run([binary, 'status', '--json'], capture_output=True, text=True, timeout=5, check=True)
+        nodes = json.loads(result.stdout)
+        return [nodes.get('Self', {})] + list((nodes.get('Peer') or {}).values())
+
+    @staticmethod
+    def tailscale_targets(nodes, ports):
+        targets, seen = [], set()
+        for node in nodes:
+            if node.get('Online') is False:
+                continue
+            for raw in node.get('TailscaleIPs', []):
+                try:
+                    ip = ipaddress.ip_address(raw)
+                    if ip not in ipaddress.ip_network('100.64.0.0/10') and ip not in ipaddress.ip_network('fd7a:115c:a1e0::/48'):
+                        continue
+                except ValueError:
+                    continue
+                if str(ip) in seen:
+                    continue
+                seen.add(str(ip))
+                host = '[' + str(ip) + ']' if ip.version == 6 else str(ip)
+                targets.extend((str(node.get('HostName') or node.get('DNSName') or ip)[:100], 'http://' + host + ':' + str(port)) for port in ports)
+                break
+            if len(seen) >= 128:
+                break
+        return targets
+
+    @staticmethod
+    def local_names(nodes, own):
+        """Local address -> Tailscale name of the same machine: Tailscale reports where it reaches a peer
+        directly, and a peer in our network is reached at its local address."""
+        names = {}
+        for index, node in enumerate(nodes):
+            name = str(node.get('HostName') or node.get('DNSName') or '')[:100]
+            direct = str(node.get('CurAddr') or '').rsplit(':', 1)[0]
+            for address in ([own] if index == 0 and own else []) + [direct]:
+                if name and is_lan(address):
+                    names[address] = name
+        return names
+
+    def local_targets(self, ports, pool):
+        """Machines of the local network with one of the ports open; nothing else there is asked for models."""
+        own = self.local_address()
+        if not own:
+            return []
+        pairs = [(address, port) for port in ports for address in neighbours(own) + [own]]
+        def is_open(pair):
+            if self.cancel.is_set():
+                return False
+            try:
+                socket.create_connection(pair, timeout=0.4).close()
+                return True
+            except OSError:
+                return False
+        return [(address, f'http://{address}:{port}') for (address, port), found in zip(pairs, pool.map(is_open, pairs)) if found]
+
     def _discover(self, ports):
         try:
-            binary = shutil.which('tailscale')
-            mac = Path('/Applications/Tailscale.app/Contents/MacOS/Tailscale')
-            binary = binary or (str(mac) if mac.is_file() else None)
-            if not binary:
-                raise ValueError('Tailscale is not installed')
-            result = subprocess.run([binary, 'status', '--json'], capture_output=True, text=True, timeout=5, check=True)
-            nodes = json.loads(result.stdout)
-            targets, seen = [], set()
-            for node in [nodes.get('Self', {})] + list((nodes.get('Peer') or {}).values()):
-                if node.get('Online') is False:
-                    continue
-                for raw in node.get('TailscaleIPs', []):
-                    try:
-                        ip = ipaddress.ip_address(raw)
-                        if ip not in ipaddress.ip_network('100.64.0.0/10') and ip not in ipaddress.ip_network('fd7a:115c:a1e0::/48'):
-                            continue
-                    except ValueError:
-                        continue
-                    if str(ip) in seen:
-                        continue
-                    seen.add(str(ip))
-                    host = '[' + str(ip) + ']' if ip.version == 6 else str(ip)
-                    targets.extend((str(node.get('HostName') or node.get('DNSName') or ip)[:100], 'http://' + host + ':' + str(port)) for port in ports)
-                    break
-                if len(seen) >= 128:
-                    break
+            try:
+                nodes = self.tailscale_nodes()
+            except (OSError, subprocess.SubprocessError, ValueError, TypeError, AttributeError):
+                nodes = None  # A computer without Tailscale still has its local network.
+            with concurrent.futures.ThreadPoolExecutor(max_workers=64) as pool:
+                local = self.local_targets(ports, pool)
+            if nodes is None and not self.local_address():
+                raise ValueError('No network to search')
+            targets = self.tailscale_targets(nodes or [], ports) + local
             with self.lock:
                 self.job['total'] = len(targets)
             deadline = time.monotonic() + 30
@@ -287,10 +354,11 @@ class LMStudio:
                             self.job['checked'] += 1
                         if found:
                             self.job['results'].append(found)
+            self.merge_local(ports)
             with self.lock:
                 self.job['phase'] = 'cancelled' if self.cancel.is_set() else 'error' if self.job['checked'] < self.job['total'] else 'done'
                 if self.job['phase'] == 'error':
                     self.job['error'] = 'Discovery timed out; some nodes were not checked'
         except Exception:
             with self.lock:
-                self.job.update(phase='error', error='Could not read Tailscale peers')
+                self.job.update(phase='error', error='Could not search: neither Tailscale nor a local network was found')

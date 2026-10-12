@@ -257,6 +257,14 @@ body.is-codex .question-key{display:inline-flex!important;align-items:center;jus
 .quick-prompts{display:flex;gap:6px;overflow-x:auto;padding-bottom:8px;scrollbar-width:none}
 .quick-prompts::-webkit-scrollbar{display:none}
 .quick-prompts[hidden]{display:none}
+/* A wide window: the keys and the quick prompts share one row instead of two half-empty ones. */
+@media (min-width:761px){
+  .composer{display:flex;flex-wrap:wrap;align-items:flex-start;column-gap:10px}
+  .composer>*{flex:0 0 100%;min-width:0}
+  .composer>#screen_keys{flex:0 1 auto;max-width:100%}
+  .composer>.quick-prompts{flex:1 1 0}
+  .composer>[hidden]{display:none}
+}
 .quick-chip{flex:none;max-width:220px;height:32px;padding:0 12px;border:1px solid var(--bd);border-radius:16px;background:var(--side2);color:var(--fg);font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 @media (hover:hover){.quick-chip:hover{border-color:var(--bd-strong);background:var(--sel)}}
 .quick-chip:active{transform:scale(.97)}
@@ -770,7 +778,9 @@ body.resizing iframe{pointer-events:none}
 .ctx-age{flex:none;display:flex;align-items:center;gap:4px;margin-right:6px;color:var(--dim)}
 .ctx-age .ui-icon{width:13px;height:13px}
 /* Second line of the status bar: the computer the session runs on, and the one that runs its containers. */
-.session-where{flex:0 0 100%;display:flex;align-items:center;justify-content:space-between;gap:16px;min-width:0;padding:0 0 4px 6px;font-size:12px;color:var(--dim)}
+/* A wide window has room for both names beside the context; a phone gives them their own line. */
+.session-where{display:contents;font-size:12px;color:var(--dim)}
+#session_computer_box{order:1;margin-left:6px}.session-meta .ctx{order:2}.session-meta .where-containers{order:3;margin-left:6px}
 .session-where[hidden],.where-item[hidden]{display:none}
 .where-item{position:relative;min-width:0;display:flex;align-items:center;gap:6px;min-height:24px}
 .where-item .ui-icon{flex:none;width:14px;height:14px}
@@ -865,7 +875,7 @@ body.resizing iframe{pointer-events:none}
   body.keyboard-open #session_meta,body.keyboard-open .composer-status,body.keyboard-open #hint_more{display:none!important}
   .session-meta{padding:2px 14px max(2px,var(--sab)) 8px}
   /* The two names sit beside the home indicator, clear of the rounded corners, instead of adding a line above it. */
-  .session-meta:has(.session-where:not([hidden])){padding-bottom:max(2px,calc(var(--sab) - 20px))}.session-where{padding:0 8px 4px 14px}.session-meta .iconbtn{width:var(--tap);height:var(--tap)}
+  .session-meta:has(.session-where:not([hidden])){padding-bottom:max(2px,calc(var(--sab) - 20px))}.session-where{flex:0 0 100%;order:1;display:flex;align-items:center;justify-content:space-between;gap:16px;min-width:0;padding:0 8px 4px 14px}.session-meta .ctx{order:0}#session_computer_box,.session-meta .where-containers{margin-left:0}.session-meta .where-containers{margin-left:auto}.session-meta .iconbtn{width:var(--tap);height:var(--tap)}
   main:has(#session_meta:not([hidden])) .composer{padding-bottom:8px}
   body.keyboard-open .composer{padding-bottom:8px}
   body.keyboard-open .bar{height:calc(48px + var(--sat));padding-top:calc(var(--sat) + 4px)}

@@ -117,7 +117,7 @@ project_directory = ProjectDirectory(os.path.expanduser('~'), PROJECTS)
 network_settings = NetworkSettings(os.path.expanduser('~'))
 _decks_dir = os.path.expanduser('~/.config/cc-panel/integrations')
 try:
-    remote_decks = RemoteDecks(_decks_dir, f'http://{BIND_HOST}:{BIND_PORT}')
+    remote_decks = RemoteDecks(_decks_dir, f'http://{BIND_HOST}:{BIND_PORT}', lambda: own_instance())
 except (OSError, ValueError) as _error:
     # A broken connection list must not take the whole panel down; the file is left untouched.
     _decks_message = (f'Away Deck connections are disabled: {os.path.join(_decks_dir, "decks.json")} '
@@ -126,6 +126,7 @@ except (OSError, ValueError) as _error:
     print(_decks_message, flush=True)
     remote_decks = UnavailableDecks(_decks_message)
 from integrations.gateway import Gateway
+from integrations import lan
 from integrations import usage as usage_limits
 gateway = Gateway(lambda: remote_decks)  # Looked up on each call: the service can be replaced.
 
@@ -1309,7 +1310,9 @@ ACTIONS = {
     'decks_save': lambda d: {'deck':remote_decks.save(d)},
     'decks_remove': lambda d: remote_decks.remove(d.get('id')),
     'decks_discover': lambda d: {'discovery':remote_decks.discover(d.get('port',8790))},
-    'network_save': lambda d: {'network':network_settings.save(d)},
+    'network_save': lambda d: action_network_save(d),
+    'pair': lambda d: action_pair(d),
+    'lan_save': lambda d: action_lan_save(d),
     'rename': action_rename,
     'project_directory': lambda d: {'directory': project_directory.save(d.get('directory'))},
     'lm_save': action_lm_save,
@@ -1608,6 +1611,63 @@ def telegram_finished():
 _backups = None
 _backups_lock = threading.Lock()
 backup_run_lock = threading.Lock()
+
+
+def own_instance():
+    """This installation's id: how a gateway tells one computer seen on two networks from two computers."""
+    try:
+        return backup_service().instance_id()
+    except (ImportError, OSError, ValueError):
+        return ''
+
+
+pairs = lan.Pairs(os.path.expanduser('~/.config/cc-panel/pairs.json'))
+
+
+def action_pair(d):
+    return {**pairs.create(), 'instance': own_instance()}
+
+
+def serve_lan(address):
+    server = PanelHTTPServer((address, BIND_PORT), Handler)
+    server.daemon_threads = True
+    server.lan = True
+    return server
+
+
+lan_listener = lan.Listener(lambda: network_settings.get().get('lan') is True, serve_lan, BIND_HOST)
+
+
+def action_network_save(d):
+    saved = network_settings.save(d)
+    lan_listener.sync()  # The switch acts at once, not at the next check.
+    return {'network': saved}
+
+
+def lan_status():
+    if lan.is_lan(BIND_HOST):
+        # Installed without Tailscale: the local address is the panel's only one, so there is nothing to switch.
+        return {'lan': True, 'lan_address': BIND_HOST, 'lan_found': BIND_HOST, 'port': BIND_PORT, 'fixed': True}
+    return {'lan': network_settings.get().get('lan') is True, 'lan_address': lan_listener.status(),
+            'lan_found': None if BIND_HOST in ('0.0.0.0', '::') else lan.lan_address(), 'port': BIND_PORT}
+
+
+def action_lan_save(d):
+    """Only the switch, so a gateway can set it on a connected computer without touching its other settings."""
+    if lan.is_lan(BIND_HOST):
+        raise ValueError('This computer was installed on its local network address; reinstall it with another BIND_HOST to change that')
+    current = network_settings.get()
+    network_settings.save({**current, 'name': current['name'] or socket.gethostname(), 'lan': d.get('enabled')})
+    lan_listener.sync()
+    return lan_status()
+
+
+def network_status():
+    value = network_settings.get()
+    everywhere = BIND_HOST in ('0.0.0.0', '::')
+    return {**value, 'name': value['name'] or socket.gethostname(), 'bind_host': BIND_HOST, 'bind_port': BIND_PORT,
+            # Where the panel answers in the local network now, and where it would if switched on.
+            'lan_address': lan_listener.status(), 'lan_found': None if everywhere else lan.lan_address()}
 
 
 def backup_service():
@@ -2126,6 +2186,9 @@ class Handler(BaseHTTPRequestHandler):
             addr = ipaddress.ip_address(self.client_address[0])
         except ValueError:
             return False
+        if getattr(getattr(self, 'server', None), 'lan', False):
+            # Every local network client has a private address: there it is a stranger, not our proxy.
+            return False
         # a proxy on this host (Caddy) connects from our own Tailscale address; tailnet peers have other IPs
         return any(addr in net for net in TRUSTED_PROXIES) or self.client_address[0] == BIND_HOST
 
@@ -2238,6 +2301,54 @@ class Handler(BaseHTTPRequestHandler):
                 failed_logins[ip] = (count - 1, last)
         secure = "; Secure" if self.is_https() else ""
         self.redirect("/", f"{COOKIE}={make_token()}; Path=/; Max-Age={COOKIE_DAYS * 86400}; HttpOnly; SameSite=Lax{secure}")
+
+    def pair_challenge(self):
+        query = parse_qs(urlsplit(self.path).query)
+        identity, nonce = query.get('id', [''])[0], query.get('nonce', [''])[0]
+        answer = pairs.challenge(identity, nonce) if re.fullmatch(lan.KEY_ID, identity) and re.fullmatch(lan.NONCE, nonce) else None
+        return self.send_json(200, answer) if answer else self.send_json(404, {'error': 'unknown pair key'})
+
+    def pair_login(self):
+        """A gateway signs in with the key it got over an earlier signed-in connection instead of the password."""
+        ip = self.client_ip()
+        try:
+            length = int(self.headers.get('Content-Length') or 0)
+        except ValueError:
+            length = -1
+        if not self.same_origin() or not 0 <= length <= 1000:
+            self.close_connection = True
+            return self.send_json(403, {'error': 'неверный источник запроса'})
+        with login_lock:
+            now = time.time()
+            for old_ip, (_, timestamp) in list(failed_logins.items()):
+                if now - timestamp >= 60:
+                    failed_logins.pop(old_ip, None)
+            count, _ = failed_logins.get(ip, (0, 0))
+            if count >= 5 or sum(value[0] for value in failed_logins.values()) >= 100:
+                self.close_connection = True
+                return self.send_json(429, {'error': 'Слишком много попыток. Подождите минуту.'})
+            failed_logins[ip] = (count + 1, now)
+        try:
+            data = json.loads(self.read_body(length))
+            ok = (isinstance(data, dict) and all(isinstance(data.get(k), str) for k in ('id', 'nonce', 'proof'))
+                  and pairs.accept(data['id'], data['nonce'], data['proof']))
+        except ValueError:
+            ok = False
+        if not ok:
+            return self.send_json(401, {'error': 'login required'})
+        with login_lock:
+            count, last = failed_logins.get(ip, (1, time.time()))
+            if count <= 1:
+                failed_logins.pop(ip, None)
+            else:
+                failed_logins[ip] = (count - 1, last)
+        body = b'{"ok": true}'
+        self.send_response(200)
+        self.send_header('Content-Type', 'application/json')
+        self.send_header('Content-Length', str(len(body)))
+        self.send_header('Set-Cookie', f'{COOKIE}={make_token()}; Path=/; Max-Age={COOKIE_DAYS * 86400}; HttpOnly; SameSite=Lax')
+        self.end_headers()
+        self.wfile.write(body)
 
     def upload_raw(self):
         global actions_in_progress
@@ -2420,6 +2531,11 @@ class Handler(BaseHTTPRequestHandler):
             return self.serve_service_worker()
         if self.path == "/login":
             return self.login_page()
+        if self.path == '/api/hello' and 'X-Forwarded-For' not in self.headers:  # Not through a public domain's proxy.
+            # What a search of the network may know without signing in: that this is a panel, and which one.
+            return self.send_json(200, {'app': 'away-deck', 'id': own_instance(), 'name': network_status()['name']})
+        if self.path.startswith('/api/pair_challenge?'):
+            return self.pair_challenge()
         if ISOLATED_ROUTE.match(self.path):
             return self.proxy_isolated_terminal()  # Authorized by its signed path, not by the cookie.
         if not self.authorized():
@@ -2429,8 +2545,9 @@ class Handler(BaseHTTPRequestHandler):
         if self.path == '/api/decks':
             return self.send_json(200, remote_decks.status())
         if self.path == '/api/network':
-            value = network_settings.get()
-            return self.send_json(200, {**value, 'name':value['name'] or socket.gethostname(), 'bind_host':BIND_HOST, 'bind_port':BIND_PORT})
+            return self.send_json(200, network_status())
+        if self.path == '/api/lan':
+            return self.send_json(200, lan_status())
         if self.path.startswith("/t/") or self.path == "/t":
             return self.proxy_tty()
         if self.path == "/api/docker_tunnel":
@@ -2552,6 +2669,8 @@ class Handler(BaseHTTPRequestHandler):
         global actions_in_progress
         if self.path == "/login":
             return self.do_login()
+        if self.path == '/api/pair_login':
+            return self.pair_login()
         if self.path == "/logout":
             if not self.same_origin():
                 self.close_connection = True
@@ -3006,6 +3125,7 @@ def main():
             telegram_service().start()
         except (OSError, ValueError):
             print('Telegram integration settings could not be loaded', flush=True)
+    lan_listener.start()  # A second door on the local network, only while its switch is on.
     httpd = PanelHTTPServer((BIND_HOST, BIND_PORT), Handler)
     httpd.daemon_threads = True
     print(f"cc-panel on http://{BIND_HOST}:{BIND_PORT}", flush=True)

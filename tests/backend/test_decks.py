@@ -58,7 +58,8 @@ class RemoteDeckTests(PanelCase):
 
     def test_only_tailnet_ip_origins_and_deck_paths_are_allowed(self):
         self.assertEqual(deck_url(URL+'/'),URL)
-        for invalid in ('http://127.0.0.1:8790','http://192.168.1.1','http://example.com','http://100.68.39.62/path',URL+'?a=b',URL+'#x','http://user:pass@100.68.39.62','file:///tmp/x','https://100.68.39.62:8790'):
+        self.assertEqual(deck_url('http://192.168.1.20:8790'),'http://192.168.1.20:8790')  # The local network.
+        for invalid in ('http://127.0.0.1:8790','http://8.8.8.8:8790','http://169.254.1.1','http://example.com','http://100.68.39.62/path',URL+'?a=b',URL+'#x','http://user:pass@100.68.39.62','file:///tmp/x','https://100.68.39.62:8790'):
             with self.subTest(url=invalid), self.assertRaises(ValueError):deck_url(invalid)
         for path in ('/api/sessions?preview=demo','/api/github/repos?refresh=1','/t/ws','/t/?arg=%3Dcc-demo'):
             self.assertEqual(remote_path(path),path)
@@ -68,7 +69,7 @@ class RemoteDeckTests(PanelCase):
         self.transport.assert_not_called()
 
     def test_successful_connection_stores_credentials_privately_without_exposing_them(self):
-        self.transport.side_effect = [(303,{'Set-Cookie':'cc_auth=signed.cookie; HttpOnly','Location':'/'},b''),(200,{},b'{"version":"1.0.7"}')]
+        self.transport.side_effect = [(303,{'Set-Cookie':'cc_auth=signed.cookie; HttpOnly','Location':'/'},b''),(200,{},b'{"version":"1.0.7"}'),(404,{},b'{}')]
         public = self.decks.save(PROFILE)
         self.assertEqual(public, {k:PROFILE[k] for k in ('id','name','url','username')})
         self.assertNotIn('password',json.dumps(self.decks.status()))
@@ -138,7 +139,7 @@ class RemoteDeckTests(PanelCase):
     def test_network_settings_persist_privately_and_reject_credential_urls(self):
         settings = NetworkSettings(self.home)
         value = settings.save({'name':'Main server','public_url':'https://deck.example.com/'})
-        self.assertEqual(value, {'name':'Main server','public_url':'https://deck.example.com','isolate_terminals':False,'show_results':True})
+        self.assertEqual(value, {'name':'Main server','public_url':'https://deck.example.com','isolate_terminals':False,'show_results':True,'lan':False})
         self.assertEqual(NetworkSettings(self.home).get(), value)
         self.assertEqual(settings.path.stat().st_mode & 0o777, 0o600)
         for url in ('https://user:secret@deck.example.com','https://deck.example.com/path','https://deck.example.com?secret=x','javascript:alert(1)','https://deck.example.com:wrong'):
@@ -343,7 +344,7 @@ class RemoteDeckTests(PanelCase):
                 if content is not None:self.assertEqual(path.read_text(),content)
 
     def test_parallel_requests_share_one_login(self):
-        def login(profile):
+        def login(profile, url=None):
             time.sleep(.1)
             return 'cc_auth=fresh'
         login_mock=self.enterContext(patch.object(self.decks,'login',side_effect=login))

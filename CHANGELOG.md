@@ -2,6 +2,15 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.44.0 — 2026-10-12
+
+- **Works in an ordinary local network, next to Tailscale.** **Settings → Computers → Local network** has a switch per computer: when on, the panel also answers at the computer's local address (`192.168.x`, `10.x`, `172.16–31.x`). It is off by default and asks first, because the connection there is plain HTTP. The gateway can switch it for every connected computer.
+- **One computer, several addresses.** **Find on the network** searches Tailscale peers and the local network (the `/24` around the gateway) and shows a computer seen in both as one row. A connected computer is reached over Tailscale first and over the local network when Tailscale does not answer; its row says which is in use. Connections accept local addresses, so computers without Tailscale can be connected.
+- **A password never follows an address into another network.** The saved password is sent by itself only to the Tailscale address you entered. Any other address first proves a key the two panels agreed on while signed in; a foreign machine holding the same local address gets neither the password nor the cookie.
+- **LM Studio is searched in the local network too**; a server found over Tailscale and locally is listed once.
+- **Wide windows lose two rows.** The keys and the quick prompts share one row, and the computer and container names sit on the line of the context instead of below it. Phones are unchanged.
+- Computers before this version keep working over Tailscale; they get a local address after they are updated.
+
 ## 1.43.2 — 2026-10-12
 
 - **The bottom line changes after a restart.** It was drawn only when a session was opened, so a session moved to another computer's Docker kept showing the old name until the page was reloaded.

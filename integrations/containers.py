@@ -325,7 +325,11 @@ class Containers:
             profile, cookie = self.decks().authentication(identity, 'en', stale)
             stale = cookie.split('; cc_lang=', 1)[0]
             target = urlsplit(profile['url'])
-            link = socket.create_connection((target.hostname, target.port or 80), timeout=10)
+            try:
+                link = socket.create_connection((target.hostname, target.port or 80), timeout=10)
+            except OSError:
+                self.decks().fail(identity, profile['url'])  # Its other address, if it has one, is tried next.
+                raise
             try:
                 link.sendall('\r\n'.join([f'GET {TUNNEL} HTTP/1.1', 'Host: ' + target.netloc, 'Origin: ' + profile['url'],
                                           'Cookie: ' + cookie, 'Connection: Upgrade', 'Upgrade: ' + UPGRADE,

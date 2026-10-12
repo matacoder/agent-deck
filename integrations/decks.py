@@ -1,4 +1,8 @@
-"""Authenticated Away Deck connections over known numeric Tailscale addresses."""
+"""Authenticated Away Deck connections over known numeric addresses: Tailscale, or the local network.
+
+A connection may know several addresses of one computer. The saved password goes by itself only to the
+Tailscale address its owner entered; every other address must first prove the key agreed at sign-in
+(`lan.py`), so a local address that belongs to someone else in another network gets nothing."""
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import copy
 import http.client
@@ -15,28 +19,39 @@ import threading
 from pathlib import Path
 from urllib.parse import parse_qsl, urlencode, urlsplit, unquote
 
+from . import lan
+from .lan import NONCE, deck_proof, gateway_proof, is_lan, is_tailnet, neighbours
 from .names import unique_name
 from .relay import private_write, read_json
 
 PUBLIC = ('id', 'name', 'url', 'username')
 IDENTITY = re.compile(r'[0-9a-f]{24}\Z')
 TAILNET = ipaddress.ip_network('100.64.0.0/10')
+MAX_ADDRESSES = 4
+CONNECT_TIMEOUT = 4   # A sleeping address must not hold a request for the whole read timeout.
+RETRY_AFTER = 60      # An address that did not answer is left alone this long while another one works.
+BAD_URL = ('Use an http:// URL with a Tailscale or local network IPv4 address and port; '
+           'https:// is not supported for bare addresses')
+
+
+class Unreachable(OSError):
+    """Nothing was sent: the address did not accept the connection, so another one may be tried."""
 
 
 def deck_url(raw):
     if not isinstance(raw, str):
-        raise ValueError('Enter the Away Deck Tailscale URL')
+        raise ValueError('Enter the Away Deck URL')
     try:
         parsed = urlsplit(raw.strip())
         address = ipaddress.ip_address(parsed.hostname or '')
         port = parsed.port or 80
         # HTTPS cannot work: certificates do not cover bare IPs, and Tailscale already encrypts.
-        if (parsed.scheme != 'http' or address.version != 4 or address not in TAILNET
+        if (parsed.scheme != 'http' or address.version != 4 or not (address in TAILNET or is_lan(str(address)))
                 or parsed.username or parsed.password or parsed.query or parsed.fragment or parsed.path not in ('', '/')
                 or not 1 <= port <= 65535):
             raise ValueError()
     except ValueError:
-        raise ValueError('Use an http:// URL with a Tailscale IPv4 address and port; Tailscale already encrypts the connection, so https:// is not supported') from None
+        raise ValueError(BAD_URL) from None
     return f'{parsed.scheme}://{address}:{port}'
 
 
@@ -72,8 +87,13 @@ POLL_LIMIT = 8 * 1024 * 1024
 def http_request(url, method, path, body=None, headers=None, timeout=30, limit=300*1024*1024):
     """No redirects, environment proxies, DNS targets or credential-bearing exceptions."""
     parsed = urlsplit(url)
-    connection = http.client.HTTPConnection(parsed.hostname, parsed.port, timeout=timeout)
+    connection = http.client.HTTPConnection(parsed.hostname, parsed.port, timeout=min(timeout, CONNECT_TIMEOUT))
     try:
+        try:
+            connection.connect()
+        except OSError as error:
+            raise Unreachable(str(error)) from None
+        connection.sock.settimeout(timeout)
         connection.request(method, path, body=body, headers=headers or {})
         response = connection.getresponse()
         # The socket timeout is per read: a deck trickling bytes would hold the caller (and the
@@ -110,10 +130,15 @@ class LimitedReader:
 
 
 class RemoteDecks:
-    def __init__(self, directory, local_url):
+    def __init__(self, directory, local_url, instance=lambda: '', local_address=lambda: lan.lan_address()):
         self.directory = Path(directory)
         self.path = self.directory / 'decks.json'
         self.local_url = local_url
+        self.instance, self.local_address = instance, local_address
+        self.proven = {}    # deck -> addresses that proved the pair key since they last failed
+        self.down = {}      # (deck, address) -> when it may be tried again
+        self.routes = {}    # deck -> address of its last answered request
+        self.unpaired = set()  # Decks before pairing existed: asked once per run, not on every sign-in.
         self.lock = threading.RLock()
         if self.directory.is_symlink() or self.path.is_symlink():
             raise ValueError('Deck configuration must not be a symlink')
@@ -127,8 +152,30 @@ class RemoteDecks:
 
     def status(self):
         with self.lock:
-            return {'decks': [{k: p[k] for k in PUBLIC} for p in self.profiles.values()],
-                    'discovery': copy.deepcopy(self.discovery)}
+            decks = []
+            for p in self.profiles.values():
+                urls = self.addresses(p)
+                route = self.routes.get(p['id'], urls[0])
+                decks.append({**{k: p[k] for k in PUBLIC}, 'urls': urls, 'route': route if route in urls else urls[0]})
+            return {'decks': decks, 'discovery': copy.deepcopy(self.discovery)}
+
+    @staticmethod
+    def addresses(profile):
+        """Every known address: Tailscale first (encrypted), the local network as the other way in."""
+        urls = [profile['url']] + [u for u in profile.get('urls', []) if u != profile['url']]
+        return sorted(urls, key=lambda url: not is_tailnet(urlsplit(url).hostname))
+
+    def candidates(self, profile):
+        urls, now = self.addresses(profile), time.monotonic()
+        with self.lock:
+            up = [u for u in urls if self.down.get((profile['id'], u), 0) <= now]
+        return up or urls  # All marked: try them anyway, a single address behaves as it always did.
+
+    def fail(self, identity, url):
+        """This address did not answer or did not prove itself: use another one for a while."""
+        with self.lock:
+            self.down[(identity, url)] = time.monotonic() + RETRY_AFTER
+            self.proven.get(identity, set()).discard(url)
 
     def get(self, identity):
         with self.lock:
@@ -138,8 +185,8 @@ class RemoteDecks:
             profile['url'] = deck_url(profile['url'])
             return profile
 
-    def login(self, profile):
-        url = profile['url']
+    def login(self, profile, url=None):
+        url = url or profile['url']
         body = urlencode({'username': profile['username'], 'password': profile['password']}).encode()
         try:
             status, headers, _ = http_request(url, 'POST', '/login', body,
@@ -152,8 +199,69 @@ class RemoteDecks:
             if not re.fullmatch(r'[A-Za-z0-9_.=-]+', token):
                 raise ValueError('Invalid remote login response')
             return 'cc_auth=' + token
+        except Unreachable:
+            raise
         except (OSError, http.client.HTTPException):
-            raise ValueError('Remote Away Deck is unavailable over Tailscale') from None
+            raise ValueError('Remote Away Deck is unavailable') from None
+
+    def prove(self, url, pair, sign_in):
+        """Ask the machine at this address for the pair key's proof before it gets anything of ours; with
+        `sign_in` the gateway then proves the same key and receives a cookie, without the password."""
+        ours = secrets.token_hex(16)
+        wrong = ValueError('Another machine answers at this address')
+        try:
+            status, _, body = http_request(url, 'GET', f"/api/pair_challenge?id={pair['id']}&nonce={ours}", timeout=5, limit=65536)
+            answer = json.loads(body) if status == 200 else {}
+            theirs, proof = answer.get('nonce', ''), answer.get('proof', '')
+            if (not isinstance(theirs, str) or not re.fullmatch(NONCE, theirs) or not isinstance(proof, str)
+                    or not secrets.compare_digest(proof.encode('ascii', 'replace'), deck_proof(pair['key'], theirs, ours).encode())):
+                raise wrong
+            if not sign_in:
+                return None
+            body = json.dumps({'id': pair['id'], 'nonce': theirs, 'proof': gateway_proof(pair['key'], theirs, ours)}).encode()
+            status, headers, _ = http_request(url, 'POST', '/api/pair_login', body,
+                {'Origin': url, 'Content-Type': 'application/json'}, timeout=10, limit=65536)
+            cookie = SimpleCookie(next((v for k, v in headers.items() if k.lower() == 'set-cookie'), ''))
+            if status != 200 or 'cc_auth' not in cookie or not re.fullmatch(r'[A-Za-z0-9_.=-]+', cookie['cc_auth'].value):
+                raise wrong
+            return 'cc_auth=' + cookie['cc_auth'].value
+        except Unreachable:
+            raise
+        except (OSError, http.client.HTTPException, ValueError, AttributeError, TypeError):
+            raise wrong from None
+
+    def pair(self, url, cookie):
+        """A key for later sign-ins without the password, and the computer's own id; None from a panel
+        that cannot pair yet."""
+        try:
+            status, _, body = http_request(url, 'POST', '/api/pair', b'{}',
+                {'Cookie': cookie, 'Origin': url, 'Content-Type': 'application/json'}, timeout=10, limit=65536)
+            answer = json.loads(body) if status == 200 else {}
+            pair = {'id': answer['id'], 'key': answer['key']}
+            if not re.fullmatch(r'[0-9a-f]{16}', pair['id']) or not re.fullmatch(r'[0-9a-f]{64}', pair['key']):
+                return None
+            instance = answer.get('instance', '')
+            return pair, instance if isinstance(instance, str) and len(instance) <= 64 else ''
+        except (OSError, http.client.HTTPException, ValueError, KeyError, TypeError, AttributeError):
+            return None
+
+    def cookie_for(self, profile, url, stale):
+        identity = profile['id']
+        with self.lock:
+            cookie = self.cookies.get(identity)
+            proven = url in self.proven.get(identity, ())
+        fresh = bool(cookie) and not (stale is not None and cookie == stale)
+        if url == profile['url'] and is_tailnet(urlsplit(url).hostname):
+            return cookie if fresh else self.login(profile, url)
+        pair = profile.get('pair')
+        if not pair:
+            raise ValueError('Reconnect this Away Deck: its local network address needs a new sign-in')
+        if proven and fresh:
+            return cookie
+        cookie = self.prove(url, pair, not fresh) or cookie
+        with self.lock:
+            self.proven.setdefault(identity, set()).add(url)
+        return cookie
 
     def save(self, data):
         name, username, password = data.get('name', ''), data.get('username', ''), data.get('password', '')
@@ -171,14 +279,31 @@ class RemoteDecks:
         password = password or (old.get('password', '') if old.get('url') == url and old.get('username') == username else '')
         if not password:
             raise ValueError('Enter the Away Deck password')
+        extras = data.get('urls', old.get('urls', []) if old.get('url') == url else [])
+        if not isinstance(extras, list) or len(extras) > MAX_ADDRESSES:
+            raise ValueError(BAD_URL)
+        extras = [u for u in dict.fromkeys(deck_url(u) for u in extras) if u not in (url, self.local_url)]
         profile = {'id': identity, 'name': name.strip(), 'url': url, 'username': username, 'password': password}
-        cookie = self.login(profile)
+        try:
+            # The owner's own action: the only time the password goes to an address of the local network.
+            cookie = self.login(profile)
+        except Unreachable:
+            raise ValueError('Remote Away Deck is unavailable') from None
         try:
             status, _, body = http_request(url, 'GET', '/api/version', headers={'Cookie': cookie}, timeout=10, limit=1024*1024)
             if status != 200 or not isinstance(json.loads(body).get('version'), str):
                 raise ValueError('The destination is not an authenticated Away Deck')
         except (OSError, http.client.HTTPException, ValueError, AttributeError):
             raise ValueError('Could not verify the remote Away Deck') from None
+        paired = self.pair(url, cookie)
+        if paired:
+            profile['pair'], profile['instance'] = paired
+            if profile['instance'] and profile['instance'] == self.instance():
+                raise ValueError('This is the current Away Deck')
+        elif not is_tailnet(urlsplit(url).hostname):
+            raise ValueError('Update Away Deck on that computer first: this version cannot be connected over the local network')
+        if paired and extras:
+            profile['urls'] = extras  # Without a pair key another address could never be trusted.
         with self.lock:
             names = {p['name'].casefold() for key,p in self.profiles.items() if key != identity}
             profile['name'] = unique_name(profile['name'], lambda n: n.casefold() in names, 100)
@@ -190,6 +315,10 @@ class RemoteDecks:
                 else:self.profiles.pop(identity, None)
                 raise
             self.cookies[identity] = cookie
+            self.proven[identity] = {url}
+            self.routes.pop(identity, None)
+            for key in [k for k in self.down if k[0] == identity]:
+                del self.down[key]
         return {k: profile[k] for k in PUBLIC}
 
     def remove(self, identity):
@@ -201,6 +330,8 @@ class RemoteDecks:
                 self.profiles[identity] = old
                 raise
             self.cookies.pop(identity, None)
+            self.proven.pop(identity, None)
+            self.routes.pop(identity, None)
 
     def authentication(self, identity, language='en', stale=None):
         """Pass the rejected cookie as `stale` to force a new login unless another request already did."""
@@ -208,31 +339,67 @@ class RemoteDecks:
         with self.lock:
             gate = self.login_locks.setdefault(identity, threading.Lock())
         with gate:
+            cookie, error = None, None
+            for url in self.candidates(profile):
+                try:
+                    cookie = self.cookie_for(profile, url, stale)
+                    break
+                except Unreachable:
+                    self.fail(identity, url)
+                    error = ValueError('Remote Away Deck is unavailable')
+                except ValueError as failure:
+                    if len(self.addresses(profile)) == 1:
+                        raise
+                    self.fail(identity, url)
+                    error = error or failure
+            if cookie is None:
+                raise error
             with self.lock:
-                cookie = self.cookies.get(identity)
-            if not cookie or (stale is not None and cookie == stale):
-                cookie = self.login(profile)
-                with self.lock:
-                    if self.profiles.get(identity) != profile:
-                        raise ValueError('Away Deck connection changed; retry the request')
-                    self.cookies[identity] = cookie
+                if self.profiles.get(identity) != profile:
+                    raise ValueError('Away Deck connection changed; retry the request')
+                self.cookies[identity] = cookie
+                self.routes[identity] = url
         if re.fullmatch(r'[a-z]{2,3}(?:-[A-Za-z0-9]{2,8})*', language):
             cookie += '; cc_lang=' + language
-        return profile, cookie
+        # Callers talk to `url`: here it is the address that answered, not always the saved one.
+        return {**profile, 'url': url}, cookie
+
+    def learn_pair(self, profile, cookie):
+        """A connection saved before pairing existed gets its key at the next password sign-in."""
+        paired = self.pair(profile['url'], cookie)
+        with self.lock:
+            if not paired:
+                self.unpaired.add(profile['id'])
+                return profile
+            if self.profiles.get(profile['id']) != profile:
+                return profile
+            updated = {**profile, 'pair': paired[0], 'instance': paired[1]}
+            self.profiles[profile['id']] = updated
+            try:
+                private_write(self.path, self.profiles)
+            except (OSError, ValueError):
+                self.profiles[profile['id']] = profile
+                return profile
+            return copy.deepcopy(updated)
 
     def request(self, identity, method, path, body=None, language='en', timeout=30, content_type='application/json',
                 limit=PROXY_LIMIT):
         path = remote_path(path)
         if method not in ('GET','POST'):
             raise ValueError('Unsupported remote method')
-        stale = None
-        for _ in range(2):
+        stale, rejected = None, 0
+        for _ in range(2 + MAX_ADDRESSES):
             profile, cookie = self.authentication(identity, language, stale)
-            stale = cookie.split('; cc_lang=', 1)[0]
             try:
                 result = http_request(profile['url'], method, path, body,
                     {'Cookie': cookie, 'Origin': profile['url'], 'Content-Type': content_type, 'Accept-Encoding': 'identity'},
                     timeout=timeout, limit=limit)
+            except Unreachable:
+                # Nothing was sent, so the request may go to the computer's other address.
+                self.fail(identity, profile['url'])
+                if len(self.addresses(self.get(identity))) == 1:
+                    raise ValueError('Remote Away Deck did not respond; reconnect or retry') from None
+                continue
             except (OSError, http.client.HTTPException):
                 # Never retry an ambiguous mutation after a transport failure.
                 raise ValueError('Remote Away Deck did not respond; reconnect or retry') from None
@@ -241,7 +408,11 @@ class RemoteDecks:
                 if result[0] in (301,302,303,307,308):
                     raise ValueError('Remote redirects are not supported')
                 return result
-        raise ValueError('Remote authentication expired; reconnect this Away Deck')
+            stale, rejected = cookie.split('; cc_lang=', 1)[0], rejected + 1
+            if rejected == 2:
+                break
+        raise ValueError('Remote authentication expired; reconnect this Away Deck' if rejected else
+                         'Remote Away Deck did not respond; reconnect or retry')
 
     def request_stream(self, identity, path, stream, length, language='en', timeout=300):
         """Raw upload relayed in chunks, so the gateway never holds a whole file in memory. A streamed body
@@ -260,12 +431,18 @@ class RemoteDecks:
         return result
 
     def terminal_socket(self, identity, language='en'):
-        profile, cookie = self.authentication(identity, language)
-        parsed = urlsplit(profile['url'])
-        try:
-            return socket.create_connection((parsed.hostname, parsed.port), timeout=10), profile['url'], cookie
-        except OSError:
-            raise ValueError('Remote terminal is unavailable over Tailscale') from None
+        for _ in range(1 + MAX_ADDRESSES):
+            profile, cookie = self.authentication(identity, language)
+            parsed = urlsplit(profile['url'])
+            try:
+                link = socket.create_connection((parsed.hostname, parsed.port), timeout=CONNECT_TIMEOUT)
+                link.settimeout(10)
+                return link, profile['url'], cookie
+            except OSError:
+                self.fail(identity, profile['url'])
+                if len(self.addresses(self.get(identity))) == 1:
+                    break
+        raise ValueError('Remote terminal is unavailable')
 
     def discover(self, port=8790):
         if isinstance(port, bool) or not isinstance(port, int) or not 1 <= port <= 65535:
@@ -276,42 +453,96 @@ class RemoteDecks:
         threading.Thread(target=self._discover, args=(port,), daemon=True).start()
         return self.status()['discovery']
 
+    def tailscale_peers(self, port):
+        binary = shutil.which('tailscale')
+        app = Path('/Applications/Tailscale.app/Contents/MacOS/Tailscale')
+        binary = binary or (str(app) if app.is_file() else None)
+        if not binary:raise ValueError('Tailscale is not installed on the gateway')
+        result = subprocess.run([binary,'status','--json'], input='', capture_output=True, text=True, timeout=5, check=True)
+        status = json.loads(result.stdout)
+        if status.get('BackendState') != 'Running':raise ValueError('Connect the gateway to Tailscale')
+        peers, seen = [], set()
+        for peer in (status.get('Peer') or {}).values():
+            if peer.get('Online') is False:continue
+            for raw in peer.get('TailscaleIPs', []):
+                try:address = ipaddress.ip_address(raw)
+                except ValueError:continue
+                if address.version != 4 or address not in TAILNET or str(address) in seen:continue
+                seen.add(str(address));peers.append({'url':f'http://{address}:{port}', 'name':' '.join(str(peer.get('HostName') or address).split())[:100]})
+        return peers[:128]
+
     def _discover(self, port):
         try:
-            binary = shutil.which('tailscale')
-            app = Path('/Applications/Tailscale.app/Contents/MacOS/Tailscale')
-            binary = binary or (str(app) if app.is_file() else None)
-            if not binary:raise ValueError('Tailscale is not installed on the gateway')
-            result = subprocess.run([binary,'status','--json'], input='', capture_output=True, text=True, timeout=5, check=True)
-            status = json.loads(result.stdout)
-            if status.get('BackendState') != 'Running':raise ValueError('Connect the gateway to Tailscale')
-            peers, seen = [], set()
-            for peer in (status.get('Peer') or {}).values():
-                if peer.get('Online') is False:continue
-                for raw in peer.get('TailscaleIPs', []):
-                    try:address = ipaddress.ip_address(raw)
-                    except ValueError:continue
-                    if address.version != 4 or address not in TAILNET or str(address) in seen:continue
-                    seen.add(str(address));peers.append({'url':f'http://{address}:{port}', 'name':' '.join(str(peer.get('HostName') or address).split())[:100]})
+            try:
+                peers = self.tailscale_peers(port)
+            except (OSError, subprocess.SubprocessError, ValueError, TypeError, AttributeError):
+                peers = None  # A computer without Tailscale still has its local network.
+            local = self.local_address()
+            if peers is None and not local:
+                raise ValueError('No network to search')
+            targets = (peers or []) + [{'url': f'http://{address}:{port}', 'name': address} for address in (neighbours(local) if local else [])]
             found = []
-            with ThreadPoolExecutor(max_workers=8) as pool:
-                futures = {pool.submit(self._probe, p):p for p in peers[:128]}
+            with ThreadPoolExecutor(max_workers=32) as pool:
+                futures = {pool.submit(self._probe, p):p for p in targets}
                 for future in as_completed(futures):
-                    if future.result():
-                        found.append(futures[future])
-                        with self.lock:self.discovery['results'] = copy.deepcopy(found)
-            with self.lock:self.discovery = {'phase':'done','results':found}
+                    answer = future.result()
+                    if answer:
+                        found.append({**futures[future], **(answer if isinstance(answer, dict) else {})})
+                        with self.lock:self.discovery['results'] = self.merged(found)
+            with self.lock:
+                results = self.merged(found)
+                self.remember(found)
+                self.discovery = {'phase':'done','results':results}
         except (OSError, subprocess.SubprocessError, ValueError, TypeError, AttributeError):
-            with self.lock:self.discovery = {'phase':'error','results':[], 'error':'Could not discover Away Deck instances; check Tailscale on the gateway'}
+            with self.lock:self.discovery = {'phase':'error','results':[], 'error':'Could not discover Away Deck instances; check Tailscale or the local network on the gateway'}
+
+    def merged(self, found):
+        """One row per computer: the same one seen over Tailscale and in the local network names itself by
+        the same id. This computer and the ones already connected are left out."""
+        with self.lock:
+            saved = {p.get('instance') for p in self.profiles.values() if p.get('instance')}
+            known = {u for p in self.profiles.values() for u in self.addresses(p)}
+        rows, own = {}, self.instance()
+        for item in sorted(found, key=lambda i: not is_tailnet(urlsplit(i['url']).hostname)):
+            instance = item.get('instance', '')
+            if item['url'] in known or item['url'] == self.local_url or (instance and instance in saved | {own}):
+                continue
+            row = rows.setdefault(instance or item['url'], {'name': item['name'], 'url': item['url'], 'urls': [], 'instance': instance})
+            if item['url'] != row['url'] and len(row['urls']) < MAX_ADDRESSES:
+                row['urls'].append(item['url'])
+        return sorted(rows.values(), key=lambda row: row['name'].casefold())
+
+    def remember(self, found):
+        """A connected computer found on one more address keeps it. The address is only a claim until it
+        proves the pair key, so nothing is trusted here."""
+        changed = False
+        for profile in self.profiles.values():
+            if not profile.get('instance') or not profile.get('pair'):
+                continue
+            new = [i['url'] for i in found if i.get('instance') == profile['instance'] and i['url'] not in self.addresses(profile)]
+            if new:
+                profile['urls'] = (profile.get('urls', []) + new)[-MAX_ADDRESSES:]
+                changed = True
+        if changed:
+            try:private_write(self.path, self.profiles)
+            except (OSError, ValueError):pass  # Found again by the next search.
 
     @staticmethod
     def _probe(profile):
         try:
+            status, headers, body = http_request(profile['url'], 'GET', '/api/hello', timeout=2, limit=65536)
+            if status == 200:
+                answer = json.loads(body)
+                if answer.get('app') != 'away-deck' or not isinstance(answer.get('id'), str) or not IDENTITY.fullmatch(answer['id']):
+                    return False
+                name = answer.get('name')
+                return {'instance': answer['id'], **({'name': ' '.join(name.split())[:100]} if isinstance(name, str) and name.strip() and name.isprintable() else {})}
+            # A panel before 1.44 does not introduce itself; its sign-in page still tells what it is.
             status, headers, body = http_request(profile['url'], 'GET', '/login', timeout=2, limit=1024*1024)
             server = next((v for k,v in headers.items() if k.lower() == 'server'), '')
             return status == 200 and ('cc-panel/' in server or b'<title>Away Deck' in body
                                       or b'<title>Agent Deck' in body)  # The name before 1.39.
-        except (OSError, http.client.HTTPException, ValueError):return False
+        except (OSError, http.client.HTTPException, ValueError, AttributeError):return False
 
 
 class UnavailableDecks:
@@ -326,3 +557,6 @@ class UnavailableDecks:
         raise ValueError(self.message)
 
     get = save = remove = discover = request = terminal_socket = authentication = unavailable
+
+    def fail(self, *args):
+        pass

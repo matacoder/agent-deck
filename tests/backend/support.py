@@ -45,6 +45,8 @@ class PanelCase(unittest.TestCase):
             "TTYD_SOCK": str(self.home / "ttyd.sock"),
             "UPDATE_REPO": "", "CHECKOUT": "",
         }))
+        # A CI runner sits in a private network: no test may search or open the real one.
+        self.enterContext(patch("integrations.lan.lan_address", return_value=None))
         # Redirect expanduser, rather than change HOME or touch installed secrets.
         original = os.path.expanduser
         self.enterContext(patch("os.path.expanduser", side_effect=lambda path:

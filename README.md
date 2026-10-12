@@ -87,7 +87,8 @@ The **?** next to the search field in the session bar shows the same picture ins
 - Server CPU/RAM indicators beside the message composer.
 - Phone friendly (tuned for large iPhones, portrait and landscape): home-screen app, one-tap answers to agent questions, a summary of each conversation and how full its context is, and file attachments up to 200 MB with upload progress.
 - One Settings hub: agents, notifications (devices and Telegram), local models, other computers, backups and general preferences, with a getting-started checklist.
-- LM Studio profiles: discover known Tailscale nodes or add a custom address, port and API key.
+- LM Studio profiles: discover known Tailscale nodes and servers in the local network, or add a custom address, port and API key.
+- Works in an ordinary local network next to Tailscale: a computer answers there when you switch it on, and one seen in both networks stays one computer.
 - Local models in Claude Code, with session speed/TTFT measurements and a separate benchmark; no subscription quotas.
 - UI in 16 languages, switchable in Settings → Application; extensible file-based locales.
 - **Waiting for you:** one list of every agent question and finished session on all connected computers, answerable in place (including custom text answers).
@@ -602,7 +603,8 @@ known locations with `600` permissions and restarts the panel; tmux sessions kee
 
 The panel gives a shell to whoever logs in. On Ubuntu it runs as the dedicated unprivileged
 user (with rootless Docker); on macOS it runs as your logged-in Mac user. Keep the password private, and prefer the default Tailscale-only setup unless you need public
-access.
+access. Answering in the local network is a separate switch per computer, off by default: there the
+connection is not encrypted.
 
 ## More
 
@@ -620,9 +622,10 @@ Backend and browser regression tests: [docs/TESTING.md](docs/TESTING.md).
 
 1. Enable the LM Studio server on the machine hosting your model, with its
    Anthropic-compatible `/v1/messages` API reachable over your tailnet.
-2. Open **Settings → Models**. Choose **Find servers** to probe known Tailscale
-   peers on port 1234, or enter comma-separated custom ports. This checks addresses
-   returned by `tailscale status --json`; it does not scan arbitrary networks.
+2. Open **Settings → Models**. Choose **Find on the network** to probe known Tailscale
+   peers and the local network on port 1234, or enter comma-separated custom ports. This checks addresses
+   returned by `tailscale status --json` and the 253 neighbours of this computer's local address
+   (its `/24`); a server found both ways is listed once, under its Tailscale address.
 3. Add a discovered server, or use **Add server** with a custom HTTP/HTTPS URL
    and optional API key. Saving checks the connection and lists available models.
 4. **Test tools** explicitly verifies a synthetic tool call. **Measure speed**
@@ -667,7 +670,26 @@ in the sidebar (the switcher appears once an instance is connected), or tap any 
 sessions: the sidebar lists the sessions of every connected computer under its name, so
 switching environments is one tap and happens in place, without reloading the page. Manage its sessions, files, models and live terminal through the
 gateway. Your browser does not need direct access to the remote Tailscale address.
-The gateway and remote computer must both be connected to the tailnet.
+The gateway and remote computer must both be connected to the tailnet, or sit in the same local network
+(below).
+
+**Local network.** Tailscale is not required between computers of one home or office network. In
+**Settings → Computers → Local network** switch on the computers that should also answer at their ordinary
+local address (`192.168.x`, `10.x`, `172.16–31.x`); the gateway can switch it for every connected computer.
+It is off by default, and each switch asks first: the connection there is plain HTTP, so the panel password
+and the contents of sessions cross that network unencrypted. Turn it on only in a network you trust. A
+computer installed without Tailscale (`BIND_HOST=<its local address>`) answers there already.
+
+- **Find on the network** searches Tailscale peers and the neighbours of the gateway's local address. A
+  computer seen in both networks is one row with both addresses, and it is connected once.
+- A connected computer is reached over Tailscale first; when that does not answer, the gateway uses its local
+  address, and the row says so. A request that was already sent is never repeated on the other address.
+- The saved password goes by itself only to the Tailscale address you entered. Any other address must first
+  prove a key the two panels agreed on while signed in, so the same `192.168.x` address in a café's network
+  gets neither the password nor the session cookie. Connecting a computer by a local address sends its
+  password there once, when you press **Connect**.
+- The search covers the `/24` around the gateway's address. Larger or routed networks: add the address by
+  hand. WSL2 without mirrored networking has no address in the real local network.
 
 Credentials remain in a private file on the gateway. Existing remote Away Deck
 1.0.7 instances can be connected; only the gateway needs the new UI. Connection

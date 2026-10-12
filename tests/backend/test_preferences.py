@@ -74,7 +74,7 @@ class ProjectDirectoryTests(PanelCase):
                 network.write_text(content)
                 errors = io.StringIO()
                 with redirect_stderr(errors):
-                    self.assertEqual(NetworkSettings(self.home).get(), {'name': '', 'public_url': '', 'isolate_terminals': False, 'show_results': True})
+                    self.assertEqual(NetworkSettings(self.home).get(), {'name': '', 'public_url': '', 'isolate_terminals': False, 'show_results': True, 'lan': False})
                 self.assertIn(str(network), errors.getvalue())
         network.write_text(json.dumps({'name': 'Deck', 'public_url': 'https://deck.example'}))
         self.assertEqual(NetworkSettings(self.home).get()['name'], 'Deck')
