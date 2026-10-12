@@ -1,21 +1,33 @@
 # DeckAway
 
-<sub>Formerly Agent Deck. Installed paths, service names and the repository address keep the earlier name for now, so updates continue to work.</sub>
+**Your coding agents keep working. You check in from anywhere.**
 
-A self-hosted workspace for [Claude Code](https://claude.com/claude-code),
-[Codex](https://github.com/openai/codex), Kimi and terminals. Install on Linux (Ubuntu, Debian,
-Raspberry Pi), macOS, Windows 11 (WSL2), SteamOS (Steam Machine, Steam Deck) or in Docker, work from a desktop or phone browser, get notified when an agent needs you, and answer
-agent questions with one tap or in Telegram.
-Sessions live in tmux, keep working after you close the tab, and can be restored
-after a reboot.
+DeckAway is a self-hosted control room for [Claude Code](https://claude.com/claude-code),
+[Codex](https://github.com/openai/codex), Cursor, Gemini CLI, Copilot and the rest — running on your own
+computers, in your own project folders. Start a task at your desk, close the laptop, and answer the agent's
+next question from your phone with one tap. One page shows every session on every machine you own.
 
-![DeckAway on desktop](docs/screenshots/desktop.png)
+![DeckAway on a desktop: sessions of two computers, an agent's finished task with its screenshot, and the diff beside it](docs/screenshots/desktop.png)
 
-| Answer with one tap | Screenshots from agents | Sessions & limits |
+- **Nothing stops when you leave.** Sessions live in tmux on your machine: close the tab, lose the connection, reboot — the agent is still there.
+- **Agents ask, you answer in a tap.** Questions arrive as phone notifications or Telegram messages with the answer buttons on them.
+- **See what was built, not just that it finished.** Screenshots the agent made open in the output; the diff, commits and files are one swipe away; "finished" says what was done.
+- **All your computers in one list.** A server, a laptop and a GPU workstation show as one workspace; heavy `docker` runs can go to the strong machine.
+- **Private by default.** Reachable only over your own Tailscale network. No DeckAway account and no DeckAway cloud in between: the panel runs on your machine and talks only to the agents you installed.
+
+| Answer with one tap | See what the agent built | Everything in your pocket |
 |:---:|:---:|:---:|
-| <img src="docs/screenshots/mobile-question.png" width="260" alt="Phone: agent question with answer buttons"> | <img src="docs/screenshots/mobile-images.png" width="260" alt="Phone: screenshot thumbnails in agent output"> | <img src="docs/screenshots/mobile-sessions.png" width="260" alt="Phone: session list"> |
+| <img src="docs/screenshots/mobile-question.png" width="260" alt="Phone: an agent's question with answer buttons"> | <img src="docs/screenshots/mobile-images.png" width="260" alt="Phone: screenshots the agent made, inside its output"> | <img src="docs/screenshots/mobile-sessions.png" width="260" alt="Phone: sessions, limits and local models"> |
 
-<sub>Screenshots use demo data.</sub>
+One command installs it on Linux, macOS, Windows 11 (WSL2), SteamOS or in Docker:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/matacoder/deckaway/main/get.sh | sudo bash
+```
+
+[Other platforms and options](#install) · [How it works](#how-it-works) · [Security](#security)
+
+<sub>Screenshots use demo data. Formerly Agent Deck: installed paths and service names keep the earlier name, so updates continue to work.</sub>
 
 ## How it works
 
@@ -74,33 +86,49 @@ The **?** next to the search field in the session bar shows the same picture ins
 
 ## Features
 
-- Tabs for all your sessions, grouped by project, with live terminals and "working / waiting / done" status.
-- A **+** on each computer and project heading starts a new session there, with the folder already chosen.
-- Claude Code, Codex, Claude through Kimi, native Kimi Code, Cursor, Gemini CLI, GitHub Copilot, OpenCode, Qwen Code or a plain terminal per tab; the **⋯** menu restarts an agent with a new or the same conversation, duplicates a session with a fresh conversation, renames or closes it.
-- Pick a GitHub repo and start working; optional git worktree per session (one branch per agent).
-- Change history with uncommitted changes: tap a line of the agent's diff to add a `file:line` comment to your message.
-- Search the whole output of a session (including scrollback) from the field in the session bar (the search icon on a phone); results drop down under it; quick switcher for sessions and actions with Alt+K, Ctrl+K or ⌘K.
+**Agents and sessions**
+
+- Claude Code, Codex, Kimi Code, Cursor, Gemini CLI, GitHub Copilot, OpenCode, Qwen Code or a plain terminal — one per tab, grouped by project, with "working / waiting / done" at a glance.
+- Claude Code on other models: Kimi, GLM or any Anthropic-compatible service, and local models from LM Studio with speed measurements and no subscription quota.
+- A **+** on each computer and project starts a session there; pick a GitHub repository and go, optionally with a git worktree per session (one branch per agent).
+- The **⋯** menu restarts an agent with a new or the same conversation, duplicates, renames or closes a session. Sessions come back after a reboot.
+
+**Staying in the loop**
+
+- **Waiting for you:** one list of every agent question and finished session on all computers, answerable in place.
+- Notifications on phone and desktop when an agent asks or finishes; a "finished" notification says what was done.
+- Telegram bot: questions with answer buttons and "finished" messages in your private chat; reply to send the next prompt.
+- A one-line summary of each conversation and how full its context is.
+- Subscription limits with a pace forecast, always visible — also under the message field on a phone.
+
+**Seeing the work**
+
+- Screenshots an agent mentions by path appear as thumbnails under the line and open full screen; a gallery keeps every picture a session showed.
+- Changes, commits and files in a side panel: tap a line of the diff to comment on it in your next message.
+- **Feature groups:** a model sorts the commit history into features in the background, each with a combined diff.
 - Project files: browse, edit text, read Markdown rendered, preview images and PDF.
-- Drop screenshots and files onto the window (desktop, iPad Split View) to attach them to the open session.
-- Paste a message copied from a chat or a page: the text goes into the field and its pictures are attached. A picture its site does not let a page read is fetched by the panel itself — only from a public https address, never from your network; one that needs the site's sign-in (or exists only inside that page) cannot be fetched: save it and attach the file.
-- The page opens with what it showed last time — sessions, computers, limits — and replaces it as fresh answers arrive, so nothing jumps while it loads. Screens of sessions are kept only while the tab is open; signing out forgets all of it.
-- Claude / Codex subscription limits with a pace forecast; Kimi usage windows and reset times.
-- Under the message field: the running agent and model (including after `/model`), remaining quota and today's plan, so limits stay visible on phones.
-- Server CPU/RAM indicators beside the message composer.
-- Phone friendly (tuned for large iPhones, portrait and landscape): home-screen app, one-tap answers to agent questions, a summary of each conversation and how full its context is, and file attachments up to 200 MB with upload progress.
-- One Settings hub: agents, notifications (devices and Telegram), local models, other computers, backups and general preferences, with a getting-started checklist.
-- LM Studio profiles: discover known Tailscale nodes and servers in the local network, or add a custom address, port and API key.
-- Works in an ordinary local network next to Tailscale: a computer answers there when you switch it on, and one seen in both networks stays one computer.
-- Local models in Claude Code, with session speed/TTFT measurements and a separate benchmark; no subscription quotas.
-- UI in 16 languages, switchable in Settings → Application; extensible file-based locales.
-- **Waiting for you:** one list of every agent question and finished session on all connected computers, answerable in place (including custom text answers).
-- Notifications on phone and desktop when an agent asks a question or finishes, from every connected computer; a "finished" notification says what was done.
-- **Containers on another computer:** keep agents on a weak machine and run their `docker` and `docker compose` on a strong one you mark for containers; no SSH, no keys.
-- **Quick prompts:** your own messages and the agent's `/compact` and `/clear` as buttons above the message field, sent with one tap.
-- **Send later:** hold a message until a set time, until the agent is free, or until the subscription limit resets; a session can also continue by itself after a limit.
-- Screenshots an agent mentions by path (`/tmp/shot.png`, `docs/home.png`) appear as thumbnails under the line and open in a full-screen viewer, also for sessions on connected computers.
-- Telegram bot integration: agent questions with answer buttons and "finished" messages in your private chat; reply to a finished message to send the next prompt.
-- One-command installation on Linux (Ubuntu, Debian, 64-bit Raspberry Pi OS), macOS and Windows 11 (WSL2), or a Docker container for NAS and other distributions; autostart and panel updates; in-panel agent setup and login.
+- Search the whole output of a session, scrollback included; quick switcher with Alt+K, Ctrl+K or ⌘K.
+
+**Getting things to the agent**
+
+- Drop files onto the window or paste a message copied from a chat: the text goes into the field and its pictures are attached. A picture its site does not let a page read is fetched by the panel itself — only from a public https address, never from your network.
+- **Quick prompts:** your own messages and the agent's `/compact` and `/clear` as one-tap buttons.
+- **Send later:** hold a message until a set time, until the agent is free, or until the limit resets; a session can also continue by itself after a limit.
+- Attachments up to 200 MB with upload progress.
+
+**Several computers**
+
+- Connect other DeckAway installs to one gateway: one session list, one inbox, one set of notifications.
+- **Containers on another computer:** keep agents on a weak machine and run their `docker` and `docker compose` on a strong one; no SSH, no keys.
+- **Open directly:** on the computer you are sitting at, one button opens its own panel straight over Tailscale, signed in, without the trip through the gateway.
+- Works in an ordinary local network next to Tailscale, when you switch that on.
+
+**Everyday comfort**
+
+- Built for phones first (home-screen app, portrait and landscape) and fast on a desktop: the page opens with what it showed last time and replaces it as fresh answers arrive, switching sessions shows the screen at once, and terminals of recent sessions are connected ahead.
+- One Settings hub with a getting-started checklist; in-panel agent install and sign-in.
+- Encrypted backups of settings between your computers; panel updates by themselves.
+- UI in 16 languages.
 
 <img src="docs/screenshots/mobile-settings.png" width="260" alt="Interface language settings">
 
@@ -681,8 +709,17 @@ The gateway and remote computer must both be connected to the tailnet, or sit in
 "this computer" in the list and in the bottom line of a session: you are looking at it through the gateway,
 but it is the machine under your hands. The page asks `127.0.0.1` one question (is the installation with
 this id here?) and a panel answers it only for its own id. It is asked on a desktop with more than one
-computer; Chrome may ask once for permission to reach the local network, and a browser that refuses simply
-shows no mark.
+computer; Chrome may ask once for permission to reach the local network. Safari does not let a page ask
+that question at all: there, open **Settings → Network**, the **⋯** of the computer, **The browser runs on
+this computer** — it is remembered in that browser.
+
+**Open directly.** With a connected computer selected, the arrow button beside the computer list opens that
+computer's own panel in a new tab, at its Tailscale address and already signed in: nothing then travels
+through the gateway and the internet in between, which is what you want on the machine under your hands. It
+works from any device that reaches that address. The link signs in once and within a minute; the secret in
+it is given by the computer to the gateway, never to a page, and is removed from the address bar before it
+is spent. A browser cannot make this shortcut silently from the gateway's own https page — pages served over
+https may not call plain-http addresses — which is why it is a separate tab.
 
 **Local network.** Tailscale is not required between computers of one home or office network. In
 **Settings → Computers → Local network** switch on the computers that should also answer at their ordinary

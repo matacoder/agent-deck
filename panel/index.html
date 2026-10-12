@@ -50,10 +50,11 @@ input,textarea,select{font:inherit}
 
 /* ---------- sidebar ---------- */
 aside{position:relative;width:min(var(--side-w,248px),40vw);flex:none;background:var(--side);border-right:1px solid var(--bd);display:flex;flex-direction:column;min-height:0}
-.deck-switch{display:grid;grid-template-columns:minmax(0,1fr) 32px;align-items:center;gap:6px;padding:10px 8px;border-bottom:1px solid var(--bd)}
+.deck-switch{display:flex;align-items:center;gap:6px;padding:10px 8px;border-bottom:1px solid var(--bd)}
 .deck-switch label{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
-.deck-switch select{min-width:0;min-height:32px;background:var(--side2);color:var(--fg);border:1px solid var(--bd);border-radius:var(--r-sm);padding:6px 8px}
-.deck-switch button{display:grid;place-items:center;height:32px;border-radius:var(--r-sm);color:var(--mut)}
+.deck-switch select{flex:1;min-width:0;min-height:32px;background:var(--side2);color:var(--fg);border:1px solid var(--bd);border-radius:var(--r-sm);padding:6px 8px}
+.deck-switch button[hidden]{display:none}
+.deck-switch button{display:grid;place-items:center;flex:none;width:32px;height:32px;border-radius:var(--r-sm);color:var(--mut)}
 @media (hover:hover){.deck-switch button:hover{background:var(--side2);color:var(--fg)}}
 /* Address and the waiting count share one fixed-height row, so neither can push the list down. */
 .srv-row{display:flex;align-items:center;gap:6px;height:38px;padding:8px 6px 0 12px}
@@ -168,9 +169,13 @@ main{flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;backgrou
 #stage{flex:1;position:relative;min-height:0}
 #stage iframe{position:absolute;inset:0;width:100%;height:100%;border:0;display:none;background:var(--bg)}
 #stage iframe.on{display:block}
+/* Opened ahead: laid out at full size so the terminal learns its real size, but not seen and not clickable. */
+#stage iframe.warm{display:block;visibility:hidden;pointer-events:none}#stage iframe.warm.on{visibility:visible;pointer-events:auto}
 .screen-skeleton{display:grid;gap:12px;padding:16px 4px}
 .integ-skeleton{display:block;padding:9px 6px 5px}.integ-skeleton .sk-line:last-child{display:none}
 .sk-line{display:block;height:12px;border-radius:6px;background:linear-gradient(90deg,var(--side2) 0%,var(--sel) 50%,var(--side2) 100%);background-size:200% 100%;animation:shimmer 1.2s ease-in-out infinite}
+.list-skeleton{display:grid;gap:7px;padding:14px 12px}.list-skeleton.rows .sk-line:nth-child(odd){width:34%;height:10px;margin-top:9px}.list-skeleton.rows .sk-line:first-child{margin-top:0}
+.list-skeleton.gallery{grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px}.list-skeleton.gallery .sk-line{height:auto;aspect-ratio:1;border-radius:8px}
 .tab-skeleton{pointer-events:none}.tab-skeleton .t{display:grid;gap:7px;padding:4px 0}.tab-skeleton .t .sk-line:first-child{width:62%}.tab-skeleton .t .sk-line:last-child{width:38%;height:9px}
 .sk-dot{width:8px;height:8px;border-radius:50%;flex:none}.sk-icon{width:18px;height:18px;flex:none}
 .foot-skeleton,.ver-skeleton,.sk-metric{display:inline-block;height:10px;vertical-align:middle}.foot-skeleton{width:120px}.ver-skeleton{width:44px}.sk-metric{width:3ch}
@@ -286,9 +291,9 @@ body.is-codex .question-key{display:inline-flex!important;align-items:center;jus
   .composer>*{flex:0 0 100%;min-width:0}
   .composer>#screen_keys{flex:0 1 auto;max-width:100%}
   /* Room for the quick prompts, so collapsed keys never push them to a row of their own. */
-  /* The same room whether the quick prompts show or not: a width that depended on them made the row and the
-     prompts take turns hiding each other. */
-  .composer>#screen_keys{max-width:calc(100% - 140px)}
+  /* fitKeyRow() sets the room; a width that depended on whether the prompts show made the row and the prompts
+     take turns hiding each other. */
+  .composer>#screen_keys{max-width:calc(100% - var(--quick-room,140px))}
   .composer>#screen_keys:has(.keys.expanded){flex:0 0 100%;max-width:100%}
   .composer>.quick-prompts{flex:1 1 0}
   .composer>[hidden]{display:none}
@@ -1140,7 +1145,7 @@ body.resizing iframe{pointer-events:none}
 <div id="app">
   <aside>
     <div class="resizer" id="side_resizer" role="separator" aria-orientation="vertical" tabindex="0" aria-label="Ширина боковой панели" title="Потяните, чтобы изменить ширину; двойной клик — ширина по умолчанию"></div>
-    <div class="deck-switch" id="deck_switch" hidden><label for="deck_select">DeckAway</label><select id="deck_select" onchange="switchDeck(this.value)"><option value="">Этот компьютер</option></select><button type="button" onclick="openSettings('network')" aria-label="Подключить DeckAway" title="Подключить DeckAway"><svg class="ui-icon"><use href="#i-monitor"/></svg></button></div>
+    <div class="deck-switch" id="deck_switch" hidden><label for="deck_select">DeckAway</label><select id="deck_select" onchange="switchDeck(this.value)"><option value="">Этот компьютер</option></select><button type="button" id="deck_direct" onclick="openDirect()" aria-label="Открыть этот компьютер напрямую" title="Открыть этот компьютер напрямую, без шлюза: нужен доступ к его адресу в Tailscale" hidden><svg class="ui-icon"><use href="#i-external"/></svg></button><button type="button" onclick="openSettings('network')" aria-label="Подключить DeckAway" title="Подключить DeckAway"><svg class="ui-icon"><use href="#i-monitor"/></svg></button></div>
     <div class="srv-row" id="srv_row"><div id="srv"><span class="sk-line srv-skeleton"></span></div><button type="button" id="inbox_btn" class="iconbtn inbox-btn" onclick="openInbox()" title="Ждут ответа" aria-label="Ждут ответа"><svg class="ui-icon"><use href="#i-inbox"/></svg><b id="inbox_count"></b></button></div>
     <div class="side-top">
       <input id="q" class="search" placeholder="Поиск…" aria-label="Поиск…" title="Быстрый переход: ⌥K, Ctrl+K или ⌘K" autocomplete="off" autocapitalize="off" spellcheck="false">
@@ -1621,7 +1626,16 @@ async function refreshModelCatalog(request){
 
 function placeSessionKeys({row,composer,screen,terminal,wrap,reconnect,mode,active}){
   const live=active&&mode==="term";
-  (live?terminal:screen).append(composer||row);
+  // Moved only when it changes place: putting a node where it already is still takes it out of the page for
+  // a moment, and the message field inside it loses the keyboard in the middle of a word. When it does move,
+  // the field keeps its focus and caret.
+  const target=live?terminal:screen,node=composer||row;
+  if(node.parentNode!==target){
+    const focused=node.ownerDocument?.activeElement,inside=focused&&node.contains(focused)?focused:null;
+    const caret=inside&&typeof inside.selectionStart==="number"?[inside.selectionStart,inside.selectionEnd]:null;
+    target.append(node);
+    if(inside){inside.focus({preventScroll:true});if(caret)try{inside.setSelectionRange(caret[0],caret[1])}catch(e){}}
+  }
   terminal.hidden=!live;
   wrap.hidden=live;
   if(reconnect)reconnect.hidden=!live;
@@ -2547,16 +2561,20 @@ function homeRelative(path,home){return path===home?"~":path.startsWith(home+"/"
 function filesDirty(){return Boolean(files.file&&files.file.content!==files.file.saved)}
 
 async function startFiles(){
-  dropPreview();files.session=active;files.file=null;files.listing=null;files.creating=false;
+  // The home folder as it was listed last time for this session stands in while it is read again.
+  dropPreview();files.session=active;files.key=sessionInfoKey();files.file=null;files.listing=knownAnswer(filesKnown,files.key);files.creating=false;
   await loadFolder("");
 }
 async function loadFolder(path){
   const seq=++files.seq;files.error="";files.path=path;
-  if(!files.listing)renderFiles();
+  // A folder listed before is shown at once and read again behind it.
+  const known=path?knownAnswer(filesKnown,files.key+"|"+path):null;
+  if(known){files.listing=known;files.file=null;renderFiles()}
+  else if(!files.listing)renderFiles();
   try{
     const listing=await api("/api/files?name="+encodeURIComponent(files.session)+"&path="+encodeURIComponent(path),null,false,{timeout:60000});
     if(seq!==files.seq)return;
-    files.listing=listing;files.file=null;
+    files.listing=listing;files.file=null;keepAnswer(filesKnown,path?files.key+"|"+path:files.key,listing);
   }catch(e){if(seq!==files.seq)return;if(e.message!==STALE){files.error=e.message;if(files.listing)toast(e.message)}}
   renderFiles();
 }
@@ -2614,7 +2632,7 @@ function fileButton(label,cls,run,icon){
 function renderFiles(){
   const box=$("files_body"),listing=files.listing;box.replaceChildren();
   if(!listing&&files.error){box.append(errorWithRetry(files.error,()=>loadFolder(files.path)));return}
-  if(!listing){box.append(el("p","files-empty",tr("Загрузка…")));return}
+  if(!listing){box.append(listSkeleton());return}
   if(files.file)return renderEditor(box,listing);
   const crumbs=el("div","files-path",breadcrumbs(listing));
   if(listing.parent)crumbs.prepend(fileButton(tr("Вверх"),"files-up",()=>loadFolder(listing.parent),"arrow-up"));
@@ -2753,23 +2771,26 @@ function galleryShown(){
 }
 async function loadGallery(){
   const session=active,key=sessionInfoKey();clearTimeout(gallery.timer);
-  if(gallery.key!==key){Object.assign(gallery,{key,session,items:null,raw:"",error:""});renderGallery()}
+  // Pictures this session showed last time stay up while the list is read again.
+  if(gallery.key!==key){const known=knownAnswer(galleryKnown,key);Object.assign(gallery,{key,session,items:known,raw:known?JSON.stringify(known):"",error:"",recalled:Boolean(known)});renderGallery()}
   try{
     const data=await api("/api/gallery?name="+encodeURIComponent(session));
     if(gallery.key!==key)return;
-    const raw=JSON.stringify(data.items||[]);
+    const raw=JSON.stringify(data.items||[]);gallery.recalled=false;
     // The same answer leaves the grid alone: no thumbnail reloads, no lost scroll.
-    if(raw!==gallery.raw||gallery.error){Object.assign(gallery,{raw,items:data.items||[],error:""});renderGallery()}
+    if(raw!==gallery.raw||gallery.error){Object.assign(gallery,{raw,items:data.items||[],error:""});keepAnswer(galleryKnown,key,gallery.items);renderGallery()}
   }catch(e){
     if(gallery.key!==key||e.message===STALE)return;
-    gallery.error=e.message;if(!gallery.items)renderGallery();
+    // Pictures remembered from before are not a list this computer just gave: the error is shown instead.
+    gallery.error=e.message;if(gallery.recalled){gallery.items=null;gallery.raw="";gallery.recalled=false}
+    if(!gallery.items)renderGallery();
   }
   if(galleryShown())gallery.timer=setTimeout(()=>{if(galleryShown())loadGallery()},GALLERY_POLL);
 }
 function renderGallery(){
   const box=$("gallery_body");box.replaceChildren();
   if(gallery.error&&!gallery.items){box.append(errorWithRetry(gallery.error,loadGallery));return}
-  if(!gallery.items){box.append(el("p","files-empty",tr("Загрузка…")));return}
+  if(!gallery.items){box.append(listSkeleton("gallery"));return}
   const items=gallery.items,session=gallery.session;
   if(!items.length){box.append(el("p","files-empty",tr("Здесь появятся картинки, которые агенты этой сессии покажут на экране: скриншоты, превью, графики. Они остаются, даже когда уходят с экрана.")));return}
   box.append(el("p","gallery-count",tr("Картинок: {0}",[items.length])));
@@ -2796,7 +2817,15 @@ const hist={session:null,ref:"",tree:"",tab:"changes",authors:null,changes:null,
   seq:0,loadingPage:false,error:""};
 // Every list (session, branch) gets a new number; an answer for an older one is dropped instead of being
 // mixed into the list that is on screen now.
-function freshList(){hist.seq++;hist.log=null;hist.commits=[];hist.groups=null;hist.view=null;hist.error="";hist.loadingPage=false}
+function freshList(){hist.seq++;hist.log=null;hist.commits=[];hist.groups=null;hist.view=null;hist.error="";hist.loadingPage=false;hist.recalled=false}
+// The first page of commits and the feature groups this repository showed last time stand in while both are
+// read again; `recalled` makes the next request ask for the first page instead of the one after it.
+function recallHistory(){
+  hist.key=sessionInfoKey()+"|"+hist.ref+"|"+hist.tree;
+  const log=knownAnswer(logKnown,hist.key);
+  if(log){hist.log=log;hist.commits=[...log.commits];hist.recalled=true}
+  hist.groups=knownAnswer(groupsKnown,hist.key);
+}
 
 function relativeTime(seconds){
   const diff=seconds-Date.now()/1000,units=[["year",31536000],["month",2592000],["day",86400],["hour",3600],["minute",60]];
@@ -2879,7 +2908,7 @@ function fileBlock(title,file,open,content){
 }
 
 function startHistory(tab){
-  hist.session=active;hist.ref="";hist.tree="";hist.tab=tab;hist.back=null;hist.authors=savedAuthorColors();freshList();
+  hist.session=active;hist.ref="";hist.tree="";hist.tab=tab;hist.back=null;hist.authors=savedAuthorColors();freshList();recallHistory();
   renderHistory();loadChanges();loadHistoryPage();if(tab==="groups")loadGroups();
 }
 async function loadChanges(){
@@ -2961,21 +2990,29 @@ async function loadHistoryPage(){
   // Commits load in the background while Changes is open; redrawing it would close a comment being typed.
   const seq=hist.seq;hist.loadingPage=true;hist.error="";if(hist.tab!=="changes")renderHistory();
   try{
-    const page=await api(gitPath("log",{skip:hist.commits.length}),null,false,{timeout:60000});
+    const first=hist.recalled||!hist.commits.length,key=hist.key;
+    const page=await api(gitPath("log",{skip:first?0:hist.commits.length}),null,false,{timeout:60000});
     if(seq!==hist.seq)return;
+    if(first){hist.commits=[];hist.recalled=false;keepAnswer(logKnown,key,page)}
     hist.log=page;hist.commits.push(...page.commits);
   }catch(e){if(seq===hist.seq&&e.message!==STALE)hist.error=e.message}
   finally{if(seq===hist.seq){hist.loadingPage=false;if(hist.tab!=="changes")renderHistory()}}
 }
 async function showCommit(sha,back){
-  const view={kind:"loading",back:back||null};hist.view=view;hist.back=back||null;renderHistory();
-  try{const data=await api(gitPath("commit",{sha}),null,false,{timeout:60000});if(hist.view!==view)return;hist.view={kind:"commit",data}}
+  // A commit read once is not asked for again: it cannot change.
+  const key=sessionInfoKey()+"|commit|"+sha,known=knownAnswer(diffsKnown,key);
+  hist.back=back||null;
+  if(known){hist.view={kind:"commit",data:known};renderHistory();$("git_body").scrollTop=0;return}
+  const view={kind:"loading",back:back||null};hist.view=view;renderHistory();
+  try{const data=await api(gitPath("commit",{sha}),null,false,{timeout:60000});if(hist.view!==view)return;keepAnswer(diffsKnown,key,data,KNOWN_DIFFS);hist.view={kind:"commit",data}}
   catch(e){if(hist.view!==view)return;hist.view={kind:"error",error:e.message===STALE?"":e.message,retry:()=>showCommit(sha,back),back:back||null}}
   renderHistory();$("git_body").scrollTop=0;
 }
 async function showGroup(group){
-  const view={kind:"group",group,diff:null};hist.view=view;renderHistory();$("git_body").scrollTop=0;
-  try{view.diff=await api(gitPath("group_diff",{shas:group.commits.join(",")}),null,false,{timeout:120000})}
+  const key=sessionInfoKey()+"|group|"+group.commits.join(","),known=knownAnswer(diffsKnown,key);
+  const view={kind:"group",group,diff:known};hist.view=view;renderHistory();$("git_body").scrollTop=0;
+  if(known)return;
+  try{view.diff=await api(gitPath("group_diff",{shas:group.commits.join(",")}),null,false,{timeout:120000});keepAnswer(diffsKnown,key,view.diff,KNOWN_DIFFS)}
   catch(e){view.error=e.message===STALE?"":e.message}
   if(hist.view===view)renderHistory();
 }
@@ -2986,7 +3023,7 @@ async function loadGroups(quiet){
   try{state=await api(gitPath("groups"),null,false,{timeout:60000})}catch(e){state=e.message===STALE||quiet?null:{error:e.message}}
   if(seq!==hist.seq||session!==hist.session||!state)return;
   if(quiet&&JSON.stringify(state)===JSON.stringify(hist.groups))return;
-  hist.groups=state;
+  hist.groups=state;if(!state.error)keepAnswer(groupsKnown,hist.key,state);
   if(hist.tab==="groups"&&!hist.view)renderHistory();
 }
 async function refreshGroups(){
@@ -3033,7 +3070,7 @@ function renderHistory(){
   if(hist.tab==="groups")return renderGroups(box);
   if(hist.tab==="changes")return renderChanges(box);
   if(hist.error&&!hist.log){box.append(errorWithRetry(hist.error,loadHistoryPage));return}
-  if(!hist.log){box.append(el("p","files-empty",tr("Загрузка…")));return}
+  if(!hist.log){box.append(listSkeleton());return}
   box.append(...branchBar());
   const list=el("div","git-list");for(const c of hist.commits)list.append(commitRow(c));box.append(list);
   if(!hist.commits.length)box.append(el("p","files-empty",tr("В репозитории ещё нет коммитов")));
@@ -3054,7 +3091,7 @@ function renderHistoryView(box){
   const home=hist.tab==="groups"?tr("К группам"):tr("К коммитам");
   if(view.kind==="loading"||view.kind==="error"){
     box.append(backButton(view.back?tr("К группе"):home,leave),
-      view.kind==="error"?errorWithRetry(view.error,view.retry):el("p","files-empty",tr("Загрузка…")));
+      view.kind==="error"?errorWithRetry(view.error,view.retry):listSkeleton());
     return;
   }
   if(view.kind==="commit"){
@@ -3069,7 +3106,7 @@ function renderHistoryView(box){
   for(const sha of group.commits){const c=hist.groups?.commits?.[sha];if(c)list.append(commitRow(c,group))}
   box.append(list,el("h5","git-section",tr("Общий дифф")));
   if(view.error!==undefined){box.append(errorWithRetry(view.error,()=>showGroup(group)));return}
-  if(!view.diff){box.append(el("p","files-empty",tr("Загрузка…")));return}
+  if(!view.diff){box.append(listSkeleton());return}
   const open=filesToOpen(view.diff.files);
   for(const file of view.diff.files){
     box.append(fileBlock(file.path,file,open.has(file.path),()=>{
@@ -3121,7 +3158,7 @@ function commentForm(path,row,line){
 function renderChanges(box){
   const data=hist.changes;
   if(hist.changesError){box.append(errorWithRetry(hist.changesError,loadChanges));return}
-  if(!data){box.append(el("p","files-empty",tr("Загрузка…")));return}
+  if(!data){box.append(listSkeleton());return}
   // One line for where we are; the refresh button is an icon to keep the first change high on the screen.
   const refresh=el("button","git-refresh",svgIcon("refresh"));refresh.type="button";refresh.onclick=loadChanges;
   refresh.setAttribute("aria-label",tr("Обновить"));refresh.title=tr("Обновить");
@@ -3140,7 +3177,7 @@ function renderLastCommit(box,last){
 }
 function renderGroups(box){
   const state=hist.groups;
-  if(!state){box.append(el("p","files-empty",tr("Загрузка…")));return}
+  if(!state){box.append(listSkeleton());return}
   if(state.error&&!state.groups){box.append(errorWithRetry(state.error,()=>loadGroups()));return}
   // An older DeckAway on this computer still groups on request only.
   if(!Array.isArray(state.pending)){box.append(el("p","diff-note",tr("Эта функция недоступна: обновите DeckAway на этом компьютере")));return}
@@ -3388,7 +3425,7 @@ async function saveAutoResume(){
 async function loadQuickPrompts(){
   // One list for every computer, so it is read from the gateway.
   try{quick.saved=(await api("/api/quick_prompts",null,true)).prompts||[]}catch(e){quick.loaded=false}
-  renderQuickPrompts();
+  fitKeyRow();
 }
 function renderQuickPrompts(){
   // One "more" on a phone: when the keys row shows its own, it opens the agent's commands too.
@@ -3455,7 +3492,7 @@ async function saveQuickPrompts(){
   $("quick_save").disabled=true;
   try{
     quick.saved=(await api("/api/quick_prompts",{prompts:quickRows(rows)},true)).prompts;
-    $("quick_dlg").close();renderQuickPrompts();
+    $("quick_dlg").close();fitKeyRow();
   }catch(e){if(e.message!==STALE)toast(e.message)}finally{$("quick_save").disabled=false}
 }
 if(typeof document!=="undefined")document.addEventListener("visibilitychange",()=>{if(!document.hidden&&later.session)loadLater()});
@@ -4345,7 +4382,9 @@ function renderComputers(data,network){
   const rows=data.decks.map(deck=>{
     const row=hubRow({title:deck.name,meta:deckAddresses(deck,tr),status:"…",
       actions:[deck.id===selectedDeck?el("span","card-meta",tr("открыт")):labelledButton(tr("Открыть"),"",()=>switchDeck(deck.id),deck.name),
-        moreMenu([[tr("Изменить"),()=>editDeck(deck)],[tr("Отключить"),()=>removeDeck(deck),true]],deck.name)]});
+        moreMenu([[tr("Изменить"),()=>editDeck(deck)],
+          [here.found===deck.id?tr("Это не этот компьютер"):tr("Браузер открыт на этом компьютере"),()=>{setManualHere(here.found===deck.id?null:deck.id);loadDeckSettings()}],
+          [tr("Отключить"),()=>removeDeck(deck),true]],deck.name)]});
     row.querySelector(".card-status").dataset.deckVersion=deck.id;row.dataset.card="deck:"+deck.id;return row;
   });
   $("deck_connections").replaceChildren(...placeEditor(rows,"deck:"+$("deck_id").value,$("deck_editor")));
@@ -4821,10 +4860,27 @@ function findHere(network,decks){
   here.asking=here.asking||(async()=>{
     const candidates=hereCandidates(network,decks),answers=await Promise.all(candidates.map(askHere));
     const index=answers.indexOf(true);
-    here.found=index<0?null:candidates[index].id;
+    here.found=index<0?manualHere():candidates[index].id;
     return here.found;
   })();
   return here.asking;
+}
+// The page of a gateway cannot talk to a computer's own address from inside (https to plain http), but it may
+// open it as a page: the gateway asks the computer for a link that signs in once. The tab is opened at the
+// click, before the answer, or the browser would block it as a pop-up.
+async function openDirect(){
+  if(!selectedDeck)return;
+  const tab=window.open("about:blank","_blank");
+  try{
+    const {url}=await gatewayApi("/api/decks_direct",{id:selectedDeck});
+    if(tab){tab.opener=null;tab.location.replace(url)}else location.href=url;
+  }catch(e){if(tab)tab.close();if(e.message!==STALE)toast(e.message)}
+}
+// Safari does not let a page ask 127.0.0.1, so there the owner says once which computer this browser is on.
+function manualHere(){try{const id=localStore.getItem("cc.here");return id===null?null:id}catch(e){return null}}
+function setManualHere(id){
+  try{if(id===null)localStore.removeItem("cc.here");else localStore.setItem("cc.here",id)}catch(e){}
+  here.found=id;
 }
 
 if(typeof module!=="undefined")module.exports={hereCandidates,hereName};
@@ -4861,13 +4917,14 @@ function forgetShown(storage){
   shownWritten.clear();
 }
 // The last answer per computer and session, in memory: a switch back shows it while the fresh one is on its way.
-const KNOWN_ANSWERS=60,sessionInfoKnown=new Map(),laterKnown=new Map(),changesKnown=new Map();
+const KNOWN_ANSWERS=60,sessionInfoKnown=new Map(),laterKnown=new Map(),changesKnown=new Map(),galleryKnown=new Map(),filesKnown=new Map(),logKnown=new Map(),groupsKnown=new Map(),diffsKnown=new Map();
+const KNOWN_DIFFS=12;  // A commit or a group of commits never changes; diffs are large, so only a few stay.
 function knownAnswer(known,key){return key&&known.has(key)?known.get(key):null}
-function keepAnswer(known,key,value){
+function keepAnswer(known,key,value,limit=KNOWN_ANSWERS){
   if(!key)return;
   known.delete(key);  // Re-inserted last, so the oldest entry is the one that goes.
   if(value)known.set(key,value);
-  if(known.size>KNOWN_ANSWERS)known.delete(known.keys().next().value);
+  if(known.size>limit)known.delete(known.keys().next().value);
 }
 // Rows that stand in for a list still on its way.
 function skeletonRows(count,build){return Array.from({length:count},(_,index)=>build(index))}
@@ -4875,8 +4932,20 @@ function skeletonRows(count,build){return Array.from({length:count},(_,index)=>b
 function sessionSkeleton(){
   return el("div","tab tab-skeleton",el("span","sk-line sk-dot"),el("span","sk-line sk-icon"),el("div","t",el("span","sk-line"),el("span","sk-line")));
 }
+// Stands in for a list of the project panel (commits, groups, a diff, a folder) or for the picture grid.
+function listSkeleton(kind="rows"){
+  const box=el("div","list-skeleton "+kind);box.setAttribute("role","status");box.setAttribute("aria-label",tr("Загрузка…"));
+  if(kind==="gallery")box.append(...skeletonRows(6,()=>el("span","sk-line")));
+  else for(const width of [70,45,82,38,64,52,76,41])box.append(el("span","sk-line"),el("span","sk-line")),box.lastChild.style.width=width+"%";
+  return box;
+}
 function integRow(){return el("div","local-usage compact-local integ-skeleton",el("span","sk-line"),el("span","sk-line"))}
-function pendingMetrics(){for(const id of ["metric_cpu","metric_ram"])$(id).replaceChildren(el("span","sk-line sk-metric"))}
+// The last figures of this computer stand in until the next ones, a few seconds later.
+function pendingMetrics(){
+  const kept=shown(deckLocalStorage,"metrics");
+  if(kept&&typeof kept.cpu==="string"&&typeof kept.ram==="string")return showMetrics(kept.cpu,kept.ram,typeof kept.detail==="string"?kept.detail:"");
+  for(const id of ["metric_cpu","metric_ram"])$(id).replaceChildren(el("span","sk-line sk-metric"));
+}
 // Screens live in memory, and for a reload in this tab's own storage: gone with the tab, never on disk for long.
 const SCREENS=12,SCREEN_CHARS=60000;
 // The end of a screen as it is kept: the page draws only its last lines anyway. Pure for tests.
@@ -4891,16 +4960,20 @@ function keepScreens(){
   try{deckSessionStorage.setItem(SHOWN+"screens",JSON.stringify(kept))}catch(e){try{deckSessionStorage.removeItem(SHOWN+"screens")}catch(e){}}
   // Summaries and context sizes go the same way: their keys already name the computer.
   try{sessionStore.setItem(SHOWN+"info",JSON.stringify([...sessionInfoKnown].slice(-SCREENS)))}catch(e){}
+  try{sessionStore.setItem(SHOWN+"history",JSON.stringify({log:[...logKnown].slice(-6),groups:[...groupsKnown].slice(-6)}))}
+  catch(e){try{sessionStore.removeItem(SHOWN+"history")}catch(e){}}
+}
+function recallEntries(known,entries){
+  for(const entry of Array.isArray(entries)?entries:[]){
+    if(Array.isArray(entry)&&typeof entry[0]==="string"&&entry[1]&&typeof entry[1]==="object"&&!known.has(entry[0]))known.set(entry[0],entry[1]);
+  }
 }
 function restoreScreens(){
   const kept=shown(deckSessionStorage,"screens");
-  for(const entry of Array.isArray(kept)?kept:[]){
-    if(Array.isArray(entry)&&typeof entry[0]==="string"&&entry[1]&&typeof entry[1]==="object"&&!previewCache.has(entry[0]))previewCache.set(entry[0],entry[1]);
-  }
-  const info=shown(sessionStore,"info");
-  for(const entry of Array.isArray(info)?info:[]){
-    if(Array.isArray(entry)&&typeof entry[0]==="string"&&entry[1]&&typeof entry[1]==="object"&&!sessionInfoKnown.has(entry[0]))sessionInfoKnown.set(entry[0],entry[1]);
-  }
+  recallEntries(previewCache,kept);
+  recallEntries(sessionInfoKnown,shown(sessionStore,"info"));
+  const history=shown(sessionStore,"history");
+  recallEntries(logKnown,history?.log);recallEntries(groupsKnown,history?.groups);
 }
 // The screens of sessions not opened yet are asked for quietly, one at a time, most recent first: a switch
 // then shows text at once and the fresh screen replaces it.
@@ -4931,6 +5004,33 @@ async function screenNow(name){
     if(active===name&&s&&s.preview===undefined&&s.preview_ansi===undefined){Object.assign(s,previewCache.get(name));if(curMode()==="screen")updateScreen(s,true)}
   }catch(e){/* The list request brings it. */}
 }
+// Terminals of the sessions in the list are opened ahead on a desktop that uses terminals: the few most recent,
+// one at a time and only after the open one is ready. Each is a real tmux client, hence the small number. It
+// is laid out at full size while it connects, so tmux gets the size it will really be shown at.
+const WARM_TERMINALS=5,WARM_SETTLE=3000,WARM_GIVE_UP=20000;let warmingTerminal=false;
+function terminalsToWarm(list,current,open,limit){
+  const room=limit-open.filter(name=>name!==current).length;
+  return room<=0?[]:list.filter(s=>s.name!==current&&s.running&&!open.includes(s.name)&&s.agent!=="shell")
+    .sort((a,b)=>Number(b.activity||0)-Number(a.activity||0)).slice(0,room).map(s=>s.name);
+}
+function warmTerminals(){
+  if(warmingTerminal||document.hidden||isMobile()||isTouch()||curMode()!=="term")return;
+  const current=frames.get(active);
+  if(!current||current.dataset.loading)return;
+  const name=terminalsToWarm(sessions.filter(s=>!isLocal(s)),active,[...frames.keys()],WARM_TERMINALS)[0];
+  if(!name)return;
+  warmingTerminal=true;
+  const frame=frameFor(name);frame.classList.add("warm");
+  let finished=false;
+  const finish=wait=>{if(finished)return;finished=true;setTimeout(()=>{frame.classList.remove("warm");warmingTerminal=false;warmTerminals()},wait)};
+  frame.addEventListener("load",()=>finish(WARM_SETTLE),{once:true});
+  setTimeout(()=>finish(0),WARM_GIVE_UP);
+}
+function showMetrics(cpu,ram,detail=""){
+  const node=$("server_metrics");
+  $("metric_cpu").textContent=cpu;$("metric_ram").textContent=ram;
+  node.title="CPU: "+cpu+" · RAM: "+ram+detail;node.setAttribute("aria-label",node.title);
+}
 // At start and on a computer switch, before the first answer of that computer.
 function showRemembered(){
   if(!sessions.length){const kept=keptSessions(deckLocalStorage);if(kept)sessions=kept}
@@ -4940,6 +5040,7 @@ function showRemembered(){
   const models=shown(deckLocalStorage,"models");
   if(Array.isArray(models)&&!integReady.lm)lmData={profiles:models,discovery:{}};
   ghLogin=shown(deckLocalStorage,"github")?.login||null;
+  pendingMetrics();
   const version=shown(deckLocalStorage,"version")?.version;
   $("ver").replaceChildren(typeof version==="string"?"v"+version:el("span","sk-line ver-skeleton"));
 }
@@ -4949,13 +5050,13 @@ function showRememberedDecks(){
   if(!kept||!Array.isArray(kept.decks))return;
   deckDirectory={decks:kept.decks,name:kept.name||"",network:kept.network||{}};
   populateDeckSelector($("deck_select"),kept.decks,selectedDeck,kept.name||tr("Этот компьютер"));
-  $("deck_switch").hidden=!kept.decks.length&&!selectedDeck;
+  $("deck_switch").hidden=!kept.decks.length&&!selectedDeck;$("deck_direct").hidden=!selectedDeck;
   otherDecks=[{id:"",name:kept.name||tr("Этот компьютер")},...kept.decks].filter(d=>d.id!==selectedDeck)
     .map(d=>({id:d.id,name:d.name,sessions:keptSessions(instanceStorage(localStore,d.id))})).filter(d=>d.sessions);
   loadOtherDecks();
 }
 
-if(typeof module!=="undefined")module.exports={shown,keepShown,sessionsToKeep,keptSessions,decksToKeep,forgetShown,screenToKeep,knownAnswer,keepAnswer};
+if(typeof module!=="undefined")module.exports={shown,keepShown,sessionsToKeep,keptSessions,decksToKeep,forgetShown,screenToKeep,knownAnswer,keepAnswer,terminalsToWarm};
 const I18N=__PANEL_I18N__;
 const DATE_LOCALE=(()=>{try{return Intl.getCanonicalLocales(I18N.language)[0]}catch(e){return "en"}})();
 const $=id=>document.getElementById(id);
@@ -5424,7 +5525,7 @@ async function loadSessions(){
     saveClosedDrafts();
     if(active!==requested)sessionsQueued=true;
     if(first&&!active&&isMobile())drawer(true);
-    warmScreens();
+    warmScreens();warmTerminals();
     renderTabs();renderTitle();renderSessionContainers();
     const s=cur(),m=curMode();
     if(first||active!==previousActive||!s||(m==="term"&&!frames.has(active)))show();
@@ -5678,17 +5779,31 @@ async function logout(){
   location.href="/login";
 }
 function toggleKeys(){const expanded=$("keys").classList.toggle("expanded");$("b_keymore").setAttribute("aria-expanded",String(expanded));fitKeyRow()}
-function fitKeys(){
+// keepMore: "…" stays even if every key fits, because it also opens the agent's commands.
+function fitKeys(keepMore){
   const box=$("keys"),more=$("b_keymore"),keys=[...box.children].filter(k=>k!==more);
   for(const k of keys)k.classList.remove("key-overflow");
   more.classList.remove("all-fit");
   if(box.classList.contains("expanded")||!box.clientWidth)return;
-  if(box.scrollWidth<=box.clientWidth){more.classList.add("all-fit");return}
+  if(!keepMore&&box.scrollWidth<=box.clientWidth){more.classList.add("all-fit");return}
   // Hide from the end so the answer keys (↑ ↓ ⏎) stay reachable on the narrowest screens.
   for(const k of keys.reverse()){if(box.scrollWidth<=box.clientWidth)break;if(k.offsetParent)k.classList.add("key-overflow")}
 }
 // The quick prompts follow: they share "…" with the keys whenever the keys show it.
-function fitKeyRow(){fitKeys();renderQuickPrompts()}
+// In a wide window the keys and the quick prompts share a row. Decided once, in order, so neither depends on
+// the other's result: all keys fit beside the prompts' own buttons, or the keys fold and take the whole row
+// (less the room of saved prompts, which stay visible either way).
+const QUICK_ROOM=140,QUICK_BUTTONS=88;
+function fitKeyRow(){
+  const composer=$("session_composer"),session=cur();
+  const saved=Boolean(session&&quickChips(agentOf(session),quick.saved,false,true).length);
+  composer.style.setProperty("--quick-room",(saved?QUICK_ROOM:QUICK_BUTTONS)+"px");
+  fitKeys();
+  if(!$("b_keymore").classList.contains("all-fit")&&!$("keys").classList.contains("expanded")){
+    composer.style.setProperty("--quick-room",(saved?QUICK_ROOM:0)+"px");fitKeys(true);
+  }
+  renderQuickPrompts();
+}
 // Watched: the room the row is given, never the row itself. Its own width follows what fitKeys() hides, so a
 // row that watches itself fits, shrinks, is fitted again and blinks without end.
 if(window.ResizeObserver){
@@ -5874,7 +5989,7 @@ async function loadDeckSettings(){
   // The computer this browser runs on is named so: with it selected, nothing on screen is far away.
   findHere(network,data.decks).then(found=>{if(found!==null&&deckDirectory.decks===data.decks){names();renderSessionContainers()}});
   // Most installs have a single machine; the switcher appears once another DeckAway is connected.
-  $("deck_switch").hidden=!data.decks.length&&!selectedDeck;
+  $("deck_switch").hidden=!data.decks.length&&!selectedDeck;$("deck_direct").hidden=!selectedDeck;
   deckDirectory={decks:data.decks,name:network.name,network};loadOtherDecks();
   keepShown(localStore,"","decks",decksToKeep(data,network));
   if(Date.now()-fleet.loadedAt>10*60*1000||$("settings_dlg").open)loadFleet();else renderFleet();
@@ -6087,8 +6202,15 @@ async function loadServer(){
   }catch(e){if(e.message!==STALE&&$("srv").querySelector(".srv-skeleton"))renderServer({})}
 }
 async function loadGithub(){
-  const body=$("gh_body");body.replaceChildren();$("gh_refresh").style.display="none";$("gh_state").textContent=tr("GitHub: проверяю…");
+  // A known sign-in and its repositories are shown at once; the check behind them changes them only if needed.
+  const known=ghLogin;
+  if(known)renderGithub();else{$("gh_body").replaceChildren();$("gh_refresh").style.display="none";$("gh_state").textContent=tr("GitHub: проверяю…")}
   await ghStatus();
+  if(!known||ghLogin!==known)renderGithub();
+  if(ghLogin)loadRepos(false);
+}
+function renderGithub(){
+  const body=$("gh_body");body.replaceChildren();$("gh_refresh").style.display="none";
   if(!ghLogin){
     $("gh_state").textContent=tr("GitHub не подключён");
     const b=el("button","ghbtn",tr("Подключить GitHub"));b.type="button";b.onclick=ghConnect;body.append(b);return;
@@ -6096,10 +6218,10 @@ async function loadGithub(){
   $("gh_state").textContent="GitHub: "+ghLogin;$("gh_refresh").style.display="";
   const q=document.createElement("input");q.type="text";q.id="gh_q";q.className="search";q.placeholder=tr("Поиск репозитория…");q.autocomplete="off";q.setAttribute("autocapitalize","off");
   q.oninput=renderRepos;const list=el("div","");list.id="gh_list";body.append(q,list);
-  loadRepos(false);
+  if(repos.length)renderRepos();
 }
 async function loadRepos(refresh){
-  const list=$("gh_list");if(!list)return;list.textContent=tr("Загружаю…");
+  const list=$("gh_list");if(!list)return;if(refresh||!repos.length)list.textContent=tr("Загружаю…");
   try{repos=(await api("/api/github/repos"+(refresh?"?refresh=1":""),null,false,{timeout:90000})).repos;renderRepos()}catch(e){if(e.message!==STALE)list.textContent=e.message}
 }
 function renderRepos(){
@@ -6274,11 +6396,7 @@ async function loadMetrics(){
   loadingMetrics=true;
   const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),8000);
   const node=$("server_metrics");
-  function render(cpu,ram,detail=""){
-    $("metric_cpu").textContent=cpu;$("metric_ram").textContent=ram;
-    node.title="CPU: "+cpu+" · RAM: "+ram+detail;
-    node.setAttribute("aria-label",node.title);
-  }
+  const render=showMetrics;
   try{
     const epoch=deckEpoch,response=await fetch(activePath("/api/server-metrics"),{cache:"no-store",signal:controller.signal});
     if(!response.ok)throw new Error("metrics unavailable");
@@ -6288,7 +6406,7 @@ async function loadMetrics(){
     const hasMemory=Number.isFinite(data.memory_used)&&Number.isFinite(data.memory_total)&&data.memory_total>0;
     const ram=hasMemory?Math.round(data.memory_used/data.memory_total*100)+"%":"—";
     const detail=hasMemory?" ("+(data.memory_used/1073741824).toFixed(1)+" / "+(data.memory_total/1073741824).toFixed(1)+tr(" ГиБ)"):"";
-    render(cpu,ram,detail);
+    render(cpu,ram,detail);keepShown(deckLocalStorage,selectedDeck,"metrics",{cpu,ram,detail});
   }catch(e){render("—","—")}
   finally{clearTimeout(timeout);loadingMetrics=false}
 }

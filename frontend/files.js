@@ -23,16 +23,20 @@ function homeRelative(path,home){return path===home?"~":path.startsWith(home+"/"
 function filesDirty(){return Boolean(files.file&&files.file.content!==files.file.saved)}
 
 async function startFiles(){
-  dropPreview();files.session=active;files.file=null;files.listing=null;files.creating=false;
+  // The home folder as it was listed last time for this session stands in while it is read again.
+  dropPreview();files.session=active;files.key=sessionInfoKey();files.file=null;files.listing=knownAnswer(filesKnown,files.key);files.creating=false;
   await loadFolder("");
 }
 async function loadFolder(path){
   const seq=++files.seq;files.error="";files.path=path;
-  if(!files.listing)renderFiles();
+  // A folder listed before is shown at once and read again behind it.
+  const known=path?knownAnswer(filesKnown,files.key+"|"+path):null;
+  if(known){files.listing=known;files.file=null;renderFiles()}
+  else if(!files.listing)renderFiles();
   try{
     const listing=await api("/api/files?name="+encodeURIComponent(files.session)+"&path="+encodeURIComponent(path),null,false,{timeout:60000});
     if(seq!==files.seq)return;
-    files.listing=listing;files.file=null;
+    files.listing=listing;files.file=null;keepAnswer(filesKnown,path?files.key+"|"+path:files.key,listing);
   }catch(e){if(seq!==files.seq)return;if(e.message!==STALE){files.error=e.message;if(files.listing)toast(e.message)}}
   renderFiles();
 }
@@ -90,7 +94,7 @@ function fileButton(label,cls,run,icon){
 function renderFiles(){
   const box=$("files_body"),listing=files.listing;box.replaceChildren();
   if(!listing&&files.error){box.append(errorWithRetry(files.error,()=>loadFolder(files.path)));return}
-  if(!listing){box.append(el("p","files-empty",tr("Загрузка…")));return}
+  if(!listing){box.append(listSkeleton());return}
   if(files.file)return renderEditor(box,listing);
   const crumbs=el("div","files-path",breadcrumbs(listing));
   if(listing.parent)crumbs.prepend(fileButton(tr("Вверх"),"files-up",()=>loadFolder(listing.parent),"arrow-up"));

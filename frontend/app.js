@@ -466,7 +466,7 @@ async function loadSessions(){
     saveClosedDrafts();
     if(active!==requested)sessionsQueued=true;
     if(first&&!active&&isMobile())drawer(true);
-    warmScreens();
+    warmScreens();warmTerminals();
     renderTabs();renderTitle();renderSessionContainers();
     const s=cur(),m=curMode();
     if(first||active!==previousActive||!s||(m==="term"&&!frames.has(active)))show();
@@ -720,17 +720,31 @@ async function logout(){
   location.href="/login";
 }
 function toggleKeys(){const expanded=$("keys").classList.toggle("expanded");$("b_keymore").setAttribute("aria-expanded",String(expanded));fitKeyRow()}
-function fitKeys(){
+// keepMore: "…" stays even if every key fits, because it also opens the agent's commands.
+function fitKeys(keepMore){
   const box=$("keys"),more=$("b_keymore"),keys=[...box.children].filter(k=>k!==more);
   for(const k of keys)k.classList.remove("key-overflow");
   more.classList.remove("all-fit");
   if(box.classList.contains("expanded")||!box.clientWidth)return;
-  if(box.scrollWidth<=box.clientWidth){more.classList.add("all-fit");return}
+  if(!keepMore&&box.scrollWidth<=box.clientWidth){more.classList.add("all-fit");return}
   // Hide from the end so the answer keys (↑ ↓ ⏎) stay reachable on the narrowest screens.
   for(const k of keys.reverse()){if(box.scrollWidth<=box.clientWidth)break;if(k.offsetParent)k.classList.add("key-overflow")}
 }
 // The quick prompts follow: they share "…" with the keys whenever the keys show it.
-function fitKeyRow(){fitKeys();renderQuickPrompts()}
+// In a wide window the keys and the quick prompts share a row. Decided once, in order, so neither depends on
+// the other's result: all keys fit beside the prompts' own buttons, or the keys fold and take the whole row
+// (less the room of saved prompts, which stay visible either way).
+const QUICK_ROOM=140,QUICK_BUTTONS=88;
+function fitKeyRow(){
+  const composer=$("session_composer"),session=cur();
+  const saved=Boolean(session&&quickChips(agentOf(session),quick.saved,false,true).length);
+  composer.style.setProperty("--quick-room",(saved?QUICK_ROOM:QUICK_BUTTONS)+"px");
+  fitKeys();
+  if(!$("b_keymore").classList.contains("all-fit")&&!$("keys").classList.contains("expanded")){
+    composer.style.setProperty("--quick-room",(saved?QUICK_ROOM:0)+"px");fitKeys(true);
+  }
+  renderQuickPrompts();
+}
 // Watched: the room the row is given, never the row itself. Its own width follows what fitKeys() hides, so a
 // row that watches itself fits, shrinks, is fitted again and blinks without end.
 if(window.ResizeObserver){
@@ -916,7 +930,7 @@ async function loadDeckSettings(){
   // The computer this browser runs on is named so: with it selected, nothing on screen is far away.
   findHere(network,data.decks).then(found=>{if(found!==null&&deckDirectory.decks===data.decks){names();renderSessionContainers()}});
   // Most installs have a single machine; the switcher appears once another DeckAway is connected.
-  $("deck_switch").hidden=!data.decks.length&&!selectedDeck;
+  $("deck_switch").hidden=!data.decks.length&&!selectedDeck;$("deck_direct").hidden=!selectedDeck;
   deckDirectory={decks:data.decks,name:network.name,network};loadOtherDecks();
   keepShown(localStore,"","decks",decksToKeep(data,network));
   if(Date.now()-fleet.loadedAt>10*60*1000||$("settings_dlg").open)loadFleet();else renderFleet();
@@ -1129,8 +1143,15 @@ async function loadServer(){
   }catch(e){if(e.message!==STALE&&$("srv").querySelector(".srv-skeleton"))renderServer({})}
 }
 async function loadGithub(){
-  const body=$("gh_body");body.replaceChildren();$("gh_refresh").style.display="none";$("gh_state").textContent=tr("GitHub: проверяю…");
+  // A known sign-in and its repositories are shown at once; the check behind them changes them only if needed.
+  const known=ghLogin;
+  if(known)renderGithub();else{$("gh_body").replaceChildren();$("gh_refresh").style.display="none";$("gh_state").textContent=tr("GitHub: проверяю…")}
   await ghStatus();
+  if(!known||ghLogin!==known)renderGithub();
+  if(ghLogin)loadRepos(false);
+}
+function renderGithub(){
+  const body=$("gh_body");body.replaceChildren();$("gh_refresh").style.display="none";
   if(!ghLogin){
     $("gh_state").textContent=tr("GitHub не подключён");
     const b=el("button","ghbtn",tr("Подключить GitHub"));b.type="button";b.onclick=ghConnect;body.append(b);return;
@@ -1138,10 +1159,10 @@ async function loadGithub(){
   $("gh_state").textContent="GitHub: "+ghLogin;$("gh_refresh").style.display="";
   const q=document.createElement("input");q.type="text";q.id="gh_q";q.className="search";q.placeholder=tr("Поиск репозитория…");q.autocomplete="off";q.setAttribute("autocapitalize","off");
   q.oninput=renderRepos;const list=el("div","");list.id="gh_list";body.append(q,list);
-  loadRepos(false);
+  if(repos.length)renderRepos();
 }
 async function loadRepos(refresh){
-  const list=$("gh_list");if(!list)return;list.textContent=tr("Загружаю…");
+  const list=$("gh_list");if(!list)return;if(refresh||!repos.length)list.textContent=tr("Загружаю…");
   try{repos=(await api("/api/github/repos"+(refresh?"?refresh=1":""),null,false,{timeout:90000})).repos;renderRepos()}catch(e){if(e.message!==STALE)list.textContent=e.message}
 }
 function renderRepos(){
@@ -1316,11 +1337,7 @@ async function loadMetrics(){
   loadingMetrics=true;
   const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),8000);
   const node=$("server_metrics");
-  function render(cpu,ram,detail=""){
-    $("metric_cpu").textContent=cpu;$("metric_ram").textContent=ram;
-    node.title="CPU: "+cpu+" · RAM: "+ram+detail;
-    node.setAttribute("aria-label",node.title);
-  }
+  const render=showMetrics;
   try{
     const epoch=deckEpoch,response=await fetch(activePath("/api/server-metrics"),{cache:"no-store",signal:controller.signal});
     if(!response.ok)throw new Error("metrics unavailable");
@@ -1330,7 +1347,7 @@ async function loadMetrics(){
     const hasMemory=Number.isFinite(data.memory_used)&&Number.isFinite(data.memory_total)&&data.memory_total>0;
     const ram=hasMemory?Math.round(data.memory_used/data.memory_total*100)+"%":"—";
     const detail=hasMemory?" ("+(data.memory_used/1073741824).toFixed(1)+" / "+(data.memory_total/1073741824).toFixed(1)+tr(" ГиБ)"):"";
-    render(cpu,ram,detail);
+    render(cpu,ram,detail);keepShown(deckLocalStorage,selectedDeck,"metrics",{cpu,ram,detail});
   }catch(e){render("—","—")}
   finally{clearTimeout(timeout);loadingMetrics=false}
 }

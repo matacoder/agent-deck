@@ -104,7 +104,9 @@ function renderComputers(data,network){
   const rows=data.decks.map(deck=>{
     const row=hubRow({title:deck.name,meta:deckAddresses(deck,tr),status:"…",
       actions:[deck.id===selectedDeck?el("span","card-meta",tr("открыт")):labelledButton(tr("Открыть"),"",()=>switchDeck(deck.id),deck.name),
-        moreMenu([[tr("Изменить"),()=>editDeck(deck)],[tr("Отключить"),()=>removeDeck(deck),true]],deck.name)]});
+        moreMenu([[tr("Изменить"),()=>editDeck(deck)],
+          [here.found===deck.id?tr("Это не этот компьютер"):tr("Браузер открыт на этом компьютере"),()=>{setManualHere(here.found===deck.id?null:deck.id);loadDeckSettings()}],
+          [tr("Отключить"),()=>removeDeck(deck),true]],deck.name)]});
     row.querySelector(".card-status").dataset.deckVersion=deck.id;row.dataset.card="deck:"+deck.id;return row;
   });
   $("deck_connections").replaceChildren(...placeEditor(rows,"deck:"+$("deck_id").value,$("deck_editor")));

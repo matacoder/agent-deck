@@ -2,6 +2,18 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.50.0 — 2026-10-12
+
+- **The message field no longer loses the keyboard in the middle of typing.** Every refresh of the session view put the whole message area back where it already was, which takes it out of the page for a moment, and the field lost focus: right after the page opened (now that it opens with the remembered list, typing starts before the first answer), after a session switch, whenever the view was redrawn. It is moved only when it really changes place, and then keeps focus and caret.
+- **Folded keys use the whole row.** 1.49.1 always kept room for the quick prompts, so keys stayed hidden beside empty space. The room is kept only for saved quick prompts; without them the folded row takes the full width.
+- **Terminals of the sessions in the list are opened ahead** on a desktop that uses terminals: the five most recent running agents, one at a time, after the open one is ready, so a switch shows a live terminal instead of "connecting". Each is a real tmux client laid out at its real size. Not on phones, not for shells or stopped sessions.
+- **The project panel remembers what it showed per session**: commits, feature groups, the picture gallery and the home folder are on screen at once on a switch back and are replaced by the fresh answer; a failed read of the gallery shows the error instead of remembered pictures. Where nothing is known yet, placeholders stand in for "Loading…" in Commits, Feature groups, diffs, Files and Gallery.
+- **Open a connected computer directly.** With a computer selected, the arrow beside the computer list opens that computer's own panel in a new tab at its Tailscale address, already signed in, so on the machine under your hands nothing travels through the gateway and back. The link signs in once and within a minute; its secret is given by the computer to the gateway only, and the attempt limit is the one passwords have. Both sides need this version. (A page served over https may not call a plain-http address, so the shortcut cannot happen silently inside the gateway's page.)
+- **"This computer" can be set by hand** where the browser does not allow the automatic check (Safari): Settings → Network → ⋯ of the computer.
+- A commit or a group's combined diff opened once is not fetched again; folders of the file browser open from memory and refresh behind; commits and feature groups survive a reload of the tab.
+- README: a new opening and feature overview, screenshots retaken on current demo data.
+- CPU and RAM show the last figures of that computer until the next ones; the GitHub block of the New session dialog shows the known sign-in and repositories at once.
+
 ## 1.49.1 — 2026-10-12
 
 - **The key row no longer blinks.** At some window widths the row hid a key that did not fit, became narrower by that, was measured again, showed the key, and so on without end; the last key was drawn cut in half. The row is now fitted when the room it is given changes, not when its own width does, and that room no longer depends on whether the quick prompts are shown.

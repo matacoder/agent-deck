@@ -426,6 +426,25 @@ class LanHTTPTests(PanelCase):
         with patch.object(self.panel, 'BIND_HOST', '192.168.1.5'):
             self.assertEqual([seen(c) for c in ('192.168.1.9', '127.0.0.1', '192.168.1.5')], [False, True, True])
 
+    def test_a_direct_link_opens_the_panel_once_and_only_from_its_own_page(self):
+        self.assertEqual(self.request('POST', '/api/direct_link', b'{}', {'Origin': self.origin})[0], 401)  # Not without a sign-in.
+        cookie = 'cc_auth=' + self.panel.make_token()
+        status, _, body = self.request('POST', '/api/direct_link', b'{}', {'Origin': self.origin, 'Cookie': cookie})
+        token = json.loads(body)['token']
+        self.assertEqual(status, 200)
+        status, headers, page = self.request('GET', '/direct')
+        self.assertEqual((status, headers['Cache-Control']), (200, 'no-store'))
+        self.assertNotIn(token.encode(), page)
+        spend = lambda origin=self.origin: self.request('POST', '/api/direct_login', json.dumps({'token': token}).encode(), {'Origin': origin})
+        self.assertEqual(spend('http://evil.example')[0], 403)
+        status, headers, _ = spend()
+        self.assertEqual(status, 200)
+        signed = headers['Set-Cookie'].split(';', 1)[0]
+        self.assertEqual(self.request('GET', '/api/version', headers={'Cookie': signed})[0], 200)
+        self.assertEqual(spend()[0], 401)  # Spent.
+        codes = [self.request('POST', '/api/direct_login', b'{"token":"' + b'0' * 64 + b'"}', {'Origin': self.origin})[0] for _ in range(7)]
+        self.assertIn(429, codes)
+
     def test_wrong_keys_are_rate_limited_like_passwords(self):
         codes = [self.request('POST', '/api/pair_login', b'{"id":"x","nonce":"y","proof":"z"}', {'Origin': self.origin})[0] for _ in range(7)]
         self.assertEqual(codes, [401] * 5 + [429] * 2)

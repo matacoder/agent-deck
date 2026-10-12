@@ -981,6 +981,10 @@
     "Откройте сессию агента: в терминал файлы не прикладываются": "Open an agent session: files are not attached to a terminal",
     "этот компьютер": "este computador",
     "Другие агенты · {0}": "Other agents · {0}",
-    "Подписка Claude": "Claude subscription"
+    "Подписка Claude": "Claude subscription",
+    "Открыть этот компьютер напрямую": "Open this computer directly",
+    "Открыть этот компьютер напрямую, без шлюза: нужен доступ к его адресу в Tailscale": "Open this computer directly, without the gateway: its Tailscale address must be reachable from here",
+    "Это не этот компьютер": "This is not this computer",
+    "Браузер открыт на этом компьютере": "The browser runs on this computer"
   }
 }

@@ -291,6 +291,22 @@ class RemoteDecks(Discovery):
         # Callers talk to `url`: here it is the address that answered, not always the saved one.
         return {**profile, 'url': url}, cookie
 
+    def direct(self, identity, language='en'):
+        """A link that opens the computer's own panel signed in, once: its address is the one the owner entered,
+        the secret after `#` comes from the computer itself (`integrations/direct.py`)."""
+        profile, cookie = self.authentication(identity, language)
+        try:
+            status, _, body = transport.http_request(profile['url'], 'POST', '/api/direct_link', b'{}',
+                {'Cookie': cookie, 'Origin': profile['url'], 'Content-Type': 'application/json'}, timeout=10, limit=65536)
+            token = json.loads(body).get('token') if status == 200 else None
+        except (OSError, http.client.HTTPException, ValueError, AttributeError):
+            raise ValueError('Remote DeckAway did not respond; retry') from None
+        if status == 404:
+            raise ValueError('Update DeckAway on that computer first: this version cannot be opened directly')
+        if not isinstance(token, str) or not re.fullmatch(r'[0-9a-f]{64}', token):
+            raise ValueError('The computer did not give a sign-in link; reconnect it and retry')
+        return self.get(identity)['url'] + '/direct#' + token
+
     def learn_pair(self, profile, cookie):
         """A connection saved before pairing existed gets its key at a password sign-in, asked once per run.
         Returns the cookie; the saved profile changes underneath, which the caller's check then reports."""
@@ -386,7 +402,7 @@ class UnavailableDecks:
     def unavailable(self, *args, **kwargs):
         raise ValueError(self.message)
 
-    get = save = remove = discover = request = terminal_socket = authentication = unavailable
+    get = save = remove = discover = request = terminal_socket = authentication = direct = unavailable
 
     def fail(self, *args):
         pass

@@ -129,6 +129,7 @@ from integrations.gateway import Gateway
 from integrations import lan
 from integrations import agents as cli_agents
 from integrations import pictures
+from integrations import direct
 from integrations import usage as usage_limits
 gateway = Gateway(lambda: remote_decks)  # Looked up on each call: the service can be replaced.
 
@@ -1699,6 +1700,7 @@ def own_instance():
 
 
 pairs = lan.Pairs(os.path.expanduser('~/.config/cc-panel/pairs.json'), owner=lan.fingerprint(COOKIE_KEY))
+direct_links = direct.Links()
 
 
 def action_pair(d):
@@ -2216,6 +2218,8 @@ ACTIONS.update(file_save=action_file_save, git_group=action_git_group, git_fetch
                telegram_config=lambda d: {'telegram': telegram_service().save(d)},
                telegram_pair=lambda d: {'telegram': telegram_service().pair()},
                answer=action_answer, fetch_picture=pictures.action,
+               direct_link=lambda d: {'token': direct_links.create()},
+               decks_direct=lambda d: {'url': remote_decks.direct(d.get('id'))},
                backup_setup=lambda d: backup_service().setup(d.get('code') or None),
                backup_now=action_backup_now,
                backup_run=lambda d: {'report': run_backups()},
@@ -2400,8 +2404,21 @@ class Handler(BaseHTTPRequestHandler):
         answer = pairs.challenge(identity, nonce, address) if asked else None
         return self.send_json(200, answer) if answer else self.send_json(404, {'error': 'unknown pair key'})
 
+    def direct_page(self):
+        self.send_response(200)
+        for name, value in direct.HEADERS:
+            self.send_header(name, value)
+        self.send_header('Content-Length', str(len(direct.PAGE)))
+        self.end_headers()
+        self.wfile.write(direct.PAGE)
+
     def pair_login(self):
         """A gateway signs in with the key it got over an earlier signed-in connection instead of the password."""
+        return self.keyless_login(lambda data: all(isinstance(data.get(k), str) for k in ('id', 'nonce', 'proof'))
+                                  and pairs.accept(data['id'], data['nonce'], data['proof']))
+
+    def keyless_login(self, accept):
+        """A sign-in by something other than the password, under the same limit on attempts."""
         ip = self.client_ip()
         try:
             length = int(self.headers.get('Content-Length') or 0)
@@ -2422,8 +2439,7 @@ class Handler(BaseHTTPRequestHandler):
             failed_logins[ip] = (count + 1, now)
         try:
             data = json.loads(self.read_body(length))
-            ok = (isinstance(data, dict) and all(isinstance(data.get(k), str) for k in ('id', 'nonce', 'proof'))
-                  and pairs.accept(data['id'], data['nonce'], data['proof']))
+            ok = isinstance(data, dict) and bool(accept(data))
         except ValueError:
             ok = False
         if not ok:
@@ -2628,6 +2644,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_json(200, {'app': 'away-deck', 'id': own_instance(), 'name': network_status()['name']})
         if self.path.startswith('/api/pair_challenge?'):
             return self.pair_challenge()
+        if self.path == '/direct':
+            return self.direct_page()
         if self.path.startswith('/api/here?') and 'X-Forwarded-For' not in self.headers:
             return self.here()  # A panel listening on every address answers the loopback question itself.
         if ISOLATED_ROUTE.match(self.path):
@@ -2765,6 +2783,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.do_login()
         if self.path == '/api/pair_login':
             return self.pair_login()
+        if self.path == '/api/direct_login':
+            return self.keyless_login(lambda data: direct_links.redeem(data.get('token')))
         if self.path == "/logout":
             if not self.same_origin():
                 self.close_connection = True

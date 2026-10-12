@@ -21,7 +21,16 @@ async function refreshModelCatalog(request){
 
 function placeSessionKeys({row,composer,screen,terminal,wrap,reconnect,mode,active}){
   const live=active&&mode==="term";
-  (live?terminal:screen).append(composer||row);
+  // Moved only when it changes place: putting a node where it already is still takes it out of the page for
+  // a moment, and the message field inside it loses the keyboard in the middle of a word. When it does move,
+  // the field keeps its focus and caret.
+  const target=live?terminal:screen,node=composer||row;
+  if(node.parentNode!==target){
+    const focused=node.ownerDocument?.activeElement,inside=focused&&node.contains(focused)?focused:null;
+    const caret=inside&&typeof inside.selectionStart==="number"?[inside.selectionStart,inside.selectionEnd]:null;
+    target.append(node);
+    if(inside){inside.focus({preventScroll:true});if(caret)try{inside.setSelectionRange(caret[0],caret[1])}catch(e){}}
+  }
   terminal.hidden=!live;
   wrap.hidden=live;
   if(reconnect)reconnect.hidden=!live;

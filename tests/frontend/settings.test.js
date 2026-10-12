@@ -106,6 +106,19 @@ test('switching terminal views preserves the composer text, attachment controls 
  expect(document.querySelector('textarea').value).toBe('Unsent draft');expect(document.querySelector('#attachments').textContent).toBe('photo.png');
 });
 
+test('the message field keeps the keyboard: it is not re-inserted where it already is, and a real move restores focus and caret',()=>{
+ const {placeSessionKeys}=require('../../frontend/settings');
+ document.body.innerHTML='<div id="screen"><div id="composer"><textarea>Unsent draft</textarea><div id="row"><button id="wrap">Wrap</button></div></div></div><div id="terminal" hidden><button id="reconnect">Reconnect</button></div>';
+ const options={row:document.querySelector('#row'),composer:document.querySelector('#composer'),screen:document.querySelector('#screen'),terminal:document.querySelector('#terminal'),wrap:document.querySelector('#wrap'),reconnect:document.querySelector('#reconnect'),active:true};
+ const field=document.querySelector('textarea');field.focus();field.setSelectionRange(3,6);
+ const moved=jest.spyOn(options.screen,'append');
+ placeSessionKeys({...options,mode:'screen'});placeSessionKeys({...options,mode:'screen'});
+ expect(moved).not.toHaveBeenCalled();expect(document.activeElement).toBe(field);
+ placeSessionKeys({...options,mode:'term'});
+ expect(options.composer.parentNode).toBe(options.terminal);expect(document.activeElement).toBe(field);
+ expect([field.selectionStart,field.selectionEnd]).toEqual([3,6]);
+});
+
 test('closed draft actions copy exact text and delete only the chosen draft',()=>{
  const {renderClosedDraftList}=require('../../frontend/settings');
  const box=document.createElement('div');const drafts=new Map([['one','Text <img>\nnext'],['two','Keep me']]);

@@ -4,7 +4,7 @@
  * What the page showed last time is on screen before the first answer, and sign-out forgets it.
  */
 const {DECK,boot,session,settle,routesFor}=require('./harness');
-const {sessionsToKeep,decksToKeep,keepShown,shown,forgetShown,screenToKeep,knownAnswer,keepAnswer}=require('../../frontend/remember');
+const {sessionsToKeep,decksToKeep,keepShown,shown,forgetShown,screenToKeep,knownAnswer,keepAnswer,terminalsToWarm}=require('../../frontend/remember');
 
 function storage(){
   const data={};
@@ -111,4 +111,12 @@ test('a session opened before shows its summary and screen at once on a switch b
     expect(doc.getElementById('session_hint').textContent).toContain('about alpha');
     await settle();await settle();
   }catch(e){await settle();await settle();throw e}finally{window.close()}
+});
+
+test('terminals opened ahead: the most recent running agents, never the open one, a shell or more than the limit',()=>{
+  const list=[{name:'open',running:true,activity:9},{name:'old',running:true,activity:1},{name:'new',running:true,activity:8},
+    {name:'stopped',running:false,activity:7},{name:'sh',running:true,agent:'shell',activity:6},{name:'seen',running:true,activity:5}];
+  expect(terminalsToWarm(list,'open',['open','seen'],5)).toEqual(['new','old']);
+  expect(terminalsToWarm(list,'open',['open','seen'],2)).toEqual(['new']);
+  expect(terminalsToWarm(list,'open',['open','a','b','c','d','e'],5)).toEqual([]);
 });

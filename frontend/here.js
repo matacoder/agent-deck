@@ -26,10 +26,27 @@ function findHere(network,decks){
   here.asking=here.asking||(async()=>{
     const candidates=hereCandidates(network,decks),answers=await Promise.all(candidates.map(askHere));
     const index=answers.indexOf(true);
-    here.found=index<0?null:candidates[index].id;
+    here.found=index<0?manualHere():candidates[index].id;
     return here.found;
   })();
   return here.asking;
+}
+// The page of a gateway cannot talk to a computer's own address from inside (https to plain http), but it may
+// open it as a page: the gateway asks the computer for a link that signs in once. The tab is opened at the
+// click, before the answer, or the browser would block it as a pop-up.
+async function openDirect(){
+  if(!selectedDeck)return;
+  const tab=window.open("about:blank","_blank");
+  try{
+    const {url}=await gatewayApi("/api/decks_direct",{id:selectedDeck});
+    if(tab){tab.opener=null;tab.location.replace(url)}else location.href=url;
+  }catch(e){if(tab)tab.close();if(e.message!==STALE)toast(e.message)}
+}
+// Safari does not let a page ask 127.0.0.1, so there the owner says once which computer this browser is on.
+function manualHere(){try{const id=localStore.getItem("cc.here");return id===null?null:id}catch(e){return null}}
+function setManualHere(id){
+  try{if(id===null)localStore.removeItem("cc.here");else localStore.setItem("cc.here",id)}catch(e){}
+  here.found=id;
 }
 
 if(typeof module!=="undefined")module.exports={hereCandidates,hereName};

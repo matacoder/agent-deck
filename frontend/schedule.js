@@ -130,7 +130,7 @@ async function saveAutoResume(){
 async function loadQuickPrompts(){
   // One list for every computer, so it is read from the gateway.
   try{quick.saved=(await api("/api/quick_prompts",null,true)).prompts||[]}catch(e){quick.loaded=false}
-  renderQuickPrompts();
+  fitKeyRow();
 }
 function renderQuickPrompts(){
   // One "more" on a phone: when the keys row shows its own, it opens the agent's commands too.
@@ -197,7 +197,7 @@ async function saveQuickPrompts(){
   $("quick_save").disabled=true;
   try{
     quick.saved=(await api("/api/quick_prompts",{prompts:quickRows(rows)},true)).prompts;
-    $("quick_dlg").close();renderQuickPrompts();
+    $("quick_dlg").close();fitKeyRow();
   }catch(e){if(e.message!==STALE)toast(e.message)}finally{$("quick_save").disabled=false}
 }
 if(typeof document!=="undefined")document.addEventListener("visibilitychange",()=>{if(!document.hidden&&later.session)loadLater()});

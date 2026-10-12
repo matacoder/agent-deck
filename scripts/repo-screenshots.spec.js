@@ -16,7 +16,7 @@ async function demo(app,page,before){
   session('mobile-ui',{group:'website',activity:Date.now()/1000,path:'/home/demo/projects/website'})
  ];
  const now=Date.now()/1000;
- app.usage={codex:{plan:'Plus',windows:[{label:'5 часов',percent:34,secs:18000,resets_at:now+5400},{label:'неделя',percent:28,secs:604800,resets_at:now+345600}]},claude:{plan:'Max',windows:[{label:'неделя',percent:41,secs:604800,resets_at:now+345600}]}};
+ app.usage={codex:{plan:'Plus',windows:[{label:'5 hours',percent:34,secs:18000,resets_at:now+5400},{label:'Week',percent:28,secs:604800,resets_at:now+345600}]},claude:{plan:'Max',windows:[{label:'Week',percent:41,secs:604800,resets_at:now+345600}]}};
  await page.route('**/api/decks',route=>route.fulfill({contentType:'application/json',body:JSON.stringify({decks:[],discovery:{phase:'idle',results:[]}})}));
  await page.route('**/api/network',route=>route.fulfill({contentType:'application/json',body:JSON.stringify({name:'demo-server',public_url:'',bind_host:'100.64.0.1',bind_port:8790})}));
  await page.route('**/api/agents',route=>route.fulfill({contentType:'application/json',body:JSON.stringify({codex:{installed:true,logged_in:true,version:'0.160.0'},claude:{installed:true,logged_in:true},kimi:{installed:true,logged_in:false},kimi_config:{configured:false}})}));
@@ -25,8 +25,45 @@ async function demo(app,page,before){
  await expect(page.locator('#ver')).toContainText(version);
  await page.evaluate(()=>document.activeElement?.blur());
 }
+// The first picture of the README: two computers, an agent's finished work with its screenshot, the diff beside it.
+const HERO=`● Added the refund flow to the cashier.
+
+  ✓ POST /orders/{id}/refund with partial amounts
+  ✓ 14 new tests, the whole suite passes (312 tests, 41 s)
+  ✓ Screenshot of the new page:
+    /tmp/demo-preview/cashier_viewport.png
+
+  The refund button is disabled for orders older than 30 days,
+  as the policy in docs/refunds.md says. Committed as 88df2f9.
+
+● Next: the nightly report still counts refunded orders as revenue.
+  Shall I fix that too?`;
+const HERO_PATCH='diff --git a/shop/cashier.py b/shop/cashier.py\nindex 1..2 100644\n--- a/shop/cashier.py\n+++ b/shop/cashier.py\n@@ -41,6 +41,14 @@ class Cashier:\n     def total(self, order):\n         return sum(line.price * line.count for line in order.lines)\n \n+    def refund(self, order, amount=None):\n+        if order.age_days > REFUND_DAYS:\n+            raise RefundClosed(order.id)\n+        amount = amount or self.total(order)\n+        self.ledger.add(order.id, -amount)\n+        return amount\n+\n     def close(self, order):\n-        self.ledger.add(order.id, self.total(order))\n+        self.ledger.add(order.id, self.total(order) - order.refunded)\n';
 test('desktop',async({app,page},info)=>{
- test.skip(info.project.name!=='desktop');await demo(app,page);await page.screenshot({path:target('desktop')});await page.evaluate(()=>openSettings('models'));await expect(page.locator('#model_cards')).toContainText('Mac Studio');await page.screenshot({path:target('desktop-models')});
+ test.skip(info.project.name!=='desktop');
+ const cashier=await agentScreenshot(page,'Cashier','#e5484d');
+ await demo(app,page,async()=>{
+  app.sessions=[
+   session('shop-api',{agent:'claude',group:'shop',preview:HERO,path:'/home/demo/projects/shop'}),
+   session('shop-tests',{agent:'codex',group:'shop',activity:Date.now()/1000,path:'/home/demo/projects/shop'}),
+   session('terminal',{agent:'shell',group:'shop',command:'bash',path:'/home/demo/projects/shop'}),
+   session('landing',{agent:'gemini',group:'website',path:'/home/demo/projects/website'}),
+   session('mobile-ui',{agent:'cursor',group:'website',activity:Date.now()/1000,path:'/home/demo/projects/website'})];
+  await page.route('**/deck/'+DECK+'/api/**',json({}));
+  await page.route('**/deck/'+DECK+'/api/sessions*',json({sessions:[session('ml-train',{agent:'claude',group:'ml',path:'/Users/demo/dev/ml',activity:Date.now()/1000}),session('notebook',{agent:'codex',group:'ml',path:'/Users/demo/dev/ml'})]}));
+  await page.route('**/api/decks',json({decks:[{id:DECK,name:'Mac Studio',url:'http://100.64.0.2:8790',username:'demo'}],discovery:{phase:'idle',results:[]}}));
+  await page.route('**/api/image?*',route=>route.fulfill({contentType:'image/png',body:cashier}));
+  await page.route('**/api/session_info*',json({supported:true,context:{tokens:61000,limit:200000},summary:{line:'Refunds in the cashier: endpoint, tests and the page are done; the nightly report is next.'}}));
+  await page.route('**/api/git/changes?*',json({name:'shop',tree:'/home/demo/projects/shop',branch:'refunds',head:'a'.repeat(40),trees:[],files:[
+   {path:'shop/cashier.py',status:'modified',added:9,removed:1,binary:false,truncated:false,patch:HERO_PATCH},
+   {path:'tests/test_refunds.py',status:'added',added:118,removed:0,binary:false,truncated:false,patch:''},
+   {path:'docs/refunds.md',status:'modified',added:6,removed:2,binary:false,truncated:false,patch:''}]}));
+  await page.addInitScript(()=>{localStorage.setItem('cc.active','shop-api')});
+ });
+ await page.evaluate(()=>{select('shop-api');loadDeckSettings();openProject('changes')});await page.waitForTimeout(1500);
+ await page.evaluate(()=>document.activeElement?.blur());
+ await page.screenshot({path:target('desktop')});
+ await page.evaluate(()=>closeProject());await page.evaluate(()=>openSettings('models'));await expect(page.locator('#model_cards')).toContainText('Mac Studio');await page.screenshot({path:target('desktop-models')});
 });
 test('phone screens',async({app,page},info)=>{
  test.skip(info.project.name!=='phone');await demo(app,page);
@@ -142,12 +179,13 @@ test('phone history',async({app,page},info)=>{
  await demo(app,page,async()=>{
   await page.route('**/api/git/log?*',json({repo:'/home/dev/dev/agent-deck',name:'agent-deck',branch:'files-browser',ref:'HEAD',branches:['files-browser','main','origin/main'],remote:'origin/main',ahead:2,behind:12,commits,more:true}));
   await page.route('**/api/git/commit?*',json({sha:'a'.repeat(40),short:'796420d',author:'Denis',email:'d@example.test',time:now-3600,parents:[],message:'Let dialogs scroll on phones and name sessions by their title\n\nFlex children need min-height:0 to scroll.',files:[{path:'frontend/style.css',status:'modified',added:1,removed:1,binary:false,truncated:false,patch},{path:'docs/screenshots/mobile-files.png',status:'added',added:0,removed:0,binary:true,truncated:false,patch:'diff --git a/x b/x\nBinary files differ'}]}));
-  await page.route('**/api/git/groups?*',json({phase:'done',head:'a'.repeat(40),groups:[
-   {title:'Project files',summary:'A file browser with a safe text editor: browse folders, edit .env and save without overwriting changes.',commits:['a'.repeat(40),'b'.repeat(40)]},
-   {title:'SteamOS install',summary:'Rootless Podman container with a user service that survives SteamOS updates.',commits:['c'.repeat(40)]}],
-   commits:Object.fromEntries(commits.map(c=>[c.sha,c]))}));
+  await page.route('**/api/git/changes?*',json({name:'agent-deck',tree:'/home/demo/projects/agent-deck',branch:'files-browser',head:'a'.repeat(40),files:[{path:'frontend/style.css',status:'modified',added:1,removed:1,binary:false,truncated:false,patch}],trees:[]}));
+  await page.route('**/api/git/groups?*',json({phase:'done',head:'a'.repeat(40),model:'Haiku',at:now-900,pending:[],
+   now:[{author:'Denis',group:'g1',title:'Project files',subject:commits[0].subject,time:now-3600}],groups:[
+   {id:'g1',title:'Project files',summary:'A file browser with a safe text editor: browse folders, edit .env and save without overwriting changes.',commits:['a'.repeat(40),'b'.repeat(40)],authors:['Denis'],last:now-3600},
+   {id:'g2',title:'SteamOS install',summary:'Rootless Podman container with a user service that survives SteamOS updates.',commits:['c'.repeat(40)],authors:['Denis'],last:now-86400}]}));
  });
- await page.evaluate(()=>openHistory());await page.waitForTimeout(600);
+ await page.evaluate(()=>openProject('commits'));await page.waitForTimeout(600);
  await page.screenshot({path:target('mobile-history')});
  await page.locator('.git-row').first().click();await page.waitForTimeout(500);
  await page.screenshot({path:target('mobile-commit')});

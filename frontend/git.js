@@ -7,7 +7,15 @@ const hist={session:null,ref:"",tree:"",tab:"changes",authors:null,changes:null,
   seq:0,loadingPage:false,error:""};
 // Every list (session, branch) gets a new number; an answer for an older one is dropped instead of being
 // mixed into the list that is on screen now.
-function freshList(){hist.seq++;hist.log=null;hist.commits=[];hist.groups=null;hist.view=null;hist.error="";hist.loadingPage=false}
+function freshList(){hist.seq++;hist.log=null;hist.commits=[];hist.groups=null;hist.view=null;hist.error="";hist.loadingPage=false;hist.recalled=false}
+// The first page of commits and the feature groups this repository showed last time stand in while both are
+// read again; `recalled` makes the next request ask for the first page instead of the one after it.
+function recallHistory(){
+  hist.key=sessionInfoKey()+"|"+hist.ref+"|"+hist.tree;
+  const log=knownAnswer(logKnown,hist.key);
+  if(log){hist.log=log;hist.commits=[...log.commits];hist.recalled=true}
+  hist.groups=knownAnswer(groupsKnown,hist.key);
+}
 
 function relativeTime(seconds){
   const diff=seconds-Date.now()/1000,units=[["year",31536000],["month",2592000],["day",86400],["hour",3600],["minute",60]];
@@ -90,7 +98,7 @@ function fileBlock(title,file,open,content){
 }
 
 function startHistory(tab){
-  hist.session=active;hist.ref="";hist.tree="";hist.tab=tab;hist.back=null;hist.authors=savedAuthorColors();freshList();
+  hist.session=active;hist.ref="";hist.tree="";hist.tab=tab;hist.back=null;hist.authors=savedAuthorColors();freshList();recallHistory();
   renderHistory();loadChanges();loadHistoryPage();if(tab==="groups")loadGroups();
 }
 async function loadChanges(){
@@ -172,21 +180,29 @@ async function loadHistoryPage(){
   // Commits load in the background while Changes is open; redrawing it would close a comment being typed.
   const seq=hist.seq;hist.loadingPage=true;hist.error="";if(hist.tab!=="changes")renderHistory();
   try{
-    const page=await api(gitPath("log",{skip:hist.commits.length}),null,false,{timeout:60000});
+    const first=hist.recalled||!hist.commits.length,key=hist.key;
+    const page=await api(gitPath("log",{skip:first?0:hist.commits.length}),null,false,{timeout:60000});
     if(seq!==hist.seq)return;
+    if(first){hist.commits=[];hist.recalled=false;keepAnswer(logKnown,key,page)}
     hist.log=page;hist.commits.push(...page.commits);
   }catch(e){if(seq===hist.seq&&e.message!==STALE)hist.error=e.message}
   finally{if(seq===hist.seq){hist.loadingPage=false;if(hist.tab!=="changes")renderHistory()}}
 }
 async function showCommit(sha,back){
-  const view={kind:"loading",back:back||null};hist.view=view;hist.back=back||null;renderHistory();
-  try{const data=await api(gitPath("commit",{sha}),null,false,{timeout:60000});if(hist.view!==view)return;hist.view={kind:"commit",data}}
+  // A commit read once is not asked for again: it cannot change.
+  const key=sessionInfoKey()+"|commit|"+sha,known=knownAnswer(diffsKnown,key);
+  hist.back=back||null;
+  if(known){hist.view={kind:"commit",data:known};renderHistory();$("git_body").scrollTop=0;return}
+  const view={kind:"loading",back:back||null};hist.view=view;renderHistory();
+  try{const data=await api(gitPath("commit",{sha}),null,false,{timeout:60000});if(hist.view!==view)return;keepAnswer(diffsKnown,key,data,KNOWN_DIFFS);hist.view={kind:"commit",data}}
   catch(e){if(hist.view!==view)return;hist.view={kind:"error",error:e.message===STALE?"":e.message,retry:()=>showCommit(sha,back),back:back||null}}
   renderHistory();$("git_body").scrollTop=0;
 }
 async function showGroup(group){
-  const view={kind:"group",group,diff:null};hist.view=view;renderHistory();$("git_body").scrollTop=0;
-  try{view.diff=await api(gitPath("group_diff",{shas:group.commits.join(",")}),null,false,{timeout:120000})}
+  const key=sessionInfoKey()+"|group|"+group.commits.join(","),known=knownAnswer(diffsKnown,key);
+  const view={kind:"group",group,diff:known};hist.view=view;renderHistory();$("git_body").scrollTop=0;
+  if(known)return;
+  try{view.diff=await api(gitPath("group_diff",{shas:group.commits.join(",")}),null,false,{timeout:120000});keepAnswer(diffsKnown,key,view.diff,KNOWN_DIFFS)}
   catch(e){view.error=e.message===STALE?"":e.message}
   if(hist.view===view)renderHistory();
 }
@@ -197,7 +213,7 @@ async function loadGroups(quiet){
   try{state=await api(gitPath("groups"),null,false,{timeout:60000})}catch(e){state=e.message===STALE||quiet?null:{error:e.message}}
   if(seq!==hist.seq||session!==hist.session||!state)return;
   if(quiet&&JSON.stringify(state)===JSON.stringify(hist.groups))return;
-  hist.groups=state;
+  hist.groups=state;if(!state.error)keepAnswer(groupsKnown,hist.key,state);
   if(hist.tab==="groups"&&!hist.view)renderHistory();
 }
 async function refreshGroups(){
@@ -244,7 +260,7 @@ function renderHistory(){
   if(hist.tab==="groups")return renderGroups(box);
   if(hist.tab==="changes")return renderChanges(box);
   if(hist.error&&!hist.log){box.append(errorWithRetry(hist.error,loadHistoryPage));return}
-  if(!hist.log){box.append(el("p","files-empty",tr("Загрузка…")));return}
+  if(!hist.log){box.append(listSkeleton());return}
   box.append(...branchBar());
   const list=el("div","git-list");for(const c of hist.commits)list.append(commitRow(c));box.append(list);
   if(!hist.commits.length)box.append(el("p","files-empty",tr("В репозитории ещё нет коммитов")));
@@ -265,7 +281,7 @@ function renderHistoryView(box){
   const home=hist.tab==="groups"?tr("К группам"):tr("К коммитам");
   if(view.kind==="loading"||view.kind==="error"){
     box.append(backButton(view.back?tr("К группе"):home,leave),
-      view.kind==="error"?errorWithRetry(view.error,view.retry):el("p","files-empty",tr("Загрузка…")));
+      view.kind==="error"?errorWithRetry(view.error,view.retry):listSkeleton());
     return;
   }
   if(view.kind==="commit"){
@@ -280,7 +296,7 @@ function renderHistoryView(box){
   for(const sha of group.commits){const c=hist.groups?.commits?.[sha];if(c)list.append(commitRow(c,group))}
   box.append(list,el("h5","git-section",tr("Общий дифф")));
   if(view.error!==undefined){box.append(errorWithRetry(view.error,()=>showGroup(group)));return}
-  if(!view.diff){box.append(el("p","files-empty",tr("Загрузка…")));return}
+  if(!view.diff){box.append(listSkeleton());return}
   const open=filesToOpen(view.diff.files);
   for(const file of view.diff.files){
     box.append(fileBlock(file.path,file,open.has(file.path),()=>{
@@ -332,7 +348,7 @@ function commentForm(path,row,line){
 function renderChanges(box){
   const data=hist.changes;
   if(hist.changesError){box.append(errorWithRetry(hist.changesError,loadChanges));return}
-  if(!data){box.append(el("p","files-empty",tr("Загрузка…")));return}
+  if(!data){box.append(listSkeleton());return}
   // One line for where we are; the refresh button is an icon to keep the first change high on the screen.
   const refresh=el("button","git-refresh",svgIcon("refresh"));refresh.type="button";refresh.onclick=loadChanges;
   refresh.setAttribute("aria-label",tr("Обновить"));refresh.title=tr("Обновить");
@@ -351,7 +367,7 @@ function renderLastCommit(box,last){
 }
 function renderGroups(box){
   const state=hist.groups;
-  if(!state){box.append(el("p","files-empty",tr("Загрузка…")));return}
+  if(!state){box.append(listSkeleton());return}
   if(state.error&&!state.groups){box.append(errorWithRetry(state.error,()=>loadGroups()));return}
   // An older DeckAway on this computer still groups on request only.
   if(!Array.isArray(state.pending)){box.append(el("p","diff-note",tr("Эта функция недоступна: обновите DeckAway на этом компьютере")));return}

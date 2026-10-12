@@ -13,23 +13,26 @@ function galleryShown(){
 }
 async function loadGallery(){
   const session=active,key=sessionInfoKey();clearTimeout(gallery.timer);
-  if(gallery.key!==key){Object.assign(gallery,{key,session,items:null,raw:"",error:""});renderGallery()}
+  // Pictures this session showed last time stay up while the list is read again.
+  if(gallery.key!==key){const known=knownAnswer(galleryKnown,key);Object.assign(gallery,{key,session,items:known,raw:known?JSON.stringify(known):"",error:"",recalled:Boolean(known)});renderGallery()}
   try{
     const data=await api("/api/gallery?name="+encodeURIComponent(session));
     if(gallery.key!==key)return;
-    const raw=JSON.stringify(data.items||[]);
+    const raw=JSON.stringify(data.items||[]);gallery.recalled=false;
     // The same answer leaves the grid alone: no thumbnail reloads, no lost scroll.
-    if(raw!==gallery.raw||gallery.error){Object.assign(gallery,{raw,items:data.items||[],error:""});renderGallery()}
+    if(raw!==gallery.raw||gallery.error){Object.assign(gallery,{raw,items:data.items||[],error:""});keepAnswer(galleryKnown,key,gallery.items);renderGallery()}
   }catch(e){
     if(gallery.key!==key||e.message===STALE)return;
-    gallery.error=e.message;if(!gallery.items)renderGallery();
+    // Pictures remembered from before are not a list this computer just gave: the error is shown instead.
+    gallery.error=e.message;if(gallery.recalled){gallery.items=null;gallery.raw="";gallery.recalled=false}
+    if(!gallery.items)renderGallery();
   }
   if(galleryShown())gallery.timer=setTimeout(()=>{if(galleryShown())loadGallery()},GALLERY_POLL);
 }
 function renderGallery(){
   const box=$("gallery_body");box.replaceChildren();
   if(gallery.error&&!gallery.items){box.append(errorWithRetry(gallery.error,loadGallery));return}
-  if(!gallery.items){box.append(el("p","files-empty",tr("Загрузка…")));return}
+  if(!gallery.items){box.append(listSkeleton("gallery"));return}
   const items=gallery.items,session=gallery.session;
   if(!items.length){box.append(el("p","files-empty",tr("Здесь появятся картинки, которые агенты этой сессии покажут на экране: скриншоты, превью, графики. Они остаются, даже когда уходят с экрана.")));return}
   box.append(el("p","gallery-count",tr("Картинок: {0}",[items.length])));

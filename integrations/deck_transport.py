@@ -50,8 +50,9 @@ def remote_path(raw):
     if (parsed.scheme or parsed.netloc or '..' in decoded.split('/') or '%' in decoded
             or not re.fullmatch(r'/api/[a-zA-Z0-9_-]+(?:/[a-zA-Z0-9_-]+)?|/t(?:/[a-zA-Z0-9_./-]*)?', decoded)):
         raise ValueError('Only DeckAway API and terminal paths may be proxied')
-    # A key for signing in without the password is given only to the gateway itself (`RemoteDecks.pair`).
-    if decoded.startswith(('/api/decks', '/api/network', '/api/pair')):
+    # A key or a link for signing in without the password is asked for only by the gateway itself
+    # (`RemoteDecks.pair`, `RemoteDecks.direct`), never by a page through it.
+    if decoded.startswith(('/api/decks', '/api/network', '/api/pair', '/api/direct')):
         raise ValueError('Nested gateway configuration is not supported')
     if decoded.startswith('/t') and not terminal_query_ok(raw):
         raise ValueError('A terminal link may only name one session')

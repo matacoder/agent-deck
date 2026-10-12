@@ -68,6 +68,22 @@ class RemoteDeckTests(PanelCase):
             with self.subTest(path=invalid), self.assertRaises(ValueError):remote_path(invalid)
         self.transport.assert_not_called()
 
+    def test_direct_link_is_the_owners_address_with_the_computers_one_time_secret(self):
+        token = 'ab' * 32
+        with patch.object(self.decks, 'authentication', return_value=(dict(PROFILE), 'cc_auth=signed.cookie')):
+            self.transport.return_value = (200, {}, json.dumps({'ok': True, 'token': token}).encode())
+            self.assertEqual(self.decks.direct(ID), URL + '/direct#' + token)
+            sent = self.transport.call_args
+            self.assertEqual(sent.args[:3], (URL, 'POST', '/api/direct_link'))
+            self.transport.return_value = (404, {}, b'{"error":"not found"}')
+            with self.assertRaisesRegex(ValueError, 'Update DeckAway'):
+                self.decks.direct(ID)
+            self.transport.return_value = (200, {}, b'{"token":"<script>"}')
+            with self.assertRaises(ValueError):
+                self.decks.direct(ID)
+        with self.assertRaises(ValueError):
+            UnavailableDecks('off').direct(ID)
+
     def test_successful_connection_stores_credentials_privately_without_exposing_them(self):
         self.transport.side_effect = [(303,{'Set-Cookie':'cc_auth=signed.cookie; HttpOnly','Location':'/'},b''),(200,{},b'{"version":"1.0.7"}'),(404,{},b'{}')]
         public = self.decks.save(PROFILE)

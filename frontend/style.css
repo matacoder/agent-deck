@@ -39,10 +39,11 @@ input,textarea,select{font:inherit}
 
 /* ---------- sidebar ---------- */
 aside{position:relative;width:min(var(--side-w,248px),40vw);flex:none;background:var(--side);border-right:1px solid var(--bd);display:flex;flex-direction:column;min-height:0}
-.deck-switch{display:grid;grid-template-columns:minmax(0,1fr) 32px;align-items:center;gap:6px;padding:10px 8px;border-bottom:1px solid var(--bd)}
+.deck-switch{display:flex;align-items:center;gap:6px;padding:10px 8px;border-bottom:1px solid var(--bd)}
 .deck-switch label{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
-.deck-switch select{min-width:0;min-height:32px;background:var(--side2);color:var(--fg);border:1px solid var(--bd);border-radius:var(--r-sm);padding:6px 8px}
-.deck-switch button{display:grid;place-items:center;height:32px;border-radius:var(--r-sm);color:var(--mut)}
+.deck-switch select{flex:1;min-width:0;min-height:32px;background:var(--side2);color:var(--fg);border:1px solid var(--bd);border-radius:var(--r-sm);padding:6px 8px}
+.deck-switch button[hidden]{display:none}
+.deck-switch button{display:grid;place-items:center;flex:none;width:32px;height:32px;border-radius:var(--r-sm);color:var(--mut)}
 @media (hover:hover){.deck-switch button:hover{background:var(--side2);color:var(--fg)}}
 /* Address and the waiting count share one fixed-height row, so neither can push the list down. */
 .srv-row{display:flex;align-items:center;gap:6px;height:38px;padding:8px 6px 0 12px}
@@ -157,9 +158,13 @@ main{flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;backgrou
 #stage{flex:1;position:relative;min-height:0}
 #stage iframe{position:absolute;inset:0;width:100%;height:100%;border:0;display:none;background:var(--bg)}
 #stage iframe.on{display:block}
+/* Opened ahead: laid out at full size so the terminal learns its real size, but not seen and not clickable. */
+#stage iframe.warm{display:block;visibility:hidden;pointer-events:none}#stage iframe.warm.on{visibility:visible;pointer-events:auto}
 .screen-skeleton{display:grid;gap:12px;padding:16px 4px}
 .integ-skeleton{display:block;padding:9px 6px 5px}.integ-skeleton .sk-line:last-child{display:none}
 .sk-line{display:block;height:12px;border-radius:6px;background:linear-gradient(90deg,var(--side2) 0%,var(--sel) 50%,var(--side2) 100%);background-size:200% 100%;animation:shimmer 1.2s ease-in-out infinite}
+.list-skeleton{display:grid;gap:7px;padding:14px 12px}.list-skeleton.rows .sk-line:nth-child(odd){width:34%;height:10px;margin-top:9px}.list-skeleton.rows .sk-line:first-child{margin-top:0}
+.list-skeleton.gallery{grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px}.list-skeleton.gallery .sk-line{height:auto;aspect-ratio:1;border-radius:8px}
 .tab-skeleton{pointer-events:none}.tab-skeleton .t{display:grid;gap:7px;padding:4px 0}.tab-skeleton .t .sk-line:first-child{width:62%}.tab-skeleton .t .sk-line:last-child{width:38%;height:9px}
 .sk-dot{width:8px;height:8px;border-radius:50%;flex:none}.sk-icon{width:18px;height:18px;flex:none}
 .foot-skeleton,.ver-skeleton,.sk-metric{display:inline-block;height:10px;vertical-align:middle}.foot-skeleton{width:120px}.ver-skeleton{width:44px}.sk-metric{width:3ch}
@@ -275,9 +280,9 @@ body.is-codex .question-key{display:inline-flex!important;align-items:center;jus
   .composer>*{flex:0 0 100%;min-width:0}
   .composer>#screen_keys{flex:0 1 auto;max-width:100%}
   /* Room for the quick prompts, so collapsed keys never push them to a row of their own. */
-  /* The same room whether the quick prompts show or not: a width that depended on them made the row and the
-     prompts take turns hiding each other. */
-  .composer>#screen_keys{max-width:calc(100% - 140px)}
+  /* fitKeyRow() sets the room; a width that depended on whether the prompts show made the row and the prompts
+     take turns hiding each other. */
+  .composer>#screen_keys{max-width:calc(100% - var(--quick-room,140px))}
   .composer>#screen_keys:has(.keys.expanded){flex:0 0 100%;max-width:100%}
   .composer>.quick-prompts{flex:1 1 0}
   .composer>[hidden]{display:none}
