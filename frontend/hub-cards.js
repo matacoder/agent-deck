@@ -32,9 +32,9 @@ function githubCard(){
   return hubCard({key:"github",icon,title:"GitHub",status:"@"+ghLogin,tone:"ok",more:[[tr("Новая сессия из репозитория"),leave(openNew)]]});
 }
 function renderAgentCards(){
-  if(editorInUse($("kimi_dlg")))return;
-  const cards=[agentCard("claude"),agentCard("codex"),kimiCard(),piCard(),githubCard()];
-  $("agent_cards").replaceChildren(...placeEditor(cards,"kimi",$("kimi_dlg")));
+  if(editorInUse($("kimi_dlg"))||editorInUse($("provider_dlg")))return;
+  const cards=[agentCard("claude"),agentCard("codex"),providersCard(),kimiCard(),...AGENT_LIST.filter(a=>a.cli).map(cliAgentCard),piCard(),githubCard()];
+  $("agent_cards").replaceChildren(...placeEditor(placeEditor(cards,"kimi",$("kimi_dlg")).filter(c=>c!==$("provider_dlg")),"providers",$("provider_dlg")));
 }
 function openKimi(){
   const config=lastAg.kimi_config||{};

@@ -8,6 +8,7 @@ import threading
 import time
 
 from . import webpush
+from .agents import CLI
 from .backups import write_private
 from .dependencies import require
 
@@ -17,7 +18,8 @@ except ModuleNotFoundError:
     locales = None
 
 SUBJECT = 'https://github.com/matacoder/deckaway'
-AGENT_LABELS = {'claude': 'Claude', 'codex': 'Codex', 'claude-kimi': 'Claude · Kimi', 'kimi': 'Kimi Code', 'pi': 'Pi'}
+AGENT_LABELS = {'claude': 'Claude', 'codex': 'Codex', 'claude-kimi': 'Claude · Kimi', 'kimi': 'Kimi Code', 'pi': 'Pi', 'claude-provider': 'Claude'}
+AGENT_LABELS.update({agent: spec['label'] for agent, spec in CLI.items()})
 MAX_DEVICES = 20
 IDLE_LOCAL, IDLE_REMOTE, MIN_BUSY = 8, 25, 20
 BACKLOG_SECONDS, BACKLOG_SIZE = 600, 20

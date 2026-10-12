@@ -76,7 +76,7 @@ The **?** next to the search field in the session bar shows the same picture ins
 
 - Tabs for all your sessions, grouped by project, with live terminals and "working / waiting / done" status.
 - A **+** on each computer and project heading starts a new session there, with the folder already chosen.
-- Claude Code, Codex, Claude through Kimi, native Kimi Code or a plain terminal per tab; the **⋯** menu restarts an agent with a new or the same conversation, duplicates a session with a fresh conversation, renames or closes it.
+- Claude Code, Codex, Claude through Kimi, native Kimi Code, Cursor, Gemini CLI, GitHub Copilot, OpenCode, Qwen Code or a plain terminal per tab; the **⋯** menu restarts an agent with a new or the same conversation, duplicates a session with a fresh conversation, renames or closes it.
 - Pick a GitHub repo and start working; optional git worktree per session (one branch per agent).
 - Change history with uncommitted changes: tap a line of the agent's diff to add a `file:line` comment to your message.
 - Search the whole output of a session (including scrollback) from the field in the session bar (the search icon on a phone); results drop down under it; quick switcher for sessions and actions with Alt+K, Ctrl+K or ⌘K.
@@ -707,6 +707,38 @@ is configured using the installer's `PUBLIC_DOMAIN` and proxy options.
 
 New installs use `~/dev`. Existing explicit project directories are retained;
 older default `~/projects` settings pick up `~/dev` when that directory exists.
+
+### Cursor, Gemini CLI, GitHub Copilot, OpenCode, Qwen Code
+
+Each is installed from **Settings → Agents** with its vendor's own command and, once installed, appears in
+the new session dialog. **Sign in** opens the program's own sign-in in a terminal; the panel never reads
+its key. A restart continues the session's conversation (OpenCode makes its own ids, so it continues the
+last conversation of the folder). `/compact` (or the program's name for it) and "new conversation" sit
+behind the **…** chip. Context size, summaries and subscription limits are not shown for these agents yet,
+so their sessions have no bottom status line.
+
+| Agent | Without questions | Sign-in |
+| --- | --- | --- |
+| Cursor (`cursor-agent`) | `--force` | Cursor account, in a browser |
+| Gemini CLI | `--yolo` | Google account or API key, inside the program |
+| GitHub Copilot CLI | `--allow-all` | the GitHub CLI sign-in, or `copilot login` |
+| OpenCode | `--auto` | optional: `opencode auth login` |
+| Qwen Code | `--yolo` | `/auth` and `/model` inside the program |
+
+### Claude Code on other models (GLM and others)
+
+**Settings → Agents → Claude on other models** saves a service that speaks Anthropic's API: a name, an
+`https://` address, a key and a model. **Add GLM** fills in Z.AI's address; the model name is the one your
+plan there has. A new **Claude** session then offers the service under **Model source**. The key is kept
+in `~/.config/cc-panel/providers.json` (0600) and reaches Claude Code only through its environment.
+Summaries are not written for such sessions: the conversation is not sent to any other model.
+
+### Claude Code as the lead
+
+A Claude Code or Codex session started by the panel is told, in one line, which other agents on this
+computer take a task in one command (`codex exec`, `gemini -p`, `cursor-agent -p`, `copilot -p`,
+`opencode run`, `qwen -p`) — only those installed and signed in. Ask it for a second opinion or to hand a
+task over, and it runs that agent in the project folder and reads the answer.
 
 ### Kimi Code
 

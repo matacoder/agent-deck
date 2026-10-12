@@ -1,6 +1,6 @@
 # AGENTS.md - DeckAway
 
-Self-hosted panel (Python stdlib + static JS) for tmux sessions running Claude Code/Codex/Kimi/shell; Telegram bot, LM Studio, GitHub, 16 locales, installers for Linux (systemd), macOS (launchd), Windows (WSL2). Runs on other people's machines: installer, proxy or secret-store bugs are incidents.
+Self-hosted panel (Python stdlib + static JS) for tmux sessions running Claude Code/Codex/Kimi/other CLI agents/shell; Telegram bot, LM Studio, GitHub, 16 locales, installers for Linux (systemd), macOS (launchd), Windows (WSL2). Runs on other people's machines: installer, proxy or secret-store bugs are incidents.
 
 ## Architecture
 - Browser -> Tailscale -> `panel.py` (BIND_HOST:8790, signed cookie). `/api/*` JSON; `/t/*` raw proxy to ttyd (unix socket) -> `tmux attach -t cc-<name>`; `/deck/<id>/*` gateway to connected decks.
@@ -11,6 +11,8 @@ Self-hosted panel (Python stdlib + static JS) for tmux sessions running Claude C
 - `panel/panel.py`: HTTP backend (~2800 lines), no unrelated refactors.
 - `panel/updater.py`: update job, release validation (syntax + imports), rollback. `PACKAGES` lists every `integrations/*.py`.
 - `panel/session_hook.py`, `claude/*`: conversation-id hooks; nested agents must not overwrite `@cc_sid`; the hook's output asks the top-level agent to show finished work (`show_results` in `network.json`).
+- `integrations/agents.py`: agents that are only a program in a terminal (Cursor, Gemini CLI, Copilot, OpenCode, Qwen Code), one entry each: install, sign-in, switches, how the conversation is continued; `frontend/agents.js` lists the same ones for the page and a test keeps both in step. A new such agent is an entry in each, never new branches in `panel.py`. `leader_note` is the one line the session hook gives Claude Code about the others.
+- `integrations/providers.py`: Anthropic-compatible services for Claude Code (GLM, any https address); keys in `~/.config/cc-panel/providers.json`, passed to `claude` only in the environment by `session_hook.py claude-provider`; agent `claude-provider`, source `{kind: provider}`.
 - `integrations/git.py`: read-only history and diffs. `integrations/feature_groups.py`: background, incremental feature groups per repository (subjects, authors, file names only); models in order Haiku via `claude -p --tools ""`, Codex Luna via `codex exec -s read-only --ignore-user-config`, both in an empty folder on the subscription, then Kimi, then LM Studio (`reasoning_effort: none`).
 - `integrations/session_info.py`: context size and a summary per session from the agent's own conversation file (tail only); the summary model is always the session's own provider (`summary_model` in `panel.py`), never a fallback to another. "Finished" notifications and Telegram messages carry it, rewritten at that moment (`finished_summary`), fetched off the notification loop.
 - `integrations/gallery.py`: per-session copies of pictures shown on screen (same rule as `/api/image`), served by `/api/gallery*` and as the `/api/image` fallback.

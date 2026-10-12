@@ -1,3 +1,4 @@
+Object.assign(global,require('../../frontend/agents'));
 const {quickChips,quickRows,laterWhen,defaultLaterTime,laterCount}=require('../../frontend/schedule');
 const t=text=>'['+text+']';
 
@@ -53,4 +54,10 @@ test('the compact button exists only for an agent that has the command',()=>{
   expect(compactCommand('claude-kimi').text).toBe('/compact');
   expect(compactCommand('codex').confirm).toBeUndefined();
   expect(compactCommand('shell')).toBeNull();
+});
+
+test('Qwen Code compacts with its own command',()=>{
+  const {compactCommand,quickChips}=require('../../frontend/schedule');
+  expect(compactCommand('qwen').text).toBe('/compress');
+  expect(quickChips('qwen',[],true,true).map(p=>p.label)).toEqual(['/compress','/clear']);
 });

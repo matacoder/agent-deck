@@ -2,6 +2,14 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.47.0 — 2026-10-12
+
+- **Five more agents: Cursor, Gemini CLI, GitHub Copilot, OpenCode and Qwen Code.** Settings → Agents installs each with its vendor's own command and opens its sign-in; an installed one appears in the new session dialog with its "without questions" switch. A session keeps its conversation across restarts (OpenCode continues the last one of the folder), and the agent's own compact and "new conversation" commands sit behind the "more" chip. Context size, summaries and limits are not shown for them yet.
+- **Claude Code on other models.** Settings → Agents → "Claude on other models" saves a service with an Anthropic-compatible address — GLM in one tap, or any https address — and a new Claude session offers it under "Model source". The key stays in a 0600 file and reaches Claude Code only through its environment.
+- **Claude Code leads.** A Claude Code or Codex session is told in one line which other agents on the computer take a task in one command, so it can ask one for a second opinion or hand a task over when you say so.
+- **Agents of the "program in a terminal" kind are described once** (`integrations/agents.py`, `frontend/agents.js`), so the next one is an entry, not new code paths.
+- **The compact button has an icon that looks like compressing**, not like leaving full screen.
+
 ## 1.46.1 — 2026-10-12
 
 - **The repository is now `matacoder/deckaway`.** Install commands, the update check and the installers use the new address. The old address keeps working: GitHub redirects it, so installed panels update as before and earlier install commands still run.

@@ -40,7 +40,7 @@ class QuestionNotReady(ValueError):
 
 
 def parse_question(session, agent, instance, screen):
-    if agent not in ("codex", "claude", "claude-kimi", "kimi"):
+    if agent not in ("codex", "claude", "claude-kimi", "claude-provider", "kimi"):
         return None
     screen = re.sub(r"\x1b\[[0-?]*[ -/]*[@-~]", "", screen)
     lines = [line.strip().strip("│┃").strip() for line in screen.splitlines()[-120:]]

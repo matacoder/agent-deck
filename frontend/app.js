@@ -163,12 +163,7 @@ function hookClipboard(w,tries=0){
   });
 }
 const now=()=>Date.now()/1000-clockSkew;
-const AGENTS={claude:{label:"Claude",glyph:"✻",skip:"--dangerously-skip-permissions"},
-  codex:{label:"Codex",glyph:"◎",skip:"--dangerously-bypass-approvals-and-sandbox"},
-  "claude-kimi":{label:"Claude · Kimi",glyph:"✻",skip:"--dangerously-skip-permissions"},
-  kimi:{label:"Kimi Code",glyph:"◈",skip:"--auto"},
-  pi:{label:"Pi",glyph:"π",skip:""},
-  shell:{label:tr("Терминал"),glyph:"$"}};
+const AGENTS=Object.fromEntries(AGENT_LIST.map(a=>[a.id,{label:a.translate?tr(a.label):a.label,glyph:a.glyph,skip:a.skip}]));
 const agentOf=s=>AGENTS[s&&s.agent]?s.agent:"claude";
 const isLocal=s=>s?.source?.kind==="lmstudio";
 const localComputer=s=>lmData.profiles.find(p=>p.id===s.source.profile)?.name||s.source.label?.split(" · ")[1]||"LM Studio";
@@ -526,8 +521,8 @@ async function kill(){
 // Same folder, agent, permissions and model as the open session, with a fresh conversation.
 async function duplicateSession(){
   const s=cur();if(!s)return;
-  const source=s.source&&["kimi","lmstudio"].includes(s.source.kind)?{kind:s.source.kind,profile:s.source.profile,model:s.source.model}:undefined;
-  const created=await post("/api/new",{name:s.name,path:s.path,agent:s.agent==="claude-kimi"?"claude":s.agent||"claude",skip:s.skip,source});
+  const source=s.source&&["kimi","lmstudio","provider"].includes(s.source.kind)?{kind:s.source.kind,profile:s.source.profile,provider:s.source.provider,model:s.source.model}:undefined;
+  const created=await post("/api/new",{name:s.name,path:s.path,agent:["claude-kimi","claude-provider"].includes(s.agent)?"claude":s.agent||"claude",skip:s.skip,source});
   if(created)select(created.name);
 }
 let uploading=false,choosingImages=false;
@@ -1019,6 +1014,7 @@ function renderSources(){
   const old=$("n_source").value;$("source_row").hidden=!["claude","kimi","pi"].includes(newAgent);
   const values=[];if(newAgent==="claude")values.push([{kind:"default"},"Claude"]);
   if(lastAg.kimi_config?.configured&&["claude","kimi"].includes(newAgent))for(const m of ["k3","kimi-for-coding","kimi-for-coding-highspeed"])values.push([{kind:"kimi",model:m},"Kimi · "+m]);
+  if(newAgent==="claude")values.push(...providerSources(savedProviders()));
   if(["claude","pi"].includes(newAgent))for(const p of lmData.profiles||[])for(const m of p.models||[])values.push([{kind:"lmstudio",profile:p.id,model:m.id},p.name+" · "+m.name]);
   $("n_source").replaceChildren(...values.map(([v,label])=>{const o=el("option","",label);o.value=JSON.stringify(v);return o}));if([...$("n_source").options].some(o=>o.value===old))$("n_source").value=old;else if(newAgent==="kimi"&&lastAg.kimi_config?.model)$("n_source").value=JSON.stringify({kind:"kimi",model:lastAg.kimi_config.model});
 }
@@ -1120,14 +1116,14 @@ $("n_name").addEventListener("input",e=>delete e.target.dataset.auto);
 
 let newAgent="claude";
 function pickAgent(a){
-  newAgent=a;for(const b of $("agsel").children)b.classList.toggle("on",b.dataset.a===a);
+  newAgent=a;renderAgentPicker();for(const b of $("agsel").children)b.classList.toggle("on",b.dataset.a===a);
   $("n_skip_row").style.display=["shell","pi"].includes(a)?"none":"";
   if(!["shell","pi"].includes(a))$("n_skip_flag").textContent=AGENTS[a].skip;renderSources();renderNewContainers();
 }
 // preset: {path, project} from a project heading; the folder is used as is while its name stays in the field.
 let newPreset=null;
 async function openNew(preset){
-  returnToNew=false;if($("settings_dlg").open)$("settings_dlg").close();drawer(false);
+  returnToNew=false;if($("settings_dlg").open)$("settings_dlg").close();drawer(false);renderAgentPicker();
   newPreset=typeof preset?.path==="string"?preset:null;
   if(newPreset){$("n_proj").value=newPreset.project;if(!$("n_name").value||$("n_name").dataset.auto){$("n_name").value=newPreset.project.replace(/[^A-Za-z0-9_-]/g,"-").slice(0,32);$("n_name").dataset.auto="1"}}
   try{const{projects}=await api("/api/projects");$("projlist").replaceChildren(...projects.map(p=>{const o=document.createElement("option");o.value=p;return o}))}catch(e){}

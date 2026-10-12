@@ -17,7 +17,7 @@ def main():
             raise SystemExit(f"Expected one {marker} in the panel template")
         content = (source / name).read_text()
         if name == "app.js":
-            parts = ("logic.js", "settings.js", "decks.js", "questions.js", "backups.js", "notifications.js", "images.js", "fleet.js", "inbox.js", "screen.js", "gestures.js", "files.js", "gallery.js", "git.js", "session-info.js", "schedule.js", "project.js", "resize.js", "markdown.js", "search.js", "hub.js", "hub-cards.js", "hub-models.js", "containers.js", "lan.js", "drop.js")
+            parts = ("agents.js", "logic.js", "settings.js", "decks.js", "questions.js", "backups.js", "notifications.js", "images.js", "fleet.js", "inbox.js", "screen.js", "gestures.js", "files.js", "gallery.js", "git.js", "session-info.js", "schedule.js", "project.js", "resize.js", "markdown.js", "search.js", "hub.js", "hub-cards.js", "hub-models.js", "containers.js", "lan.js", "drop.js", "providers.js")
             content = "".join((source / part).read_text() for part in parts) + content
         page = page.replace(marker, content)
     target = ROOT / "panel/index.html"

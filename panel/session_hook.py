@@ -115,6 +115,18 @@ def containers_note(environ=os.environ):
                                   local=LOCAL_KNOWN.format(local) if local else LOCAL_UNKNOWN)
 
 
+def other_agents_note():
+    """Claude Code leads: it learns which other agents here take a task in one command."""
+    try:
+        here = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        if os.path.isdir(os.path.join(here, 'integrations')) and here not in sys.path:
+            sys.path.insert(0, here)
+        from integrations.agents import leader_note
+        return leader_note()
+    except Exception:  # The hook must never prevent a conversation from starting.
+        return None
+
+
 def main():
     pane = os.environ.get("TMUX_PANE")
     if not pane:
@@ -123,7 +135,7 @@ def main():
         data = json.load(sys.stdin)
         # Kimi's own CLI is left out: what it does with hook output is not known.
         if remember(data, pane, os.getppid()) and data.get("client_type") != "kimi_code_cli":
-            notes = [note for note in (results_note() if show_results() else None, containers_note()) if note]
+            notes = [note for note in (results_note() if show_results() else None, containers_note(), other_agents_note()) if note]
             if notes:
                 print(json.dumps({"hookSpecificOutput": {"hookEventName": "SessionStart",
                                                          "additionalContext": "\n\n".join(notes)}}))
@@ -285,6 +297,21 @@ def local_context(directory, binding):
     return None
 
 
+def launch_provider(identity, model, args):
+    """Claude Code on a saved Anthropic-compatible provider; the key travels in the environment only."""
+    here = Path(__file__).resolve().parent
+    if (here.parent / 'integrations').is_dir():
+        sys.path.insert(0, str(here.parent))
+    from integrations.providers import MODEL, Providers, environment
+    if not MODEL.match(model):
+        raise ValueError('Invalid model')
+    provider = Providers(os.path.expanduser('~/.config/cc-panel/providers.json')).get(identity)
+    binary = executable('claude-kimi')
+    if not binary:
+        raise ValueError('Install Claude Code first')
+    os.execve(binary, [binary, *provider_args(KIMI_TOOLS), *args], environment(provider, model, os.environ))
+
+
 def launch_local(identity, args):
     here = Path(__file__).resolve().parent
     if (here.parent / 'integrations').is_dir():
@@ -350,6 +377,12 @@ if __name__ == "__main__":
             launch_local(sys.argv[2], sys.argv[3:])
         except (OSError, ValueError, KeyError, TypeError, http.client.HTTPException):
             print('Could not start local model; check profile, relay and Claude Code installation', file=sys.stderr)
+            sys.exit(1)
+    elif len(sys.argv) > 3 and sys.argv[1] == 'claude-provider':
+        try:
+            launch_provider(sys.argv[2], sys.argv[3], sys.argv[4:])
+        except (OSError, ValueError, KeyError, TypeError):
+            print('Could not start Claude Code on this provider; check its key in Settings → Agents', file=sys.stderr)
             sys.exit(1)
     elif len(sys.argv) > 1 and sys.argv[1] in ('kimi', 'claude-kimi'):
         try:

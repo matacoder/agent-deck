@@ -127,6 +127,7 @@ except (OSError, ValueError) as _error:
     remote_decks = UnavailableDecks(_decks_message)
 from integrations.gateway import Gateway
 from integrations import lan
+from integrations import agents as cli_agents
 from integrations import usage as usage_limits
 gateway = Gateway(lambda: remote_decks)  # Looked up on each call: the service can be replaced.
 
@@ -134,6 +135,20 @@ gateway = Gateway(lambda: remote_decks)  # Looked up on each call: the service c
 _lmstudio = None
 _model_relay = None
 _lm_lock = threading.RLock()
+
+
+def provider_store():
+    from integrations.providers import Providers
+    return Providers(os.path.expanduser('~/.config/cc-panel/providers.json'))
+
+
+def action_provider_save(d):
+    return {"id": provider_store().save(d), "providers": provider_store().public()}
+
+
+def action_provider_remove(d):
+    provider_store().remove(d.get("id"))
+    return {"providers": provider_store().public()}
 
 
 def model_service():
@@ -174,6 +189,15 @@ def session_source(data, agent):
         if model not in kimi_config.MODELS:
             raise ValueError('Unknown Kimi model')
         return {'kind':'kimi','model':model,'label':'Kimi · '+model}
+    if kind == 'provider' and agent in ('claude', 'claude-provider'):
+        from integrations.providers import MODEL
+        provider = provider_store().get(source.get('provider'))
+        model = source.get('model') or provider['model']
+        if not isinstance(model, str) or not MODEL.match(model):
+            raise ValueError('The model name has characters a model name cannot have')
+        if not kimi_config.executable('claude-kimi'):
+            raise ValueError('Install Claude Code first')
+        return {'kind': 'provider', 'provider': source['provider'], 'model': model, 'label': provider['name'] + ' · ' + model}
     if kind == 'lmstudio' and agent in ('claude', 'pi'):
         service = model_service()
         profile = service.get(source.get('profile'))
@@ -435,7 +459,7 @@ def list_sessions(preview_name=None):
         try:
             model_source = json.loads(source or 'null')
             if isinstance(model_source, dict):
-                item['source'] = {k:v for k,v in model_source.items() if k in ('kind','profile','model','binding','label')}
+                item['source'] = {k:v for k,v in model_source.items() if k in ('kind','profile','provider','model','binding','label')}
         except ValueError:
             pass
         if name == preview_name:
@@ -453,6 +477,7 @@ AGENTS = {
     "claude": ("Claude", {"claude"}, " --dangerously-skip-permissions"),
     "codex": ("Codex", {"codex", "codex-x86_64-un", "codex-aarch64-u"}, " --dangerously-bypass-approvals-and-sandbox"),
     "claude-kimi": ("Claude · Kimi", {"claude"}, " --dangerously-skip-permissions"),
+    "claude-provider": ("Claude", {"claude"}, " --dangerously-skip-permissions"),  # on a saved provider's model
     "kimi": ("Kimi Code", {"kimi", "kimi-code"}, " --auto"),
     "pi": ("Pi", {"pi", "node"}, ""),
     "shell": ("Терминал", set(), ""),
@@ -468,6 +493,11 @@ LOGINS = {
     "claude": "claude",  # first start asks to log in; afterwards /login switches accounts
     "codex": "codex login --device-auth",
 }
+# Agents that are only a program in a terminal are described once, in integrations/agents.py.
+for _agent, _spec in cli_agents.CLI.items():
+    AGENTS[_agent] = (_spec['label'], set(_spec['processes']), _spec['skip'])
+    INSTALLERS[_agent] = _spec['install']
+    LOGINS[_agent] = _spec['login']
 
 
 VERSION_NAME = re.compile(r'\d+\.\d+\.\d+[\w.+-]{0,24}')
@@ -486,8 +516,10 @@ def agent_cmd(agent, sid=None, resume=False, skip=False, name=None, source=None)
     if agent == "shell":
         return None
     if source is not None:
-        if not isinstance(source, dict) or source.get('kind') not in ('kimi','lmstudio'):
+        if not isinstance(source, dict) or source.get('kind') not in ('kimi','lmstudio','provider'):
             raise ValueError('Invalid saved model source')
+        if (source['kind'] == 'provider') != (agent == 'claude-provider'):
+            raise ValueError('Saved provider source is incompatible with this agent')
         if source['kind'] == 'lmstudio' and agent not in ('claude', 'pi'):
             raise ValueError('Saved local source is incompatible with this agent')
         if source['kind'] == 'kimi' and (agent not in ('kimi','claude-kimi') or source.get('model') not in kimi_config.MODELS):
@@ -503,6 +535,12 @@ def agent_cmd(agent, sid=None, resume=False, skip=False, name=None, source=None)
         if _model_relay.server is None:
             raise ValueError('Local model relay is unavailable; restart the panel')
         launcher = shlex.join([sys.executable, os.path.join(HERE, 'session_hook.py'), 'pi-local' if agent == 'pi' else 'claude-local', source['binding']])
+    elif agent == "claude-provider":
+        from integrations.providers import IDENTITY, MODEL
+        if not IDENTITY.match(str(source.get('provider'))) or not MODEL.match(str(source.get('model'))):
+            raise ValueError('Invalid saved provider source')
+        provider_store().get(source['provider'])
+        launcher = shlex.join([sys.executable, os.path.join(HERE, 'session_hook.py'), 'claude-provider', source['provider'], source['model']])
     elif agent in ("kimi", "claude-kimi"):
         if not kimi_config.status()["configured"]:
             raise ValueError("Сначала сохраните ключ Kimi в настройках панели")
@@ -515,6 +553,8 @@ def agent_cmd(agent, sid=None, resume=False, skip=False, name=None, source=None)
         if not source or source.get('kind') != 'lmstudio' or not valid_sid(sid):
             raise ValueError('Pi requires a saved local model and conversation ID')
         return launcher + ' --session-id ' + shlex.quote(sid) + (' --deck-resume' if resume else '') + (' --name '+shlex.quote(name) if name else '')
+    if agent in cli_agents.CLI:
+        return cli_agents.command(agent, sid, resume, skip)
     if agent == "kimi":
         if resume and not (isinstance(sid, str) and sid.startswith("session_") and valid_sid(sid[8:])):
             raise ValueError("ID разговора Kimi не сохранён. Выберите разговор вручную в терминале.")
@@ -684,11 +724,13 @@ def _action_new(d):
     name = unique_name(name, session_exists, 32)
     path = resolve_path(d, name)
     skip = bool(d.get("skip")) and agent not in ("shell", "pi")
-    sid = str(uuid.uuid4()) if agent in ("claude", "claude-kimi", "pi") else None
+    sid = str(uuid.uuid4()) if agent in ("claude", "claude-kimi", "claude-provider", "pi") or cli_agents.keeps_id(agent) else None
     choice = containers_choice(d.get('containers')) if agent != 'shell' else None
     source = session_source(d, agent)
     if source and source.get('kind') == 'kimi' and agent == 'claude':
         agent = 'claude-kimi'
+    if source and source.get('kind') == 'provider':
+        agent = 'claude-provider'
     if source is None:
         create_session(name, path, agent, skip, sid, with_containers(agent_cmd(agent, sid, False, skip, name), choice))
     else:
@@ -725,7 +767,7 @@ def action_restart(d):
     skip, agent = opt(name, "@cc_skip") == "1", opt(name, "@cc_agent") or "claude"
     sid = opt(name, "@cc_sid")
     new = d.get("mode") == "new"
-    if new and agent in ("claude", "claude-kimi", "pi"):
+    if new and (agent in ("claude", "claude-kimi", "claude-provider", "pi") or cli_agents.keeps_id(agent)):
         sid = str(uuid.uuid4())
     elif new and agent in ("codex", "kimi"):
         sid = None
@@ -1069,7 +1111,12 @@ def agent_status(agent):
     home = os.path.expanduser("~")
     if agent == "claude-kimi":
         return {**agent_status("claude"), "logged_in": kimi_config.status()["configured"]}
-    path = kimi_config.executable("kimi") if agent == "kimi" else os.path.join(home, ".local", "bin", agent)
+    if agent in cli_agents.CLI:
+        path = cli_agents.executable(agent)
+        if not path:
+            return {"installed": False, "version": None, "logged_in": False}
+    else:
+        path = kimi_config.executable("kimi") if agent == "kimi" else os.path.join(home, ".local", "bin", agent)
     if agent == "kimi" and not path:
         return {"installed": False, "version": None, "logged_in": kimi_config.status()["configured"]}
     path = path if path and os.path.exists(path) else shutil.which(agent)
@@ -1081,12 +1128,17 @@ def agent_status(agent):
         if _version_cache.get(agent, (None,))[0] != key:  # re-run --version only after an install/update
             r = subprocess.run([path, "--version"], capture_output=True, text=True, timeout=10)
             v = (r.stdout.strip().split() or [None])[-1] if agent == "codex" else (r.stdout.split() or [None])[0]
+            if agent in cli_agents.CLI:  # "GitHub Copilot CLI 1.0.95." and the like: the number is what matters
+                found = re.search(r'\d+\.\d+\.\d+[\w-]*', r.stdout)
+                v = found.group(0) if found else None
             _version_cache[agent] = (key, v)
         version = _version_cache[agent][1]
     if agent == "kimi":
         return {"installed": installed, "version": version, "logged_in": kimi_config.status()["configured"]}
     if agent == "pi":
         return {"installed": installed, "version": version, "logged_in": installed}
+    if agent in cli_agents.CLI:
+        return {"installed": installed, "version": version, "logged_in": cli_agents.signed_in(agent)}
     auth = {"claude": os.path.join(home, ".claude", ".credentials.json"),
             "codex": os.path.join(home, ".codex", "auth.json")}[agent]
     logged_in = os.path.exists(auth)
@@ -1326,7 +1378,7 @@ ACTIONS = {
     'lm_benchmark': lambda d: model_service().benchmark(d),
     'lm_discover': lambda d: {'discovery':model_service().discover(d)},
     'lm_remove': action_lm_remove,
-    "kimi_config": lambda d: {"kimi": kimi_config.save(d)}, "agent_install": action_agent_install, "agent_login": action_agent_login, "github_login": action_github_login, "new": action_new, "restart": action_restart, "kill": action_kill, "send": action_send, "upload": action_upload, "update": action_update, "discard_upload": action_discard_upload}
+    "kimi_config": lambda d: {"kimi": kimi_config.save(d)}, "provider_save": action_provider_save, "provider_remove": action_provider_remove, "agent_install": action_agent_install, "agent_login": action_agent_login, "github_login": action_github_login, "new": action_new, "restart": action_restart, "kill": action_kill, "send": action_send, "upload": action_upload, "update": action_update, "discard_upload": action_discard_upload}
 
 
 def current_question(name):
@@ -1414,7 +1466,7 @@ def session_model(agent, sid):
 def pending_questions(name):
     agent = opt(name, '@cc_agent') or 'claude'
     sid = opt(name, '@cc_sid')
-    if agent not in ('codex', 'claude', 'claude-kimi') or not valid_sid(sid):
+    if agent not in ('codex', 'claude', 'claude-kimi', 'claude-provider') or not valid_sid(sid):
         return []
     path = transcript_path(agent, sid)
     if not path:
@@ -1997,7 +2049,7 @@ def session_info(name, language, fresh=False):
     from integrations.session_info import HEAD, context, dialogue, started, tail_records
     agent = opt(name, "@cc_agent") or "claude"
     sid = opt(name, "@cc_sid")
-    if agent not in ("claude", "claude-kimi", "codex") or not valid_sid(sid):
+    if agent not in ("claude", "claude-kimi", "claude-provider", "codex") or not valid_sid(sid):
         return {"supported": False}
     kind = "codex" if agent == "codex" else "claude"
     path = transcript_path(agent, sid)
@@ -2644,7 +2696,7 @@ class Handler(BaseHTTPRequestHandler):
         if self.path == "/api/server":
             return self.send_json(200, server_info())
         if self.path == "/api/agents":
-            return self.send_json(200, {**{a: agent_status(a) for a in (*INSTALLERS, "claude-kimi")}, "kimi_config": kimi_config.status()})
+            return self.send_json(200, {**{a: agent_status(a) for a in (*INSTALLERS, "claude-kimi")}, "kimi_config": kimi_config.status(), "providers": provider_store().public()})
         if self.path == '/api/lmstudio':
             try:
                 return self.send_json(200, model_service().status())

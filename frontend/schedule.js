@@ -3,18 +3,12 @@
 const later={session:null,data:null,seq:0,timer:null};
 const quick={saved:[],loaded:false,more:false};
 const LATER_POLL=30000;
-// Commands that drop the conversation ask first: a chip sits where a thumb scrolls.
-const QUICK_COMMANDS={
-  claude:[{label:"/compact",text:"/compact"},{label:"/clear",text:"/clear",confirm:"Агент забудет весь разговор этой сессии."}],
-  codex:[{label:"/compact",text:"/compact"},{label:"/new",text:"/new",confirm:"Агент забудет весь разговор этой сессии."}]};
-QUICK_COMMANDS["claude-kimi"]=QUICK_COMMANDS.claude;
-
 // The user's own prompts, then the agent's commands behind "more": they are rare and one of them drops the
 // conversation. With `shared` the "more" of the keys row opens them, so no second one is drawn. A terminal
 // gets none. Pure for tests.
 function quickChips(agent,saved,more,shared){
   if(agent==="shell")return [];
-  const commands=QUICK_COMMANDS[agent]||[];
+  const commands=agentCommands(agent);
   return [...saved.map(p=>({label:p.label,text:p.text})),...(commands.length&&!shared?[{more:true}]:[]),...(more?commands:[])];
 }
 // Rows of the editor -> what is saved; empty rows are dropped, not reported. Pure for tests.
@@ -155,7 +149,7 @@ async function sendQuick(prompt){
   }finally{sending=false;quick.more=false;renderAttachments();renderSendState();renderQuickPrompts()}
 }
 // The agent's own command for a shorter conversation, or nothing for an agent without one. Pure for tests.
-function compactCommand(agent){return (QUICK_COMMANDS[agent]||[]).find(c=>c.text==="/compact")||null}
+function compactCommand(agent){return agentCommands(agent).find(c=>c.compact)||null}
 function compactConversation(){const command=cur()&&compactCommand(agentOf(cur()));if(command)sendQuick(command)}
 function quickEditorRow(prompt){
   const label=el("input"),text=el("textarea"),remove=btn("","later-remove",()=>row.remove(),tr("Удалить"));

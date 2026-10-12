@@ -957,6 +957,24 @@
     "Пароль панели и содержимое сессий пойдут по этой сети без шифрования. Включайте только в сети, которой доверяете.": "Пароль панелі та вміст сесій підуть цією мережею без шифрування. Вмикайте лише в мережі, якій довіряєте.",
     "По адресу локальной сети пароль отправляется без шифрования.": "На адресу локальної мережі пароль надсилається без шифрування.",
     "Сжать разговор": "Compact the conversation",
-    "Картинок приложено: {0} из {1}. Остальные сохраните и приложите файлами": "Pictures attached: {0} of {1}. Save the rest and attach them as files"
+    "Картинок приложено: {0} из {1}. Остальные сохраните и приложите файлами": "Pictures attached: {0} of {1}. Save the rest and attach them as files",
+    "Ключ и модель выбираются в самом Qwen Code: команды /auth и /model.": "The key and the model are chosen inside Qwen Code: the /auth and /model commands.",
+    "Добавить другой сервис": "Add another service",
+    "Claude на других моделях": "Claude on other models",
+    "Сервисов: {0}": "Services: {0}",
+    "Не настроено": "Not set up",
+    "Добавить GLM": "Add GLM",
+    "Сервис сохранён": "Service saved",
+    "Удалить этот сервис из панели?": "Remove this service from the panel?",
+    "Сессии на его моделях перестанут запускаться.": "Sessions on its models will stop starting.",
+    "Сервис для Claude Code": "A service for Claude Code",
+    "Адрес Anthropic-совместимого API": "Address of the Anthropic-compatible API",
+    "Имя модели — как в вашем тарифе у этого сервиса.": "The model name, as your plan with this service calls it.",
+    "Пустое поле сохраняет текущий ключ, если адрес не менялся.": "An empty field keeps the current key if the address has not changed.",
+    "Нужна подписка Cursor: «Войти» открывает вход в браузере.": "Needs a Cursor subscription: Sign in opens the sign-in in a browser.",
+    "Вход — в самом Gemini CLI: аккаунт Google или ключ API.": "Sign-in happens inside Gemini CLI: a Google account or an API key.",
+    "Использует вход GitHub CLI, если он есть; иначе — «Войти».": "Uses the GitHub CLI sign-in when there is one; otherwise press Sign in.",
+    "Работает без аккаунта на бесплатной модели; «Войти» подключает ваших провайдеров. После перезапуска продолжает последний разговор в папке.": "Works without an account on a free model; Sign in connects your providers. After a restart it continues the last conversation in the folder.",
+    "Claude Code работает на моделях другого сервиса с Anthropic-совместимым адресом. Сервис выбирается в новой сессии Claude, в поле «Источник модели».": "Claude Code runs on the models of another service with an Anthropic-compatible address. Choose the service in a new Claude session, in the Model source field."
   }
 }
