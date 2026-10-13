@@ -2,6 +2,12 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.52.2 — 2026-10-13
+
+- **Telegram messages open with their meaning.** A message began with the computer, the agent and the session, so the chat list showed only those. A "finished" message now opens with what was done and a question with the question itself; the session, computer and agent follow below.
+- **A session is not announced as finished again when nothing happened in it.** "Finished" is read from the terminal going quiet after activity, and activity is not always work: typing, a redraw, a background task's counter. The same notification could arrive several times in a few minutes. A "finished" message whose summary is the one already sent for that session is now dropped, as push and in Telegram; sessions without a summary are announced as before.
+- **The three headers of a desktop page are one height.** The computer switcher on the left was 54 px, the session bar 44 px and the project panel's tabs 49 px, so the line under them broke twice; all are 44 px now.
+
 ## 1.52.1 — 2026-10-13
 
 - **A "finished" notification says what has just been done.** It carried the summary's topic line and the start of its text, which opens with the goal: the two lines a notification shows told what the session is about, not what happened. The model now also writes one sentence about what the agent has just finished or is asking, with the concrete result, and the notification is that sentence under the conversation's name; the Telegram message opens with it. The agent's latest message reaches the model four times longer than the earlier ones, so the result is not cut off.

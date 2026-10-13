@@ -270,7 +270,8 @@ class Telegram:
                 hint = ('\n\n' + self.translate('Свой ответ: ответьте на это сообщение текстом')
                         if any(FREE_TEXT.match(label) for label in q.options) else '')
                 result = self.api.call(self.config['token'], 'sendMessage', chat_id=self.config['chat_id'],
-                    text=' · '.join(filter(None, (q.origin, q.agent, q.label or q.session))) + f'\n\n{q.title}\n\n' + '\n'.join(options) + hint,
+                    # The chat list shows only the first words: the question, then where it comes from.
+                    text=f'{q.title}\n\n' + '\n'.join(options) + '\n\n' + ' · '.join(filter(None, (q.label or q.session, q.origin, q.agent))) + hint,
                     reply_markup={'inline_keyboard': keyboard})
                 db.set_status(row['id'], 'sent', result['message_id'])
 
@@ -288,8 +289,9 @@ class Telegram:
         # What was done, in the session's own summary, when a model of its provider could write one.
         summary = (message.get('summaries') or {}).get(self.language()) or {}
         told = ''.join(part + '\n\n' for part in (summary.get('done') or summary.get('line'), summary.get('text')) if part)
-        text = (' · '.join(filter(None, (message.get('origin'), label, summary.get('title') or message['title']))) + '\n\n'
-                + (told or self.translate('{0} закончил работу').format(label) + '\n\n')
+        # The chat list shows only the first words: what happened, then where.
+        text = ((told or self.translate('{0} закончил работу').format(label) + '\n\n')
+                + ' · '.join(filter(None, (summary.get('title') or message['title'], message.get('origin'), label))) + '\n\n'
                 + self.translate('Ответьте на это сообщение, чтобы отправить агенту следующий запрос'))
         try:
             result = self.api.call(c['token'], 'sendMessage', chat_id=c['chat_id'], text=text)

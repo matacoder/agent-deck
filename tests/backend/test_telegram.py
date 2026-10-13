@@ -189,7 +189,8 @@ class TelegramTests(unittest.TestCase):
         self.questions = [remote]
         self.pair(); self.service.deliver()
         text = [d for m, d in self.api.calls if m == 'sendMessage' and 'reply_markup' in d][0]['text']
-        self.assertTrue(text.startswith('Mac Studio · codex · demo\n'))
+        self.assertIn('\n\ndemo · Mac Studio · codex', text)
+        self.assertFalse(text.startswith('Mac Studio'))
         row = self.service.database().pending()[0]
         self.service.handle(self.callback(row))
         answered = self.answer.call_args.args[0]
@@ -225,7 +226,7 @@ class TelegramTests(unittest.TestCase):
         self.questions = [replace(question(), label='Billing API')]
         self.pair(); self.service.deliver()
         text = [d for m, d in self.api.calls if m == 'sendMessage' and 'reply_markup' in d][0]['text']
-        self.assertTrue(text.startswith('codex · Billing API\n'), text)
+        self.assertIn('\n\nBilling API · codex', text)
 
     def test_local_fingerprints_are_unchanged_and_machines_never_collide(self):
         import hashlib
@@ -280,7 +281,9 @@ class TelegramTests(unittest.TestCase):
         self.pair()
         self.assertTrue(self.service.wants_finished())
         sent, row = self.notice()
-        self.assertTrue(sent['text'].startswith('Mac Studio · Claude · Billing API\n\nClaude '))
+        # What happened comes first (the chat list shows only that), then the session, its computer and agent.
+        self.assertTrue(sent['text'].startswith('Claude '))
+        self.assertIn('\n\nBilling API · Mac Studio · Claude\n\n', sent['text'])
         self.service.handle(self.reply(row, 'now fix the tests', user=999))
         self.service.handle(self.reply(row, 'now fix the tests', chat=999))
         self.service.handle(self.reply(row, '/start'))
@@ -297,8 +300,8 @@ class TelegramTests(unittest.TestCase):
                                                              'xx': {'line': 'other language'}}))
         text = [d for m, d in self.api.calls if m == 'sendMessage'][-1]['text'].split('\n\n')
         # The conversation's title heads it and what was done replaces "finished working".
-        self.assertTrue(text[0].endswith('fix-payments'))
-        self.assertEqual(text[1:3], ['Webhook fixed.', 'Tests pass. Next: deploy.'])
+        self.assertEqual(text[0:2], ['Webhook fixed.', 'Tests pass. Next: deploy.'])
+        self.assertTrue(text[2].startswith('fix-payments'))
         self.assertEqual(len(text), 4)
         plain, _ = self.notice()
         self.assertEqual(len(plain['text'].split('\n\n')), 3)

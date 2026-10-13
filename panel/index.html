@@ -50,7 +50,8 @@ input,textarea,select{font:inherit}
 
 /* ---------- sidebar ---------- */
 aside{position:relative;width:min(var(--side-w,248px),40vw);flex:none;background:var(--side);border-right:1px solid var(--bd);display:flex;flex-direction:column;min-height:0}
-.deck-switch{display:flex;align-items:center;gap:6px;padding:10px 8px;border-bottom:1px solid var(--bd)}
+/* Same height as .bar, so the line under the three headers is one line. */
+.deck-switch{display:flex;align-items:center;gap:6px;flex:none;height:44px;padding:0 8px;border-bottom:1px solid var(--bd)}
 .deck-switch label{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 .deck-switch select{flex:1;min-width:0;min-height:32px;background:var(--side2);color:var(--fg);border:1px solid var(--bd);border-radius:var(--r-sm);padding:6px 8px}
 .deck-switch button[hidden]{display:none}
@@ -609,7 +610,7 @@ dialog:focus,dialog:focus-visible{outline:none}
 /* Docked: a right sidebar beside the session instead of a window over it. */
 #project_dlg.docked[open]{position:relative;display:flex;overflow:hidden;flex:none;width:var(--project-w,clamp(400px,36vw,760px));max-width:60vw;height:auto;max-height:none;margin:0;border:0;border-left:1px solid var(--bd);border-radius:0;box-shadow:none}
 #project_dlg.docked .dlg{flex:1;min-width:0;max-height:none}
-#project_dlg.docked .git-tabs{padding:8px 12px}
+#project_dlg.docked .git-tabs{flex:none;height:44px;padding:0 12px}
 #project_dlg.docked .dlg-body{flex:1;padding:14px}
 #project_dlg .dlg-body[hidden]{display:none}
 /* A thin grab strip on the inner edge of each sidebar; it shows on hover and while dragged. */
@@ -862,7 +863,7 @@ body.resizing iframe{pointer-events:none}
   body.drawer aside{transform:translateX(0)}
   #scrim{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:20}
   body.drawer #scrim{display:block}
-  .deck-switch{padding:12px}
+  .deck-switch{height:auto;padding:12px}
   .deck-switch select{font-size:16px;min-height:var(--tap)}
   .deck-switch button{height:var(--tap)}
   .srv-row{height:42px;padding:10px 8px 0 14px}#srv{font-size:13px}#srv .fl{font-size:16px}

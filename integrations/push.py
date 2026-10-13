@@ -38,6 +38,7 @@ class Push:
         # summary(deck, session, language) -> {'line', 'text'} or None: what the finished session did. A model
         # writes it, so it is asked off the loop and the message waits in `ready`.
         self.summary = summary
+        self.told = {}  # (computer, session) -> the summaries its last "finished" message carried
         self.spawn = lambda job: threading.Thread(target=job, name='agent-deck-push-summary', daemon=True).start()
         self.ready = []
         self.lock = threading.RLock()
@@ -269,8 +270,17 @@ class Push:
                 if found:
                     message['summaries'][language] = found
         finally:
+            key = (message.get('deck', ''), message.get('session', ''))
             with self.lock:
-                self.ready.append(message)
+                # Screen activity is not always work: typing, a redraw, a background task's counter. A summary
+                # that did not change means the conversation did not either, and it was already told.
+                repeated = bool(message['summaries']) and self.told.get(key) == message['summaries']
+                if message['summaries']:
+                    if len(self.told) > 500:
+                        self.told.clear()
+                    self.told[key] = message['summaries']
+                if not repeated:
+                    self.ready.append(message)
 
     def one_summary(self, message, language):
         try:

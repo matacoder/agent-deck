@@ -249,6 +249,29 @@ class PushServiceTests(unittest.TestCase):
         self.assertEqual(len(bodies[german]), 1)  # Its model failed: the plain message is still sent.
         self.assertEqual([(m['session'], list(m['summaries'])) for m in heard], [('api', ['en'])])
 
+    def test_a_session_that_only_redrew_its_screen_is_not_announced_again(self):
+        jobs, heard, done = [], [], ['Webhook fixed.']
+        self.push.summary, self.push.spawn = (lambda deck, session, language: {'line': 'Payments', 'done': done[0]}), jobs.append
+        self.push.finished = (lambda: True, heard.append, lambda: 'en')
+        self.subscribe()
+        now = [0]
+        self.push.clock = lambda: now[0]
+        def work(start, activity):
+            # Busy for 30 s, then quiet: one "finished" event, described and sent on the next pass.
+            for moment, mark in ((start, activity), (start + 30, activity + 1), (start + 40, activity + 1)):
+                now[0] = moment
+                self.sessions = [{'name': 'api', 'title': 'API', 'agent': 'claude', 'activity': mark, 'created': 7}]
+                self.push.tick()
+            while jobs:
+                jobs.pop()()
+            now[0] = start + 45
+            self.push.tick()
+        work(0, 1); work(100, 5)
+        self.assertEqual((len(self.sent), len(heard)), (1, 1))  # The same summary: nothing happened in the conversation.
+        done[0] = 'Tests pass.'
+        work(200, 9)
+        self.assertEqual(([payload['body'] for _, payload, _ in self.sent], len(heard)), (['Webhook fixed.', 'Tests pass.'], 2))
+
     def test_a_finished_notification_is_headed_by_the_conversations_title_and_its_computer(self):
         self.subscribe()
         self.push.deliver({'kind': 'finished', 'title': 'api', 'origin': 'Mac Studio', 'body': ['Claude finished working'],
