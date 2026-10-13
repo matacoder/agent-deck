@@ -47,13 +47,13 @@ aside{position:relative;width:min(var(--side-w,248px),40vw);flex:none;background
 .deck-switch button{display:grid;place-items:center;flex:none;width:32px;height:32px;border-radius:var(--r-sm);color:var(--mut)}
 @media (hover:hover){.deck-switch button:hover{background:var(--side2);color:var(--fg)}}
 /* Address and the waiting count share one fixed-height row, so neither can push the list down. */
-.srv-row{display:flex;align-items:center;gap:6px;height:38px;padding:8px 6px 0 12px}
+.srv-row{display:flex;align-items:center;gap:2px;padding:8px 6px 6px 12px}
 #srv{display:flex;align-items:center;gap:6px;flex:1;min-width:0;font-size:12px;color:var(--mut);white-space:nowrap;overflow:hidden;cursor:default}
-.srv-skeleton{width:130px;height:12px}
-#srv .fl{font-size:14px;line-height:1}#srv .ip{font-family:var(--mono);color:var(--fg)}#srv .hn{overflow:hidden;text-overflow:ellipsis}
+.srv-skeleton{width:22px;height:12px}
+#srv .fl{font-size:16px;line-height:1}#srv .hn{overflow:hidden;text-overflow:ellipsis}
 /* With computers connected the selector already names this one; the host name would be a third label. */
 .deck-switch:not([hidden])+.srv-row .hn{display:none}
-.side-top{display:flex;gap:6px;padding:10px 8px 8px}
+.side-top{display:flex;gap:6px;padding:2px 8px 8px}.side-top[hidden]{display:none}
 .search{flex:1;min-width:0;background:var(--bg);border:1px solid var(--bd);border-radius:var(--r-sm);color:var(--fg);padding:6px 9px;outline:none}
 .search:focus{border-color:var(--acc)}
 .iconbtn{min-width:30px;height:30px;border-radius:var(--r-sm);display:inline-grid;place-items:center;color:var(--mut);flex:none}
@@ -855,8 +855,8 @@ body.resizing iframe{pointer-events:none}
   .deck-switch{height:auto;padding:12px}
   .deck-switch select{font-size:16px;min-height:var(--tap)}
   .deck-switch button{height:var(--tap)}
-  .srv-row{height:42px;padding:10px 8px 0 14px}#srv{font-size:13px}#srv .fl{font-size:16px}
-  .side-top{padding:12px 12px 8px}
+  .srv-row{padding:6px 8px 4px 14px}#srv{font-size:13px}#srv .fl{font-size:16px}
+  .side-top{padding:2px 12px 8px}
   .search{font-size:16px;padding:9px 12px;border-radius:var(--r)}
   .iconbtn{min-width:var(--tap);height:var(--tap);border-radius:var(--r)}
   #tabs{flex:none;overflow:visible;padding:0 8px 12px}

@@ -72,3 +72,24 @@ test('the conversation dialog shows what was said, from the agent\'s file, and a
     expect(list.querySelectorAll('.talk-turn').length).toBe(2);
   }finally{window.close()}
 });
+
+test('the session search opens from its button and takes its filter away when closed',async()=>{
+  const routes=routesFor({local:()=>({sessions:[session('alpha'),session('beta')]})});
+  const window=boot(routes,null,w=>w.localStorage.setItem('cc.active','alpha'));
+  try{
+    await settle();await settle();
+    const document=window.document,row=document.getElementById('side_find'),field=document.getElementById('q'),button=document.getElementById('b_find');
+    const shown=()=>['alpha','beta'].filter(name=>document.querySelector('#tabs [data-session="'+name+'"]'));
+    expect(row.hidden).toBe(true);
+    button.click();
+    expect(row.hidden).toBe(false);
+    expect(button.getAttribute('aria-expanded')).toBe('true');
+    field.value='beta';field.dispatchEvent(new window.Event('input'));
+    expect(shown()).toEqual(['beta']);
+    // A hidden field must not keep hiding sessions.
+    field.dispatchEvent(new window.KeyboardEvent('keydown',{key:'Escape',bubbles:true}));
+    expect(row.hidden).toBe(true);
+    expect(field.value).toBe('');
+    expect(shown()).toEqual(['alpha','beta']);
+  }finally{window.close()}
+});

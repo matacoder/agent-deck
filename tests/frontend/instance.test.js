@@ -891,7 +891,8 @@ test('switching computers keeps the computers in one order in the sidebar',async
   window.openDeckSession(DECK,'beta');
   // Right after the switch, before the new computer answers, its last known address is already there.
   expect(inbox.hidden).toBe(false);
-  expect(srv.querySelector('.ip').textContent).toBe('203.0.113.7');
+  expect(srv.querySelector('.hn').textContent).toBe('mac');
+  expect(srv.title).toContain('203.0.113.7');
   await settle();await settle();
   expect(heads()).toEqual(before);
   // The computer we left keeps its project headings in its section.

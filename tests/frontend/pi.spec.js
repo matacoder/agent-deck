@@ -35,7 +35,7 @@ test('settings gear stays readable with a full height click target',async({app,p
 test('interface icons share the same scale on desktop and phone',async({app,page})=>{
  for(const width of [1280,390]){
   await app.open({width,height:900});
-  for(const selector of ['.side-top .iconbtn svg','#b_attach svg','#b_send svg']){
+  for(const selector of ['.srv-row .iconbtn.accent svg','#b_attach svg','#b_send svg']){
    const icon=page.locator(selector);
    const size=await icon.evaluate(e=>({width:getComputedStyle(e).width,height:getComputedStyle(e).height}));
    expect(size).toEqual({width:'18px',height:'18px'});

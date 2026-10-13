@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.52.4 — 2026-10-13
+
+- **The top of the session list is one row.** The address and the search field took two rows above the sessions. Now there is the country flag (the address, city and Tailscale address are in its hint), a search button, the new-session button and the waiting-for-answer button. The search field opens from its button; Esc closes it and clears the filter, so a hidden field never keeps sessions out of the list.
+
 ## 1.52.3 — 2026-10-13
 
 - **An event is told once, not as a notification and in Telegram.** With both in use, Telegram now gets what needs you: an agent's question (answered there by a button, no longer also a notification) and finished work where the agent waits for your answer or approval, which the summary's model marks. Everything else that finished is a notification only. With no subscribed device, or when no device's push service accepted the notification, it goes to Telegram instead; whether a device then showed it cannot be known.

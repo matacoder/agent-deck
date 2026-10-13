@@ -785,6 +785,12 @@ $("msg").addEventListener("keydown",e=>{
   else if(e.key==="Enter"&&(e.metaKey||e.ctrlKey)){e.preventDefault();send()}
 });
 $("q").addEventListener("input",renderTabs);
+// Sessions are rarely searched: the field opens from its button and takes its filter away when closed.
+function toggleFind(on=$("side_find").hidden){
+  const q=$("q");$("side_find").hidden=!on;$("b_find").setAttribute("aria-expanded",String(on));
+  if(on)q.focus();else if(q.value){q.value="";renderTabs()}
+}
+$("q").addEventListener("keydown",e=>{if(e.key==="Escape"){e.preventDefault();toggleFind(false);$("b_find").focus()}});
 $("search_form").addEventListener("submit",e=>{e.preventDefault();runOutputSearch()});
 $("search_q").addEventListener("focus",()=>{if(outputSearch.result||outputSearch.busy||outputSearch.error)showSearchPop(true)});
 $("search_q").addEventListener("keydown",e=>{if(e.key==="Escape"){e.preventDefault();e.stopPropagation();closeOutputSearch()}});
@@ -1128,8 +1134,9 @@ function updatePanel(){
 function renderServer(s){
   const box=$("srv"),cc=(s.country||"").toUpperCase();box.replaceChildren();
   if(/^[A-Z]{2}$/.test(cc))box.append(el("span","fl",String.fromCodePoint(...[...cc].map(c=>0x1F1A5+c.charCodeAt(0)))));
-  box.append(el("span","ip",s.ip||s.tailscale_ip||"—"),...(s.hostname?[el("span","hn","· "+s.hostname)]:[]));
-  box.title=[s.city&&`${s.city}, ${cc}`,s.org,s.tailscale_ip&&`Tailscale: ${s.tailscale_ip}`].filter(Boolean).join("\n");
+  // The address is for the rare look, not for the row: it stays in the hint.
+  if(s.hostname)box.append(el("span","hn",s.hostname));
+  box.title=[s.city&&`${s.city}, ${cc}`,s.org,s.ip,s.tailscale_ip&&`Tailscale: ${s.tailscale_ip}`].filter(Boolean).join("\n");
 }
 function showCachedServer(){
   let cached=null;try{cached=JSON.parse(deckLocalStorage.getItem("cc.server")||"null")}catch(e){}
