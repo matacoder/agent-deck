@@ -102,23 +102,13 @@ aside{position:relative;width:min(var(--side-w,248px),40vw);flex:none;background
 .tab.remote .n{color:var(--fg)}
 
 /* Compact quota and local-generation monitor. */
-#integ{margin:2px 8px 4px;min-width:0}
-.quota-heading{display:block;font-size:11px;color:var(--mut)}
-.quota-heading summary{display:grid;grid-template-columns:22px 64px 48px 1fr;gap:8px;align-items:center;padding:2px 6px;list-style:none;cursor:pointer;border-radius:var(--r-sm)}
-.quota-heading summary::-webkit-details-marker{display:none}
-@media (hover:hover){.quota-heading summary:hover{background:var(--side2)}}
-.quota-heading summary>span:first-child{grid-column:2}
-.quota-heading-plan{text-align:right}
-.quota-github{display:flex;align-items:center;justify-content:flex-end;gap:4px}
-.quota-github svg{width:var(--icon-sm);height:var(--icon-sm)}
-.quota-help{margin:2px 6px 8px;padding:8px 10px;border-radius:var(--r-sm);background:var(--side2);line-height:1.5}
-.quota-strip{display:grid;grid-template-columns:22px 64px 48px 1fr;gap:8px;align-items:center;min-height:22px;padding:0 6px;font-size:12px;font-variant-numeric:tabular-nums}
-.quota-values{display:contents}
 .quota-percent{font-weight:600}
 .quota-percent.good{color:var(--fg2)} /* Only a quota that needs attention is coloured. */
 .quota-percent.over{color:var(--warn)}.quota-percent.crit{color:var(--bad-text)}
-.quota-plan{text-align:right;font-size:11px;color:var(--mut)}
-.quota-reset{text-align:right;white-space:nowrap;color:var(--mut);font-size:11px}
+.quota-reset{white-space:nowrap;color:var(--mut)}
+/* Every subscription in one line under the message field; the one this session spends is at full strength. */
+.quota-item{display:inline-flex;align-items:center;gap:5px;opacity:.55}.quota-item.on{opacity:1}
+.quota-item .ag{width:14px;height:14px;font-size:14px}
 .good{color:var(--ok)}.dim{color:var(--dim)}
 .compact-local{display:flex;flex-wrap:wrap;align-items:center;gap:0 8px;padding:4px 6px 0;margin-top:2px;border-top:1px solid var(--bd);min-width:0}
 .local-model{flex:1 1 0;min-width:0;margin:0;font-size:11px;color:var(--mut)}.local-model[open]{flex-basis:100%}
@@ -167,7 +157,6 @@ main{flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;backgrou
 /* Opened ahead: laid out at full size so the terminal learns its real size, but not seen and not clickable. */
 #stage iframe.warm{display:block;visibility:hidden;pointer-events:none}#stage iframe.warm.on{visibility:visible;pointer-events:auto}
 .screen-skeleton{display:grid;gap:12px;padding:16px 4px}
-.integ-skeleton{display:block;padding:9px 6px 5px}.integ-skeleton .sk-line:last-child{display:none}
 .sk-line{display:block;height:12px;border-radius:6px;background:linear-gradient(90deg,var(--side2) 0%,var(--sel) 50%,var(--side2) 100%);background-size:200% 100%;animation:shimmer 1.2s ease-in-out infinite}
 .list-skeleton{display:grid;gap:7px;padding:14px 12px}.list-skeleton.rows .sk-line:nth-child(odd){width:34%;height:10px;margin-top:9px}.list-skeleton.rows .sk-line:first-child{margin-top:0}
 .list-skeleton.gallery{grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px}.list-skeleton.gallery .sk-line{height:auto;aspect-ratio:1;border-radius:8px}
@@ -330,9 +319,8 @@ body.is-codex .question-key{display:inline-flex!important;align-items:center;jus
 .send-state.error{color:var(--bad-text)}
 #send_state .local-live-line{display:inline-flex;margin:0;font-size:11.5px;gap:10px}
 #send_state .composer-model{margin-right:8px}
-#send_state .session-status{display:inline-flex;align-items:baseline;gap:8px;font-size:11.5px;font-variant-numeric:tabular-nums;white-space:nowrap}
+#send_state .session-status{display:inline-flex;flex-wrap:wrap;align-items:center;gap:2px 14px;font-size:11.5px;font-variant-numeric:tabular-nums;white-space:nowrap}
 #send_state .session-status .composer-model{margin-right:0;overflow:hidden;text-overflow:ellipsis}
-#send_state .session-status .quota-values{display:inline-flex;gap:6px}
 .server-metrics{display:flex;align-self:flex-start;align-items:center;gap:8px;margin-left:auto;white-space:nowrap;font-variant-numeric:tabular-nums}
 .server-metric{display:inline-flex;align-items:center;gap:3px}
 .server-metric svg{width:var(--icon-sm);height:var(--icon-sm);flex:none}
@@ -867,14 +855,10 @@ body.resizing iframe{pointer-events:none}
   .tab .n{font-size:16px}.tab .s{font-size:13px}
   .tab .k{display:none}
   .dot{width:10px;height:10px}
-  #integ{margin:6px 12px 12px}
-  .quota-heading{font-size:12px}
-  .quota-strip{min-height:34px;font-size:13.5px}
-  .quota-plan,.quota-reset{font-size:12px}
   .local-model,.local-live-line{font-size:12px}
   .side-foot{padding:12px 18px calc(12px + var(--sab));font-size:12px}
-  /* A phone keeps what is acted on there: a computer that does not answer and the local model's speed are for the desk. */
-  .deck-head.off,.compact-local{display:none}
+  /* A phone keeps what is acted on there: a computer that does not answer is for the desk. */
+  .deck-head.off{display:none}
   #ver{font-size:12px}
   .side-foot>button{min-height:var(--tap);font-size:15px}
 

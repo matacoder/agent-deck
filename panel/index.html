@@ -113,23 +113,13 @@ aside{position:relative;width:min(var(--side-w,248px),40vw);flex:none;background
 .tab.remote .n{color:var(--fg)}
 
 /* Compact quota and local-generation monitor. */
-#integ{margin:2px 8px 4px;min-width:0}
-.quota-heading{display:block;font-size:11px;color:var(--mut)}
-.quota-heading summary{display:grid;grid-template-columns:22px 64px 48px 1fr;gap:8px;align-items:center;padding:2px 6px;list-style:none;cursor:pointer;border-radius:var(--r-sm)}
-.quota-heading summary::-webkit-details-marker{display:none}
-@media (hover:hover){.quota-heading summary:hover{background:var(--side2)}}
-.quota-heading summary>span:first-child{grid-column:2}
-.quota-heading-plan{text-align:right}
-.quota-github{display:flex;align-items:center;justify-content:flex-end;gap:4px}
-.quota-github svg{width:var(--icon-sm);height:var(--icon-sm)}
-.quota-help{margin:2px 6px 8px;padding:8px 10px;border-radius:var(--r-sm);background:var(--side2);line-height:1.5}
-.quota-strip{display:grid;grid-template-columns:22px 64px 48px 1fr;gap:8px;align-items:center;min-height:22px;padding:0 6px;font-size:12px;font-variant-numeric:tabular-nums}
-.quota-values{display:contents}
 .quota-percent{font-weight:600}
 .quota-percent.good{color:var(--fg2)} /* Only a quota that needs attention is coloured. */
 .quota-percent.over{color:var(--warn)}.quota-percent.crit{color:var(--bad-text)}
-.quota-plan{text-align:right;font-size:11px;color:var(--mut)}
-.quota-reset{text-align:right;white-space:nowrap;color:var(--mut);font-size:11px}
+.quota-reset{white-space:nowrap;color:var(--mut)}
+/* Every subscription in one line under the message field; the one this session spends is at full strength. */
+.quota-item{display:inline-flex;align-items:center;gap:5px;opacity:.55}.quota-item.on{opacity:1}
+.quota-item .ag{width:14px;height:14px;font-size:14px}
 .good{color:var(--ok)}.dim{color:var(--dim)}
 .compact-local{display:flex;flex-wrap:wrap;align-items:center;gap:0 8px;padding:4px 6px 0;margin-top:2px;border-top:1px solid var(--bd);min-width:0}
 .local-model{flex:1 1 0;min-width:0;margin:0;font-size:11px;color:var(--mut)}.local-model[open]{flex-basis:100%}
@@ -178,7 +168,6 @@ main{flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;backgrou
 /* Opened ahead: laid out at full size so the terminal learns its real size, but not seen and not clickable. */
 #stage iframe.warm{display:block;visibility:hidden;pointer-events:none}#stage iframe.warm.on{visibility:visible;pointer-events:auto}
 .screen-skeleton{display:grid;gap:12px;padding:16px 4px}
-.integ-skeleton{display:block;padding:9px 6px 5px}.integ-skeleton .sk-line:last-child{display:none}
 .sk-line{display:block;height:12px;border-radius:6px;background:linear-gradient(90deg,var(--side2) 0%,var(--sel) 50%,var(--side2) 100%);background-size:200% 100%;animation:shimmer 1.2s ease-in-out infinite}
 .list-skeleton{display:grid;gap:7px;padding:14px 12px}.list-skeleton.rows .sk-line:nth-child(odd){width:34%;height:10px;margin-top:9px}.list-skeleton.rows .sk-line:first-child{margin-top:0}
 .list-skeleton.gallery{grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px}.list-skeleton.gallery .sk-line{height:auto;aspect-ratio:1;border-radius:8px}
@@ -341,9 +330,8 @@ body.is-codex .question-key{display:inline-flex!important;align-items:center;jus
 .send-state.error{color:var(--bad-text)}
 #send_state .local-live-line{display:inline-flex;margin:0;font-size:11.5px;gap:10px}
 #send_state .composer-model{margin-right:8px}
-#send_state .session-status{display:inline-flex;align-items:baseline;gap:8px;font-size:11.5px;font-variant-numeric:tabular-nums;white-space:nowrap}
+#send_state .session-status{display:inline-flex;flex-wrap:wrap;align-items:center;gap:2px 14px;font-size:11.5px;font-variant-numeric:tabular-nums;white-space:nowrap}
 #send_state .session-status .composer-model{margin-right:0;overflow:hidden;text-overflow:ellipsis}
-#send_state .session-status .quota-values{display:inline-flex;gap:6px}
 .server-metrics{display:flex;align-self:flex-start;align-items:center;gap:8px;margin-left:auto;white-space:nowrap;font-variant-numeric:tabular-nums}
 .server-metric{display:inline-flex;align-items:center;gap:3px}
 .server-metric svg{width:var(--icon-sm);height:var(--icon-sm);flex:none}
@@ -878,14 +866,10 @@ body.resizing iframe{pointer-events:none}
   .tab .n{font-size:16px}.tab .s{font-size:13px}
   .tab .k{display:none}
   .dot{width:10px;height:10px}
-  #integ{margin:6px 12px 12px}
-  .quota-heading{font-size:12px}
-  .quota-strip{min-height:34px;font-size:13.5px}
-  .quota-plan,.quota-reset{font-size:12px}
   .local-model,.local-live-line{font-size:12px}
   .side-foot{padding:12px 18px calc(12px + var(--sab));font-size:12px}
-  /* A phone keeps what is acted on there: a computer that does not answer and the local model's speed are for the desk. */
-  .deck-head.off,.compact-local{display:none}
+  /* A phone keeps what is acted on there: a computer that does not answer is for the desk. */
+  .deck-head.off{display:none}
   #ver{font-size:12px}
   .side-foot>button{min-height:var(--tap);font-size:15px}
 
@@ -1164,7 +1148,6 @@ body.resizing iframe{pointer-events:none}
       <input id="q" class="search" placeholder="Поиск…" aria-label="Поиск…" title="Быстрый переход: ⌥K, Ctrl+K или ⌘K" autocomplete="off" autocapitalize="off" spellcheck="false">
     </div>
     <div id="tabs"></div>
-    <div id="integ"></div>
     <div class="side-foot"><span id="foot"></span><span id="ver"></span><button id="b_drafts" onclick="showClosedDrafts()" style="display:none"><svg class="ui-icon"><use href="#i-file"/></svg><span>Черновики закрытых сессий</span></button></div>
   </aside>
   <div id="scrim" onclick="if(document.body.classList.contains('project-drawer'))closeProject();else drawer(false)"></div>
@@ -4998,7 +4981,6 @@ function listSkeleton(kind="rows"){
   else for(const width of [70,45,82,38,64,52,76,41])box.append(el("span","sk-line"),el("span","sk-line")),box.lastChild.style.width=width+"%";
   return box;
 }
-function integRow(){return el("div","local-usage compact-local integ-skeleton",el("span","sk-line"),el("span","sk-line"))}
 // The last figures of this computer stand in until the next ones, a few seconds later.
 function pendingMetrics(){
   const kept=shown(deckLocalStorage,"metrics");
@@ -5867,7 +5849,7 @@ function renderSendState(){
   }else{
     const line=session&&(!status||status.phase==="success")?sessionStatus(session):null;
     // The status is live for screen readers; re-rendering identical text every second would be re-announced.
-    if(line){if(d.textContent!==line.textContent||d.firstElementChild?.title!==line.title)d.replaceChildren(line)}
+    if(line){if(d.innerHTML!==line.outerHTML)d.replaceChildren(line)}
     else d.textContent=status?status.text:(isMobile()?tr("Enter ↵ · ↑ отправить"):tr("Enter отправить · ⇧Enter ↵"));
   }
   d.classList.toggle("error",Boolean(status&&status.error));
@@ -6025,81 +6007,38 @@ function fmtReset(ts){
   const abs=m<1440&&d.getDate()===new Date().getDate()?hm:d.toLocaleDateString(DATE_LOCALE,{weekday:"short",day:"numeric",month:"short"})+" "+hm;
   return tr("сброс через {0} · {1}",[rel,abs]);
 }
-function compactReset(ts){
-  if(!ts)return "↻ —";
-  return "↻ "+compactDuration(Math.max(0,Math.round((ts*1000-Date.now())/60000)));
-}
 function compactDuration(minutes){
   const days=Math.floor(minutes/1440),hours=Math.floor(minutes%1440/60);
   return days?tr("{0}д {1}ч",[days,hours]):hours?tr("{0}ч {1}м",[hours,minutes%60]):tr("{0}м",[minutes]);
 }
-// labelled: outside the sidebar (which has "Left / Plan" headings) the plan value says what it is.
-function quotaValues(w,labelled=false){
-  const percent=Number.isFinite(w?.percent)?Math.round(Math.max(0,Math.min(100,100-w.percent))):null,plan=plannedRemaining(w,now());
-  const remaining=el("span","quota-percent "+quotaTone(percent,plan),percent===null?"—":percent+"%");remaining.title=tr("Остаток");
-  const target=el("span","quota-plan",plan===null?"—":labelled?tr("план {0}%",[plan]):plan+"%");target.title=tr("По плану к концу текущих суток лимита");
-  target.setAttribute("aria-label",target.title+": "+target.textContent);
-  return el("span","quota-values",remaining,target);
-}
 const QUOTA_OF={claude:"claude",codex:"codex","claude-kimi":"kimi",kimi:"kimi"};
-// Mobile hides the sidebar quotas, so the composer shows what runs here and how much quota is left.
-function sessionStatus(session){
-  const agent=agentOf(session),quota=QUOTA_OF[agent];
-  if(!quota||!session.running)return null;
-  const model=session.source?.model||session.model,w=primaryQuota(usageData[quota]);
-  const line=el("span","session-status",el("span","composer-model",AGENTS[agent].label+(model?" · "+shortModel(model):"")));
-  line.title=AGENTS[agent].label+(model?" · "+model:"")+(w?" · "+tr("Остаток")+" / "+tr("По плану к концу текущих суток лимита")+" · "+fmtReset(w.resets_at):"");
-  if(w)line.append(quotaValues(w,true),el("span","quota-reset",compactReset(w.resets_at)));
-  return line;
+// Days while days are left, then hours: the line holds every subscription, so each gets a few characters.
+function shortReset(ts){
+  const minutes=Math.max(0,Math.round((ts*1000-Date.now())/60000));
+  return "↻ "+(minutes>=1440?tr("{0}д",[Math.round(minutes/1440)]):minutes>=60?tr("{0}ч",[Math.round(minutes/60)]):tr("{0}м",[minutes]));
 }
-let quotaHelpOpen=false,hubSignature="";
+function quotaItem(name,w,used){
+  const percent=Number.isFinite(w.percent)?Math.round(Math.max(0,Math.min(100,100-w.percent))):null,plan=plannedRemaining(w,now());
+  const item=el("span","quota-item"+(used?" on":""),agentIcon({agent:name}),
+    el("span","quota-percent "+quotaTone(percent,plan),(percent===null?"—":percent+"%")+"/"+(plan===null?"—":plan+"%")),el("span","quota-reset",w.resets_at?shortReset(w.resets_at):"↻ —"));
+  item.title=AGENTS[name].label+" · "+tr(w.label||"")+" · "+tr("Остаток")+" / "+tr("По плану к концу текущих суток лимита")+" · "+fmtReset(w.resets_at)+(usageData[name].stale?" · "+tr("⚠ данные устарели"):"");
+  item.setAttribute("role","img");item.setAttribute("aria-label",item.title+": "+item.textContent);
+  return item;
+}
+// Under the message field: what is left of every subscription, the one this session spends standing out.
+function sessionStatus(session){
+  const used=QUOTA_OF[agentOf(session)];
+  const items=["claude","codex","kimi"].map(name=>[name,primaryQuota(usageData[name])]).filter(([,w])=>w).map(([name,w])=>quotaItem(name,w,name===used));
+  return items.length?el("span","session-status",...items):null;
+}
+let hubSignature="";
 function renderInteg(){
-  const summary=el("summary","",el("span","",tr("Остаток")),el("span","quota-heading-plan",tr("План")));
-  const gh=el("span","quota-github");gh.innerHTML=GH_ICON;gh.title=ghLogin?"GitHub · "+ghLogin:tr("GitHub не подключён");gh.append(el("span",ghLogin?"good":"dim",ghLogin?"✓":"—"));summary.append(gh);
-  summary.setAttribute("aria-label",tr("Что означают лимиты"));
-  // Phones have no hover, so the explanation and exact reset times open on tap instead of living in title.
-  const help=el("div","quota-help",el("div","",tr("Остаток — сколько лимита осталось. План — сколько должно остаться к концу текущих суток лимита: неделя делится на 7 равных частей от момента сброса.")));
-  const head=el("details","quota-heading",summary,help);head.open=quotaHelpOpen;
-  head.addEventListener("toggle",()=>{quotaHelpOpen=head.open});
-  const rows=[head];
-  for(const a of ["claude","codex","kimi"]){
-    const u=usageData[a],w=primaryQuota(u),row=el("div","quota-strip",agentIcon({agent:a}));
-    row.title=AGENTS[a].label+" · "+(w?tr(w.label||"")+" · "+fmtReset(w.resets_at):u?.error||tr("Нет данных"))+(u?.stale?" · "+tr("⚠ данные устарели"):"");
-    row.setAttribute("aria-label",row.title);
-    row.append(quotaValues(w),el("span","quota-reset",w?compactReset(w.resets_at):"—"));
-    // A row of dashes says nothing; why there is no data stays in the explanation below.
-    if(w)rows.push(row);
-    if(w||u?.error)help.append(el("div","",row.title));
-  }
-  // The very first time on a computer nothing is known yet: two rows stand in for the limits.
-  if(!integReady.usage&&rows.length===1)rows.push(...skeletonRows(2,integRow));
-  for(const p of lmData.profiles||[])rows.push(localUsage(p));
-  rows.push(...integSkeleton());
-  // Rebuilding identical nodes every second drops hover, focus and screen-reader position.
-  const next=el("div","",...rows);
-  if(next.innerHTML!==$("integ").innerHTML)$("integ").replaceChildren(...next.childNodes);
-  keepIntegHeight();
   renderSendState();
   const signature=JSON.stringify([lastAg,ghLogin,telegramConfig,lmData.profiles,panelVersion]);
   if($("settings_dlg").open&&signature!==hubSignature&&!$("settings_dlg").contains(document.activeElement)){hubSignature=signature;renderHub()}
 }
-// Limits and local models arrive after the session list; until both answered, the block keeps the height and
-// model rows it had last time (per computer), so the session list above does not jump when they appear.
-function integSkeleton(){
-  if(integReady.lm||lmData.profiles?.length)return [];
-  let count=0;try{count=Math.min(4,+deckLocalStorage.getItem("cc.integ-models")||0)}catch(e){}
-  return skeletonRows(count,integRow);
-}
-function keepIntegHeight(){
-  const box=$("integ");
-  if(!integReady.lm||!integReady.usage){
-    let height=0;try{height=+deckLocalStorage.getItem("cc.integ-height")||0}catch(e){}
-    box.style.minHeight=height>0?height+"px":"";return;
-  }
-  box.style.minHeight="";
-  try{deckLocalStorage.setItem("cc.integ-height",String(box.offsetHeight));deckLocalStorage.setItem("cc.integ-models",String(lmData.profiles?.length||0))}catch(e){}
-}
-const openLocalModels=new Set(); // renderInteg rebuilds every second; keep user-opened rows open.
+// The speed of a local model, shown under the message field of a session that runs on it.
+const openLocalModels=new Set();
 function localUsage(profile){
   const activity=profile.activity||[],live=activity[0],sample=profile.performance||{};
   const model=live?.model||sample.model||profile.models?.find(m=>m.loaded)?.id||profile.name;

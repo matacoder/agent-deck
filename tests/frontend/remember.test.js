@@ -61,7 +61,7 @@ test('the remembered list, computers and limits are drawn before the first answe
     expect(doc.querySelector('#tabs .tab.on .n').textContent).toBe('bravo');
     expect(doc.getElementById('deck_switch').hidden).toBe(false);
     expect([...doc.getElementById('deck_select').options].map(o=>o.textContent)).toEqual(['gateway','Mac Studio']);
-    expect(doc.querySelector('#integ .quota-percent').textContent).toBe('60%');
+    expect(doc.querySelector('#send_state .quota-percent').textContent).toMatch(/^60%\//);
     expect(doc.getElementById('ver').textContent).toBe('v1.2.3');
     expect(doc.getElementById('empty').style.display).toBe('none');
     await settle();await settle();

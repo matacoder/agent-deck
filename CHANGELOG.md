@@ -2,6 +2,11 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.53.0 — 2026-10-13
+
+- **Limits moved from the sidebar to the line under the message field.** The sidebar's table of limits is gone, with its GitHub mark (GitHub is in Settings → Connections). Under the message field, instead of the agent, its model and one limit, there is every subscription in one line: its icon, what is left and what the plan expects (`95%/86%`), and the time to the reset in days, then in hours once less than a day is left. The subscription the open session spends is at full strength, the others are dimmed. Exact reset times are in the hint on hover.
+- **The sidebar no longer has a line per local model.** The speed is still shown under the message field of a session that runs on that model, and the measurements are in Settings → Models.
+
 ## 1.52.9 — 2026-10-13
 
 - **The line above the sidebar's bottom row and above the session's is one line.** The row with the session count and the version was lower than the row under the message field, so the border broke between them. It now takes that row's height, measured, since it differs between sessions and on a phone. In the phone's session list the row also stays at the bottom when the list is short.

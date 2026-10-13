@@ -506,18 +506,24 @@ test('output search runs from the bar field and shows results under it without a
   }finally{window.close()}
 });
 
-test('the sidebar keeps the place of local models until they load',async()=>{
-  const state={local:()=>({sessions:[session('alpha')]})};
-  const routes=routesFor(state);let release;
-  routes['/api/lmstudio']=()=>new Promise(resolve=>{release=()=>resolve({profiles:[],discovery:{}})});
-  const window=boot(routes,null,w=>{w.localStorage.setItem('cc.integ-models','1');w.localStorage.setItem('cc.integ-height','90')});
+test('every subscription is under the message field with the one in use standing out; the sidebar has none',async()=>{
+  const at=Date.now()/1000;
+  const routes=routesFor({local:()=>({sessions:[session('alpha',{agent:'claude'}),session('term',{agent:'shell'})]})});
+  routes['/api/usage']=()=>({claude:{windows:[{label:'Week',percent:5,secs:604800,resets_at:at+6*86400+16*3600}]},
+    codex:{windows:[{label:'Week',percent:0,secs:604800,resets_at:at+5*3600+600}]},kimi:{error:'not signed in'}});
+  const window=boot(routes,null,w=>w.localStorage.setItem('cc.active','alpha'));
   try{
-  await settle();await settle();
-  const doc=window.document;
-  expect(doc.querySelectorAll('#integ .integ-skeleton')).toHaveLength(1);
-  expect(doc.getElementById('integ').style.minHeight).toBe('90px');
-  release();await settle();await settle();
-  expect(doc.querySelectorAll('#integ .integ-skeleton')).toHaveLength(0);
+  await settle();await settle();await settle();
+  const doc=window.document,items=()=>[...doc.querySelectorAll('#send_state .quota-item')];
+  expect(doc.getElementById('integ')).toBeNull();
+  expect(items().map(item=>item.querySelector('.ag').className)).toEqual(['ag claude','ag codex']);
+  expect(items().map(item=>item.classList.contains('on'))).toEqual([true,false]);
+  expect(items()[0].querySelector('.quota-percent').textContent).toMatch(/^95%\/\d+%$/);
+  // Days while days are left, hours after that.
+  expect(items().map(item=>item.querySelector('.quota-reset').textContent)).toEqual(['↻ 7д','↻ 5ч']);
+  // A terminal spends none of them, but they are still there to look at.
+  window.select('term');await settle();
+  expect(items().map(item=>item.classList.contains('on'))).toEqual([false,false]);
   }finally{window.close()}
 });
 

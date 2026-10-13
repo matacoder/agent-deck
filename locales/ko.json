@@ -996,6 +996,8 @@
     "У этой сессии нет разговора, который можно прочитать.": "This session has no conversation that can be read.",
     "Названия сессий": "Session names",
     "Называть сессии по теме разговора": "Name sessions after the conversation",
-    "Модель, которая пишет пересказ, даёт сессии короткое название латиницей и меняет его, когда меняется задача. Оно видно в списке и в уведомлениях. Сессию, переименованную вручную, не трогает.": "The model that writes the summary gives the session a short name in Latin letters and changes it when the task changes. It is shown in the list and in notifications. A session you renamed yourself is left alone."
+    "Модель, которая пишет пересказ, даёт сессии короткое название латиницей и меняет его, когда меняется задача. Оно видно в списке и в уведомлениях. Сессию, переименованную вручную, не трогает.": "The model that writes the summary gives the session a short name in Latin letters and changes it when the task changes. It is shown in the list and in notifications. A session you renamed yourself is left alone.",
+    "{0}д": "{0}일",
+    "{0}ч": "{0}시간"
   }
 }

@@ -53,7 +53,6 @@ function listSkeleton(kind="rows"){
   else for(const width of [70,45,82,38,64,52,76,41])box.append(el("span","sk-line"),el("span","sk-line")),box.lastChild.style.width=width+"%";
   return box;
 }
-function integRow(){return el("div","local-usage compact-local integ-skeleton",el("span","sk-line"),el("span","sk-line"))}
 // The last figures of this computer stand in until the next ones, a few seconds later.
 function pendingMetrics(){
   const kept=shown(deckLocalStorage,"metrics");

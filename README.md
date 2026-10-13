@@ -19,7 +19,7 @@ One command on a Linux server. [macOS, Windows, Docker, SteamOS](#install-anywhe
 
 | Answer with one tap | See what the agent built | Everything in your pocket |
 |:---:|:---:|:---:|
-| <img src="docs/screenshots/mobile-question.png" width="260" alt="Phone: an agent's question with answer buttons"> | <img src="docs/screenshots/mobile-images.png" width="260" alt="Phone: screenshots the agent made, inside its output"> | <img src="docs/screenshots/mobile-sessions.png" width="260" alt="Phone: sessions of two projects and the remaining limits"> |
+| <img src="docs/screenshots/mobile-question.png" width="260" alt="Phone: an agent's question with answer buttons"> | <img src="docs/screenshots/mobile-images.png" width="260" alt="Phone: screenshots the agent made, inside its output"> | <img src="docs/screenshots/mobile-sessions.png" width="260" alt="Phone: sessions of two projects in one list"> |
 
 - **Nothing stops when you leave.** Sessions live in tmux on your machine. Close the tab, lose the connection, reboot: the agent is still there.
 - **Agents ask, you answer in a tap.** A question arrives as a phone notification or a Telegram message with the answer buttons on it.

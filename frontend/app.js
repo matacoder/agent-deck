@@ -678,7 +678,7 @@ function renderSendState(){
   }else{
     const line=session&&(!status||status.phase==="success")?sessionStatus(session):null;
     // The status is live for screen readers; re-rendering identical text every second would be re-announced.
-    if(line){if(d.textContent!==line.textContent||d.firstElementChild?.title!==line.title)d.replaceChildren(line)}
+    if(line){if(d.innerHTML!==line.outerHTML)d.replaceChildren(line)}
     else d.textContent=status?status.text:(isMobile()?tr("Enter ↵ · ↑ отправить"):tr("Enter отправить · ⇧Enter ↵"));
   }
   d.classList.toggle("error",Boolean(status&&status.error));
@@ -836,81 +836,38 @@ function fmtReset(ts){
   const abs=m<1440&&d.getDate()===new Date().getDate()?hm:d.toLocaleDateString(DATE_LOCALE,{weekday:"short",day:"numeric",month:"short"})+" "+hm;
   return tr("сброс через {0} · {1}",[rel,abs]);
 }
-function compactReset(ts){
-  if(!ts)return "↻ —";
-  return "↻ "+compactDuration(Math.max(0,Math.round((ts*1000-Date.now())/60000)));
-}
 function compactDuration(minutes){
   const days=Math.floor(minutes/1440),hours=Math.floor(minutes%1440/60);
   return days?tr("{0}д {1}ч",[days,hours]):hours?tr("{0}ч {1}м",[hours,minutes%60]):tr("{0}м",[minutes]);
 }
-// labelled: outside the sidebar (which has "Left / Plan" headings) the plan value says what it is.
-function quotaValues(w,labelled=false){
-  const percent=Number.isFinite(w?.percent)?Math.round(Math.max(0,Math.min(100,100-w.percent))):null,plan=plannedRemaining(w,now());
-  const remaining=el("span","quota-percent "+quotaTone(percent,plan),percent===null?"—":percent+"%");remaining.title=tr("Остаток");
-  const target=el("span","quota-plan",plan===null?"—":labelled?tr("план {0}%",[plan]):plan+"%");target.title=tr("По плану к концу текущих суток лимита");
-  target.setAttribute("aria-label",target.title+": "+target.textContent);
-  return el("span","quota-values",remaining,target);
-}
 const QUOTA_OF={claude:"claude",codex:"codex","claude-kimi":"kimi",kimi:"kimi"};
-// Mobile hides the sidebar quotas, so the composer shows what runs here and how much quota is left.
-function sessionStatus(session){
-  const agent=agentOf(session),quota=QUOTA_OF[agent];
-  if(!quota||!session.running)return null;
-  const model=session.source?.model||session.model,w=primaryQuota(usageData[quota]);
-  const line=el("span","session-status",el("span","composer-model",AGENTS[agent].label+(model?" · "+shortModel(model):"")));
-  line.title=AGENTS[agent].label+(model?" · "+model:"")+(w?" · "+tr("Остаток")+" / "+tr("По плану к концу текущих суток лимита")+" · "+fmtReset(w.resets_at):"");
-  if(w)line.append(quotaValues(w,true),el("span","quota-reset",compactReset(w.resets_at)));
-  return line;
+// Days while days are left, then hours: the line holds every subscription, so each gets a few characters.
+function shortReset(ts){
+  const minutes=Math.max(0,Math.round((ts*1000-Date.now())/60000));
+  return "↻ "+(minutes>=1440?tr("{0}д",[Math.round(minutes/1440)]):minutes>=60?tr("{0}ч",[Math.round(minutes/60)]):tr("{0}м",[minutes]));
 }
-let quotaHelpOpen=false,hubSignature="";
+function quotaItem(name,w,used){
+  const percent=Number.isFinite(w.percent)?Math.round(Math.max(0,Math.min(100,100-w.percent))):null,plan=plannedRemaining(w,now());
+  const item=el("span","quota-item"+(used?" on":""),agentIcon({agent:name}),
+    el("span","quota-percent "+quotaTone(percent,plan),(percent===null?"—":percent+"%")+"/"+(plan===null?"—":plan+"%")),el("span","quota-reset",w.resets_at?shortReset(w.resets_at):"↻ —"));
+  item.title=AGENTS[name].label+" · "+tr(w.label||"")+" · "+tr("Остаток")+" / "+tr("По плану к концу текущих суток лимита")+" · "+fmtReset(w.resets_at)+(usageData[name].stale?" · "+tr("⚠ данные устарели"):"");
+  item.setAttribute("role","img");item.setAttribute("aria-label",item.title+": "+item.textContent);
+  return item;
+}
+// Under the message field: what is left of every subscription, the one this session spends standing out.
+function sessionStatus(session){
+  const used=QUOTA_OF[agentOf(session)];
+  const items=["claude","codex","kimi"].map(name=>[name,primaryQuota(usageData[name])]).filter(([,w])=>w).map(([name,w])=>quotaItem(name,w,name===used));
+  return items.length?el("span","session-status",...items):null;
+}
+let hubSignature="";
 function renderInteg(){
-  const summary=el("summary","",el("span","",tr("Остаток")),el("span","quota-heading-plan",tr("План")));
-  const gh=el("span","quota-github");gh.innerHTML=GH_ICON;gh.title=ghLogin?"GitHub · "+ghLogin:tr("GitHub не подключён");gh.append(el("span",ghLogin?"good":"dim",ghLogin?"✓":"—"));summary.append(gh);
-  summary.setAttribute("aria-label",tr("Что означают лимиты"));
-  // Phones have no hover, so the explanation and exact reset times open on tap instead of living in title.
-  const help=el("div","quota-help",el("div","",tr("Остаток — сколько лимита осталось. План — сколько должно остаться к концу текущих суток лимита: неделя делится на 7 равных частей от момента сброса.")));
-  const head=el("details","quota-heading",summary,help);head.open=quotaHelpOpen;
-  head.addEventListener("toggle",()=>{quotaHelpOpen=head.open});
-  const rows=[head];
-  for(const a of ["claude","codex","kimi"]){
-    const u=usageData[a],w=primaryQuota(u),row=el("div","quota-strip",agentIcon({agent:a}));
-    row.title=AGENTS[a].label+" · "+(w?tr(w.label||"")+" · "+fmtReset(w.resets_at):u?.error||tr("Нет данных"))+(u?.stale?" · "+tr("⚠ данные устарели"):"");
-    row.setAttribute("aria-label",row.title);
-    row.append(quotaValues(w),el("span","quota-reset",w?compactReset(w.resets_at):"—"));
-    // A row of dashes says nothing; why there is no data stays in the explanation below.
-    if(w)rows.push(row);
-    if(w||u?.error)help.append(el("div","",row.title));
-  }
-  // The very first time on a computer nothing is known yet: two rows stand in for the limits.
-  if(!integReady.usage&&rows.length===1)rows.push(...skeletonRows(2,integRow));
-  for(const p of lmData.profiles||[])rows.push(localUsage(p));
-  rows.push(...integSkeleton());
-  // Rebuilding identical nodes every second drops hover, focus and screen-reader position.
-  const next=el("div","",...rows);
-  if(next.innerHTML!==$("integ").innerHTML)$("integ").replaceChildren(...next.childNodes);
-  keepIntegHeight();
   renderSendState();
   const signature=JSON.stringify([lastAg,ghLogin,telegramConfig,lmData.profiles,panelVersion]);
   if($("settings_dlg").open&&signature!==hubSignature&&!$("settings_dlg").contains(document.activeElement)){hubSignature=signature;renderHub()}
 }
-// Limits and local models arrive after the session list; until both answered, the block keeps the height and
-// model rows it had last time (per computer), so the session list above does not jump when they appear.
-function integSkeleton(){
-  if(integReady.lm||lmData.profiles?.length)return [];
-  let count=0;try{count=Math.min(4,+deckLocalStorage.getItem("cc.integ-models")||0)}catch(e){}
-  return skeletonRows(count,integRow);
-}
-function keepIntegHeight(){
-  const box=$("integ");
-  if(!integReady.lm||!integReady.usage){
-    let height=0;try{height=+deckLocalStorage.getItem("cc.integ-height")||0}catch(e){}
-    box.style.minHeight=height>0?height+"px":"";return;
-  }
-  box.style.minHeight="";
-  try{deckLocalStorage.setItem("cc.integ-height",String(box.offsetHeight));deckLocalStorage.setItem("cc.integ-models",String(lmData.profiles?.length||0))}catch(e){}
-}
-const openLocalModels=new Set(); // renderInteg rebuilds every second; keep user-opened rows open.
+// The speed of a local model, shown under the message field of a session that runs on it.
+const openLocalModels=new Set();
 function localUsage(profile){
   const activity=profile.activity||[],live=activity[0],sample=profile.performance||{};
   const model=live?.model||sample.model||profile.models?.find(m=>m.loaded)?.id||profile.name;
