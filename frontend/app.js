@@ -792,6 +792,9 @@ $("msg").addEventListener("keydown",e=>{
   if(e.key==="Enter"&&!e.shiftKey&&(isMobile()?false:true)&&!e.isComposing){e.preventDefault();send()}
   else if(e.key==="Enter"&&(e.metaKey||e.ctrlKey)){e.preventDefault();send()}
 });
+// The sidebar's bottom line is as high as the session's, so the border above both is one line. That row
+// changes height (a second line on a phone, hidden for a shell), so it is measured, not assumed.
+if(window.ResizeObserver)new ResizeObserver(()=>document.documentElement.style.setProperty("--meta-height",$("session_meta").offsetHeight+"px")).observe($("session_meta"));
 $("q").addEventListener("input",renderTabs);
 // Sessions are rarely searched: the field opens from its button and takes its filter away when closed.
 function toggleFind(on=$("side_find").hidden){

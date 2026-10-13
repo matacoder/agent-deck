@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.52.9 — 2026-10-13
+
+- **The line above the sidebar's bottom row and above the session's is one line.** The row with the session count and the version was lower than the row under the message field, so the border broke between them. It now takes that row's height, measured, since it differs between sessions and on a phone. In the phone's session list the row also stays at the bottom when the list is short.
+
 ## 1.52.8 — 2026-10-13
 
 - **The bottom of the session list on a phone keeps the limits only.** A computer that does not answer, the local model's speed line and the "How it works" button are no longer shown there; all three stay on a desktop (help is the **?** in the session bar). The line with the session count and the version now has the same left and right edge as the limits above it, on a desktop too.

@@ -135,7 +135,7 @@ aside{position:relative;width:min(var(--side-w,248px),40vw);flex:none;background
 @keyframes local-opacity{50%{opacity:.5}}
 
 /* The same left and right edge as the limits above it. */
-.side-foot{display:grid;grid-template-columns:1fr auto;align-items:center;gap:6px 8px;padding:6px 14px;border-top:1px solid var(--bd);color:var(--mut);font-size:11px}
+.side-foot{display:grid;grid-template-columns:1fr auto;align-items:center;align-content:center;min-height:var(--meta-height,0px);gap:6px 8px;padding:6px 14px;border-top:1px solid var(--bd);color:var(--mut);font-size:11px}
 #ver{min-width:0;font:11px var(--mono);color:var(--dim);text-align:right}
 #ver button{display:block;max-width:100%;margin-top:3px;color:var(--acc-text);text-align:right;overflow-wrap:anywhere;font:inherit}
 .side-foot>button{grid-column:1/-1;display:flex;align-items:center;gap:8px;min-height:32px;padding:4px 10px;border-radius:9px;background:var(--side2);color:var(--fg);font-size:12px;text-align:left;white-space:normal}
@@ -860,7 +860,7 @@ body.resizing iframe{pointer-events:none}
   .side-top{padding:8px 12px 0}
   .search{font-size:16px;padding:9px 12px;border-radius:var(--r)}
   .iconbtn{min-width:var(--tap);height:var(--tap);border-radius:var(--r)}
-  #tabs{flex:none;overflow:visible;padding:0 8px 12px}
+  #tabs{flex:1 0 auto;overflow:visible;padding:0 8px 12px}
   .grp{font-size:12px;padding:16px 10px 6px}
   .deck-head{font-size:12px;min-height:var(--tap);padding:8px 10px}
   .tab{padding:11px 10px;gap:12px;border-radius:var(--r);min-height:56px}
