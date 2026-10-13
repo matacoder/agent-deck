@@ -52,3 +52,15 @@ test('sidebar search matches local and connected-machine sessions by name, title
  expect(matchesSessionQuery(s,'website')).toBe(false);
  expect(matchesSessionQuery({name:'x',path:'/x'},'x')).toBe(true);
 });
+
+test('limits that do not fit leave room for the button and keep the one in use',()=>{
+ const {quotaFit}=require('../../frontend/logic');
+ expect(quotaFit([100,100,100],10,320,30,0)).toEqual([0,1,2]);
+ // Two fit beside the button; the first ones stay.
+ expect(quotaFit([100,100,100],10,300,30,0)).toEqual([0,1]);
+ // The session's own limit is kept even when it is the last.
+ expect(quotaFit([100,100,100],10,300,30,2)).toEqual([0,2]);
+ expect(quotaFit([100,100,100],10,200,30,-1)).toEqual([0]);
+ // One always stays, however narrow the line is.
+ expect(quotaFit([100,100],10,50,30,1)).toEqual([1]);
+});

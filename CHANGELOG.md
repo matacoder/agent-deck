@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.53.3 — 2026-10-13
+
+- **Limits that do not fit the line fold behind "…".** On a narrow screen the line under the message field keeps the subscriptions that fit (the one the open session spends always among them) and a "…" button that shows the rest on a second line; a second tap folds them back.
+
 ## 1.53.2 — 2026-10-13
 
 - **Processor and memory load moved to the sidebar's bottom row.** Under the message field they pushed the limits onto a second line on a phone. They now stand where "3 sessions · 1 working" was, next to the version; that counter is gone (the list above shows the same). On a phone they are seen with the session list open.

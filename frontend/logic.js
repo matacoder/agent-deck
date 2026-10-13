@@ -38,4 +38,17 @@ function matchesSessionQuery(session,query){
   return !query||[session.name,sessionTitle(session),session.group,session.path].join(" ").toLowerCase().includes(query);
 }
 
-if(typeof module!=="undefined")module.exports={sessionTitle,matchesSessionQuery,shortModel,quotaDuration,plannedRemaining,primaryQuota,quotaTone};
+// Which limits stay in a line of `room` pixels: all when they fit, otherwise as many as fit beside the
+// "more" button, the one the session spends first. Returns the indexes kept, in their own order.
+function quotaFit(widths,gap,room,more,used){
+  const all=widths.reduce((sum,width)=>sum+width,0)+gap*Math.max(0,widths.length-1);
+  if(all<=room)return widths.map((_,index)=>index);
+  const order=widths.map((_,index)=>index).sort((a,b)=>(b===used)-(a===used)),kept=[];
+  let total=more;
+  for(const index of order){
+    if(kept.length&&total+gap+widths[index]>room)break;
+    total+=gap+widths[index];kept.push(index);
+  }
+  return kept.sort((a,b)=>a-b);
+}
+if(typeof module!=="undefined")module.exports={sessionTitle,matchesSessionQuery,shortModel,quotaDuration,plannedRemaining,primaryQuota,quotaTone,quotaFit};

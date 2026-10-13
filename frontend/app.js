@@ -663,7 +663,8 @@ watchFileDrops(window);
 let sending=false;
 const sendStates=new Map();
 function renderSendState(){
-  const status=sendStates.get(active),d=$("send_state");
+  const status=sendStates.get(active),d=$("send_state"),shown=d.dataset.line;
+  delete d.dataset.line;  // Set again only while the limits are what is shown.
   const session=cur();
   if(isLocal(session)&&!session.running){d.textContent=agentLabel(session)+tr(" не запущен")}
   else if(isLocal(session)&&(!status||status.phase==="success")){
@@ -675,7 +676,7 @@ function renderSendState(){
   }else{
     const line=session&&(!status||status.phase==="success")?sessionStatus(session):null;
     // The status is live for screen readers; re-rendering identical text every second would be re-announced.
-    if(line){if(d.innerHTML!==line.outerHTML)d.replaceChildren(line)}
+    if(line){if(shown!==line.outerHTML)d.replaceChildren(line);d.dataset.line=line.outerHTML;fitQuotas()}
     else d.textContent=status?status.text:(isMobile()?tr("Enter ↵ · ↑ отправить"):tr("Enter отправить · ⇧Enter ↵"));
   }
   d.classList.toggle("error",Boolean(status&&status.error));
@@ -856,7 +857,25 @@ function quotaItem(name,w,used){
 function sessionStatus(session){
   const used=QUOTA_OF[agentOf(session)];
   const items=["claude","codex","kimi"].map(name=>[name,primaryQuota(usageData[name])]).filter(([,w])=>w).map(([name,w])=>quotaItem(name,w,name===used));
-  return items.length?el("span","session-status",...items):null;
+  if(!items.length)return null;
+  const more=el("button","quota-more","…");more.type="button";more.hidden=true;more.title=tr("Все лимиты");more.setAttribute("aria-label",more.title);
+  more.onclick=()=>{quotaOpen=!quotaOpen;fitQuotas()};
+  return el("span","session-status",...items,more);
+}
+// A narrow screen keeps the limits that fit in one line and a button for the rest.
+let quotaOpen=false;
+addEventListener("resize",()=>fitQuotas());
+function fitQuotas(){
+  const line=$("send_state").querySelector(".session-status"),more=line?.querySelector(".quota-more");
+  if(!more)return;
+  const items=[...line.querySelectorAll(".quota-item")];
+  for(const item of items)item.hidden=false;
+  more.hidden=false;line.classList.toggle("open",quotaOpen);more.setAttribute("aria-expanded",String(quotaOpen));
+  const gap=parseFloat(getComputedStyle(line).columnGap)||0,widths=items.map(item=>item.offsetWidth);
+  const kept=quotaFit(widths,gap,$("send_state").parentElement.clientWidth,more.offsetWidth,items.findIndex(item=>item.classList.contains("on")));
+  more.hidden=kept.length===items.length;
+  if(more.hidden)quotaOpen=false;
+  if(!quotaOpen)items.forEach((item,index)=>{item.hidden=!kept.includes(index)});
 }
 let hubSignature="";
 function renderInteg(){
