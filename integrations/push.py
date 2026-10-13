@@ -138,9 +138,13 @@ class Push:
             language = subscription.get('language', 'en')
             # Short title (the session) that fits a lock-screen line; status and details go to the body.
             summary = (message.get('summaries') or {}).get(self.language(language)) or {}
-            body = [self.text(part, language) for part in message.get('body', ())]
-            body += [part for part in (summary.get('line'), (summary.get('text') or '')[:SUMMARY_TEXT]) if part]
-            payload = {'title': self.text(message['title'], language), 'body': '\n'.join(body),
+            told = [part for part in (summary.get('line'), (summary.get('text') or '')[:SUMMARY_TEXT]) if part]
+            # A notification is a few lines: what was done says it better than "finished working".
+            body = told or [self.text(part, language) for part in message.get('body', ())]
+            title = summary.get('title') or self.text(message['title'], language)
+            if told and message.get('origin'):
+                title += ' · ' + message['origin']
+            payload = {'title': title, 'body': '\n'.join(body),
                        'tag': message.get('tag'), 'deck': message.get('deck', ''), 'session': message.get('session', ''),
                        'url': ('/?deck=' + message['deck'] if message.get('deck') else '/') + ('#' + message['session'] if message.get('session') else '')}
             try:

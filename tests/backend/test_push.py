@@ -245,9 +245,17 @@ class PushServiceTests(unittest.TestCase):
         self.assertEqual(asked, [('', 'api', 'de'), ('', 'api', 'en'), ('', 'api', 'ru')])
         tick(53, 3)
         bodies = {identity: payload['body'].split('\n') for identity, payload, _ in self.sent if payload['title'] == 'API'}
-        self.assertEqual(bodies[english][1:], ['Payments fixed', 'x' * 400])
+        self.assertEqual(bodies[english], ['Payments fixed', 'x' * 400])  # What was done, not "finished working".
         self.assertEqual(len(bodies[german]), 1)  # Its model failed: the plain message is still sent.
         self.assertEqual([(m['session'], list(m['summaries'])) for m in heard], [('api', ['en'])])
+
+    def test_a_finished_notification_is_headed_by_the_conversations_title_and_its_computer(self):
+        self.subscribe()
+        self.push.deliver({'kind': 'finished', 'title': 'api', 'origin': 'Mac Studio', 'body': ['Claude finished working'],
+                           'summaries': {'en': {'line': 'Payments fixed', 'text': 'Tests pass.', 'title': 'fix-payments'}}})
+        self.assertEqual((self.sent[-1][1]['title'], self.sent[-1][1]['body']), ('fix-payments · Mac Studio', 'Payments fixed\nTests pass.'))
+        self.push.deliver({'kind': 'finished', 'title': 'api', 'origin': 'Mac Studio', 'body': ['Claude finished working · Mac Studio']})
+        self.assertEqual((self.sent[-1][1]['title'], self.sent[-1][1]['body']), ('api', 'Claude finished working · Mac Studio'))
 
     def test_events_can_be_turned_off(self):
         self.push.set_events({'questions': False, 'finished': 'nope'})

@@ -156,7 +156,7 @@ class RemoteDeckTests(PanelCase):
     def test_network_settings_persist_privately_and_reject_credential_urls(self):
         settings = NetworkSettings(self.home)
         value = settings.save({'name':'Main server','public_url':'https://deck.example.com/'})
-        self.assertEqual(value, {'name':'Main server','public_url':'https://deck.example.com','isolate_terminals':False,'show_results':True,'lan':False})
+        self.assertEqual(value, {'name':'Main server','public_url':'https://deck.example.com','isolate_terminals':False,'show_results':True,'lan':False,'auto_titles':True})
         self.assertEqual(NetworkSettings(self.home).get(), value)
         self.assertEqual(settings.path.stat().st_mode & 0o777, 0o600)
         for url in ('https://user:secret@deck.example.com','https://deck.example.com/path','https://deck.example.com?secret=x','javascript:alert(1)','https://deck.example.com:wrong'):
@@ -455,6 +455,24 @@ class RemoteDeckTests(PanelCase):
             handler.get_request()
             handler.send_image.assert_not_called();self.assertEqual(handler.send_json.call_args.args[0],400)
 
+    def test_the_conversation_is_served_from_the_agents_file_for_an_existing_session_only(self):
+        import json,tempfile
+        from pathlib import Path
+        tmp=tempfile.TemporaryDirectory(dir='/tmp');self.addCleanup(tmp.cleanup)
+        transcript=Path(tmp.name)/'t.jsonl'
+        transcript.write_text(json.dumps({'type':'user','message':{'role':'user','content':'Fix payments'}})+'\n')
+        options={'@cc_agent':'claude','@cc_sid':'2dafd88e-8570-4bee-a975-471fca0133ec'}
+        with patch.object(self.panel,'session_exists',return_value=True),patch.object(self.panel,'opt',side_effect=lambda name,key:options[key]),\
+             patch.object(self.panel,'transcript_path',return_value=transcript):
+            handler=self.handler();handler.path='/api/conversation?name=demo';handler.get_request()
+            self.assertEqual(handler.send_json.call_args.args,(200,{'supported':True,'turns':[{'role':'user','text':'Fix payments'}]}))
+            options['@cc_agent']='shell'
+            handler=self.handler();handler.path='/api/conversation?name=demo';handler.get_request()
+            self.assertEqual(handler.send_json.call_args.args[1],{'supported':False})
+        with patch.object(self.panel,'session_exists',return_value=False):
+            handler=self.handler();handler.path='/api/conversation?name=demo';handler.get_request()
+            self.assertEqual(handler.send_json.call_args.args[0],404)
+
     def test_session_info_reads_the_conversation_and_summarizes_with_the_sessions_own_provider(self):
         import json,tempfile
         from pathlib import Path
@@ -467,9 +485,10 @@ class RemoteDeckTests(PanelCase):
         jobs=[];store=Summaries(Path(tmp.name)/'s',start=jobs.append)
         chosen=[]
         def grouping(choice):chosen.append(choice);return {'label':choice,'complete':lambda prompt:'{"line":"Payments","text":"Fixing."}'}
-        def cli(name):chosen.append(name);return {'label':name,'complete':lambda prompt:'{"line":"Payments","text":"Fixing."}'}
+        def cli(name):chosen.append(name);return {'label':name,'complete':lambda prompt:'{"line":"Payments","text":"Fixing.","title":"Fix payments"}'}
         import integrations.feature_groups as groups
-        with patch.object(self.panel,'session_exists',return_value=True),patch.object(self.panel,'opt',side_effect=lambda name,key:options[key]),\
+        with patch.object(self.panel,'session_exists',return_value=True),patch.object(self.panel,'opt',side_effect=lambda name,key:options.get(key)),\
+             patch.object(self.panel,'tmux',side_effect=lambda *a,**k:options.update({a[3]:a[4]}) if a[0]=='set-option' else '') as tmux,\
              patch.object(self.panel,'transcript_path',return_value=transcript),patch.object(self.panel,'summaries',return_value=store),\
              patch.object(self.panel,'grouping_model',side_effect=grouping),patch.object(groups,'cli_model',side_effect=cli),\
              patch.object(self.panel,'agent_status',return_value={'logged_in':True}):
@@ -480,6 +499,16 @@ class RemoteDeckTests(PanelCase):
             jobs.pop()()
             handler=self.handler();handler.path='/api/session_info?name=demo';handler.get_request()
             self.assertEqual(handler.send_json.call_args.args[1]['summary']['line'],'Payments')
+            # The summary's title becomes the session's shown name, written once.
+            self.assertEqual((handler.send_json.call_args.args[1]['summary']['title'],options['@cc_auto_title']),('fix-payments','fix-payments'))
+            handler=self.handler();handler.path='/api/session_info?name=demo';handler.get_request()
+            self.assertEqual(sum(call.args[0]=='set-option' for call in tmux.call_args_list),1)
+            # A name its owner gave, or the switch turned off, leaves the session under its own name.
+            options['@cc_title']='Payments work'
+            self.assertEqual(self.panel.keep_auto_title('demo','fix-payments'),'')
+            del options['@cc_title']
+            with patch.object(self.panel.network_settings,'get',return_value={'auto_titles':False}):
+                self.assertEqual(self.panel.keep_auto_title('demo','fix-payments'),'')
             # A gateway asks in the reader's language; an unknown one falls back to the panel's own.
             with patch.object(self.panel,'session_info',return_value={}) as asked:
                 for query,expected in (('&language=de&fresh=1',('de',True)),('&language=..%2Fx',(handler.language(),False))):

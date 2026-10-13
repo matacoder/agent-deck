@@ -73,7 +73,7 @@ class NetworkSettings:
     def __init__(self, home):
         self.path = Path(home) / '.config/cc-panel/network.json'
         self.lock = threading.RLock()
-        self.data = {'name':'', 'public_url':'', 'isolate_terminals':False, 'show_results':True, 'lan':False}
+        self.data = {'name':'', 'public_url':'', 'isolate_terminals':False, 'show_results':True, 'lan':False, 'auto_titles':True}
         if self.path.exists():
             try:
                 self.data.update(self.load())
@@ -88,7 +88,8 @@ class NetworkSettings:
         if (not isinstance(saved, dict) or not all(isinstance(saved.get(key, ''), str) for key in ('name', 'public_url'))
                 or not isinstance(saved.get('isolate_terminals', False), bool)
                 or not isinstance(saved.get('show_results', True), bool)
-                or not isinstance(saved.get('lan', False), bool)):
+                or not isinstance(saved.get('lan', False), bool)
+                or not isinstance(saved.get('auto_titles', True), bool)):
             raise TypeError('expected a JSON object with string name and public_url')
         return {key: saved[key] for key in self.data if key in saved}
 
@@ -108,6 +109,9 @@ class NetworkSettings:
         lan = data.get('lan', self.get()['lan'])
         if not isinstance(lan, bool):
             raise ValueError('Local network access must be on or off')
+        titles = data.get('auto_titles', self.get()['auto_titles'])
+        if not isinstance(titles, bool):
+            raise ValueError('Automatic session titles must be on or off')
         if not isinstance(name,str) or not name.strip() or len(name)>100 or not name.isprintable():
             raise ValueError('Enter a DeckAway name')
         if not isinstance(raw,str) or len(raw)>2048 or any(c in raw for c in ('\r','\n')):
@@ -119,7 +123,7 @@ class NetworkSettings:
             try:parsed.port
             except ValueError:raise ValueError('Invalid public URL port') from None
         with self.lock:
-            value={'name':name.strip(),'public_url':raw.strip().rstrip('/'),'isolate_terminals':isolate,'show_results':show,'lan':lan}
+            value={'name':name.strip(),'public_url':raw.strip().rstrip('/'),'isolate_terminals':isolate,'show_results':show,'lan':lan,'auto_titles':titles}
             private_write(self.path,value)
             self.data=value
             return dict(value)

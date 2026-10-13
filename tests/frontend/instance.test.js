@@ -274,7 +274,7 @@ test('the session strip shows a quiet summary under the bar and the context with
   expect($('hint_line').textContent).toBe('Payments webhook');
   expect($('hint_more').hidden).toBe(true);
   // Restarts and compact on the left, then how long the conversation has run and the context.
-  expect([...$('session_meta').children].map(node=>node.id||node.tagName)).toEqual(['BUTTON','BUTTON','b_compact','ctx','session_where']);
+  expect([...$('session_meta').children].map(node=>node.id||node.tagName)).toEqual(['BUTTON','BUTTON','b_talk','b_compact','ctx','session_where']);
   // Another computer is connected: the line names this one; nobody is marked for containers, so no second name.
   expect([$('session_where').hidden,$('session_computer').textContent,$('session_containers_box').hidden]).toEqual([false,'gateway',true]);
   expect([$('ctx_age_box').hidden,$('ctx_age').textContent]).toEqual([false,'3ч 12м']);
@@ -474,7 +474,7 @@ test('the actions menu keeps restarts, duplicate, rename and close; duplicate ke
   const doc=window.document;
   window.eval('sheet(true)');
   const labels=[...doc.querySelectorAll('#sheet .panel button')].filter(b=>b.style.display!=='none'&&!b.closest('[hidden]')&&!b.classList.contains('sheet-cancel')).map(b=>b.textContent);
-  expect(labels).toEqual(['Перезапустить — новый разговор','Перезапустить — продолжить разговор','Вставить с картинками','Отправить позже','Дублировать сессию — новый разговор','Переименовать сессию','Закрыть сессию']);
+  expect(labels).toEqual(['Перезапустить — новый разговор','Перезапустить — продолжить разговор','Разговор','Вставить с картинками','Отправить позже','Дублировать сессию — новый разговор','Переименовать сессию','Закрыть сессию']);
   // Nothing waits: the button by the field stays out of the way, Settings is a gear in the top row on any screen.
   expect(doc.getElementById('b_later').hidden).toBe(true);
   expect(doc.getElementById('b_settings').classList.contains('d-only')).toBe(false);

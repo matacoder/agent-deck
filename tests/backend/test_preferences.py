@@ -74,7 +74,7 @@ class ProjectDirectoryTests(PanelCase):
                 network.write_text(content)
                 errors = io.StringIO()
                 with redirect_stderr(errors):
-                    self.assertEqual(NetworkSettings(self.home).get(), {'name': '', 'public_url': '', 'isolate_terminals': False, 'show_results': True, 'lan': False})
+                    self.assertEqual(NetworkSettings(self.home).get(), {'name': '', 'public_url': '', 'isolate_terminals': False, 'show_results': True, 'lan': False, 'auto_titles': True})
                 self.assertIn(str(network), errors.getvalue())
         network.write_text(json.dumps({'name': 'Deck', 'public_url': 'https://deck.example'}))
         self.assertEqual(NetworkSettings(self.home).get()['name'], 'Deck')
@@ -85,3 +85,7 @@ class ProjectDirectoryTests(PanelCase):
         self.assertFalse(NetworkSettings(self.home).get()['show_results'])
         with self.assertRaises(ValueError):
             settings.save({'name': 'Deck', 'public_url': '', 'show_results': 'yes'})
+        self.assertFalse(settings.save({'name': 'Deck', 'public_url': '', 'auto_titles': False})['auto_titles'])
+        self.assertFalse(settings.save({'name': 'Deck', 'public_url': ''})['auto_titles'])
+        with self.assertRaises(ValueError):
+            settings.save({'name': 'Deck', 'public_url': '', 'auto_titles': 1})

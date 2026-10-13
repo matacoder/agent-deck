@@ -76,6 +76,15 @@ class SessionInfoTests(unittest.TestCase):
         del boundary['compactMetadata']['postTokens']
         self.assertIsNone(S.context('claude', CLAUDE + [boundary, summary]))  # Unknown, never the size from before.
 
+    def test_the_conversation_for_reading_is_longer_than_the_one_for_a_summary(self):
+        long = {'type': 'assistant', 'message': {'role': 'assistant', 'content': [{'type': 'text', 'text': 'A' * 3000}]}}
+        retold = {'type': 'user', 'isCompactSummary': True, 'message': {'role': 'user', 'content': 'This session is being continued'}}
+        path = jsonl(self.dir / 'talk.jsonl', CLAUDE + [retold, long])
+        turns = S.conversation('claude', path)
+        # No tool output, no subagent, no command echo, no retelling; a long answer is whole.
+        self.assertEqual([(t['role'], len(t['text'])) for t in turns], [('user', 23), ('assistant', 14), ('assistant', 3000)])
+        self.assertEqual(len(S.dialogue('claude', S.tail_records(path))[-1][1]), S.TURN_CHARS)
+
     def test_a_last_line_bigger_than_the_tail_is_still_read(self):
         picture = {'type': 'user', 'message': {'role': 'user', 'content': [{'type': 'image', 'data': 'x' * 5000}]}}
         path = jsonl(self.dir / 'big.jsonl', CLAUDE[:3] + [picture])
@@ -93,6 +102,24 @@ class SessionInfoTests(unittest.TestCase):
         self.assertEqual(S.parse_summary('Sure: {"line":"Payments","text":"Webhook done."}'), ('Payments', 'Webhook done.'))
         with self.assertRaises(ValueError):
             S.parse_summary('no json')
+
+    def test_the_title_is_a_short_latin_name_and_the_model_is_asked_to_keep_it(self):
+        self.assertEqual(S.title_of('{"line":"x","text":"y","title":" Fix Payment_webhook "}'), 'fix-payment-webhook')
+        for bad in ('Платежи', 'a-b-c-d-e', 'x' * 40, 'rm -rf; echo', '', 5):
+            self.assertEqual(S.clean_title(bad), '')
+        self.assertEqual(S.title_of('no json'), '')
+        self.assertNotIn('title so far', S.summary_prompt([('user', 'hi')], 'ru'))
+        self.assertIn('"fix-payments": repeat it unless', S.summary_prompt([('user', 'hi')], 'ru', 'fix-payments'))
+
+    def test_a_rewrite_keeps_the_title_when_the_model_sends_none(self):
+        jobs, answers = [], ['{"line":"a","text":"b","title":"fix-payments"}', '{"line":"c","text":"d","title":"Не то"}']
+        prompts = []
+        model = {'label': 'm', 'complete': lambda prompt: prompts.append(prompt) or answers.pop(0)}
+        store = S.Summaries(self.dir / 's', clock=lambda: 1000, start=jobs.append)
+        store.get('sid', 'ru', 10, [('user', 'hi')], lambda: model, fresh=True); jobs.pop()()
+        self.assertEqual(store.get('sid', 'ru', 10, [], lambda: model)['title'], 'fix-payments')
+        store.get('sid', 'ru', 20, [('user', 'hi')], lambda: model, fresh=True); jobs.pop()()
+        self.assertEqual((store.get('sid', 'ru', 20, [], lambda: model)['title'], 'fix-payments' in prompts[1]), ('fix-payments', True))
 
     def test_a_summary_is_rewritten_once_when_the_conversation_grew_and_kept_when_the_model_fails(self):
         now, jobs, asked = [1000], [], []

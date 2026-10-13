@@ -287,9 +287,9 @@ class Telegram:
         label = AGENT_LABELS.get(message.get('agent'), message.get('agent') or 'Agent')
         # What was done, in the session's own summary, when a model of its provider could write one.
         summary = (message.get('summaries') or {}).get(self.language()) or {}
-        text = (' · '.join(filter(None, (message.get('origin'), label, message['title']))) + '\n\n'
-                + self.translate('{0} закончил работу').format(label) + '\n\n'
-                + ''.join(part + '\n\n' for part in (summary.get('line'), summary.get('text')) if part)
+        told = ''.join(part + '\n\n' for part in (summary.get('line'), summary.get('text')) if part)
+        text = (' · '.join(filter(None, (message.get('origin'), label, summary.get('title') or message['title']))) + '\n\n'
+                + (told or self.translate('{0} закончил работу').format(label) + '\n\n')
                 + self.translate('Ответьте на это сообщение, чтобы отправить агенту следующий запрос'))
         try:
             result = self.api.call(c['token'], 'sendMessage', chat_id=c['chat_id'], text=text)

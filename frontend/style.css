@@ -173,6 +173,10 @@ main{flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;backgrou
 #metric_cpu,#metric_ram{display:inline-block;min-width:3ch;text-align:right}
 /* Receives a paste out of sight; it must stay focusable, so it is moved away, not hidden. */
 #paste_catch{position:fixed;left:-9999px;top:0;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none}
+dialog.talk{width:min(820px,calc(100vw - 32px))}
+.talk-turn{margin:0 0 16px}.talk-who{margin:0 0 4px;font-size:12px;color:var(--mut)}
+.talk-text{font-size:14px;line-height:1.5;color:var(--fg2);white-space:pre-wrap;overflow-wrap:anywhere}
+.talk-turn.mine .talk-text{padding:8px 12px;border-radius:var(--r);background:var(--bg);border:1px solid var(--bd)}
 .paste-box{min-height:120px;max-height:40dvh;overflow:auto;margin:10px 0 14px;padding:10px;border:1px dashed var(--bd-strong);border-radius:var(--r-sm);background:var(--bg);font-size:16px;outline:none}
 .paste-box:focus{border-color:var(--acc)}.paste-box img{max-width:100%;height:auto}
 .sk-label{margin-top:6px;color:var(--mut);font:12.5px/1.4 -apple-system,BlinkMacSystemFont,system-ui,sans-serif}
@@ -942,7 +946,7 @@ body.resizing iframe{pointer-events:none}
   .later-remove{width:var(--tap);height:var(--tap)}
   .acts{padding:12px 16px calc(12px + var(--sab))}
   .acts button{flex:1;min-height:var(--tap);padding:12px;font-size:16px;border-radius:var(--r)}
-  #inbox_dlg,#project_dlg,#help_dlg,.palette{width:100vw}
+  #inbox_dlg,#project_dlg,#help_dlg,dialog.talk,.palette{width:100vw}
   .help-side{display:flex!important}
   #inbox_dlg .dlg,#project_dlg .dlg,.palette .dlg{padding-top:var(--sat)}
   .palette{margin-top:0}.palette-list{max-height:none;flex:1}

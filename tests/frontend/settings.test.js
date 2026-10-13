@@ -177,3 +177,17 @@ test('the results switch saves alone, keeps the other network settings and rever
  await saveShowResults();
  expect(box.checked).toBe(true);expect(toast).toHaveBeenLastCalledWith('Offline');
 });
+test('the session names switch saves alone and the list is read again under the new choice',async()=>{
+ const {saveAutoTitles}=require('../../frontend/hub-models');
+ document.body.innerHTML=fs.readFileSync(path.resolve(__dirname,'../../frontend/index.html'),'utf8');
+ const box=document.querySelector('#hub_general #auto_titles');
+ expect(box.getAttribute('onchange')).toContain('saveAutoTitles');
+ Object.assign(global,{$:id=>document.getElementById(id),tr:x=>x,toast:jest.fn(),loadDeckSettings:jest.fn(),loadSessions:jest.fn(),selectedDeck:'',frames:new Map(),
+  deckDirectory:{name:'host',network:{name:'Deck',public_url:'',isolate_terminals:false,auto_titles:true}},gatewayApi:jest.fn().mockResolvedValue({})});
+ box.checked=false;await saveAutoTitles();
+ expect(gatewayApi).toHaveBeenCalledWith('/api/network_save',{name:'Deck',public_url:'',isolate_terminals:false,auto_titles:false});
+ expect(loadSessions).toHaveBeenCalled();
+ gatewayApi.mockRejectedValue(new Error('Offline'));
+ await saveAutoTitles();
+ expect(box.checked).toBe(true);expect(toast).toHaveBeenLastCalledWith('Offline');
+});

@@ -293,11 +293,13 @@ class TelegramTests(unittest.TestCase):
     def test_finished_message_says_what_was_done_when_the_session_has_a_summary(self):
         self.pair()
         language = self.service.language()
-        self.service.finished(dict(self.FINISHED, summaries={language: {'line': 'Payments fixed', 'text': 'Tests pass. Next: deploy.'},
+        self.service.finished(dict(self.FINISHED, summaries={language: {'line': 'Payments fixed', 'text': 'Tests pass. Next: deploy.', 'title': 'fix-payments'},
                                                              'xx': {'line': 'other language'}}))
         text = [d for m, d in self.api.calls if m == 'sendMessage'][-1]['text'].split('\n\n')
-        self.assertEqual(text[2:4], ['Payments fixed', 'Tests pass. Next: deploy.'])
-        self.assertEqual(len(text), 5)
+        # The conversation's title heads it and what was done replaces "finished working".
+        self.assertTrue(text[0].endswith('fix-payments'))
+        self.assertEqual(text[1:3], ['Payments fixed', 'Tests pass. Next: deploy.'])
+        self.assertEqual(len(text), 4)
         plain, _ = self.notice()
         self.assertEqual(len(plain['text'].split('\n\n')), 3)
 

@@ -56,6 +56,29 @@ async function loadSessionInfo(){
   // A summary being written is asked for again soon; otherwise the conversation changes slowly.
   if(!document.hidden)sessionInfo.timer=setTimeout(loadSessionInfo,data?.summary?.updating?8000:SESSION_INFO_POLL);
 }
+// The terminal of a restarted or shortened conversation holds only its last screens; the agent's own file
+// still has what was said before. Kept per computer and session and shown while it is read again.
+const conversationKnown=new Map();
+function renderConversation(data,failed){
+  const box=$("talk_list"),stick=!box.querySelector(".talk-turn")||atBottom(box);
+  if(!data){box.replaceChildren(failed?el("p","hint",failed):listSkeleton());return}
+  const turns=data.supported?data.turns||[]:[];
+  if(!turns.length){box.replaceChildren(el("p","hint",tr(data.supported?"В этом разговоре пока нет сообщений.":"У этой сессии нет разговора, который можно прочитать.")));return}
+  box.replaceChildren(...turns.map(turn=>el("div","talk-turn"+(turn.role==="user"?" mine":""),el("div","talk-who",tr(turn.role==="user"?"Вы":"Агент")),el("div","talk-text",turn.text))));
+  if(stick)box.scrollTop=box.scrollHeight;
+}
+async function openConversation(){
+  if(!active)return;
+  const key=sessionInfoKey(),known=knownAnswer(conversationKnown,key);
+  $("talk_list").replaceChildren();
+  if(!$("talk_dlg").open)$("talk_dlg").showModal();
+  renderConversation(known);
+  try{
+    const data=await api("/api/conversation?name="+encodeURIComponent(active));
+    if(key!==sessionInfoKey()||!$("talk_dlg").open)return;
+    keepAnswer(conversationKnown,key,data,8);renderConversation(data);
+  }catch(e){if(e.message!==STALE&&!known)renderConversation(null,e.message)}
+}
 function formatTokens(n){return n>=1000?Math.round(n/1000)+"k":String(n)}
 function renderSessionInfo(){
   const data=sessionInfo.data?.supported?sessionInfo.data:null;

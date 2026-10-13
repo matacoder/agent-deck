@@ -448,11 +448,13 @@ def session_group(path):
 def list_sessions(preview_name=None):
     fmt = ("#{session_name}\t#{session_created}\t#{session_attached}\t#{pane_current_path}\t"
            "#{pane_current_command}\t#{window_activity}\t#{@cc_agent}\t#{@cc_sid}\t#{@cc_skip}\t#{@cc_source}\t#{@cc_title}"
-           "\t#{@cc_containers}\t#{@cc_docker}")
+           "\t#{@cc_containers}\t#{@cc_docker}\t#{@cc_auto_title}")
     out = tmux("list-sessions", "-F", fmt, check=False)
     result = []
+    named = network_settings.get().get('auto_titles') is not False
     for line in out.splitlines():
-        sname, created, attached, path, cmd, activity, agent, sid, skip, source, title, containers, docker = (line.split("\t") + [""] * 13)[:13]
+        sname, created, attached, path, cmd, activity, agent, sid, skip, source, title, containers, docker, auto = (line.split("\t") + [""] * 14)[:14]
+        title = title or (auto if named else "")  # The name its owner gave outranks the one a model keeps up to date.
         if not sname.startswith(PREFIX):
             continue
         name = sname[len(PREFIX):]
@@ -1858,7 +1860,7 @@ def finished_summary(deck, name, language, wait=SUMMARY_WAIT, pause=time.sleep):
         summary = info.get("summary") if isinstance(info.get("summary"), dict) else {}
         if not summary.get("updating"):
             line = summary.get("line")
-            return {"line": line, "text": summary.get("text") or ""} if line and not summary.get("error") else None
+            return {"line": line, "text": summary.get("text") or "", "title": summary.get("title") or ""} if line and not summary.get("error") else None
         if time.monotonic() >= deadline:
             return None
         fresh = False  # A failed rewrite is not started again on every look.
@@ -2067,6 +2069,16 @@ def summary_model(name, agent):
     return cli_model(cli) if agent_status(cli)["logged_in"] else None
 
 
+def keep_auto_title(name, title):
+    """The summary's title becomes the session's shown name, unless its owner named it or switched this off.
+    Returns the title in use, '' when the session goes by its own name."""
+    from integrations.session_info import clean_title
+    wanted = clean_title(title) if network_settings.get().get('auto_titles') is not False and not opt(name, "@cc_title") else ''
+    if wanted and wanted != opt(name, "@cc_auto_title"):
+        tmux('set-option', '-t', f'={PREFIX}{name}:', '@cc_auto_title', wanted, check=False)
+    return wanted
+
+
 def session_info(name, language, fresh=False):
     """How full the open conversation is and its summary; parsed again only when the file changed."""
     from integrations.session_info import HEAD, context, dialogue, started, tail_records
@@ -2093,7 +2105,18 @@ def session_info(name, language, fresh=False):
                 _session_reads.clear()
             _session_reads[path] = cached
     summary = summaries().get(sid, language, stat.st_size, cached[2], lambda: summary_model(name, agent), fresh)
+    summary["title"] = keep_auto_title(name, summary.get("title"))
     return {"supported": True, "context": cached[1], "summary": summary, "started": cached[3] or None}
+
+
+def session_conversation(name):
+    """What was said in the open conversation, from the agent's own file: more than the terminal still holds."""
+    from integrations.session_info import conversation
+    agent, sid = opt(name, "@cc_agent") or "claude", opt(name, "@cc_sid")
+    if agent not in (*CLAUDE_FAMILY, "codex") or not valid_sid(sid):
+        return {"supported": False}
+    path = transcript_path(agent, sid)
+    return {"supported": True, "turns": conversation("codex" if agent == "codex" else "claude", path) if path else []}
 
 
 def gallery_loop():
@@ -2692,6 +2715,14 @@ class Handler(BaseHTTPRequestHandler):
                 allowed = {item["code"] for item in locales.available()} if locales is not None else set()
                 return self.send_json(200, session_info(name, language if language in allowed else self.language(),
                                                         query.get("fresh", [""])[0] == "1"))
+            except (OSError, ValueError) as error:
+                return self.send_json(500, {"error": f"Не удалось прочитать разговор сессии: {type(error).__name__}"})
+        if parsed.path == "/api/conversation":
+            name = parse_qs(parsed.query).get("name", [""])[0]
+            if not NAME_RE.fullmatch(name) or not session_exists(name):
+                return self.send_json(404, {"error": "сессия не найдена"})
+            try:
+                return self.send_json(200, session_conversation(name))
             except (OSError, ValueError) as error:
                 return self.send_json(500, {"error": f"Не удалось прочитать разговор сессии: {type(error).__name__}"})
         if parsed.path == "/api/gallery":

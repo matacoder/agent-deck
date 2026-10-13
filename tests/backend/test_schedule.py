@@ -273,7 +273,7 @@ class PanelWiringTests(PanelCase):
             return {'summary': answers.pop(0)}
         self.panel.session_info = info
         answers += [{'line': 'old', 'updating': True}, {'line': 'Payments fixed', 'text': 'Done.', 'updating': False}]
-        self.assertEqual(self.panel.finished_summary('', 'api', 'ru', pause=pauses.append), {'line': 'Payments fixed', 'text': 'Done.'})
+        self.assertEqual(self.panel.finished_summary('', 'api', 'ru', pause=pauses.append), {'line': 'Payments fixed', 'text': 'Done.', 'title': ''})
         self.assertEqual((calls, pauses), ([('api', 'ru', True), ('api', 'ru', False)], [2]))
         answers += [{'line': 'old', 'error': 'TimeoutExpired', 'updating': False}]
         self.assertIsNone(self.panel.finished_summary('', 'api', 'ru'))

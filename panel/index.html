@@ -184,6 +184,10 @@ main{flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;backgrou
 #metric_cpu,#metric_ram{display:inline-block;min-width:3ch;text-align:right}
 /* Receives a paste out of sight; it must stay focusable, so it is moved away, not hidden. */
 #paste_catch{position:fixed;left:-9999px;top:0;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none}
+dialog.talk{width:min(820px,calc(100vw - 32px))}
+.talk-turn{margin:0 0 16px}.talk-who{margin:0 0 4px;font-size:12px;color:var(--mut)}
+.talk-text{font-size:14px;line-height:1.5;color:var(--fg2);white-space:pre-wrap;overflow-wrap:anywhere}
+.talk-turn.mine .talk-text{padding:8px 12px;border-radius:var(--r);background:var(--bg);border:1px solid var(--bd)}
 .paste-box{min-height:120px;max-height:40dvh;overflow:auto;margin:10px 0 14px;padding:10px;border:1px dashed var(--bd-strong);border-radius:var(--r-sm);background:var(--bg);font-size:16px;outline:none}
 .paste-box:focus{border-color:var(--acc)}.paste-box img{max-width:100%;height:auto}
 .sk-label{margin-top:6px;color:var(--mut);font:12.5px/1.4 -apple-system,BlinkMacSystemFont,system-ui,sans-serif}
@@ -953,7 +957,7 @@ body.resizing iframe{pointer-events:none}
   .later-remove{width:var(--tap);height:var(--tap)}
   .acts{padding:12px 16px calc(12px + var(--sab))}
   .acts button{flex:1;min-height:var(--tap);padding:12px;font-size:16px;border-radius:var(--r)}
-  #inbox_dlg,#project_dlg,#help_dlg,.palette{width:100vw}
+  #inbox_dlg,#project_dlg,#help_dlg,dialog.talk,.palette{width:100vw}
   .help-side{display:flex!important}
   #inbox_dlg .dlg,#project_dlg .dlg,.palette .dlg{padding-top:var(--sat)}
   .palette{margin-top:0}.palette-list{max-height:none;flex:1}
@@ -1114,6 +1118,7 @@ body.resizing iframe{pointer-events:none}
   <symbol id="i-compact" viewBox="0 0 24 24"><path d="M12 22v-6M12 8V2M4 12H2M10 12H8M16 12h-2M22 12h-2M15 19l-3-3-3 3M15 5l-3 3-3-3"/></symbol>
   <symbol id="i-restart" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></symbol>
   <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+  <symbol id="i-chat" viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.4A8 8 0 1 1 21 12z"/></symbol>
   <symbol id="i-chat-plus" viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.4A8 8 0 1 1 21 12z"/><path d="M12 9v6M9 12h6"/></symbol>
   <symbol id="i-external" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></symbol>
   <symbol id="i-x" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
@@ -1223,7 +1228,7 @@ body.resizing iframe{pointer-events:none}
       </div>
     </div>
     <div id="terminal_keys" hidden></div>
-    <div id="session_meta" class="session-meta" hidden><button type="button" class="iconbtn" onclick="restart('new')" aria-label="Перезапустить — новый разговор" title="Перезапустить — новый разговор"><svg class="ui-icon"><use href="#i-chat-plus"/></svg></button><button type="button" class="iconbtn" onclick="restart('continue')" aria-label="Перезапустить — продолжить разговор" title="Перезапустить — продолжить разговор"><svg class="ui-icon"><use href="#i-restart"/></svg></button><button type="button" class="iconbtn" id="b_compact" onclick="compactConversation()" aria-label="Сжать разговор" title="Сжать разговор"><svg class="ui-icon"><use href="#i-compact"/></svg></button><span class="ctx" id="ctx" role="img"><span class="ctx-age" id="ctx_age_box" hidden><svg class="ui-icon"><use href="#i-clock"/></svg><span id="ctx_age"></span></span><span class="ctx-bar"><i id="ctx_fill"></i></span><span id="ctx_text"></span></span><div class="session-where" id="session_where" hidden><span class="where-item" id="session_computer_box"><svg class="ui-icon" aria-hidden="true"><use href="#i-monitor"/></svg><span id="session_computer"></span></span><label class="where-item where-containers" id="session_containers_box" hidden><svg class="ui-icon" aria-hidden="true"><use href="#i-docker"/></svg><span id="session_containers_name"></span><select id="session_containers" aria-label="Контейнеры" onchange="saveSessionContainers()"></select></label></div></div>
+    <div id="session_meta" class="session-meta" hidden><button type="button" class="iconbtn" onclick="restart('new')" aria-label="Перезапустить — новый разговор" title="Перезапустить — новый разговор"><svg class="ui-icon"><use href="#i-chat-plus"/></svg></button><button type="button" class="iconbtn" onclick="restart('continue')" aria-label="Перезапустить — продолжить разговор" title="Перезапустить — продолжить разговор"><svg class="ui-icon"><use href="#i-restart"/></svg></button><button type="button" class="iconbtn" id="b_talk" onclick="openConversation()" aria-label="Разговор" title="Разговор"><svg class="ui-icon"><use href="#i-chat"/></svg></button><button type="button" class="iconbtn" id="b_compact" onclick="compactConversation()" aria-label="Сжать разговор" title="Сжать разговор"><svg class="ui-icon"><use href="#i-compact"/></svg></button><span class="ctx" id="ctx" role="img"><span class="ctx-age" id="ctx_age_box" hidden><svg class="ui-icon"><use href="#i-clock"/></svg><span id="ctx_age"></span></span><span class="ctx-bar"><i id="ctx_fill"></i></span><span id="ctx_text"></span></span><div class="session-where" id="session_where" hidden><span class="where-item" id="session_computer_box"><svg class="ui-icon" aria-hidden="true"><use href="#i-monitor"/></svg><span id="session_computer"></span></span><label class="where-item where-containers" id="session_containers_box" hidden><svg class="ui-icon" aria-hidden="true"><use href="#i-docker"/></svg><span id="session_containers_name"></span><select id="session_containers" aria-label="Контейнеры" onchange="saveSessionContainers()"></select></label></div></div>
   </main>
   <dialog id="help_dlg"><div class="dlg"><div class="hub-heading"><h3 tabindex="-1" autofocus>Как это работает</h3><button type="button" onclick="$('help_dlg').close()" aria-label="Закрыть"><svg class="ui-icon"><use href="#i-x"/></svg></button></div><div class="dlg-body">
     <div class="arch-scroll"><svg class="arch-map" viewBox="0 0 960 610" role="img" aria-label="Как это работает">
@@ -1284,6 +1289,7 @@ body.resizing iframe{pointer-events:none}
   <div class="sheet-group" id="s_session">
     <button class="agent-only" onclick="sheet(false);restart('new')"><svg class="ui-icon"><use href="#i-chat-plus"/></svg><span>Перезапустить — новый разговор</span></button>
     <button class="agent-only" onclick="sheet(false);restart('continue')"><svg class="ui-icon"><use href="#i-restart"/></svg><span>Перезапустить — продолжить разговор</span></button>
+    <button class="agent-only" onclick="sheet(false);openConversation()"><svg class="ui-icon"><use href="#i-chat"/></svg><span>Разговор</span></button>
     <button id="s_paste" onclick="sheet(false);openRichPaste()"><svg class="ui-icon"><use href="#i-image"/></svg><span>Вставить с картинками</span></button>
     <button id="s_later" onclick="sheet(false);openLater()"><svg class="ui-icon"><use href="#i-clock"/></svg><span id="s_later_label">Отправить позже</span></button>
     <button onclick="sheet(false);duplicateSession()"><svg class="ui-icon"><use href="#i-copy"/></svg><span>Дублировать сессию — новый разговор</span></button>
@@ -1337,6 +1343,7 @@ body.resizing iframe{pointer-events:none}
 </form></dialog>
 
 <div id="paste_catch" contenteditable="true" aria-hidden="true" tabindex="-1"></div>
+<dialog id="talk_dlg" class="talk"><div class="dlg"><div class="hub-heading"><h3 tabindex="-1">Разговор</h3><button type="button" onclick="$('talk_dlg').close()" aria-label="Закрыть"><svg class="ui-icon"><use href="#i-x"/></svg></button></div><div class="dlg-body" id="talk_list"></div></div></dialog>
 <dialog id="paste_dlg"><form class="dlg" method="dialog"><div class="dlg-body"><h3>Вставить с картинками</h3>
 <p class="hint">Вставьте сюда скопированные сообщения: текст попадёт в поле сообщения, картинки приложатся.</p>
 <div id="paste_box" class="paste-box" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Вставить с картинками"></div>
@@ -1510,6 +1517,7 @@ body.resizing iframe{pointer-events:none}
         <label for="context_full">Пора начать заново (красный), тысяч токенов</label><input type="number" id="context_full" min="2" max="2000" step="5" inputmode="numeric" onchange="saveContextLimits()"><p class="hint">Полоска внизу сессии. Качество падает задолго до заполнения окна; чаще всего его замечают около 150 тысяч.</p></div>
       <form class="hub-card" onsubmit="event.preventDefault();saveProjectDirectory()"><h4>Новые сессии</h4><label for="project_directory">Папка проектов</label><input type="text" id="project_directory" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="done" required><p class="hint">Используется для новых сессий. Существующие сессии остаются в своих папках.</p><div class="acts"><button class="pri" id="project_directory_save">Сохранить</button></div></form>
       <div class="hub-card"><h4>Готовая задача</h4><label class="integration-toggle"><span>Скриншоты и ссылка от агента</span><input type="checkbox" role="switch" id="show_results" onchange="saveShowResults()"></label><p class="hint">Claude и Codex получают в начале сессии просьбу: закончив задачу, снять скриншоты результата и дать ссылку на адрес этого компьютера в Tailscale. Действует с новой или перезапущенной сессии.</p></div>
+      <div class="hub-card"><h4>Названия сессий</h4><label class="integration-toggle"><span>Называть сессии по теме разговора</span><input type="checkbox" role="switch" id="auto_titles" onchange="saveAutoTitles()"></label><p class="hint">Модель, которая пишет пересказ, даёт сессии короткое название латиницей и меняет его, когда меняется задача. Оно видно в списке и в уведомлениях. Сессию, переименованную вручную, не трогает.</p></div>
       <div class="hub-card" data-card="version">
         <div class="card-top"><span class="card-icon" aria-hidden="true"><svg class="ui-icon"><use href="#i-download"/></svg></span><div class="card-main"><h4>Версия и обновления</h4><p id="version_status" class="card-status" role="status"></p><p id="version_meta" class="card-meta"></p></div></div>
         <p id="version_hint" class="hint" hidden></p>
@@ -3282,6 +3290,29 @@ async function loadSessionInfo(){
   // A summary being written is asked for again soon; otherwise the conversation changes slowly.
   if(!document.hidden)sessionInfo.timer=setTimeout(loadSessionInfo,data?.summary?.updating?8000:SESSION_INFO_POLL);
 }
+// The terminal of a restarted or shortened conversation holds only its last screens; the agent's own file
+// still has what was said before. Kept per computer and session and shown while it is read again.
+const conversationKnown=new Map();
+function renderConversation(data,failed){
+  const box=$("talk_list"),stick=!box.querySelector(".talk-turn")||atBottom(box);
+  if(!data){box.replaceChildren(failed?el("p","hint",failed):listSkeleton());return}
+  const turns=data.supported?data.turns||[]:[];
+  if(!turns.length){box.replaceChildren(el("p","hint",tr(data.supported?"В этом разговоре пока нет сообщений.":"У этой сессии нет разговора, который можно прочитать.")));return}
+  box.replaceChildren(...turns.map(turn=>el("div","talk-turn"+(turn.role==="user"?" mine":""),el("div","talk-who",tr(turn.role==="user"?"Вы":"Агент")),el("div","talk-text",turn.text))));
+  if(stick)box.scrollTop=box.scrollHeight;
+}
+async function openConversation(){
+  if(!active)return;
+  const key=sessionInfoKey(),known=knownAnswer(conversationKnown,key);
+  $("talk_list").replaceChildren();
+  if(!$("talk_dlg").open)$("talk_dlg").showModal();
+  renderConversation(known);
+  try{
+    const data=await api("/api/conversation?name="+encodeURIComponent(active));
+    if(key!==sessionInfoKey()||!$("talk_dlg").open)return;
+    keepAnswer(conversationKnown,key,data,8);renderConversation(data);
+  }catch(e){if(e.message!==STALE&&!known)renderConversation(null,e.message)}
+}
 function formatTokens(n){return n>=1000?Math.round(n/1000)+"k":String(n)}
 function renderSessionInfo(){
   const data=sessionInfo.data?.supported?sessionInfo.data:null;
@@ -4388,7 +4419,7 @@ function configureSource(){returnToNew=true;$("dlg").close();openSettings("model
 
 /* ---------- computers ---------- */
 function renderComputers(data,network){
-  syncField($("network_name"),network.name);syncField($("network_public_url"),network.public_url);$("network_isolate").checked=network.isolate_terminals===true;$("show_results").checked=network.show_results!==false;
+  syncField($("network_name"),network.name);syncField($("network_public_url"),network.public_url);$("network_isolate").checked=network.isolate_terminals===true;$("show_results").checked=network.show_results!==false;$("auto_titles").checked=network.auto_titles!==false;
   $("network_bind").textContent="http://"+network.bind_host+":"+network.bind_port+(network.lan_address?" · http://"+network.lan_address+":"+network.bind_port:"");
   $("network_browser").textContent=location.origin;
   const count=data.decks.length;
@@ -4483,8 +4514,13 @@ async function saveShowResults(){
   const stored=deckDirectory.network||{};
   try{await saveNetworkSettings(stored.isolate_terminals===true,{name:stored.name||deckDirectory.name,public_url:stored.public_url||"",show_results:input.checked});toast(tr("Настройки сохранены"),"success")}catch(e){input.checked=!input.checked;toast(e.message)}finally{input.disabled=false}
 }
+async function saveAutoTitles(){
+  const input=$("auto_titles");input.disabled=true;
+  const stored=deckDirectory.network||{};
+  try{await saveNetworkSettings(stored.isolate_terminals===true,{name:stored.name||deckDirectory.name,public_url:stored.public_url||"",auto_titles:input.checked});toast(tr("Настройки сохранены"),"success");loadSessions()}catch(e){input.checked=!input.checked;toast(e.message)}finally{input.disabled=false}
+}
 
-if(typeof module!=="undefined")module.exports={lmMetrics,deckAddress,saveShowResults};
+if(typeof module!=="undefined")module.exports={lmMetrics,deckAddress,saveShowResults,saveAutoTitles};
 // Containers on another computer: which computers lend their Docker and which one this computer's
 // sessions use. Always asked from the gateway: it is the one that reaches the others.
 let containers=null,containersTimer=null,containersAt=0;

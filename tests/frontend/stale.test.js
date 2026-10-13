@@ -53,3 +53,22 @@ test('a sent picture leaves the field at once, before the session list comes bac
     expect(doc.getElementById('attachments').textContent).not.toContain('shot.png');
   }finally{window.close()}
 });
+
+test('the conversation dialog shows what was said, from the agent\'s file, and again at once the next time',async()=>{
+  let hold=false;const never=()=>new Promise(()=>{});
+  const routes={...routesFor({local:()=>({sessions:[session('alpha')]})}),
+    '/api/conversation':()=>hold?never():({supported:true,turns:[{role:'user',text:'Which option?'},{role:'assistant',text:'A or B\nsecond line'}]})};
+  const window=boot(routes,null,w=>{w.localStorage.setItem('cc.active','alpha');w.localStorage.setItem('cc.mode.d','screen')});
+  try{
+    await settle();await settle();
+    const doc=window.document,list=doc.getElementById('talk_list');
+    window.eval('openConversation()');
+    expect(list.querySelector('.list-skeleton')).not.toBeNull();
+    await settle();await settle();
+    expect([...list.querySelectorAll('.talk-who')].map(n=>n.textContent)).toEqual(['Вы','Агент']);
+    expect(list.querySelector('.talk-turn.mine .talk-text').textContent).toBe('Which option?');
+    doc.getElementById('talk_dlg').close();hold=true;
+    window.eval('openConversation()');
+    expect(list.querySelectorAll('.talk-turn').length).toBe(2);
+  }finally{window.close()}
+});

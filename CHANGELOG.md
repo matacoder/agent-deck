@@ -2,6 +2,12 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.52.0 — 2026-10-13
+
+- **The conversation can be read when the terminal no longer holds it.** A restarted or shortened conversation leaves only its last screens in the terminal, and a question from the agent then refers to options that are nowhere to scroll back to. A **Conversation** button in the line under the message field (and in the **⋯** menu) shows what was said — your messages and the agent's answers, without tool output — from the agent's own conversation file, including what came before a compaction. Claude Code (and services run through it) and Codex; a connected computer shows it once it has this version.
+- **Sessions are named after what is going on in them.** The model that already writes the summary also gives the session a short name in Latin letters (`fix-payment-webhook`), in the same request, and is asked to keep it until the work really moves to another task. It is shown wherever the session's name was: the list, the bar, notifications, Telegram. A session you renamed yourself keeps your name. On by default; **Settings → General → Session names** turns it off for the sessions of that computer. Claude Code and Codex.
+- **Notifications say what was done, not that something finished.** A "finished" notification with a summary is now headed by the conversation's name (and the computer's, for a connected one) and carries only the summary; the line "Claude finished working" stays only when there is no summary to show. The Telegram message drops the same line.
+
 ## 1.51.1 — 2026-10-13
 
 - **The context size is right at once after a conversation is shortened.** After `/compact` (or Claude Code's own compaction) the line under the message field went on showing the size from before until the agent answered again, because the size was read from the last answer. It is now taken from the compaction record itself.

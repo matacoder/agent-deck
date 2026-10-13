@@ -99,6 +99,7 @@ The **?** next to the search field in the session bar shows the same picture ins
 - Notifications on phone and desktop when an agent asks or finishes; a "finished" notification says what was done.
 - Telegram bot: questions with answer buttons and "finished" messages in your private chat; reply to send the next prompt.
 - A one-line summary of each conversation and how full its context is.
+- The conversation itself, readable after a restart or a compaction left only a few screens in the terminal.
 - Subscription limits with a pace forecast, always visible — also under the message field on a phone.
 
 **Seeing the work**
@@ -395,6 +396,16 @@ provider as the session, so the conversation goes nowhere new: Claude Haiku for 
 Codex's light model for Codex, Kimi for Claude on Kimi, the same local model for LM Studio. It is rewritten
 in the background at most every 5 minutes, only while the session is open and only after it changed, and
 kept in `~/.cache/agent-deck/summaries/`.
+
+The same answer names the session: a short name in Latin letters such as `fix-payment-webhook`, kept until the
+work moves to another task and shown in the list, the bar and notifications instead of the name the session
+was created with. A session you renamed yourself keeps your name; **Settings → General → Session names** turns
+this off for a computer's sessions.
+
+The **Conversation** button next to the bar (also in the **⋯** menu) opens what was said in that file: your
+messages and the agent's answers, without tool output. A terminal keeps only what was printed since the agent
+started, and a restarted or compacted conversation prints little; the file still has the rest, including what
+came before a compaction.
 
 ## Waiting for you
 
