@@ -51,21 +51,22 @@ input,textarea,select{font:inherit}
 /* ---------- sidebar ---------- */
 aside{position:relative;width:min(var(--side-w,248px),40vw);flex:none;background:var(--side);border-right:1px solid var(--bd);display:flex;flex-direction:column;min-height:0}
 /* Same height as .bar, so the line under the three headers is one line. */
-.deck-switch{display:flex;align-items:center;gap:6px;flex:none;height:44px;padding:0 8px;border-bottom:1px solid var(--bd)}
+.deck-switch{display:flex;align-items:center;gap:2px;flex:1;min-width:0;margin:0 4px 0 2px}
 .deck-switch label{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 .deck-switch select{flex:1;min-width:0;min-height:32px;background:var(--side2);color:var(--fg);border:1px solid var(--bd);border-radius:var(--r-sm);padding:6px 8px}
 .deck-switch button[hidden]{display:none}
 .deck-switch button{display:grid;place-items:center;flex:none;width:32px;height:32px;border-radius:var(--r-sm);color:var(--mut)}
 @media (hover:hover){.deck-switch button:hover{background:var(--side2);color:var(--fg)}}
 /* Address and the waiting count share one fixed-height row, so neither can push the list down. */
-.srv-row{display:flex;align-items:center;gap:2px;padding:8px 6px 6px 12px}
+/* The one header of the sidebar, as high as the session bar next to it. */
+.srv-row{display:flex;align-items:center;gap:2px;flex:none;height:44px;padding:0 6px 0 12px;border-bottom:1px solid var(--bd)}
 #srv{display:flex;align-items:center;gap:6px;flex:1;min-width:0;font-size:12px;color:var(--mut);white-space:nowrap;overflow:hidden;cursor:default}
 .srv-skeleton{width:22px;height:12px}
 #srv .fl{font-size:16px;line-height:1}#srv .hn{overflow:hidden;text-overflow:ellipsis;font-size:13px;font-weight:600;color:var(--fg)}#srv_flag{display:flex}#srv_flag:empty{display:none}
 #srv .deck-count{margin-left:0}
-/* With computers connected the selector above already names this one. */
-.deck-switch:not([hidden])+.srv-row :is(.hn,.deck-count){display:none}
-.side-top{display:flex;gap:6px;padding:2px 8px 8px}.side-top[hidden]{display:none}
+/* With computers connected the selector already names this one. */
+.srv-row:has(.deck-switch:not([hidden])) :is(.hn,.deck-count){display:none}.srv-row:has(.deck-switch:not([hidden])) #srv{flex:none}
+.side-top{display:flex;gap:6px;padding:8px 8px 0}.side-top[hidden]{display:none}
 .search{flex:1;min-width:0;background:var(--bg);border:1px solid var(--bd);border-radius:var(--r-sm);color:var(--fg);padding:6px 9px;outline:none}
 .search:focus{border-color:var(--acc)}
 .iconbtn{min-width:30px;height:30px;border-radius:var(--r-sm);display:inline-grid;place-items:center;color:var(--mut);flex:none}
@@ -864,11 +865,10 @@ body.resizing iframe{pointer-events:none}
   body.drawer aside{transform:translateX(0)}
   #scrim{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:20}
   body.drawer #scrim{display:block}
-  .deck-switch{height:auto;padding:12px}
   .deck-switch select{font-size:16px;min-height:var(--tap)}
   .deck-switch button{height:var(--tap)}
-  .srv-row{padding:6px 8px 4px 14px}#srv{font-size:13px}#srv .fl{font-size:16px}
-  .side-top{padding:2px 12px 8px}
+  .srv-row{height:auto;padding:6px 8px 6px 14px}#srv{font-size:13px}#srv .fl{font-size:16px}
+  .side-top{padding:8px 12px 0}
   .search{font-size:16px;padding:9px 12px;border-radius:var(--r)}
   .iconbtn{min-width:var(--tap);height:var(--tap);border-radius:var(--r)}
   #tabs{flex:none;overflow:visible;padding:0 8px 12px}
@@ -1158,8 +1158,7 @@ body.resizing iframe{pointer-events:none}
 <div id="app">
   <aside>
     <div class="resizer" id="side_resizer" role="separator" aria-orientation="vertical" tabindex="0" aria-label="Ширина боковой панели" title="Потяните, чтобы изменить ширину; двойной клик — ширина по умолчанию"></div>
-    <div class="deck-switch" id="deck_switch" hidden><label for="deck_select">DeckAway</label><select id="deck_select" onchange="switchDeck(this.value)"><option value="">Этот компьютер</option></select><button type="button" id="deck_direct" onclick="openDirect()" aria-label="Открыть этот компьютер напрямую" title="Открыть этот компьютер напрямую, без шлюза: нужен доступ к его адресу в Tailscale" hidden><svg class="ui-icon"><use href="#i-external"/></svg></button><button type="button" onclick="openSettings('network')" aria-label="Подключить DeckAway" title="Подключить DeckAway"><svg class="ui-icon"><use href="#i-monitor"/></svg></button></div>
-    <div class="srv-row" id="srv_row"><div id="srv"><span id="srv_flag"><span class="sk-line srv-skeleton"></span></span><span class="hn" id="srv_name"></span><span class="deck-count" id="srv_count"></span></div><button type="button" class="iconbtn" id="b_find" onclick="toggleFind()" aria-expanded="false" aria-controls="side_find" title="Поиск…" aria-label="Поиск…"><svg class="ui-icon"><use href="#i-search"/></svg></button><button class="iconbtn accent" title="Новая сессия (⌥T)" aria-label="Новая сессия" onclick="openNew()"><svg class="ui-icon"><use href="#i-plus"/></svg></button><button type="button" id="inbox_btn" class="iconbtn inbox-btn" onclick="openInbox()" title="Ждут ответа" aria-label="Ждут ответа"><svg class="ui-icon"><use href="#i-inbox"/></svg><b id="inbox_count"></b></button></div>
+    <div class="srv-row" id="srv_row"><div id="srv"><span id="srv_flag"><span class="sk-line srv-skeleton"></span></span><span class="hn" id="srv_name"></span><span class="deck-count" id="srv_count"></span></div><div class="deck-switch" id="deck_switch" hidden><label for="deck_select">DeckAway</label><select id="deck_select" onchange="switchDeck(this.value)"><option value="">Этот компьютер</option></select><button type="button" id="deck_direct" onclick="openDirect()" aria-label="Открыть этот компьютер напрямую" title="Открыть этот компьютер напрямую, без шлюза: нужен доступ к его адресу в Tailscale" hidden><svg class="ui-icon"><use href="#i-external"/></svg></button></div><button type="button" class="iconbtn" id="b_find" onclick="toggleFind()" aria-expanded="false" aria-controls="side_find" title="Поиск…" aria-label="Поиск…"><svg class="ui-icon"><use href="#i-search"/></svg></button><button class="iconbtn accent" title="Новая сессия (⌥T)" aria-label="Новая сессия" onclick="openNew()"><svg class="ui-icon"><use href="#i-plus"/></svg></button><button type="button" id="inbox_btn" class="iconbtn inbox-btn" onclick="openInbox()" title="Ждут ответа" aria-label="Ждут ответа"><svg class="ui-icon"><use href="#i-inbox"/></svg><b id="inbox_count"></b></button></div>
     <div class="side-top" id="side_find" hidden>
       <input id="q" class="search" placeholder="Поиск…" aria-label="Поиск…" title="Быстрый переход: ⌥K, Ctrl+K или ⌘K" autocomplete="off" autocapitalize="off" spellcheck="false">
     </div>

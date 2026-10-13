@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.52.6 — 2026-10-13
+
+- **The sidebar has one header row.** The computer selector had a row of its own above the flag and the buttons. It now sits in the same row: flag, selector, search, new session, waiting for answer; the row is as high as the session bar beside it, with one computer too. The button that opened the computers' settings from there is gone: they are in Settings → Network.
+
 ## 1.52.5 — 2026-10-13
 
 - **The selected computer is not named twice.** With several computers the list began with a heading that repeated the name already chosen in the selector above it; that heading is gone, so the sessions start right under the row with the flag. A computer further down the list keeps its heading. Where the selector is not shown, the name stands next to the flag.
