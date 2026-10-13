@@ -249,12 +249,40 @@ class Push:
                     self.spawn(lambda message=message: self.describe(message, heard))
             with self.lock:
                 observed, self.ready = [m for m in observed if m['kind'] != 'finished'] + self.ready, []
-        if heard:
-            for message in observed:
-                if message['kind'] == 'finished':
-                    self.finished[1](message)
+        pushed = []
+        answered = bool(self.finished and len(self.finished) > 3 and self.finished[3]())
+        for message in observed:
+            if message['kind'] != 'finished':
+                # A question is answered by a button in Telegram: it is not also sent as a notification.
+                if not answered:
+                    pushed.append(message)
+                continue
+            push, telegram = self.route(message, heard)
+            if telegram:
+                message['told'] = True
+                self.finished[1](message)
+            if push:
+                pushed.append(message)
         if self.config['subscriptions']:
-            self.send_all(self.wanted(observed))
+            self.send_all(self.wanted(pushed))
+
+    def fall_back(self, message):
+        """A finished session no device accepted is told in Telegram instead, once. Whether a device showed
+        what its push service accepted is not known here."""
+        if message.get('kind') != 'finished' or message.get('told') or not (self.finished and self.finished[0]()):
+            return
+        message['told'] = True
+        self.finished[1](message)
+
+    def route(self, message, heard):
+        """(notification, Telegram) for a finished session. With both in use it is told once: in Telegram, where
+        a reply is the next prompt, when the agent waits for its owner; as a notification otherwise."""
+        with self.lock:
+            devices = bool(self.config['subscriptions']) and bool(self.config['events'].get('finished'))
+        if not (devices and heard):
+            return devices, heard
+        asks = any(summary.get('asks') for summary in (message.get('summaries') or {}).values())
+        return not asks, asks
 
     def describe(self, message, heard):
         """Adds the session's summary in every language the message will be read in, then hands it to the loop."""
@@ -296,9 +324,13 @@ class Push:
         self.backlog = []
         for at, message in waiting:
             try:
-                self.deliver(message)
+                reached = self.deliver(message)
             except ValueError:
                 self.backlog.append((at, message))
+                continue
             except Exception as error:
                 print(f'Notification delivery failed: {error}', flush=True)
+                reached = 0
+            if not reached:
+                self.fall_back(message)
         self.backlog = self.backlog[-BACKLOG_SIZE:]

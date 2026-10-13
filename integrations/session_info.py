@@ -154,6 +154,7 @@ def summary_prompt(turns, language, title=''):
             '"text":"2-4 short sentences: the goal, what is done, what is next or blocking",'
             '"done":"one sentence, at most 140 characters, for a notification: what the agent has just finished '
             'or the question it is waiting on, with the concrete result; not the goal and not the topic",'
+            '"asks":true when the agent is now waiting for the person to answer, choose or approve, otherwise false,'
             '"title":"2-3 lowercase English words joined by hyphens, at most 24 characters, naming the task '
             'like a git branch"}. Plain words, no '
             f'markdown, no greetings. Write line, text and done in the language with code "{language}"; the title is '
@@ -168,17 +169,17 @@ def clean_title(raw):
 
 
 def extras_of(answer):
-    """(title, done) of a summary answer; '' for what the model left out or wrote wrongly."""
+    """(title, done, asks) of a summary answer; '' and False for what the model left out or wrote wrongly."""
     text = (answer or '').strip()
     start, end = text.find('{'), text.rfind('}')
     try:
         data = json.loads(text[start:end + 1]) if start >= 0 < end else {}
     except ValueError:
-        return '', ''
+        return '', '', False
     if not isinstance(data, dict):
-        return '', ''
+        return '', '', False
     done = data.get('done')
-    return clean_title(data.get('title')), ' '.join(done.split())[:DONE_CHARS] if isinstance(done, str) else ''
+    return clean_title(data.get('title')), ' '.join(done.split())[:DONE_CHARS] if isinstance(done, str) else '', data.get('asks') is True
 
 
 def parse_summary(answer):
@@ -242,7 +243,7 @@ class Summaries:
                     self.write(sid, language, dict(kept, tried=now))  # Asked again in a few minutes, not on every poll.
                 except OSError:
                     pass
-        return {'line': kept.get('line', ''), 'text': kept.get('text', ''), 'title': kept.get('title', ''), 'done': kept.get('done', ''), 'at': kept.get('at'),
+        return {'line': kept.get('line', ''), 'text': kept.get('text', ''), 'title': kept.get('title', ''), 'done': kept.get('done', ''), 'asks': kept.get('asks') is True, 'at': kept.get('at'),
                 'model': kept.get('model', ''), 'error': kept.get('error', ''), 'updating': updating}
 
     def rewrite(self, sid, language, size, turns, model, kept):
@@ -250,9 +251,9 @@ class Summaries:
         try:
             answer = model['complete'](summary_prompt(turns, language, kept.get('title', '')))
             line, text = parse_summary(answer)
-            title, done = extras_of(answer)
+            title, done, asks = extras_of(answer)
             # An older "done" would describe another moment: it goes when the model sends none.
-            record.update(line=line, text=text, title=title or kept.get('title', ''), done=done, at=int(self.clock()), size=size, model=model['label'], error='')
+            record.update(line=line, text=text, title=title or kept.get('title', ''), done=done, asks=asks, at=int(self.clock()), size=size, model=model['label'], error='')
         except Exception as error:  # A model failing must not take the panel down; the old summary stays.
             record['error'] = str(error)[:200] if isinstance(error, ValueError) else type(error).__name__
         finally:

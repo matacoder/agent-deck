@@ -247,7 +247,7 @@ class PushServiceTests(unittest.TestCase):
         bodies = {identity: payload['body'].split('\n') for identity, payload, _ in self.sent if payload['title'] == 'API'}
         self.assertEqual(bodies[english], ['Payments fixed', 'x' * 400])  # What was done, not "finished working".
         self.assertEqual(len(bodies[german]), 1)  # Its model failed: the plain message is still sent.
-        self.assertEqual([(m['session'], list(m['summaries'])) for m in heard], [('api', ['en'])])
+        self.assertEqual(heard, [])  # Devices took it: it is not said again in Telegram.
 
     def test_a_session_that_only_redrew_its_screen_is_not_announced_again(self):
         jobs, heard, done = [], [], ['Webhook fixed.']
@@ -258,19 +258,63 @@ class PushServiceTests(unittest.TestCase):
         self.push.clock = lambda: now[0]
         def work(start, activity):
             # Busy for 30 s, then quiet: one "finished" event, described and sent on the next pass.
-            for moment, mark in ((start, activity), (start + 30, activity + 1), (start + 40, activity + 1)):
+            for moment, mark in ((start, activity), (start + 10, activity + 1), (start + 40, activity + 2), (start + 50, activity + 2)):
                 now[0] = moment
                 self.sessions = [{'name': 'api', 'title': 'API', 'agent': 'claude', 'activity': mark, 'created': 7}]
                 self.push.tick()
             while jobs:
                 jobs.pop()()
-            now[0] = start + 45
+            now[0] = start + 55
             self.push.tick()
-        work(0, 1); work(100, 5)
-        self.assertEqual((len(self.sent), len(heard)), (1, 1))  # The same summary: nothing happened in the conversation.
+        work(0, 1)
+        self.assertEqual(len(self.sent), 1)
+        work(100, 5)
+        # The same summary: nothing happened in the conversation. A device took it, so Telegram does not repeat it.
+        self.assertEqual((len(self.sent), len(heard)), (1, 0))
         done[0] = 'Tests pass.'
         work(200, 9)
-        self.assertEqual(([payload['body'] for _, payload, _ in self.sent], len(heard)), (['Webhook fixed.', 'Tests pass.'], 2))
+        self.assertEqual(([payload['body'] for _, payload, _ in self.sent], len(heard)), (['Webhook fixed.', 'Tests pass.'], 0))
+
+    def finish(self, summary, telegram=True, questions=True):
+        """One session works and goes quiet; returns what Telegram was told."""
+        jobs, heard, now = [], [], [0]
+        self.push.summary, self.push.spawn, self.push.clock = (lambda deck, session, language: summary), jobs.append, lambda: now[0]
+        self.push.finished = (lambda: telegram, heard.append, lambda: 'en', lambda: questions)
+        for moment, mark in ((0, 1), (10, 2), (40, 3), (50, 3)):  # Seen, busy for 30 s, quiet.
+            now[0] = moment
+            self.sessions = [{'name': 'api', 'title': 'API', 'agent': 'claude', 'activity': mark, 'created': 7}]
+            self.push.tick()
+        while jobs:
+            jobs.pop()()
+        now[0] = 55
+        self.push.tick()
+        return heard
+
+    def test_finished_work_is_told_once_in_telegram_when_the_agent_waits_and_as_a_notification_otherwise(self):
+        self.subscribe()
+        self.assertEqual((len(self.finish({'line': 'Payments', 'done': 'Release 1.2?', 'asks': True})), self.sent), (1, []))
+
+    def test_finished_work_goes_to_telegram_when_no_device_takes_it_or_none_is_subscribed(self):
+        self.assertEqual(len(self.finish({'line': 'Payments', 'done': 'Fixed.'})), 1)  # Nobody subscribed.
+        self.setUp()
+        self.subscribe()
+        self.status = 500
+        self.assertEqual((len(self.finish({'line': 'Payments', 'done': 'Fixed.'})), len(self.sent)), (1, 1))
+        self.setUp()
+        self.subscribe()
+        self.assertEqual((self.finish({'line': 'Payments', 'done': 'Fixed.'}, telegram=False), len(self.sent)), ([], 1))
+
+    def test_a_question_answered_by_a_button_in_telegram_is_not_also_a_notification(self):
+        self.subscribe()
+        self.push.finished = (lambda: False, None, lambda: 'en', lambda: True)
+        self.push.tick()
+        self.questions = [question('web')]
+        self.push.tick()
+        self.assertEqual(self.sent, [])
+        self.push.finished = None
+        self.questions = [question('api')]
+        self.push.tick()
+        self.assertEqual([payload['title'] for _, payload, _ in self.sent], ['api'])
 
     def test_a_finished_notification_is_headed_by_the_conversations_title_and_its_computer(self):
         self.subscribe()

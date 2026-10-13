@@ -188,6 +188,11 @@ class Telegram:
     def eligible(self, c):
         return bool(c.get('token') and c.get('enabled') and c.get('user_id'))
 
+    def asks_questions(self):
+        """Whether an agent's question reaches its owner here, with buttons to answer it."""
+        with self.lock:
+            return self.eligible(self.config)
+
     def poll_loop(self):
         while not self.stop.is_set():
             with self.lock:

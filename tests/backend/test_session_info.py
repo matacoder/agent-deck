@@ -106,10 +106,11 @@ class SessionInfoTests(unittest.TestCase):
             S.parse_summary('no json')
 
     def test_the_title_is_a_short_latin_name_and_the_model_is_asked_to_keep_it(self):
-        self.assertEqual(S.extras_of('{"line":"x","text":"y","title":" Fix Payment_webhook ","done":"Tests\\n pass."}'), ('fix-payment-webhook', 'Tests pass.'))
+        self.assertEqual(S.extras_of('{"line":"x","text":"y","title":" Fix Payment_webhook ","done":"Tests\\n pass.","asks":true}'), ('fix-payment-webhook', 'Tests pass.', True))
         for bad in ('Платежи', 'a-b-c-d-e', 'x' * 40, 'rm -rf; echo', '', 5):
             self.assertEqual(S.clean_title(bad), '')
-        self.assertEqual((S.extras_of('no json'), S.extras_of('{"done":5}')), (('', ''), ('', '')))
+        self.assertEqual((S.extras_of('no json'), S.extras_of('{"done":5}')), (('', '', False), ('', '', False)))
+        self.assertFalse(S.extras_of('{"asks":"yes"}')[2])
         self.assertNotIn('title so far', S.summary_prompt([('user', 'hi')], 'ru'))
         self.assertIn('"fix-payments": repeat it unless', S.summary_prompt([('user', 'hi')], 'ru', 'fix-payments'))
 

@@ -1685,7 +1685,8 @@ def telegram_finished():
             return telegram_service().wants_finished()
         except (OSError, ValueError):
             return False
-    return (wanted, lambda message: telegram_service().finished(message), lambda: telegram_service().language()) if Telegram else None
+    return (wanted, lambda message: telegram_service().finished(message), lambda: telegram_service().language(),
+            lambda: telegram_service().asks_questions()) if Telegram else None
 
 
 _backups = None
@@ -1860,7 +1861,7 @@ def finished_summary(deck, name, language, wait=SUMMARY_WAIT, pause=time.sleep):
         summary = info.get("summary") if isinstance(info.get("summary"), dict) else {}
         if not summary.get("updating"):
             line = summary.get("line")
-            return {"line": line, "text": summary.get("text") or "", "title": summary.get("title") or "", "done": summary.get("done") or ""} if line and not summary.get("error") else None
+            return {"line": line, "text": summary.get("text") or "", "title": summary.get("title") or "", "done": summary.get("done") or "", "asks": summary.get("asks") is True} if line and not summary.get("error") else None
         if time.monotonic() >= deadline:
             return None
         fresh = False  # A failed rewrite is not started again on every look.

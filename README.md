@@ -587,7 +587,10 @@ recognized active terminal menus. Custom text and multiple selections use the pa
 4. Answer a question using its buttons. The bot confirms when the answer reaches the agent. For a
    custom answer (*Other* / *Type something*), reply to the question message with your text.
 
-The bot also says when an agent finishes working (the same event as the "finished" notification).
+The bot also says when an agent finishes working (the same event as the "finished" notification). With
+notifications on a device as well, each event is told once: Telegram gets the questions and the finished work
+that waits for your answer or approval, a notification the rest. Without subscribed devices, or when no
+device's push service accepted a notification, Telegram gets it instead.
 Both carry the session's summary, rewritten at that moment by a model of the session's own provider:
 what the goal was, what is done and what is next. It can take up to 30 seconds to arrive.
 Reply to that message with text and it is sent to that session as the next prompt, on whichever
