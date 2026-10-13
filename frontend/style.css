@@ -50,9 +50,10 @@ aside{position:relative;width:min(var(--side-w,248px),40vw);flex:none;background
 .srv-row{display:flex;align-items:center;gap:2px;padding:8px 6px 6px 12px}
 #srv{display:flex;align-items:center;gap:6px;flex:1;min-width:0;font-size:12px;color:var(--mut);white-space:nowrap;overflow:hidden;cursor:default}
 .srv-skeleton{width:22px;height:12px}
-#srv .fl{font-size:16px;line-height:1}#srv .hn{overflow:hidden;text-overflow:ellipsis}
-/* With computers connected the selector already names this one; the host name would be a third label. */
-.deck-switch:not([hidden])+.srv-row .hn{display:none}
+#srv .fl{font-size:16px;line-height:1}#srv .hn{overflow:hidden;text-overflow:ellipsis;font-size:13px;font-weight:600;color:var(--fg)}#srv_flag{display:flex}#srv_flag:empty{display:none}
+#srv .deck-count{margin-left:0}
+/* With computers connected the selector above already names this one. */
+.deck-switch:not([hidden])+.srv-row :is(.hn,.deck-count){display:none}
 .side-top{display:flex;gap:6px;padding:2px 8px 8px}.side-top[hidden]{display:none}
 .search{flex:1;min-width:0;background:var(--bg);border:1px solid var(--bd);border-radius:var(--r-sm);color:var(--fg);padding:6px 9px;outline:none}
 .search:focus{border-color:var(--acc)}

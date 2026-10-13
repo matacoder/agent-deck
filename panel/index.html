@@ -61,9 +61,10 @@ aside{position:relative;width:min(var(--side-w,248px),40vw);flex:none;background
 .srv-row{display:flex;align-items:center;gap:2px;padding:8px 6px 6px 12px}
 #srv{display:flex;align-items:center;gap:6px;flex:1;min-width:0;font-size:12px;color:var(--mut);white-space:nowrap;overflow:hidden;cursor:default}
 .srv-skeleton{width:22px;height:12px}
-#srv .fl{font-size:16px;line-height:1}#srv .hn{overflow:hidden;text-overflow:ellipsis}
-/* With computers connected the selector already names this one; the host name would be a third label. */
-.deck-switch:not([hidden])+.srv-row .hn{display:none}
+#srv .fl{font-size:16px;line-height:1}#srv .hn{overflow:hidden;text-overflow:ellipsis;font-size:13px;font-weight:600;color:var(--fg)}#srv_flag{display:flex}#srv_flag:empty{display:none}
+#srv .deck-count{margin-left:0}
+/* With computers connected the selector above already names this one. */
+.deck-switch:not([hidden])+.srv-row :is(.hn,.deck-count){display:none}
 .side-top{display:flex;gap:6px;padding:2px 8px 8px}.side-top[hidden]{display:none}
 .search{flex:1;min-width:0;background:var(--bg);border:1px solid var(--bd);border-radius:var(--r-sm);color:var(--fg);padding:6px 9px;outline:none}
 .search:focus{border-color:var(--acc)}
@@ -1158,7 +1159,7 @@ body.resizing iframe{pointer-events:none}
   <aside>
     <div class="resizer" id="side_resizer" role="separator" aria-orientation="vertical" tabindex="0" aria-label="Ширина боковой панели" title="Потяните, чтобы изменить ширину; двойной клик — ширина по умолчанию"></div>
     <div class="deck-switch" id="deck_switch" hidden><label for="deck_select">DeckAway</label><select id="deck_select" onchange="switchDeck(this.value)"><option value="">Этот компьютер</option></select><button type="button" id="deck_direct" onclick="openDirect()" aria-label="Открыть этот компьютер напрямую" title="Открыть этот компьютер напрямую, без шлюза: нужен доступ к его адресу в Tailscale" hidden><svg class="ui-icon"><use href="#i-external"/></svg></button><button type="button" onclick="openSettings('network')" aria-label="Подключить DeckAway" title="Подключить DeckAway"><svg class="ui-icon"><use href="#i-monitor"/></svg></button></div>
-    <div class="srv-row" id="srv_row"><div id="srv"><span class="sk-line srv-skeleton"></span></div><button type="button" class="iconbtn" id="b_find" onclick="toggleFind()" aria-expanded="false" aria-controls="side_find" title="Поиск…" aria-label="Поиск…"><svg class="ui-icon"><use href="#i-search"/></svg></button><button class="iconbtn accent" title="Новая сессия (⌥T)" aria-label="Новая сессия" onclick="openNew()"><svg class="ui-icon"><use href="#i-plus"/></svg></button><button type="button" id="inbox_btn" class="iconbtn inbox-btn" onclick="openInbox()" title="Ждут ответа" aria-label="Ждут ответа"><svg class="ui-icon"><use href="#i-inbox"/></svg><b id="inbox_count"></b></button></div>
+    <div class="srv-row" id="srv_row"><div id="srv"><span id="srv_flag"><span class="sk-line srv-skeleton"></span></span><span class="hn" id="srv_name"></span><span class="deck-count" id="srv_count"></span></div><button type="button" class="iconbtn" id="b_find" onclick="toggleFind()" aria-expanded="false" aria-controls="side_find" title="Поиск…" aria-label="Поиск…"><svg class="ui-icon"><use href="#i-search"/></svg></button><button class="iconbtn accent" title="Новая сессия (⌥T)" aria-label="Новая сессия" onclick="openNew()"><svg class="ui-icon"><use href="#i-plus"/></svg></button><button type="button" id="inbox_btn" class="iconbtn inbox-btn" onclick="openInbox()" title="Ждут ответа" aria-label="Ждут ответа"><svg class="ui-icon"><use href="#i-inbox"/></svg><b id="inbox_count"></b></button></div>
     <div class="side-top" id="side_find" hidden>
       <input id="q" class="search" placeholder="Поиск…" aria-label="Поиск…" title="Быстрый переход: ⌥K, Ctrl+K или ⌘K" autocomplete="off" autocapitalize="off" spellcheck="false">
     </div>
@@ -5453,9 +5454,11 @@ function renderTabs(){
   const list=sessions.filter(s=>matchesSessionQuery(s,q)),others=otherDecks.filter(d=>d.id!==selectedDeck);
   // Computers keep one order whichever is selected: switching only moves the highlight, never the rows.
   const order=deckOrder();
-  if(order.length<2&&!others.length){renderCurrentSessions(box,list);finishTabs(view,box,focused);return}
+  if(order.length<2&&!others.length){showComputer(null);renderCurrentSessions(box,list);finishTabs(view,box,focused);return}
+  showComputer(list.length);
   for(const id of order){
-    if(id===selectedDeck){box.append(deckHeader({id,name:currentDeckName(),count:list.length},true));renderCurrentSessions(box,list);continue}
+    // The row above the list already names the selected computer: a heading right under it would repeat it.
+    if(id===selectedDeck){if(id!==order[0])box.append(deckHeader({id,name:currentDeckName(),count:list.length},true));renderCurrentSessions(box,list);continue}
     const deck=others.find(d=>d.id===id);
     if(deck)renderDeckSection(box,deck,q);
     else if(!q)box.append(deckHeader({id,name:deckName(id),count:"…"},false));  // Its list has not arrived yet.
@@ -5469,6 +5472,12 @@ function deckOrder(){
   for(const d of otherDecks)if(!ids.includes(d.id))ids.push(d.id);
   if(!ids.includes(selectedDeck))ids.push(selectedDeck);
   return ids;
+}
+// Next to the flag: the selected computer and how many sessions it has; alone, the machine's own name.
+let serverHost="";
+function showComputer(count){
+  $("srv_name").textContent=count===null?serverHost:currentDeckName();
+  $("srv_count").textContent=count===null?"":count;
 }
 function deckName(id){return id?deckDirectory.decks.find(d=>d.id===id)?.name||"DeckAway":deckDirectory.name||tr("Этот компьютер")}
 function renderCurrentSessions(box,list){
@@ -6320,16 +6329,16 @@ function updatePanel(){
 // The address line never empties: the last known one for this computer shows at once (cached in this
 // browser), a skeleton only the very first time, and the fresh answer replaces it in place.
 function renderServer(s){
-  const box=$("srv"),cc=(s.country||"").toUpperCase();box.replaceChildren();
-  if(/^[A-Z]{2}$/.test(cc))box.append(el("span","fl",String.fromCodePoint(...[...cc].map(c=>0x1F1A5+c.charCodeAt(0)))));
+  const box=$("srv"),cc=(s.country||"").toUpperCase();$("srv_flag").replaceChildren();
+  if(/^[A-Z]{2}$/.test(cc))$("srv_flag").append(el("span","fl",String.fromCodePoint(...[...cc].map(c=>0x1F1A5+c.charCodeAt(0)))));
   // The address is for the rare look, not for the row: it stays in the hint.
-  if(s.hostname)box.append(el("span","hn",s.hostname));
+  serverHost=s.hostname||"";if($("srv_count").textContent==="")$("srv_name").textContent=serverHost;
   box.title=[s.city&&`${s.city}, ${cc}`,s.org,s.ip,s.tailscale_ip&&`Tailscale: ${s.tailscale_ip}`].filter(Boolean).join("\n");
 }
 function showCachedServer(){
   let cached=null;try{cached=JSON.parse(deckLocalStorage.getItem("cc.server")||"null")}catch(e){}
   if(cached&&typeof cached==="object")renderServer(cached);
-  else $("srv").replaceChildren(el("span","sk-line srv-skeleton"));
+  else $("srv_flag").replaceChildren(el("span","sk-line srv-skeleton"));
 }
 async function loadServer(){
   const epoch=deckEpoch;

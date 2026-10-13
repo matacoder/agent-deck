@@ -265,9 +265,11 @@ function renderTabs(){
   const list=sessions.filter(s=>matchesSessionQuery(s,q)),others=otherDecks.filter(d=>d.id!==selectedDeck);
   // Computers keep one order whichever is selected: switching only moves the highlight, never the rows.
   const order=deckOrder();
-  if(order.length<2&&!others.length){renderCurrentSessions(box,list);finishTabs(view,box,focused);return}
+  if(order.length<2&&!others.length){showComputer(null);renderCurrentSessions(box,list);finishTabs(view,box,focused);return}
+  showComputer(list.length);
   for(const id of order){
-    if(id===selectedDeck){box.append(deckHeader({id,name:currentDeckName(),count:list.length},true));renderCurrentSessions(box,list);continue}
+    // The row above the list already names the selected computer: a heading right under it would repeat it.
+    if(id===selectedDeck){if(id!==order[0])box.append(deckHeader({id,name:currentDeckName(),count:list.length},true));renderCurrentSessions(box,list);continue}
     const deck=others.find(d=>d.id===id);
     if(deck)renderDeckSection(box,deck,q);
     else if(!q)box.append(deckHeader({id,name:deckName(id),count:"…"},false));  // Its list has not arrived yet.
@@ -281,6 +283,12 @@ function deckOrder(){
   for(const d of otherDecks)if(!ids.includes(d.id))ids.push(d.id);
   if(!ids.includes(selectedDeck))ids.push(selectedDeck);
   return ids;
+}
+// Next to the flag: the selected computer and how many sessions it has; alone, the machine's own name.
+let serverHost="";
+function showComputer(count){
+  $("srv_name").textContent=count===null?serverHost:currentDeckName();
+  $("srv_count").textContent=count===null?"":count;
 }
 function deckName(id){return id?deckDirectory.decks.find(d=>d.id===id)?.name||"DeckAway":deckDirectory.name||tr("Этот компьютер")}
 function renderCurrentSessions(box,list){
@@ -1132,16 +1140,16 @@ function updatePanel(){
 // The address line never empties: the last known one for this computer shows at once (cached in this
 // browser), a skeleton only the very first time, and the fresh answer replaces it in place.
 function renderServer(s){
-  const box=$("srv"),cc=(s.country||"").toUpperCase();box.replaceChildren();
-  if(/^[A-Z]{2}$/.test(cc))box.append(el("span","fl",String.fromCodePoint(...[...cc].map(c=>0x1F1A5+c.charCodeAt(0)))));
+  const box=$("srv"),cc=(s.country||"").toUpperCase();$("srv_flag").replaceChildren();
+  if(/^[A-Z]{2}$/.test(cc))$("srv_flag").append(el("span","fl",String.fromCodePoint(...[...cc].map(c=>0x1F1A5+c.charCodeAt(0)))));
   // The address is for the rare look, not for the row: it stays in the hint.
-  if(s.hostname)box.append(el("span","hn",s.hostname));
+  serverHost=s.hostname||"";if($("srv_count").textContent==="")$("srv_name").textContent=serverHost;
   box.title=[s.city&&`${s.city}, ${cc}`,s.org,s.ip,s.tailscale_ip&&`Tailscale: ${s.tailscale_ip}`].filter(Boolean).join("\n");
 }
 function showCachedServer(){
   let cached=null;try{cached=JSON.parse(deckLocalStorage.getItem("cc.server")||"null")}catch(e){}
   if(cached&&typeof cached==="object")renderServer(cached);
-  else $("srv").replaceChildren(el("span","sk-line srv-skeleton"));
+  else $("srv_flag").replaceChildren(el("span","sk-line srv-skeleton"));
 }
 async function loadServer(){
   const epoch=deckEpoch;

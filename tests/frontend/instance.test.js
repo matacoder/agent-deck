@@ -885,16 +885,18 @@ test('switching computers keeps the computers in one order in the sidebar',async
   await settle();await settle();
   const heads=()=>[...window.document.querySelectorAll('#tabs .deck-head .deck-name')].map(n=>n.textContent);
   const before=heads();
-  expect(before.length).toBe(2);
+  // The selected computer is named in the row above the list, the other one by its heading.
+  const named=()=>window.document.getElementById('srv_name').textContent;
+  expect([named(),...before]).toEqual(['gateway','Mac Studio']);
   const inbox=window.document.getElementById('inbox_btn'),srv=window.document.getElementById('srv');
   window.localStorage.setItem('deck.'+DECK+'.cc.server',JSON.stringify({ip:'203.0.113.7',hostname:'mac'}));
   window.openDeckSession(DECK,'beta');
   // Right after the switch, before the new computer answers, its last known address is already there.
   expect(inbox.hidden).toBe(false);
-  expect(srv.querySelector('.hn').textContent).toBe('mac');
   expect(srv.title).toContain('203.0.113.7');
   await settle();await settle();
-  expect(heads()).toEqual(before);
+  expect(named()).toBe('Mac Studio');
+  expect(heads()).toEqual(['gateway','Mac Studio']);
   // The computer we left keeps its project headings in its section.
   expect([...window.document.querySelectorAll('#tabs .grp')].map(n=>n.textContent)).toEqual(['demo','demo']);
   window.openDeckSession('','alpha');await settle();await settle();

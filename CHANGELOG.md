@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.52.5 — 2026-10-13
+
+- **The selected computer is not named twice.** With several computers the list began with a heading that repeated the name already chosen in the selector above it; that heading is gone, so the sessions start right under the row with the flag. A computer further down the list keeps its heading. Where the selector is not shown, the name stands next to the flag.
+
 ## 1.52.4 — 2026-10-13
 
 - **The top of the session list is one row.** The address and the search field took two rows above the sessions. Now there is the country flag (the address, city and Tailscale address are in its hint), a search button, the new-session button and the waiting-for-answer button. The search field opens from its button; Esc closes it and clears the filter, so a hidden field never keeps sessions out of the list.
