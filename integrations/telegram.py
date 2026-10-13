@@ -293,11 +293,10 @@ class Telegram:
         label = AGENT_LABELS.get(message.get('agent'), message.get('agent') or 'Agent')
         # What was done, in the session's own summary, when a model of its provider could write one.
         summary = (message.get('summaries') or {}).get(self.language()) or {}
-        told = ''.join(part + '\n\n' for part in (summary.get('done') or summary.get('line'), summary.get('text')) if part)
-        # The chat list shows only the first words: what happened, then where.
-        text = ((told or self.translate('{0} закончил работу').format(label) + '\n\n')
-                + ' · '.join(filter(None, (summary.get('title') or message['title'], message.get('origin'), label))) + '\n\n'
-                + self.translate('Ответьте на это сообщение, чтобы отправить агенту следующий запрос'))
+        told = summary.get('done') or summary.get('line') or self.translate('{0} закончил работу').format(label)
+        # Short enough to read in the chat list: what happened, then where. That a reply is the next prompt
+        # is said once, in Settings, not under every message.
+        text = told + '\n\n' + ' · '.join(filter(None, (summary.get('title') or message['title'], message.get('origin'), label)))
         try:
             result = self.api.call(c['token'], 'sendMessage', chat_id=c['chat_id'], text=text)
             self.database().notice(result['message_id'], message.get('deck', ''), message['session'],

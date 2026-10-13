@@ -283,7 +283,7 @@ class TelegramTests(unittest.TestCase):
         sent, row = self.notice()
         # What happened comes first (the chat list shows only that), then the session, its computer and agent.
         self.assertTrue(sent['text'].startswith('Claude '))
-        self.assertIn('\n\nBilling API · Mac Studio · Claude\n\n', sent['text'])
+        self.assertTrue(sent['text'].endswith('\n\nBilling API · Mac Studio · Claude'))
         self.service.handle(self.reply(row, 'now fix the tests', user=999))
         self.service.handle(self.reply(row, 'now fix the tests', chat=999))
         self.service.handle(self.reply(row, '/start'))
@@ -299,12 +299,12 @@ class TelegramTests(unittest.TestCase):
         self.service.finished(dict(self.FINISHED, summaries={language: {'line': 'Payments fixed', 'text': 'Tests pass. Next: deploy.', 'title': 'fix-payments', 'done': 'Webhook fixed.'},
                                                              'xx': {'line': 'other language'}}))
         text = [d for m, d in self.api.calls if m == 'sendMessage'][-1]['text'].split('\n\n')
-        # The conversation's title heads it and what was done replaces "finished working".
-        self.assertEqual(text[0:2], ['Webhook fixed.', 'Tests pass. Next: deploy.'])
-        self.assertTrue(text[2].startswith('fix-payments'))
-        self.assertEqual(len(text), 4)
+        # One sentence about what happened, then where: no longer text and no hint under every message.
+        self.assertEqual(text[0], 'Webhook fixed.')
+        self.assertTrue(text[1].startswith('fix-payments'))
+        self.assertEqual(len(text), 2)
         plain, _ = self.notice()
-        self.assertEqual(len(plain['text'].split('\n\n')), 3)
+        self.assertEqual(len(plain['text'].split('\n\n')), 2)
 
     def test_a_prompt_that_cannot_be_sent_is_explained_and_never_repeated(self):
         self.pair()

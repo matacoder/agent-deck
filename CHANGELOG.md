@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.52.7 — 2026-10-13
+
+- **A "finished" message in Telegram is two lines.** It carried the sentence about what was done, then a paragraph retelling the same, then the session, then "Reply to this message to send the agent the next prompt" every time. Now it is the sentence and the line with the session, computer and agent. A reply still goes to the agent as the next prompt; Settings says so once.
+
 ## 1.52.6 — 2026-10-13
 
 - **The sidebar has one header row.** The computer selector had a row of its own above the flag and the buttons. It now sits in the same row: flag, selector, search, new session, waiting for answer; the row is as high as the session bar beside it, with one computer too. The button that opened the computers' settings from there is gone: they are in Settings → Network.
