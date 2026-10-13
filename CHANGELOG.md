@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.53.1 — 2026-10-13
+
+- **The limits line is quieter.** What is left and what the plan expects were one bold `95%/86%`. They are two numbers now, without the slash: what is left stands out, the plan value and the time to the reset are plain.
+
 ## 1.53.0 — 2026-10-13
 
 - **Limits moved from the sidebar to the line under the message field.** The sidebar's table of limits is gone, with its GitHub mark (GitHub is in Settings → Connections). Under the message field, instead of the agent, its model and one limit, there is every subscription in one line: its icon, what is left and what the plan expects (`95%/86%`), and the time to the reset in days, then in hours once less than a day is left. The subscription the open session spends is at full strength, the others are dimmed. Exact reset times are in the hint on hover.

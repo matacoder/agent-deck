@@ -118,7 +118,8 @@ aside{position:relative;width:min(var(--side-w,248px),40vw);flex:none;background
 .quota-percent.over{color:var(--warn)}.quota-percent.crit{color:var(--bad-text)}
 .quota-reset{white-space:nowrap;color:var(--mut)}
 /* Every subscription in one line under the message field; the one this session spends is at full strength. */
-.quota-item{display:inline-flex;align-items:center;gap:5px;opacity:.55}.quota-item.on{opacity:1}
+.quota-item{display:inline-flex;align-items:baseline;gap:6px;opacity:.55}.quota-item.on{opacity:1}
+.quota-item .ag{align-self:center}.quota-plan{color:var(--mut)}.quota-item .quota-reset{margin-left:2px;color:var(--dim)}
 .quota-item .ag{width:14px;height:14px;font-size:14px}
 .good{color:var(--ok)}.dim{color:var(--dim)}
 .compact-local{display:flex;flex-wrap:wrap;align-items:center;gap:0 8px;padding:4px 6px 0;margin-top:2px;border-top:1px solid var(--bd);min-width:0}
@@ -6020,7 +6021,8 @@ function shortReset(ts){
 function quotaItem(name,w,used){
   const percent=Number.isFinite(w.percent)?Math.round(Math.max(0,Math.min(100,100-w.percent))):null,plan=plannedRemaining(w,now());
   const item=el("span","quota-item"+(used?" on":""),agentIcon({agent:name}),
-    el("span","quota-percent "+quotaTone(percent,plan),(percent===null?"—":percent+"%")+"/"+(plan===null?"—":plan+"%")),el("span","quota-reset",w.resets_at?shortReset(w.resets_at):"↻ —"));
+    el("span","quota-percent "+quotaTone(percent,plan),percent===null?"—":percent+"%"),el("span","quota-plan",plan===null?"—":plan+"%"),
+    el("span","quota-reset",w.resets_at?shortReset(w.resets_at):"↻ —"));
   item.title=AGENTS[name].label+" · "+tr(w.label||"")+" · "+tr("Остаток")+" / "+tr("По плану к концу текущих суток лимита")+" · "+fmtReset(w.resets_at)+(usageData[name].stale?" · "+tr("⚠ данные устарели"):"");
   item.setAttribute("role","img");item.setAttribute("aria-label",item.title+": "+item.textContent);
   return item;

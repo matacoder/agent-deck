@@ -849,7 +849,8 @@ function shortReset(ts){
 function quotaItem(name,w,used){
   const percent=Number.isFinite(w.percent)?Math.round(Math.max(0,Math.min(100,100-w.percent))):null,plan=plannedRemaining(w,now());
   const item=el("span","quota-item"+(used?" on":""),agentIcon({agent:name}),
-    el("span","quota-percent "+quotaTone(percent,plan),(percent===null?"—":percent+"%")+"/"+(plan===null?"—":plan+"%")),el("span","quota-reset",w.resets_at?shortReset(w.resets_at):"↻ —"));
+    el("span","quota-percent "+quotaTone(percent,plan),percent===null?"—":percent+"%"),el("span","quota-plan",plan===null?"—":plan+"%"),
+    el("span","quota-reset",w.resets_at?shortReset(w.resets_at):"↻ —"));
   item.title=AGENTS[name].label+" · "+tr(w.label||"")+" · "+tr("Остаток")+" / "+tr("По плану к концу текущих суток лимита")+" · "+fmtReset(w.resets_at)+(usageData[name].stale?" · "+tr("⚠ данные устарели"):"");
   item.setAttribute("role","img");item.setAttribute("aria-label",item.title+": "+item.textContent);
   return item;

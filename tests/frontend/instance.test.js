@@ -518,7 +518,8 @@ test('every subscription is under the message field with the one in use standing
   expect(doc.getElementById('integ')).toBeNull();
   expect(items().map(item=>item.querySelector('.ag').className)).toEqual(['ag claude','ag codex']);
   expect(items().map(item=>item.classList.contains('on'))).toEqual([true,false]);
-  expect(items()[0].querySelector('.quota-percent').textContent).toMatch(/^95%\/\d+%$/);
+  expect(items()[0].querySelector('.quota-percent').textContent).toBe('95%');
+  expect(items()[0].querySelector('.quota-plan').textContent).toMatch(/^\d+%$/);
   // Days while days are left, hours after that.
   expect(items().map(item=>item.querySelector('.quota-reset').textContent)).toEqual(['↻ 7д','↻ 5ч']);
   // A terminal spends none of them, but they are still there to look at.
