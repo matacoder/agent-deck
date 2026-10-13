@@ -67,6 +67,15 @@ class SessionInfoTests(unittest.TestCase):
                                                    'usage': {'input_tokens': 0, 'output_tokens': 0}}}
         self.assertEqual(S.context('claude', CLAUDE + [notice])['tokens'], 91502)
 
+    def test_a_shortened_conversation_shows_its_new_size_before_the_next_answer(self):
+        boundary = {'type': 'system', 'subtype': 'compact_boundary', 'isSidechain': False,
+                    'compactMetadata': {'trigger': 'manual', 'preTokens': 91502, 'postTokens': 12022}}
+        summary = {'type': 'user', 'isCompactSummary': True, 'message': {'role': 'user', 'content': 'Summary'}}
+        self.assertEqual(S.context('claude', CLAUDE + [boundary, summary]), {'tokens': 12022, 'window': None, 'level': 'fine'})
+        self.assertEqual(S.context('claude', [boundary, summary] + CLAUDE)['tokens'], 91502)  # An answer after it counts again.
+        del boundary['compactMetadata']['postTokens']
+        self.assertIsNone(S.context('claude', CLAUDE + [boundary, summary]))  # Unknown, never the size from before.
+
     def test_a_last_line_bigger_than_the_tail_is_still_read(self):
         picture = {'type': 'user', 'message': {'role': 'user', 'content': [{'type': 'image', 'data': 'x' * 5000}]}}
         path = jsonl(self.dir / 'big.jsonl', CLAUDE[:3] + [picture])

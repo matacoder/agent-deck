@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.51.1 — 2026-10-13
+
+- **The context size is right at once after a conversation is shortened.** After `/compact` (or Claude Code's own compaction) the line under the message field went on showing the size from before until the agent answered again, because the size was read from the last answer. It is now taken from the compaction record itself.
+
 ## 1.51.0 — 2026-10-12
 
 - **Pictures of messages copied from Telegram (and other apps) are attached.** Safari gives a text field only the text of such a copy — no files, no pictures — but pastes the pictures too into an editable block, as Notes receives them. A paste by ⌘V / Ctrl+V into the message field is now caught by such a block out of sight: the text goes into the field as before (undo included), the pictures are attached. A paste by the menu (a phone, a right click) cannot be caught that way: when its text names a picture, a notice offers **Paste with pictures**, a dialog with an editable block, also in the **⋯** menu.

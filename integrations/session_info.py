@@ -74,6 +74,10 @@ def context(agent, records):
                 window = info.get('model_context_window')
                 return level(tokens, window if isinstance(window, int) and window > 0 else None)
             continue
+        if record.get('subtype') == 'compact_boundary' and not record.get('isSidechain'):
+            # Nothing was asked since the conversation was shortened: the last answer's size is the old one.
+            kept = record.get('compactMetadata') if isinstance(record.get('compactMetadata'), dict) else {}
+            return level(kept['postTokens'], None) if isinstance(kept.get('postTokens'), int) else None
         message = record.get('message') if record.get('type') == 'assistant' else None
         usage = message.get('usage') if isinstance(message, dict) else None
         # Claude Code writes its own notices (an API error, an interrupt) as answers with no tokens at all.
