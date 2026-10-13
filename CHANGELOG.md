@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.52.8 — 2026-10-13
+
+- **The bottom of the session list on a phone keeps the limits only.** A computer that does not answer, the local model's speed line and the "How it works" button are no longer shown there; all three stay on a desktop (help is the **?** in the session bar). The line with the session count and the version now has the same left and right edge as the limits above it, on a desktop too.
+
 ## 1.52.7 — 2026-10-13
 
 - **A "finished" message in Telegram is two lines.** It carried the sentence about what was done, then a paragraph retelling the same, then the session, then "Reply to this message to send the agent the next prompt" every time. Now it is the sentence and the line with the session, computer and agent. A reply still goes to the agent as the next prompt; Settings says so once.

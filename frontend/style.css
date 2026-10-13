@@ -134,7 +134,8 @@ aside{position:relative;width:min(var(--side-w,248px),40vw);flex:none;background
 .local-active{animation:local-opacity 1.4s ease-in-out infinite}
 @keyframes local-opacity{50%{opacity:.5}}
 
-.side-foot{display:grid;grid-template-columns:1fr auto;align-items:center;gap:6px 8px;padding:6px 8px;border-top:1px solid var(--bd);color:var(--mut);font-size:11px}
+/* The same left and right edge as the limits above it. */
+.side-foot{display:grid;grid-template-columns:1fr auto;align-items:center;gap:6px 8px;padding:6px 14px;border-top:1px solid var(--bd);color:var(--mut);font-size:11px}
 #ver{min-width:0;font:11px var(--mono);color:var(--dim);text-align:right}
 #ver button{display:block;max-width:100%;margin-top:3px;color:var(--acc-text);text-align:right;overflow-wrap:anywhere;font:inherit}
 .side-foot>button{grid-column:1/-1;display:flex;align-items:center;gap:8px;min-height:32px;padding:4px 10px;border-radius:9px;background:var(--side2);color:var(--fg);font-size:12px;text-align:left;white-space:normal}
@@ -597,7 +598,6 @@ dialog:focus,dialog:focus-visible{outline:none}
 .arch-note{margin:10px 0 0;color:var(--fg);font-size:13px;line-height:1.55}
 .how-title{margin:18px 0 6px;color:var(--fg2);font-size:14px}
 .how-list{margin:0;padding-left:18px;color:var(--fg);font-size:13px;line-height:1.55}
-.help-side{display:none!important}
 /* Docked: a right sidebar beside the session instead of a window over it. */
 #project_dlg.docked[open]{position:relative;display:flex;overflow:hidden;flex:none;width:var(--project-w,clamp(400px,36vw,760px));max-width:60vw;height:auto;max-height:none;margin:0;border:0;border-left:1px solid var(--bd);border-radius:0;box-shadow:none}
 #project_dlg.docked .dlg{flex:1;min-width:0;max-height:none}
@@ -872,7 +872,9 @@ body.resizing iframe{pointer-events:none}
   .quota-strip{min-height:34px;font-size:13.5px}
   .quota-plan,.quota-reset{font-size:12px}
   .local-model,.local-live-line{font-size:12px}
-  .side-foot{padding:12px 16px calc(12px + var(--sab));font-size:12px}
+  .side-foot{padding:12px 18px calc(12px + var(--sab));font-size:12px}
+  /* A phone keeps what is acted on there: a computer that does not answer and the local model's speed are for the desk. */
+  .deck-head.off,.compact-local{display:none}
   #ver{font-size:12px}
   .side-foot>button{min-height:var(--tap);font-size:15px}
 
@@ -949,7 +951,6 @@ body.resizing iframe{pointer-events:none}
   .acts{padding:12px 16px calc(12px + var(--sab))}
   .acts button{flex:1;min-height:var(--tap);padding:12px;font-size:16px;border-radius:var(--r)}
   #inbox_dlg,#project_dlg,#help_dlg,dialog.talk,.palette{width:100vw}
-  .help-side{display:flex!important}
   #inbox_dlg .dlg,#project_dlg .dlg,.palette .dlg{padding-top:var(--sat)}
   .palette{margin-top:0}.palette-list{max-height:none;flex:1}
   /* Phone: the search icon swaps the title and bar icons for the field; × puts them back. */

@@ -93,3 +93,15 @@ test('the session search opens from its button and takes its filter away when cl
     expect(shown()).toEqual(['alpha','beta']);
   }finally{window.close()}
 });
+
+test('a computer that does not answer is marked, so a phone can leave it out of the list',async()=>{
+  const window=boot(routesFor({local:()=>({sessions:[session('alpha')]})}));
+  try{
+    await settle();await settle();
+    window.eval('window.heads=[deckHeader({id:"b".repeat(24),name:"RED",error:true},false),deckHeader({id:"c".repeat(24),name:"Mac",count:2},false)]');
+    expect(window.heads[0].classList.contains('off')).toBe(true);
+    expect(window.heads[1].querySelector('.deck-head').classList.contains('off')).toBe(false);
+    // The sidebar no longer has a help button: the one in the session bar is the only one.
+    expect(window.document.querySelector('aside .help-side')).toBeNull();
+  }finally{window.close()}
+});

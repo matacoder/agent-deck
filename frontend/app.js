@@ -983,7 +983,7 @@ async function loadOtherDecks(){
 }
 function deckHeader(deck,current){
   const key=deck.id||"local",open=current||deckOpen[key]!==false;
-  const head=el(current?"div":"button","deck-head"+(current?" current":""),svgIcon("monitor"),el("span","deck-name",deck.name),
+  const head=el(current?"div":"button","deck-head"+(current?" current":"")+(deck.error?" off":""),svgIcon("monitor"),el("span","deck-name",deck.name),
     el("span","deck-count",deck.error?tr("недоступен"):String(deck.count)));
   // A connected computer behind the latest release shows an arrow; Settings → Network updates it.
   if(!current&&fleet.versions.get(deck.id)?.update){const mark=el("span","deck-update","↑");mark.title=tr("Доступно обновление");head.append(mark)}
