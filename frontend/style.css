@@ -163,7 +163,7 @@ main{flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;backgrou
 .list-skeleton.gallery{grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px}.list-skeleton.gallery .sk-line{height:auto;aspect-ratio:1;border-radius:8px}
 .tab-skeleton{pointer-events:none}.tab-skeleton .t{display:grid;gap:7px;padding:4px 0}.tab-skeleton .t .sk-line:first-child{width:62%}.tab-skeleton .t .sk-line:last-child{width:38%;height:9px}
 .sk-dot{width:8px;height:8px;border-radius:50%;flex:none}.sk-icon{width:18px;height:18px;flex:none}
-.foot-skeleton,.ver-skeleton,.sk-metric{display:inline-block;height:10px;vertical-align:middle}.foot-skeleton{width:120px}.ver-skeleton{width:44px}.sk-metric{width:3ch}
+.ver-skeleton,.sk-metric{display:inline-block;height:10px;vertical-align:middle}.ver-skeleton{width:44px}.sk-metric{width:3ch}
 #metric_cpu,#metric_ram{display:inline-block;min-width:3ch;text-align:right}
 /* Receives a paste out of sight; it must stay focusable, so it is moved away, not hidden. */
 #paste_catch{position:fixed;left:-9999px;top:0;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none}
@@ -322,7 +322,7 @@ body.is-codex .question-key{display:inline-flex!important;align-items:center;jus
 #send_state .composer-model{margin-right:8px}
 #send_state .session-status{display:inline-flex;flex-wrap:wrap;align-items:center;gap:2px 14px;font-size:11.5px;font-variant-numeric:tabular-nums;white-space:nowrap}
 #send_state .session-status .composer-model{margin-right:0;overflow:hidden;text-overflow:ellipsis}
-.server-metrics{display:flex;align-self:flex-start;align-items:center;gap:8px;margin-left:auto;white-space:nowrap;font-variant-numeric:tabular-nums}
+.server-metrics{display:flex;align-items:center;gap:10px;white-space:nowrap;font-variant-numeric:tabular-nums}
 .server-metric{display:inline-flex;align-items:center;gap:3px}
 .server-metric svg{width:var(--icon-sm);height:var(--icon-sm);flex:none}
 

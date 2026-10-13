@@ -174,7 +174,7 @@ main{flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;backgrou
 .list-skeleton.gallery{grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px}.list-skeleton.gallery .sk-line{height:auto;aspect-ratio:1;border-radius:8px}
 .tab-skeleton{pointer-events:none}.tab-skeleton .t{display:grid;gap:7px;padding:4px 0}.tab-skeleton .t .sk-line:first-child{width:62%}.tab-skeleton .t .sk-line:last-child{width:38%;height:9px}
 .sk-dot{width:8px;height:8px;border-radius:50%;flex:none}.sk-icon{width:18px;height:18px;flex:none}
-.foot-skeleton,.ver-skeleton,.sk-metric{display:inline-block;height:10px;vertical-align:middle}.foot-skeleton{width:120px}.ver-skeleton{width:44px}.sk-metric{width:3ch}
+.ver-skeleton,.sk-metric{display:inline-block;height:10px;vertical-align:middle}.ver-skeleton{width:44px}.sk-metric{width:3ch}
 #metric_cpu,#metric_ram{display:inline-block;min-width:3ch;text-align:right}
 /* Receives a paste out of sight; it must stay focusable, so it is moved away, not hidden. */
 #paste_catch{position:fixed;left:-9999px;top:0;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none}
@@ -333,7 +333,7 @@ body.is-codex .question-key{display:inline-flex!important;align-items:center;jus
 #send_state .composer-model{margin-right:8px}
 #send_state .session-status{display:inline-flex;flex-wrap:wrap;align-items:center;gap:2px 14px;font-size:11.5px;font-variant-numeric:tabular-nums;white-space:nowrap}
 #send_state .session-status .composer-model{margin-right:0;overflow:hidden;text-overflow:ellipsis}
-.server-metrics{display:flex;align-self:flex-start;align-items:center;gap:8px;margin-left:auto;white-space:nowrap;font-variant-numeric:tabular-nums}
+.server-metrics{display:flex;align-items:center;gap:10px;white-space:nowrap;font-variant-numeric:tabular-nums}
 .server-metric{display:inline-flex;align-items:center;gap:3px}
 .server-metric svg{width:var(--icon-sm);height:var(--icon-sm);flex:none}
 
@@ -1149,7 +1149,7 @@ body.resizing iframe{pointer-events:none}
       <input id="q" class="search" placeholder="Поиск…" aria-label="Поиск…" title="Быстрый переход: ⌥K, Ctrl+K или ⌘K" autocomplete="off" autocapitalize="off" spellcheck="false">
     </div>
     <div id="tabs"></div>
-    <div class="side-foot"><span id="foot"></span><span id="ver"></span><button id="b_drafts" onclick="showClosedDrafts()" style="display:none"><svg class="ui-icon"><use href="#i-file"/></svg><span>Черновики закрытых сессий</span></button></div>
+    <div class="side-foot"><div id="server_metrics" class="server-metrics" role="img" aria-label="CPU: нет данных; RAM: нет данных" title="CPU: нет данных; RAM: нет данных"><span class="server-metric" aria-hidden="true"><svg class="ui-icon"><use href="#i-cpu"/></svg><span id="metric_cpu"><span class="sk-line sk-metric"></span></span></span><span class="server-metric" aria-hidden="true"><svg class="ui-icon"><use href="#i-ram"/></svg><span id="metric_ram"><span class="sk-line sk-metric"></span></span></span></div><span id="ver"></span><button id="b_drafts" onclick="showClosedDrafts()" style="display:none"><svg class="ui-icon"><use href="#i-file"/></svg><span>Черновики закрытых сессий</span></button></div>
   </aside>
   <div id="scrim" onclick="if(document.body.classList.contains('project-drawer'))closeProject();else drawer(false)"></div>
   <main>
@@ -1204,10 +1204,6 @@ body.resizing iframe{pointer-events:none}
           </div>
           <div class="composer-status">
           <div id="send_state" class="send-state" role="status" aria-live="polite">Enter ↵ · ↑ отправить</div>
-          <div id="server_metrics" class="server-metrics" role="img" aria-label="CPU: нет данных; RAM: нет данных" title="CPU: нет данных; RAM: нет данных">
-            <span class="server-metric" aria-hidden="true"><svg class="ui-icon"><use href="#i-cpu"/></svg><span id="metric_cpu"><span class="sk-line sk-metric"></span></span></span>
-            <span class="server-metric" aria-hidden="true"><svg class="ui-icon"><use href="#i-ram"/></svg><span id="metric_ram"><span class="sk-line sk-metric"></span></span></span>
-          </div>
           </div>
         </div>
       </div>
@@ -5494,9 +5490,6 @@ function finishTabs(view,box,focused){
     view.replaceChildren(...box.childNodes);
     if(focused)view.querySelector(focused)?.focus({preventScroll:true});
   }
-  const busy=sessions.filter(s=>state(s)==="busy").length;
-  if(!sessions.length&&!load.done)$("foot").replaceChildren(el("span","sk-line foot-skeleton"));
-  else $("foot").textContent=tr("{0} сессий · {1} работают",[sessions.length,busy])+(attention.size?tr(" · {0} готово",[attention.size]):"");
   const ready=renderInboxBadge();
   $("menuBadge").textContent=ready;$("menuBadge").classList.toggle("on",ready>0);
   document.title=(ready?`(${ready}) `:"")+"DeckAway";

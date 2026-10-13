@@ -322,9 +322,6 @@ function finishTabs(view,box,focused){
     view.replaceChildren(...box.childNodes);
     if(focused)view.querySelector(focused)?.focus({preventScroll:true});
   }
-  const busy=sessions.filter(s=>state(s)==="busy").length;
-  if(!sessions.length&&!load.done)$("foot").replaceChildren(el("span","sk-line foot-skeleton"));
-  else $("foot").textContent=tr("{0} сессий · {1} работают",[sessions.length,busy])+(attention.size?tr(" · {0} готово",[attention.size]):"");
   const ready=renderInboxBadge();
   $("menuBadge").textContent=ready;$("menuBadge").classList.toggle("on",ready>0);
   document.title=(ready?`(${ready}) `:"")+"DeckAway";

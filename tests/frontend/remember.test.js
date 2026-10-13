@@ -42,7 +42,7 @@ test('the remembered list, computers and limits are drawn before the first answe
   try{
     await settle();
     expect(cold.document.querySelectorAll('#tabs .tab-skeleton').length).toBe(4);
-    expect(cold.document.querySelector('#foot .sk-line')).not.toBeNull();
+    expect(cold.document.querySelector('.side-foot #server_metrics')).not.toBeNull();
     expect(cold.document.getElementById('deck_switch').hidden).toBe(true);
   }finally{cold.close()}
   const warm=boot(routes,null,window=>{

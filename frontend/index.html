@@ -63,7 +63,7 @@ __PANEL_STYLE__</style></head><body>
       <input id="q" class="search" placeholder="Поиск…" aria-label="Поиск…" title="Быстрый переход: ⌥K, Ctrl+K или ⌘K" autocomplete="off" autocapitalize="off" spellcheck="false">
     </div>
     <div id="tabs"></div>
-    <div class="side-foot"><span id="foot"></span><span id="ver"></span><button id="b_drafts" onclick="showClosedDrafts()" style="display:none"><svg class="ui-icon"><use href="#i-file"/></svg><span>Черновики закрытых сессий</span></button></div>
+    <div class="side-foot"><div id="server_metrics" class="server-metrics" role="img" aria-label="CPU: нет данных; RAM: нет данных" title="CPU: нет данных; RAM: нет данных"><span class="server-metric" aria-hidden="true"><svg class="ui-icon"><use href="#i-cpu"/></svg><span id="metric_cpu"><span class="sk-line sk-metric"></span></span></span><span class="server-metric" aria-hidden="true"><svg class="ui-icon"><use href="#i-ram"/></svg><span id="metric_ram"><span class="sk-line sk-metric"></span></span></span></div><span id="ver"></span><button id="b_drafts" onclick="showClosedDrafts()" style="display:none"><svg class="ui-icon"><use href="#i-file"/></svg><span>Черновики закрытых сессий</span></button></div>
   </aside>
   <div id="scrim" onclick="if(document.body.classList.contains('project-drawer'))closeProject();else drawer(false)"></div>
   <main>
@@ -118,10 +118,6 @@ __PANEL_STYLE__</style></head><body>
           </div>
           <div class="composer-status">
           <div id="send_state" class="send-state" role="status" aria-live="polite">Enter ↵ · ↑ отправить</div>
-          <div id="server_metrics" class="server-metrics" role="img" aria-label="CPU: нет данных; RAM: нет данных" title="CPU: нет данных; RAM: нет данных">
-            <span class="server-metric" aria-hidden="true"><svg class="ui-icon"><use href="#i-cpu"/></svg><span id="metric_cpu"><span class="sk-line sk-metric"></span></span></span>
-            <span class="server-metric" aria-hidden="true"><svg class="ui-icon"><use href="#i-ram"/></svg><span id="metric_ram"><span class="sk-line sk-metric"></span></span></span>
-          </div>
           </div>
         </div>
       </div>

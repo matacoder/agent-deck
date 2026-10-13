@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.53.2 — 2026-10-13
+
+- **Processor and memory load moved to the sidebar's bottom row.** Under the message field they pushed the limits onto a second line on a phone. They now stand where "3 sessions · 1 working" was, next to the version; that counter is gone (the list above shows the same). On a phone they are seen with the session list open.
+
 ## 1.53.1 — 2026-10-13
 
 - **The limits line is quieter.** What is left and what the plan expects were one bold `95%/86%`. They are two numbers now, without the slash: what is left stands out, the plan value and the time to the reset are plain.

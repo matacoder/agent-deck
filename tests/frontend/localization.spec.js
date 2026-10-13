@@ -41,10 +41,7 @@ for(const code of pack){
   await expect(page.locator('html')).toHaveAttribute('lang',code);
   await expect(page.locator('#pre')).toContainText('Agent output: сохраняем 原文');
   await expect(page.locator('#msg')).toHaveAttribute('placeholder',app.catalogs[code]['Сообщение в ']+'Codex…');
-  const status=await page.locator('.composer-status').boundingBox();
-  const metrics=await page.locator('#server_metrics').boundingBox();
-  expect(metrics.x+metrics.width).toBeLessThanOrEqual(320);
-  expect(metrics.y+metrics.height).toBeLessThanOrEqual(status.y+status.height+1);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
   await page.evaluate(()=>openSettings("app"));
   await expect(page.locator('.hub-heading h3')).toHaveText(app.catalogs[code]['Настройки']);
   await expect(page.locator('#ui_language option')).toHaveCount(Object.keys(app.catalogs).length);
