@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.52.1 — 2026-10-13
+
+- **A "finished" notification says what has just been done.** It carried the summary's topic line and the start of its text, which opens with the goal: the two lines a notification shows told what the session is about, not what happened. The model now also writes one sentence about what the agent has just finished or is asking, with the concrete result, and the notification is that sentence under the conversation's name; the Telegram message opens with it. The agent's latest message reaches the model four times longer than the earlier ones, so the result is not cut off.
+
 ## 1.52.0 — 2026-10-13
 
 - **The conversation can be read when the terminal no longer holds it.** A restarted or shortened conversation leaves only its last screens in the terminal, and a question from the agent then refers to options that are nowhere to scroll back to. A **Conversation** button in the line under the message field (and in the **⋯** menu) shows what was said — your messages and the agent's answers, without tool output — from the agent's own conversation file, including what came before a compaction. Claude Code (and services run through it) and Codex; a connected computer shows it once it has this version.

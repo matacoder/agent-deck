@@ -83,7 +83,9 @@ class SessionInfoTests(unittest.TestCase):
         turns = S.conversation('claude', path)
         # No tool output, no subagent, no command echo, no retelling; a long answer is whole.
         self.assertEqual([(t['role'], len(t['text'])) for t in turns], [('user', 23), ('assistant', 14), ('assistant', 3000)])
-        self.assertEqual(len(S.dialogue('claude', S.tail_records(path))[-1][1]), S.TURN_CHARS)
+        # For a summary the turns are cut short; the latest one, which says what just happened, less so.
+        self.assertEqual(len(S.dialogue('claude', S.tail_records(path))[-1][1]), S.TURN_CHARS * S.LAST_TURN)
+        self.assertEqual(len(S.dialogue('claude', S.tail_records(path) + CLAUDE[1:2])[-2][1]), S.TURN_CHARS)
 
     def test_a_last_line_bigger_than_the_tail_is_still_read(self):
         picture = {'type': 'user', 'message': {'role': 'user', 'content': [{'type': 'image', 'data': 'x' * 5000}]}}
@@ -104,22 +106,23 @@ class SessionInfoTests(unittest.TestCase):
             S.parse_summary('no json')
 
     def test_the_title_is_a_short_latin_name_and_the_model_is_asked_to_keep_it(self):
-        self.assertEqual(S.title_of('{"line":"x","text":"y","title":" Fix Payment_webhook "}'), 'fix-payment-webhook')
+        self.assertEqual(S.extras_of('{"line":"x","text":"y","title":" Fix Payment_webhook ","done":"Tests\\n pass."}'), ('fix-payment-webhook', 'Tests pass.'))
         for bad in ('Платежи', 'a-b-c-d-e', 'x' * 40, 'rm -rf; echo', '', 5):
             self.assertEqual(S.clean_title(bad), '')
-        self.assertEqual(S.title_of('no json'), '')
+        self.assertEqual((S.extras_of('no json'), S.extras_of('{"done":5}')), (('', ''), ('', '')))
         self.assertNotIn('title so far', S.summary_prompt([('user', 'hi')], 'ru'))
         self.assertIn('"fix-payments": repeat it unless', S.summary_prompt([('user', 'hi')], 'ru', 'fix-payments'))
 
     def test_a_rewrite_keeps_the_title_when_the_model_sends_none(self):
-        jobs, answers = [], ['{"line":"a","text":"b","title":"fix-payments"}', '{"line":"c","text":"d","title":"Не то"}']
+        jobs, answers = [], ['{"line":"a","text":"b","title":"fix-payments","done":"Webhook fixed."}', '{"line":"c","text":"d","title":"Не то"}']
         prompts = []
         model = {'label': 'm', 'complete': lambda prompt: prompts.append(prompt) or answers.pop(0)}
         store = S.Summaries(self.dir / 's', clock=lambda: 1000, start=jobs.append)
         store.get('sid', 'ru', 10, [('user', 'hi')], lambda: model, fresh=True); jobs.pop()()
-        self.assertEqual(store.get('sid', 'ru', 10, [], lambda: model)['title'], 'fix-payments')
+        self.assertEqual([store.get('sid', 'ru', 10, [], lambda: model)[key] for key in ('title', 'done')], ['fix-payments', 'Webhook fixed.'])
         store.get('sid', 'ru', 20, [('user', 'hi')], lambda: model, fresh=True); jobs.pop()()
         self.assertEqual((store.get('sid', 'ru', 20, [], lambda: model)['title'], 'fix-payments' in prompts[1]), ('fix-payments', True))
+        self.assertEqual(store.get('sid', 'ru', 20, [], lambda: model)['done'], '')  # What was done then is not what was done now.
 
     def test_a_summary_is_rewritten_once_when_the_conversation_grew_and_kept_when_the_model_fails(self):
         now, jobs, asked = [1000], [], []

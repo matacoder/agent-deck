@@ -252,8 +252,9 @@ class PushServiceTests(unittest.TestCase):
     def test_a_finished_notification_is_headed_by_the_conversations_title_and_its_computer(self):
         self.subscribe()
         self.push.deliver({'kind': 'finished', 'title': 'api', 'origin': 'Mac Studio', 'body': ['Claude finished working'],
-                           'summaries': {'en': {'line': 'Payments fixed', 'text': 'Tests pass.', 'title': 'fix-payments'}}})
-        self.assertEqual((self.sent[-1][1]['title'], self.sent[-1][1]['body']), ('fix-payments · Mac Studio', 'Payments fixed\nTests pass.'))
+                           'summaries': {'en': {'line': 'Payments', 'text': 'Goal: fix them.', 'title': 'fix-payments', 'done': 'Webhook fixed, 12 tests pass.'}}})
+        # What has just been done, not the topic and the goal.
+        self.assertEqual((self.sent[-1][1]['title'], self.sent[-1][1]['body']), ('fix-payments · Mac Studio', 'Webhook fixed, 12 tests pass.'))
         self.push.deliver({'kind': 'finished', 'title': 'api', 'origin': 'Mac Studio', 'body': ['Claude finished working · Mac Studio']})
         self.assertEqual((self.sent[-1][1]['title'], self.sent[-1][1]['body']), ('api', 'Claude finished working · Mac Studio'))
 

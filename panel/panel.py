@@ -1860,7 +1860,7 @@ def finished_summary(deck, name, language, wait=SUMMARY_WAIT, pause=time.sleep):
         summary = info.get("summary") if isinstance(info.get("summary"), dict) else {}
         if not summary.get("updating"):
             line = summary.get("line")
-            return {"line": line, "text": summary.get("text") or "", "title": summary.get("title") or ""} if line and not summary.get("error") else None
+            return {"line": line, "text": summary.get("text") or "", "title": summary.get("title") or "", "done": summary.get("done") or ""} if line and not summary.get("error") else None
         if time.monotonic() >= deadline:
             return None
         fresh = False  # A failed rewrite is not started again on every look.

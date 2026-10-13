@@ -138,8 +138,10 @@ class Push:
             language = subscription.get('language', 'en')
             # Short title (the session) that fits a lock-screen line; status and details go to the body.
             summary = (message.get('summaries') or {}).get(self.language(language)) or {}
-            told = [part for part in (summary.get('line'), (summary.get('text') or '')[:SUMMARY_TEXT]) if part]
-            # A notification is a few lines: what was done says it better than "finished working".
+            # A notification is two lines under its title: what has just been done, not the topic and the goal
+            # (a computer on an earlier version sends only those).
+            told = [summary['done']] if summary.get('done') else [
+                part for part in (summary.get('line'), (summary.get('text') or '')[:SUMMARY_TEXT]) if part]
             body = told or [self.text(part, language) for part in message.get('body', ())]
             title = summary.get('title') or self.text(message['title'], language)
             if told and message.get('origin'):
