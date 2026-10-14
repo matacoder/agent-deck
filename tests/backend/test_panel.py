@@ -196,7 +196,7 @@ class SessionTests(PanelCase):
                 self.panel.action_new({"name": name})
         self.panel.create_session.assert_not_called()
 
-    def test_capture_keeps_ansi_and_bounds_plain_preview(self):
+    def test_capture_keeps_ansi_and_sends_the_screen_once(self):
         capture = "\x1b[31m" + "\n".join(str(i) for i in range(2010)) + "\x1b[0m\n"
         def tmux(command, *args, **kwargs):
             if command == "list-sessions":
@@ -209,7 +209,7 @@ class SessionTests(PanelCase):
         self.assertEqual(len(sessions), 1)
         self.assertEqual(sessions[0]["group"], "repo")
         self.assertEqual(sessions[0]["preview_ansi"], capture)
-        self.assertEqual(sessions[0]["preview"].splitlines(), [str(i) for i in range(10, 2010)])
+        self.assertNotIn("preview", sessions[0])
 
     def test_only_the_previewed_session_reports_its_transcript_model_and_reads_change_only(self):
         sid = "11111111-1111-4111-8111-111111111111"
@@ -378,6 +378,21 @@ class TranscriptLookupTests(PanelCase):
         (project / (sid + '.jsonl')).write_text('{}')
         clock[0] += 31
         self.assertEqual(self.panel.transcript_path('claude', sid).name, sid + '.jsonl')
+
+
+    def test_a_conversation_file_is_parsed_again_only_when_it_changed(self):
+        sid = '12345678-1234-1234-1234-123456789abc'
+        transcript = self.home / (sid + '.jsonl'); transcript.write_text('{}')
+        self.panel.transcript_answers.clear()
+        self.panel.transcript_path = Mock(return_value=transcript)
+        self.panel.tmux = Mock(return_value='%1:123:' + sid + '\n')
+        parse = self.enterContext(patch.object(self.panel, 'transcript_questions', return_value=['asked']))
+        self.assertEqual(self.panel.pending_questions('demo', 'claude', sid), ['asked'])
+        self.assertEqual(self.panel.pending_questions('demo', 'claude', sid), ['asked'])
+        self.assertEqual(parse.call_count, 1)
+        transcript.write_text('{"more": 1}')
+        self.panel.pending_questions('demo', 'claude', sid)
+        self.assertEqual(parse.call_count, 2)
 
 
 class SingleFlightCacheTests(PanelCase):

@@ -1,15 +1,37 @@
 const {test,expect}=require('./fixtures');
 
-test('quota monitor shows only overall period, percent and reset in compact rows',async({app,page})=>{
+test('limits line under the message field shows each subscription remainder, plan and reset',async({app,page})=>{
  const resets_at=Date.now()/1000+90000;
  app.usage={claude:{windows:[{label:'5 часов',percent:7,secs:18000,resets_at},{label:'неделя',percent:73,secs:604800,resets_at}]},codex:{windows:[{label:'неделя',percent:30,secs:604800,resets_at}]},kimi:{windows:[{label:'Kimi Code · месяц',period:'month',percent:0,secs:2592000,resets_at},{label:'Общий · месяц',period:'month',percent:18,secs:2592000,resets_at}]}};
  await app.open({width:1280,height:900});
- const rows=page.locator('.quota-strip');await expect(rows).toHaveCount(3);
- await expect(page.locator('.quota-heading')).toContainText('Остаток');await expect(page.locator('.quota-heading-plan')).toHaveText('План');
- const alignment=await page.evaluate(()=>{const heading=document.querySelector('.quota-heading-plan').getBoundingClientRect(),planned=document.querySelector('.quota-strip .quota-plan').getBoundingClientRect();return Math.abs(heading.right-planned.right)});
- expect(alignment).toBeLessThan(1);
- await expect(rows.nth(0)).toContainText('27%');await expect(rows.nth(1)).toContainText('70%');await expect(rows.nth(2)).toContainText('82%');
- for(const row of await rows.all()){expect(await row.evaluate(e=>e.getBoundingClientRect().height)).toBeLessThanOrEqual(32);await expect(row).toContainText('↻');}
+ const items=page.locator('#send_state .session-status .quota-item');await expect(items).toHaveCount(3);
+ await expect(items.nth(0).locator('.quota-percent')).toHaveText('27%');await expect(items.nth(1).locator('.quota-percent')).toHaveText('70%');await expect(items.nth(2).locator('.quota-percent')).toHaveText('82%');
+ // The open session runs Codex: only its limit is marked as the one being spent.
+ await expect(page.locator('#send_state .quota-item.on')).toHaveCount(1);await expect(items.nth(1)).toHaveClass(/\bon\b/);
+ await expect(items.nth(1).locator('.ag.codex')).toHaveCount(1);
+ await expect(items.nth(0)).toHaveAttribute('aria-label',/неделя/);await expect(items.nth(0)).toHaveAttribute('aria-label',/Остаток/);
+ await expect(page.locator('#send_state .quota-more')).toBeHidden();
+ await expect(page.locator('aside .quota-item')).toHaveCount(0);
+ for(const item of await items.all()){
+  await expect(item.locator('.quota-plan')).toHaveText(/^[0-9]+%$/);await expect(item.locator('.quota-reset')).toContainText('↻');
+  expect(await item.evaluate(e=>e.getBoundingClientRect().height)).toBeLessThanOrEqual(32);
+ }
+});
+
+test('limits that do not fit a 320px phone fold behind a button and keep the session own one',async({app,page})=>{
+ const resets_at=Date.now()/1000+90000;
+ app.usage={claude:{windows:[{label:'неделя',percent:73,secs:604800,resets_at}]},codex:{windows:[{label:'неделя',percent:30,secs:604800,resets_at}]},kimi:{windows:[{label:'Общий · месяц',period:'month',percent:18,secs:2592000,resets_at}]}};
+ await app.open({width:320});
+ const line=page.locator('#send_state .session-status'),more=line.locator('.quota-more');
+ await expect(line.locator('.quota-item')).toHaveCount(3);
+ await expect(line.locator('.quota-item.on')).toBeVisible();
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+ await expect(more).toBeVisible();
+ await expect(more).toHaveAttribute('aria-expanded','false');
+ expect(await line.locator('.quota-item:visible').count()).toBeLessThan(3);
+ await more.click();
+ await expect(more).toHaveAttribute('aria-expanded','true');
+ await expect(line.locator('.quota-item:visible')).toHaveCount(3);
 });
 
 test('local composer displays shortened model and explicitly labelled average speed',async({app,page})=>{
@@ -18,10 +40,11 @@ test('local composer displays shortened model and explicitly labelled average sp
  app.lmstudio.profiles=[{id:'local',name:'RED',performance:{source:'session',model,output_tokens:180,request_time_seconds:273.5},activity:[{binding:'session',model,phase:'waiting',request_time_seconds:228,chunks:0}]}];
  await app.open({width:390});
  await expect(page.locator('#msg')).toHaveAttribute('placeholder','Сообщение в Qwen3.8 27B · RED…');
- const state=page.locator('#send_state');await expect(state).toContainText('Qwen3.8 27B');await expect(state).toContainText('TTFT 3:48');await expect(state).toContainText('≈0.7 tok/s avg');
+ const state=page.locator('#send_state');await expect(state).toContainText('Qwen3.8 27B');await expect(state).toContainText('TTFT 3:48');await expect(state).toContainText('≈0.7 tok/s сред.');
  await expect(state.locator('.local-rate')).toHaveAttribute('title',/учётом ожидания/);
- await page.evaluate(()=>drawer(true));expect(await page.locator('.compact-local').evaluate(e=>e.getBoundingClientRect().height)).toBeLessThan(80);
- expect(await page.locator('aside').evaluate(e=>e.scrollWidth<=e.clientWidth)).toBe(true);
+ // The model and its speed share the status line under the message field and never widen the page.
+ expect(await state.evaluate(e=>e.getBoundingClientRect().height)).toBeLessThan(40);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
 });
 
 test('stopped local agent keeps draft and never sends it to the shell',async({app,page})=>{

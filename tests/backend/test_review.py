@@ -18,7 +18,7 @@ class ReviewRegressions(PanelCase):
         ])
         result = self.panel.list_sessions("b")
         self.assertNotIn("preview", result[0])
-        self.assertIn("Selected output", result[1]["preview"])
+        self.assertIn("Selected output", result[1]["preview_ansi"])
         self.assertEqual(self.panel.tmux.call_count, 2)
         self.panel.tmux = Mock(return_value="cc-a\t1\t0\t/tmp\tcodex\t1\tcodex\t\t0\n")
         self.assertNotIn("preview_ansi", self.panel.list_sessions()[0])

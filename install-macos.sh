@@ -54,6 +54,7 @@ mkdir -p "$runtime"
 [ ! -L "$runtime" ] || { echo 'Runtime must not be a symlink.' >&2; exit 1; }
 # A Homebrew Python upgrade leaves the venv pointing at a removed interpreter: rebuild it.
 "$runtime/venv/bin/python3" -c "" 2>/dev/null || rm -rf "$runtime/venv"
-"$python_bin" -m venv "$runtime/venv"
-"$runtime/venv/bin/python3" -m pip install --disable-pip-version-check 'psutil>=7,<8'
+# Only a stable interpreter path for the LaunchAgents: nothing is installed into it. Processor and memory
+# figures come from macOS's own commands (an older venv's psutil is still used while it is there).
+"$python_bin" -m venv --without-pip "$runtime/venv"
 exec "$runtime/venv/bin/python3" "$SRC/macos/install.py" "$@"

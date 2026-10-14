@@ -2,6 +2,27 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.54.0 — 2026-10-14
+
+The rest of the review, and the picture viewer.
+
+- **The picture viewer fits the screen.** A tall screenshot (a phone's) was shown at its own size, running off the screen and under the caption bar; it now fits between the buttons on a phone and on a desktop.
+- **"How it works" is in the "…" menu on a phone.** The bar keeps its button on a desktop.
+- **"Sent", "Files attached", "Answer sent" are shown for four seconds** before the limits line comes back in their place; they were replaced at once.
+- **The limits line is readable for every subscription.** The others were dimmed to 55%, below the contrast the rest of the page keeps; now they are in plain text and the session's own one is bold.
+- **The computer selector keeps its room in a narrow sidebar or phone drawer**: the header is tighter there, and in the narrowest one the flag gives way to it.
+- **Logging out ends that sign-in.** A copy of the cookie stopped working only after 90 days; now logging out ends it at once, other devices stay signed in. The login page no longer fills in the account name.
+- **Pictures on screen:** the whole path must stand on screen, not only its end.
+- **A slow clone does not hold other new sessions.** Creating a session from a repository kept every other new session and every rename waiting for up to five minutes.
+- **Telegram does not hold the panel while it sends.** Questions and their buttons were sent with a lock held that status polls and button taps need.
+- **Less work and traffic per poll.** A question scan parses an agent's conversation file again only when it changed, and asks tmux less; the open session's screen is sent once per answer, not as two copies.
+- **macOS installs nothing with pip.** Processor and memory load come from macOS's own commands; installs that already have psutil keep using it.
+- **Installers.** Linux: a failed Docker or memory-limit step is reported with the command to retry and no longer stops the installation. SteamOS: the script updates its own checkout first, keeps the previous image, puts it back when the new one does not answer, and removes only DeckAway's own older image.
+- **A terminal session shows no agent controls again**: the attach button and the "restart", "conversation" menu items had come back for a plain terminal.
+- **Settings no longer scroll sideways on an iPhone** when a local model's name is long.
+- **The browser tests pass again** (192 in Chromium and WebKit); they had not been updated since the limits moved.
+- **Unused interface text removed** from the 16 languages (143 strings), and the limits line, the question card and the keyboard shortcuts moved out of `app.js` into their own files.
+
 ## 1.53.4 — 2026-10-14
 
 Fixes from a review of the whole code.

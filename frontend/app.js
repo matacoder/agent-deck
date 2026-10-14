@@ -225,8 +225,10 @@ function sheet(on){
     panel.style.setProperty("--sheet-right",Math.max(8,Math.round(innerWidth-anchor.right))+"px");
     $("sheetCap").textContent=s?sessionTitle(s):"DeckAway";
     $("s_session").hidden=$("s_manage").hidden=!s;
-    // Update and closed drafts appear only when there is something to do; an empty group would be a stray line.
-    $("s_app").hidden=$("s_update").style.display==="none"&&$("s_drafts").style.display==="none";
+    // A phone has no help button in the bar: it is here. Update and closed drafts appear only when there is
+    // something to do; an empty group would be a stray line.
+    $("s_help").hidden=!isMobile();
+    $("s_app").hidden=$("s_help").hidden&&$("s_update").style.display==="none"&&$("s_drafts").style.display==="none";
   }
   const wasOpen=$("sheet").classList.contains("on");
   $("sheet").classList.toggle("on",on);
@@ -478,58 +480,6 @@ async function loadSessions(){
     loadQuestion();
   }catch(e){if(e.offline)setConnection("offline");else toast(e.message)}
 }
-let question={name:null,data:null,expanded:false,busy:null,textIndex:null},loadingQuestion=false,questionCard="";
-async function loadQuestion(){
-  const s=cur();
-  if(!s||agentOf(s)==="shell"||!s.running){if(question.data)setQuestion(s?.name||null,null);return}
-  if(loadingQuestion||question.busy!==null||document.hidden)return;
-  loadingQuestion=true;const name=s.name;
-  try{const data=await api("/api/question?name="+encodeURIComponent(name));if(active===name)setQuestion(name,data.question)}
-  catch(e){/* Questions are an optional shortcut; the key row still works. */}
-  finally{loadingQuestion=false}
-}
-function setQuestion(name,data){
-  const same=question.name===name&&JSON.stringify(question.data)===JSON.stringify(data);
-  if(same)return;
-  const keepExpanded=question.name===name&&question.data?.id===data?.id;
-  const saved=data?answerDraft(answerKey(name,data.id)):null;
-  question={name,data,expanded:keepExpanded&&question.expanded,busy:null,
-    textIndex:saved?saved.index:keepExpanded?question.textIndex:null,textDraft:saved?saved.text:keepExpanded?question.textDraft:""};
-  renderQuestion();
-}
-const answerKey=(name,id)=>selectedDeck+"/"+name+"/"+id;
-function saveQuestionDraft(){
-  if(question.data)saveAnswerDraft(answerKey(question.name,question.data.id),{index:question.textIndex,text:question.textDraft});
-}
-function renderQuestion(){
-  const data=question.name===active?question.data:null;
-  // The card's own buttons answer; the 1/2/3 keys would only repeat them on a short screen.
-  document.body.classList.toggle("has-question",Boolean(data));
-  // Typing an answer must not be wiped by the 2.5 s refresh, so an open text field pauses re-rendering.
-  // Only while the card is still this question: its buttons answer the one known now, not the one drawn.
-  const card=data?question.name+"\n"+data.id:"";
-  if($("question").querySelector(".q-text textarea:focus")&&questionCard===card)return;
-  questionCard=card;
-  renderQuestionCard({box:$("question"),question:data,expanded:question.expanded,busyIndex:question.busy,textIndex:question.textIndex,textDraft:question.textDraft||"",translate:tr,
-    onTextInput:value=>{question.textDraft=value;saveQuestionDraft()},
-    onToggle:()=>{question.expanded=!question.expanded;renderQuestion()},onAnswer:answerQuestion,
-    // Focus inside the tap itself: iOS opens the keyboard only for a user gesture, and a
-    // refocus on every refresh would pop the keyboard back after the user dismissed it.
-    onTextOption:index=>{question.textIndex=question.textIndex===index?null:index;renderQuestion();$("question").querySelector(".q-text textarea")?.focus()},
-    onSubmitText:(index,text)=>answerQuestion(index,text)});
-}
-async function answerQuestion(index,text){
-  const name=active,data=question.data;
-  if(!data||question.busy!==null||panelUpdating)return;
-  question.busy=index;$("question").querySelector(".q-text textarea")?.blur();renderQuestion();
-  try{
-    await api("/api/answer",text===undefined?{name,id:data.id,index}:{name,id:data.id,index,text});
-    saveAnswerDraft(answerKey(name,data.id),null);
-    sendStates.set(name,{text:tr("Ответ отправлен: {0}",[text===undefined?data.options[index].label:text.slice(0,80)]),phase:"success"});
-    question={name,data:null,expanded:false,busy:null,textIndex:null};
-  }catch(e){toast(e.message);question.busy=null}
-  renderQuestion();renderSendState();await load();loadQuestion();
-}
 async function post(path,body,ask){
   if(panelUpdating){toast(tr("Панель обновляется. Дождитесь завершения."));return false}
   if(ask&&!await confirmAction(ask.title,ask))return false;
@@ -665,26 +615,34 @@ watchFileDrops(window);
 
 let sending=false;
 const sendStates=new Map();
+// "Sent", "Files attached": read for a few seconds, then the limits line comes back in their place.
+const CONFIRMATION_MS=4000;
+function confirmationSeen(status){
+  if(!status)return true;
+  if(status.phase!=="success")return false;
+  if(!status.until){status.until=Date.now()+CONFIRMATION_MS;setTimeout(renderSendState,CONFIRMATION_MS+50)}
+  return Date.now()>=status.until;
+}
 function renderSendState(){
   const status=sendStates.get(active),d=$("send_state"),shown=d.dataset.line;
   delete d.dataset.line;  // Set again only while the limits are what is shown.
-  const session=cur();
+  const session=cur(),settled=confirmationSeen(status);
   if(isLocal(session)&&!session.running){d.textContent=agentLabel(session)+tr(" не запущен")}
-  else if(isLocal(session)&&(!status||status.phase==="success")){
+  else if(isLocal(session)&&settled){
     const profile=lmData.profiles.find(p=>p.id===session.source.profile);
     if(profile){
       const metrics=localUsage({...profile,activity:(profile.activity||[]).filter(a=>!a.binding||a.binding===session.source.binding),performance:profile.measurements?.session?.[session.source.model]||profile.performance});
       d.replaceChildren(el("span","composer-model",shortModel(session.source.model)),metrics);
     }else d.textContent=shortModel(session.source.model);
   }else{
-    const line=session&&(!status||status.phase==="success")?sessionStatus(session):null;
+    const line=session&&settled?sessionStatus(session):null;
     // The status is live for screen readers; re-rendering identical text every second would be re-announced.
     if(line){if(shown!==line.outerHTML)d.replaceChildren(line);d.dataset.line=line.outerHTML;fitQuotas()}
     else d.textContent=status?status.text:(isMobile()?tr("Enter ↵ · ↑ отправить"):tr("Enter отправить · ⇧Enter ↵"));
   }
   d.classList.toggle("error",Boolean(status&&status.error));
   d.classList.toggle("pending",Boolean(status&&status.phase==="pending"));
-  d.classList.toggle("success",Boolean(status&&status.phase==="success"));
+  d.classList.toggle("success",Boolean(status&&status.phase==="success"&&!settled));
 }
 async function send(){
   const t=$("msg");if(sending||uploading||panelUpdating||!active||(!t.value.trim()&&!attachmentsFor(active).length))return;
@@ -832,83 +790,14 @@ async function checkGithubFoot(force){
 }
 async function loadUsage(){if(document.hidden)return;try{usageData=await api("/api/usage");keepShown(deckLocalStorage,selectedDeck,"usage",usageData)}catch(e){}integReady.usage=true;renderInteg()}
 
-function fmtReset(ts){
-  if(!ts)return"";
-  const ms=ts*1000-Date.now();if(ms<=0)return tr("сбрасывается…");
-  const m=Math.round(ms/60000),d=new Date(ts*1000);
-  const rel=m<60?tr("{0} мин",[m]):m<1440?tr("{0} ч {1} мин",[Math.floor(m/60),m%60]):tr("{0} д {1} ч",[Math.floor(m/1440),Math.floor(m%1440/60)]);
-  const hm=d.toLocaleTimeString(DATE_LOCALE,{hour:"2-digit",minute:"2-digit"});
-  const abs=m<1440&&d.getDate()===new Date().getDate()?hm:d.toLocaleDateString(DATE_LOCALE,{weekday:"short",day:"numeric",month:"short"})+" "+hm;
-  return tr("сброс через {0} · {1}",[rel,abs]);
-}
-function compactDuration(minutes){
-  const days=Math.floor(minutes/1440),hours=Math.floor(minutes%1440/60);
-  return days?tr("{0}д {1}ч",[days,hours]):hours?tr("{0}ч {1}м",[hours,minutes%60]):tr("{0}м",[minutes]);
-}
-const QUOTA_OF={claude:"claude",codex:"codex","claude-kimi":"kimi",kimi:"kimi"};
-// Days while days are left, then hours: the line holds every subscription, so each gets a few characters.
-function shortReset(ts){
-  const minutes=Math.max(0,Math.round((ts*1000-Date.now())/60000));
-  return "↻ "+(minutes>=1440?tr("{0}д",[Math.round(minutes/1440)]):minutes>=60?tr("{0}ч",[Math.round(minutes/60)]):tr("{0}м",[minutes]));
-}
-function quotaItem(name,w,used){
-  const percent=Number.isFinite(w.percent)?Math.round(Math.max(0,Math.min(100,100-w.percent))):null,plan=plannedRemaining(w,now());
-  const item=el("span","quota-item"+(used?" on":""),agentIcon({agent:name}),
-    el("span","quota-percent "+quotaTone(percent,plan),percent===null?"—":percent+"%"),el("span","quota-plan",plan===null?"—":plan+"%"),
-    el("span","quota-reset",w.resets_at?shortReset(w.resets_at):"↻ —"));
-  item.title=AGENTS[name].label+" · "+tr(w.label||"")+" · "+tr("Остаток")+" / "+tr("По плану к концу текущих суток лимита")+" · "+fmtReset(w.resets_at)+(usageData[name].stale?" · "+tr("⚠ данные устарели"):"");
-  item.setAttribute("role","img");item.setAttribute("aria-label",item.title+": "+item.textContent);
-  return item;
-}
-// Under the message field: what is left of every subscription, the one this session spends standing out.
-function sessionStatus(session){
-  const used=QUOTA_OF[agentOf(session)];
-  const items=["claude","codex","kimi"].map(name=>[name,primaryQuota(usageData[name])]).filter(([,w])=>w).map(([name,w])=>quotaItem(name,w,name===used));
-  if(!items.length)return null;
-  const more=el("button","quota-more","…");more.type="button";more.hidden=true;more.title=tr("Все лимиты");more.setAttribute("aria-label",more.title);
-  more.onclick=()=>{quotaOpen=!quotaOpen;fitQuotas()};
-  return el("span","session-status",...items,more);
-}
-// A narrow screen keeps the limits that fit in one line and a button for the rest.
-let quotaOpen=false;
 // The room changes without the window: the sidebar folds, the project panel docks, the keyboard closes.
 if(window.ResizeObserver)new ResizeObserver(()=>fitQuotas()).observe($("send_state").parentElement);
 else addEventListener("resize",()=>fitQuotas());
-function fitQuotas(){
-  const line=$("send_state").querySelector(".session-status"),more=line?.querySelector(".quota-more");
-  if(!more||!line.getClientRects().length)return;  // A hidden line has no widths to go by.
-  const items=[...line.querySelectorAll(".quota-item")];
-  for(const item of items)item.hidden=false;
-  more.hidden=false;line.classList.toggle("open",quotaOpen);more.setAttribute("aria-expanded",String(quotaOpen));
-  const gap=parseFloat(getComputedStyle(line).columnGap)||0,widths=items.map(item=>item.offsetWidth);
-  const kept=quotaFit(widths,gap,$("send_state").parentElement.clientWidth,more.offsetWidth,items.findIndex(item=>item.classList.contains("on")));
-  more.hidden=kept.length===items.length;
-  if(more.hidden)quotaOpen=false;
-  if(!quotaOpen)items.forEach((item,index)=>{item.hidden=!kept.includes(index)});
-}
 let hubSignature="";
 function renderInteg(){
   renderSendState();
   const signature=JSON.stringify([lastAg,ghLogin,telegramConfig,lmData.profiles,panelVersion]);
   if($("settings_dlg").open&&signature!==hubSignature&&!$("settings_dlg").contains(document.activeElement)){hubSignature=signature;renderHub()}
-}
-// The speed of a local model, shown under the message field of a session that runs on it.
-function localUsage(profile){
-  const activity=profile.activity||[],live=activity[0],sample=profile.performance||{};
-  const labels={waiting:"Ожидание первого токена",thinking:"Модель рассуждает",tool:"Готовит вызов инструмента",generating:"Генерирует ответ"};
-  const line=el("div","local-live-line");
-  const seconds=Math.floor(live?.request_time_seconds||0),elapsed=Math.floor(seconds/60)+":"+String(seconds%60).padStart(2,"0");
-  const state=el("span","local-state",live?(live.phase==="waiting"?"◌ TTFT "+elapsed:(live.phase==="tool"?"⚙ ":"✦ ")+elapsed+(live.chunks?" · "+live.chunks+" Δ":"")):"✓ "+(Number.isFinite(sample.output_tokens)?sample.output_tokens+" tok":"—"));
-  state.title=live?tr(labels[live.phase]||labels.waiting):(lmMetrics(sample)||tr("Нет замеров"));
-  if(live)state.classList.add("local-active");
-  line.append(state);
-  const m=Number.isFinite(live?.tokens_per_second)?live:sample;
-  const exact=Number.isFinite(m.tokens_per_second),average=!exact&&m.output_tokens>0&&m.request_time_seconds>0;
-  const rate=exact?m.tokens_per_second:average?m.output_tokens/m.request_time_seconds:null;
-  const speed=el("span","local-rate",rate===null?"— tok/s":(average?"≈":"")+rate.toFixed(1)+" tok/s"+(average?tr(" сред."):""));
-  speed.title=(m===sample?tr("Последний ответ")+" · ":"")+(average?tr("Средняя скорость с учётом ожидания"):"tok/s");
-  line.append(speed);
-  return line;
 }
 hubInit();
 async function saveProjectDirectory(){
@@ -1214,54 +1103,6 @@ function renderAdvanced(){
 }
 $("n_git").addEventListener("input",renderAdvanced);
 
-/* ⌥1..9 — табы, ⌥↑/⌥↓ — пред./след., ⌥T — новая, ⌥K — быстрый переход (работает и внутри терминала) */
-function hotkeys(e){
-  if(!e.altKey&&!e.ctrlKey&&!e.metaKey&&(answerByDigit(e)||screenKey(e)))return;
-  // Ctrl+K is kill-line in a shell (and in Mac text fields), so inside the terminal only Alt+K opens the
-  // switcher, and a Mac uses Cmd+K.
-  const commandKey=/Mac|iPhone|iPad/.test(navigator.platform||"")?e.metaKey&&!e.ctrlKey:e.ctrlKey&&!e.metaKey;
-  if(commandKey&&!e.altKey&&!e.shiftKey&&e.code==="KeyK"&&e.target?.ownerDocument===document){e.preventDefault();e.stopPropagation();openPalette();return}
-  if(!e.altKey||e.ctrlKey||e.metaKey)return;
-  // An open dialog belongs to the session under it: a shortcut must not put another one there.
-  if(document.querySelector("dialog[open]:not(.docked)"))return;
-  const vis=[...$("tabs").querySelectorAll(".tab:not(.remote)")].map(t=>t.dataset.session);
-  let target=null;
-  if(/^Digit[1-9]$/.test(e.code)&&!e.shiftKey){
-    // Non-US Mac layouts type [ ] { } | etc. with Option+digit; keep those characters.
-    if(/^[!-\/:-@\[-`{-~]$/.test(e.key))return;
-    target=vis[+e.code.slice(5)-1];
-  }
-  else if(e.code==="ArrowUp"||e.code==="ArrowDown"){const i=vis.indexOf(active);target=vis[(i+(e.code==="ArrowUp"?-1:1)+vis.length)%vis.length]}
-  else if(e.code==="KeyT"){e.preventDefault();e.stopPropagation();openNew();return}
-  else if(e.code==="KeyK"){
-    if(/^[^\x00-\x7f]$/.test(e.key))return;  // Option+K types "˚" on a Mac; that keeps working, Cmd+K opens the switcher there.
-    e.preventDefault();e.stopPropagation();openPalette();return;
-  }
-  else return;
-  e.preventDefault();e.stopPropagation();if(target)select(target);
-}
-// The text screen has no terminal to type into, so the keys an agent's menu needs (digits, arrows, Enter,
-// Esc, Tab) go to the session, like the on-screen keys, while nothing else has the focus.
-const SCREEN_KEYS={Enter:"Enter",Escape:"Escape",Tab:"Tab",ArrowUp:"Up",ArrowDown:"Down",ArrowLeft:"Left",ArrowRight:"Right"};
-function screenKey(e){
-  if(e.isComposing||!cur()||curMode()!=="screen")return false;
-  const focus=document.activeElement;
-  if(focus&&focus!==document.body&&!$("pre_wrap").contains(focus))return false;
-  if(document.querySelector("dialog[open]:not(.docked)")||$("sheet").classList.contains("on")||!$("search_pop").hidden||!$("viewer").hidden)return false;
-  const digit=/^(Digit|Numpad)[1-9]$/.test(e.code)&&!e.shiftKey?e.code.slice(-1):"";
-  const name=digit||(e.key==="Tab"&&e.shiftKey?"BTab":e.shiftKey?"":SCREEN_KEYS[e.key]);
-  if(!name)return false;
-  e.preventDefault();e.stopPropagation();key(name);return true;
-}
-// The numbers on a question card's options answer it, as they would in the terminal, unless you are typing.
-function answerByDigit(e){
-  const data=question.name===active?question.data:null,target=e.target;
-  if(!data||!/^Digit[1-9]$/.test(e.code)||question.busy!==null||document.querySelector("dialog[open]:not(.docked)"))return false;
-  if(target&&(target.closest?.("input,textarea,select,[contenteditable]")||target.tagName==="IFRAME"))return false;
-  const index=+e.code.slice(5)-1,option=data.options[index];
-  if(!option||option.text)return false;
-  e.preventDefault();e.stopPropagation();answerQuestion(index);return true;
-}
 addEventListener("keydown",hotkeys,true);
 // Wide layouts can fold the sidebar away for more room; remembered in this browser.
 function toggleSidebar(){

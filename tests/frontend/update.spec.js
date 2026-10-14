@@ -20,7 +20,7 @@ test('mobile release update runs once, shows progress and preserves drafts on re
   await page.locator('#image_files').setInputFiles({ name: 'saved.png', mimeType: 'image/png', buffer: PNG });
   await expect(page.locator('#attachments')).toContainText('saved.png');
   await page.evaluate(() => sheet(true));
-  await page.locator('#sheet').getByRole('button', { name: 'Обновить до v0.2.0', exact: true }).click();
+  await page.locator('#sheet').getByRole('menuitem', { name: 'Обновить до v0.2.0', exact: true }).click();
   await expect.poll(() => app.updates.length).toBe(1);
   await expect(page.locator('#b_send')).toBeDisabled();
   await page.evaluate(() => startPanelUpdate());
@@ -35,7 +35,7 @@ test('mobile release update runs once, shows progress and preserves drafts on re
   app.version.job = { phase: 'done', version: '0.2.0', message: 'Панель обновлена' };
   app.revision = 'updated-interface';
   await page.evaluate(() => loadVersion());
-  await expect(page.locator('#s_update')).toContainText('перезагрузить интерфейс');
+  await expect(page.locator('#s_update')).toContainText('Перезагрузить страницу');
   await page.locator('#s_update').click();
   await expect.poll(() => app.navigations).toBe(2);
   await expect(page.locator('#msg')).toHaveValue('Unsent draft');

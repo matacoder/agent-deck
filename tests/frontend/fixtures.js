@@ -31,7 +31,16 @@ function session(name, overrides = {}) {
 const test = base.extend({
   app: async ({ page }, use) => {
     const errors = [];
-    page.on('pageerror', error => {errors.push(error.message); console.error(error.stack)});
+    // WebKit reports a fetch that a reload or redirect cancels as a page error ("... due to access
+    // control checks."), although the page's own code catches it; only those right after leaving a page are ignored.
+    let documents = 0, leftAt = -Infinity;
+    page.on('request', request => {
+      if (request.isNavigationRequest() && request.frame() === page.mainFrame() && ++documents > 1) leftAt = Date.now();
+    });
+    page.on('pageerror', error => {
+      if (/due to access control checks\.$/.test(error.message) && Date.now() - leftAt < 3000) return;
+      errors.push(error.message); console.error(error.stack);
+    });
     const app = {
       page, language:'ru', catalogs, sessions: [session('tmux'), session('other', { activity: 2 }), session('shell', { agent: 'shell', command: 'bash' })],
       metrics: { cpu_percent: 24, memory_used: 3221225472, memory_total: 8589934592 }, metricsError: false,

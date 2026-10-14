@@ -29,10 +29,18 @@ def image_type(data):
     return None
 
 
+PATH_CHAR = r'[\w.~/-]'
+
+
 def visible(path, screen):
-    """Agents and terminals hard-wrap long paths, so compare without any whitespace."""
+    """The whole path stands on screen, not the end of a longer one: "/a/x.png" is not in "docs/a/x.png".
+    Agents and terminals hard-wrap long paths, so any whitespace may stand between its characters."""
     needle = re.sub(r'\s+', '', path)
-    return bool(needle) and needle in re.sub(r'\s+', '', screen)
+    if not needle:
+        return False
+    pattern = r'\s*'.join(map(re.escape, needle))
+    # A full stop after the path ends the sentence; one followed by more of a name continues the path.
+    return re.search(rf'(?<!{PATH_CHAR}){pattern}(?![\w~/-]|\.[\w/])', screen) is not None
 
 
 def resolve(path, cwd, home):

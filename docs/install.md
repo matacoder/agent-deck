@@ -90,6 +90,9 @@ Tailscale, connect it and rerun the installer; it selects the Mac’s Tailscale 
 automatically. The panel starts when you log in to your Mac, runs as your user and uses a separate
 `agent-deck` tmux server, preserving your `.tmux.conf`. A sleeping Mac cannot run agents or serve the
 panel. Settings/password: `~/.config/cc-panel/macos.json`; logs: `~/Library/Logs/Agent Deck/`.
+The panel runs from a virtualenv in `~/.local/share/agent-deck/venv`, created without pip and with no
+packages in it, only so the background services keep one interpreter path; processor and memory figures
+come from macOS's own `ps`, `sysctl` and `vm_stat`.
 
 Stop autostart without deleting sessions or settings:
 
@@ -190,11 +193,17 @@ git clone https://github.com/matacoder/deckaway.git ~/agent-deck && ~/agent-deck
 
 The script prints the address and password. Useful options (add before the command):
 `AGENT_DECK_BIND=0.0.0.0` to reach the panel from your home network, `AGENT_DECK_PROJECTS=~/Projects`
-to let agents work in a folder of this machine. Update by pulling and running the script again:
+to let agents work in a folder of this machine. Update by running the script again; it first updates
+its checkout (`git pull --ff-only`, stopping on local changes or a diverged branch; `AGENT_DECK_NO_PULL=1`
+builds the checkout as it is):
 
 ```bash
-cd ~/agent-deck && git pull && ./install-steamos.sh
+~/agent-deck/install-steamos.sh
 ```
+
+The running image is kept as `localhost/agent-deck:previous` during an update: if the new one does not
+answer, the previous image is put back and started again, and the script says so. After a successful
+update, the DeckAway image from the update before is removed; no other image is touched.
 
 The panel starts with your session (also in Gaming Mode). A Steam Deck sleeps when idle and pauses the
 agents with it; a Steam Machine is meant to stay on. Agents work inside the container, in its `~/dev` or
@@ -213,7 +222,7 @@ Hindi. [Adding another language](localization.md) only requires a JSON catalog.
 **Encryption components.** Backups and notifications use the
 [`cryptography`](https://cryptography.io) library. The installer (or the panel itself, later) downloads
 the exact wheels pinned in `integrations/dependency_lock.py`, checks each SHA-256 and keeps them in
-`~/.local/share/agent-deck/python/`; no pip, virtualenv or root is involved. Without internet access the
+`~/.local/share/agent-deck/python/`; no pip or root is involved, and nothing is installed into a virtualenv. Without internet access the
 panel works normally and retries the download every 10 minutes; only backups and notifications wait.
 
 ## Update

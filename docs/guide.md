@@ -386,3 +386,7 @@ The panel gives a shell to whoever logs in. On Ubuntu it runs as the dedicated u
 user (with rootless Docker); on macOS it runs as your logged-in Mac user. Keep the password private, and prefer the default Tailscale-only setup unless you need public
 access. Answering in the local network is a separate switch per computer, off by default: there the
 connection is not encrypted.
+
+A sign-in lasts 90 days. Logging out ends that browser's sign-in at once, also any copy of its cookie;
+other devices stay signed in. Changing the password ends every sign-in. The login page never shows the
+account name.

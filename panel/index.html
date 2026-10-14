@@ -38,6 +38,8 @@ button:disabled{cursor:default}
 button:focus-visible,[role=button]:focus-visible,summary:focus-visible,a:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
 input,textarea,select{font:inherit}
 [hidden]{display:none!important}
+/* A plain terminal has no agent to attach files to, restart or read a conversation of. */
+body.is-shell .agent-only{display:none!important}
 .ui-icon{display:block;width:var(--icon-md);height:var(--icon-md);flex:none;fill:none;stroke:currentColor;stroke-width:var(--icon-stroke);stroke-linecap:round;stroke-linejoin:round}
 .m-only{display:none!important}
 #app{display:flex;height:var(--app-h)}
@@ -66,6 +68,9 @@ aside{position:relative;width:min(var(--side-w,248px),40vw);flex:none;background
 #srv .deck-count{margin-left:0}
 /* With computers connected the selector already names this one. */
 .srv-row:has(.deck-switch:not([hidden])) :is(.hn,.deck-count){display:none}.srv-row:has(.deck-switch:not([hidden])) #srv{flex:none}
+/* A narrow sidebar or phone drawer: the computer's name in the selector matters more than its flag. */
+.srv-row{container-type:inline-size}
+@container (max-width:300px){.srv-row:has(.deck-switch:not([hidden])) #srv{display:none}.deck-switch{margin-left:0}}
 .side-top{display:flex;gap:6px;padding:8px 8px 0}.side-top[hidden]{display:none}
 .search{flex:1;min-width:0;background:var(--bg);border:1px solid var(--bd);border-radius:var(--r-sm);color:var(--fg);padding:6px 9px;outline:none}
 .search:focus{border-color:var(--acc)}
@@ -118,7 +123,10 @@ aside{position:relative;width:min(var(--side-w,248px),40vw);flex:none;background
 .quota-percent.over{color:var(--warn)}.quota-percent.crit{color:var(--bad-text)}
 .quota-reset{white-space:nowrap;color:var(--mut)}
 /* Every subscription in one line under the message field; the one this session spends is at full strength. */
-.quota-item{display:inline-flex;align-items:baseline;gap:6px;opacity:.55}.quota-item.on{opacity:1}
+/* The one this session spends is brighter and bold; the others stay readable (no opacity over muted text). */
+.quota-item{display:inline-flex;align-items:baseline;gap:6px}
+.quota-item:not(.on) .quota-percent{font-weight:400}.quota-item:not(.on) .quota-percent.good{color:var(--fg)}
+.quota-item:not(.on) .ag{opacity:.6}
 .quota-item .ag{align-self:center}.quota-plan{color:var(--mut)}.quota-item .quota-reset{margin-left:2px;color:var(--dim)}
 .quota-item .ag{width:14px;height:14px;font-size:14px}
 .good{color:var(--ok)}.dim{color:var(--dim)}
@@ -200,9 +208,10 @@ iframe[inert]{pointer-events:none}
 .img-thumb{flex:none;display:block;height:120px;max-width:240px;padding:0;border:1px solid var(--bd);border-radius:8px;overflow:hidden;background:var(--side2);cursor:zoom-in}
 .img-thumb img{display:block;height:100%;width:auto;max-width:240px;object-fit:cover}
 @media (hover:hover){.img-thumb:hover{border-color:var(--bd-hover)}}
-.viewer{position:fixed;inset:0;z-index:70;display:grid;place-items:center;background:rgba(10,10,12,.94);padding:calc(var(--sat) + 56px) 12px calc(var(--sab) + 64px)}
+/* Flex, not grid: a grid row sizes to the picture, so a tall screenshot ignored max-height and ran off the screen. */
+.viewer{position:fixed;inset:0;z-index:70;display:flex;align-items:center;justify-content:center;background:rgba(10,10,12,.94);padding:calc(var(--sat) + 56px) 12px calc(var(--sab) + 64px)}
 .viewer[hidden]{display:none}
-.viewer img{max-width:100%;max-height:100%;object-fit:contain;border-radius:6px;box-shadow:0 10px 40px #000a;touch-action:pinch-zoom;background:#fff1}
+.viewer img{flex:none;width:auto;height:auto;max-width:min(100%,calc(100vw - 24px));max-height:min(100%,calc(var(--app-h) - var(--sat) - var(--sab) - 120px));object-fit:contain;border-radius:6px;box-shadow:0 10px 40px #000a;touch-action:pinch-zoom;background:#fff1}
 .viewer-close{position:absolute;top:calc(var(--sat) + 10px);right:12px;display:grid;place-items:center;width:var(--tap);height:var(--tap);border-radius:50%;background:#ffffff1a;color:#fff}
 .viewer-close svg,.viewer-step svg{width:20px;height:20px}
 .viewer-step{position:absolute;top:50%;display:grid;place-items:center;width:var(--tap);height:var(--tap);margin-top:-22px;border-radius:50%;background:#ffffff1a;color:#fff}
@@ -505,7 +514,8 @@ dialog:focus,dialog:focus-visible{outline:none}
 .hub-card label{display:block;font-size:12px;color:var(--mut);margin:12px 0 6px}
 .hub-card label.toggle,.hub-card label.integration-toggle{display:flex;margin:0;font-size:13px;color:var(--fg2)}
 .hub-card input:not([type=checkbox]):not([type=radio]){width:100%}
-.hub-card select{width:100%;min-width:0;margin:12px 0 0}
+/* WebKit counts a long option text past the box as page width: the settings scrolled sideways on an iPhone. */
+.hub-card select{width:100%;min-width:0;max-width:100%;margin:12px 0 0;overflow:hidden;text-overflow:ellipsis}
 .hub-card .acts{padding:12px 0 0;margin-top:12px;flex-wrap:wrap}
 .hub-card details{margin-top:10px}
 .hub-card summary{font-size:12.5px;color:var(--mut);padding:10px 0;cursor:pointer}
@@ -822,7 +832,7 @@ body.resizing iframe{pointer-events:none}
   body.drawer #scrim{display:block}
   .deck-switch select{font-size:16px;min-height:var(--tap)}
   .deck-switch button{height:var(--tap)}
-  .srv-row{height:auto;padding:6px 8px 6px 14px}#srv{font-size:13px}#srv .fl{font-size:16px}
+  .srv-row{height:auto;gap:0;padding:6px 4px 6px 10px}#srv{font-size:13px}#srv .fl{font-size:16px}
   .side-top{padding:8px 12px 0}
   .search{font-size:16px;padding:9px 12px;border-radius:var(--r)}
   .iconbtn{min-width:var(--tap);height:var(--tap);border-radius:var(--r)}
@@ -1231,20 +1241,21 @@ body.resizing iframe{pointer-events:none}
 <div id="sheet"><div class="scrim" onclick="sheet(false)"></div><div class="panel" role="menu" aria-labelledby="sheetCap">
   <div class="cap" id="sheetCap"></div>
   <div class="sheet-group" id="s_session">
-    <button class="agent-only" onclick="sheet(false);restart('new')"><svg class="ui-icon"><use href="#i-chat-plus"/></svg><span>Перезапустить — новый разговор</span></button>
-    <button class="agent-only" onclick="sheet(false);restart('continue')"><svg class="ui-icon"><use href="#i-restart"/></svg><span>Перезапустить — продолжить разговор</span></button>
-    <button class="agent-only" onclick="sheet(false);openConversation()"><svg class="ui-icon"><use href="#i-chat"/></svg><span>Разговор</span></button>
-    <button id="s_paste" onclick="sheet(false);openRichPaste()"><svg class="ui-icon"><use href="#i-image"/></svg><span>Вставить с картинками</span></button>
-    <button id="s_later" onclick="sheet(false);openLater()"><svg class="ui-icon"><use href="#i-clock"/></svg><span id="s_later_label">Отправить позже</span></button>
-    <button onclick="sheet(false);duplicateSession()"><svg class="ui-icon"><use href="#i-copy"/></svg><span>Дублировать сессию — новый разговор</span></button>
+    <button role="menuitem" class="agent-only" onclick="sheet(false);restart('new')"><svg class="ui-icon"><use href="#i-chat-plus"/></svg><span>Перезапустить — новый разговор</span></button>
+    <button role="menuitem" class="agent-only" onclick="sheet(false);restart('continue')"><svg class="ui-icon"><use href="#i-restart"/></svg><span>Перезапустить — продолжить разговор</span></button>
+    <button role="menuitem" class="agent-only" onclick="sheet(false);openConversation()"><svg class="ui-icon"><use href="#i-chat"/></svg><span>Разговор</span></button>
+    <button role="menuitem" id="s_paste" onclick="sheet(false);openRichPaste()"><svg class="ui-icon"><use href="#i-image"/></svg><span>Вставить с картинками</span></button>
+    <button role="menuitem" id="s_later" onclick="sheet(false);openLater()"><svg class="ui-icon"><use href="#i-clock"/></svg><span id="s_later_label">Отправить позже</span></button>
+    <button role="menuitem" onclick="sheet(false);duplicateSession()"><svg class="ui-icon"><use href="#i-copy"/></svg><span>Дублировать сессию — новый разговор</span></button>
   </div>
   <div class="sheet-group" id="s_manage">
-    <button onclick="sheet(false);openRename()"><svg class="ui-icon"><use href="#i-pencil"/></svg><span>Переименовать сессию</span></button>
-    <button class="dng" onclick="sheet(false);kill()"><svg class="ui-icon"><use href="#i-x"/></svg><span>Закрыть сессию</span></button>
+    <button role="menuitem" onclick="sheet(false);openRename()"><svg class="ui-icon"><use href="#i-pencil"/></svg><span>Переименовать сессию</span></button>
+    <button role="menuitem" class="dng" onclick="sheet(false);kill()"><svg class="ui-icon"><use href="#i-x"/></svg><span>Закрыть сессию</span></button>
   </div>
   <div class="sheet-group" id="s_app">
-    <button id="s_update" onclick="updatePanel()" style="display:none"><svg class="ui-icon"><use href="#i-download"/></svg><span id="s_update_label"></span></button>
-    <button id="s_drafts" onclick="showClosedDrafts()" style="display:none"><svg class="ui-icon"><use href="#i-file"/></svg><span>Черновики закрытых сессий</span></button>
+    <button role="menuitem" id="s_update" onclick="updatePanel()" style="display:none"><svg class="ui-icon"><use href="#i-download"/></svg><span id="s_update_label"></span></button>
+    <button role="menuitem" id="s_drafts" onclick="showClosedDrafts()" style="display:none"><svg class="ui-icon"><use href="#i-file"/></svg><span>Черновики закрытых сессий</span></button>
+    <button role="menuitem" id="s_help" onclick="sheet(false);openHelp()" hidden><svg class="ui-icon"><use href="#i-help"/></svg><span>Как это работает</span></button>
   </div>
 </div><button class="sheet-cancel" onclick="sheet(false)">Отмена</button></div>
 <div id="toast" role="status" aria-live="polite"></div>
@@ -1732,6 +1743,60 @@ function askConfirm(dialog,{title,text="",confirm,danger=false}){
 }
 
 if(typeof module!=="undefined")module.exports={svgIcon,renderQuestionCard,askConfirm,answerDraft,saveAnswerDraft};
+
+// The open session's question: fetched with the screen, drawn as a card, answered by its buttons.
+let question={name:null,data:null,expanded:false,busy:null,textIndex:null},loadingQuestion=false,questionCard="";
+async function loadQuestion(){
+  const s=cur();
+  if(!s||agentOf(s)==="shell"||!s.running){if(question.data)setQuestion(s?.name||null,null);return}
+  if(loadingQuestion||question.busy!==null||document.hidden)return;
+  loadingQuestion=true;const name=s.name;
+  try{const data=await api("/api/question?name="+encodeURIComponent(name));if(active===name)setQuestion(name,data.question)}
+  catch(e){/* Questions are an optional shortcut; the key row still works. */}
+  finally{loadingQuestion=false}
+}
+function setQuestion(name,data){
+  const same=question.name===name&&JSON.stringify(question.data)===JSON.stringify(data);
+  if(same)return;
+  const keepExpanded=question.name===name&&question.data?.id===data?.id;
+  const saved=data?answerDraft(answerKey(name,data.id)):null;
+  question={name,data,expanded:keepExpanded&&question.expanded,busy:null,
+    textIndex:saved?saved.index:keepExpanded?question.textIndex:null,textDraft:saved?saved.text:keepExpanded?question.textDraft:""};
+  renderQuestion();
+}
+const answerKey=(name,id)=>selectedDeck+"/"+name+"/"+id;
+function saveQuestionDraft(){
+  if(question.data)saveAnswerDraft(answerKey(question.name,question.data.id),{index:question.textIndex,text:question.textDraft});
+}
+function renderQuestion(){
+  const data=question.name===active?question.data:null;
+  // The card's own buttons answer; the 1/2/3 keys would only repeat them on a short screen.
+  document.body.classList.toggle("has-question",Boolean(data));
+  // Typing an answer must not be wiped by the 2.5 s refresh, so an open text field pauses re-rendering.
+  // Only while the card is still this question: its buttons answer the one known now, not the one drawn.
+  const card=data?question.name+"\n"+data.id:"";
+  if($("question").querySelector(".q-text textarea:focus")&&questionCard===card)return;
+  questionCard=card;
+  renderQuestionCard({box:$("question"),question:data,expanded:question.expanded,busyIndex:question.busy,textIndex:question.textIndex,textDraft:question.textDraft||"",translate:tr,
+    onTextInput:value=>{question.textDraft=value;saveQuestionDraft()},
+    onToggle:()=>{question.expanded=!question.expanded;renderQuestion()},onAnswer:answerQuestion,
+    // Focus inside the tap itself: iOS opens the keyboard only for a user gesture, and a
+    // refocus on every refresh would pop the keyboard back after the user dismissed it.
+    onTextOption:index=>{question.textIndex=question.textIndex===index?null:index;renderQuestion();$("question").querySelector(".q-text textarea")?.focus()},
+    onSubmitText:(index,text)=>answerQuestion(index,text)});
+}
+async function answerQuestion(index,text){
+  const name=active,data=question.data;
+  if(!data||question.busy!==null||panelUpdating)return;
+  question.busy=index;$("question").querySelector(".q-text textarea")?.blur();renderQuestion();
+  try{
+    await api("/api/answer",text===undefined?{name,id:data.id,index}:{name,id:data.id,index,text});
+    saveAnswerDraft(answerKey(name,data.id),null);
+    sendStates.set(name,{text:tr("Ответ отправлен: {0}",[text===undefined?data.options[index].label:text.slice(0,80)]),phase:"success"});
+    question={name,data:null,expanded:false,busy:null,textIndex:null};
+  }catch(e){toast(e.message);question.busy=null}
+  renderQuestion();renderSendState();await load();loadQuestion();
+}
 let backupStatus=null,backupSources=new Map();
 
 function formatBackupTime(seconds,locale){
@@ -3300,6 +3365,126 @@ function renderContext(context,started){
   box.title=hint;box.setAttribute("aria-label",hint);
 }
 if(typeof document!=="undefined")document.addEventListener("visibilitychange",()=>{if(!document.hidden&&sessionInfo.session)loadSessionInfo()});
+/* The limits line under the message field: what is left of every subscription, the one this session spends
+standing out, and a local model's speed for a session that runs on one. Functions and plain state only: the
+listener that refits the line is in app.js, which defines $. */
+function fmtReset(ts){
+  if(!ts)return"";
+  const ms=ts*1000-Date.now();if(ms<=0)return tr("сбрасывается…");
+  const m=Math.round(ms/60000),d=new Date(ts*1000);
+  const rel=m<60?tr("{0} мин",[m]):m<1440?tr("{0} ч {1} мин",[Math.floor(m/60),m%60]):tr("{0} д {1} ч",[Math.floor(m/1440),Math.floor(m%1440/60)]);
+  const hm=d.toLocaleTimeString(DATE_LOCALE,{hour:"2-digit",minute:"2-digit"});
+  const abs=m<1440&&d.getDate()===new Date().getDate()?hm:d.toLocaleDateString(DATE_LOCALE,{weekday:"short",day:"numeric",month:"short"})+" "+hm;
+  return tr("сброс через {0} · {1}",[rel,abs]);
+}
+function compactDuration(minutes){
+  const days=Math.floor(minutes/1440),hours=Math.floor(minutes%1440/60);
+  return days?tr("{0}д {1}ч",[days,hours]):hours?tr("{0}ч {1}м",[hours,minutes%60]):tr("{0}м",[minutes]);
+}
+const QUOTA_OF={claude:"claude",codex:"codex","claude-kimi":"kimi",kimi:"kimi"};
+// Days while days are left, then hours: the line holds every subscription, so each gets a few characters.
+function shortReset(ts){
+  const minutes=Math.max(0,Math.round((ts*1000-Date.now())/60000));
+  return "↻ "+(minutes>=1440?tr("{0}д",[Math.round(minutes/1440)]):minutes>=60?tr("{0}ч",[Math.round(minutes/60)]):tr("{0}м",[minutes]));
+}
+function quotaItem(name,w,used){
+  const percent=Number.isFinite(w.percent)?Math.round(Math.max(0,Math.min(100,100-w.percent))):null,plan=plannedRemaining(w,now());
+  const item=el("span","quota-item"+(used?" on":""),agentIcon({agent:name}),
+    el("span","quota-percent "+quotaTone(percent,plan),percent===null?"—":percent+"%"),el("span","quota-plan",plan===null?"—":plan+"%"),
+    el("span","quota-reset",w.resets_at?shortReset(w.resets_at):"↻ —"));
+  item.title=AGENTS[name].label+" · "+tr(w.label||"")+" · "+tr("Остаток")+" / "+tr("По плану к концу текущих суток лимита")+" · "+fmtReset(w.resets_at)+(usageData[name].stale?" · "+tr("⚠ данные устарели"):"");
+  item.setAttribute("role","img");item.setAttribute("aria-label",item.title+": "+item.textContent);
+  return item;
+}
+// Under the message field: what is left of every subscription, the one this session spends standing out.
+function sessionStatus(session){
+  const used=QUOTA_OF[agentOf(session)];
+  const items=["claude","codex","kimi"].map(name=>[name,primaryQuota(usageData[name])]).filter(([,w])=>w).map(([name,w])=>quotaItem(name,w,name===used));
+  if(!items.length)return null;
+  const more=el("button","quota-more","…");more.type="button";more.hidden=true;more.title=tr("Все лимиты");more.setAttribute("aria-label",more.title);
+  more.onclick=()=>{quotaOpen=!quotaOpen;fitQuotas()};
+  return el("span","session-status",...items,more);
+}
+// A narrow screen keeps the limits that fit in one line and a button for the rest.
+let quotaOpen=false;
+function fitQuotas(){
+  const line=$("send_state").querySelector(".session-status"),more=line?.querySelector(".quota-more");
+  if(!more||!line.getClientRects().length)return;  // A hidden line has no widths to go by.
+  const items=[...line.querySelectorAll(".quota-item")];
+  for(const item of items)item.hidden=false;
+  more.hidden=false;line.classList.toggle("open",quotaOpen);more.setAttribute("aria-expanded",String(quotaOpen));
+  const gap=parseFloat(getComputedStyle(line).columnGap)||0,widths=items.map(item=>item.offsetWidth);
+  const kept=quotaFit(widths,gap,$("send_state").parentElement.clientWidth,more.offsetWidth,items.findIndex(item=>item.classList.contains("on")));
+  more.hidden=kept.length===items.length;
+  if(more.hidden)quotaOpen=false;
+  if(!quotaOpen)items.forEach((item,index)=>{item.hidden=!kept.includes(index)});
+}
+// The speed of a local model, shown under the message field of a session that runs on it.
+function localUsage(profile){
+  const activity=profile.activity||[],live=activity[0],sample=profile.performance||{};
+  const labels={waiting:"Ожидание первого токена",thinking:"Модель рассуждает",tool:"Готовит вызов инструмента",generating:"Генерирует ответ"};
+  const line=el("div","local-live-line");
+  const seconds=Math.floor(live?.request_time_seconds||0),elapsed=Math.floor(seconds/60)+":"+String(seconds%60).padStart(2,"0");
+  const state=el("span","local-state",live?(live.phase==="waiting"?"◌ TTFT "+elapsed:(live.phase==="tool"?"⚙ ":"✦ ")+elapsed+(live.chunks?" · "+live.chunks+" Δ":"")):"✓ "+(Number.isFinite(sample.output_tokens)?sample.output_tokens+" tok":"—"));
+  state.title=live?tr(labels[live.phase]||labels.waiting):(lmMetrics(sample)||tr("Нет замеров"));
+  if(live)state.classList.add("local-active");
+  line.append(state);
+  const m=Number.isFinite(live?.tokens_per_second)?live:sample;
+  const exact=Number.isFinite(m.tokens_per_second),average=!exact&&m.output_tokens>0&&m.request_time_seconds>0;
+  const rate=exact?m.tokens_per_second:average?m.output_tokens/m.request_time_seconds:null;
+  const speed=el("span","local-rate",rate===null?"— tok/s":(average?"≈":"")+rate.toFixed(1)+" tok/s"+(average?tr(" сред."):""));
+  speed.title=(m===sample?tr("Последний ответ")+" · ":"")+(average?tr("Средняя скорость с учётом ожидания"):"tok/s");
+  line.append(speed);
+  return line;
+}
+/* ⌥1..9 — табы, ⌥↑/⌥↓ — пред./след., ⌥T — новая, ⌥K — быстрый переход (работает и внутри терминала) */
+function hotkeys(e){
+  if(!e.altKey&&!e.ctrlKey&&!e.metaKey&&(answerByDigit(e)||screenKey(e)))return;
+  // Ctrl+K is kill-line in a shell (and in Mac text fields), so inside the terminal only Alt+K opens the
+  // switcher, and a Mac uses Cmd+K.
+  const commandKey=/Mac|iPhone|iPad/.test(navigator.platform||"")?e.metaKey&&!e.ctrlKey:e.ctrlKey&&!e.metaKey;
+  if(commandKey&&!e.altKey&&!e.shiftKey&&e.code==="KeyK"&&e.target?.ownerDocument===document){e.preventDefault();e.stopPropagation();openPalette();return}
+  if(!e.altKey||e.ctrlKey||e.metaKey)return;
+  // An open dialog belongs to the session under it: a shortcut must not put another one there.
+  if(document.querySelector("dialog[open]:not(.docked)"))return;
+  const vis=[...$("tabs").querySelectorAll(".tab:not(.remote)")].map(t=>t.dataset.session);
+  let target=null;
+  if(/^Digit[1-9]$/.test(e.code)&&!e.shiftKey){
+    // Non-US Mac layouts type [ ] { } | etc. with Option+digit; keep those characters.
+    if(/^[!-\/:-@\[-`{-~]$/.test(e.key))return;
+    target=vis[+e.code.slice(5)-1];
+  }
+  else if(e.code==="ArrowUp"||e.code==="ArrowDown"){const i=vis.indexOf(active);target=vis[(i+(e.code==="ArrowUp"?-1:1)+vis.length)%vis.length]}
+  else if(e.code==="KeyT"){e.preventDefault();e.stopPropagation();openNew();return}
+  else if(e.code==="KeyK"){
+    if(/^[^\x00-\x7f]$/.test(e.key))return;  // Option+K types "˚" on a Mac; that keeps working, Cmd+K opens the switcher there.
+    e.preventDefault();e.stopPropagation();openPalette();return;
+  }
+  else return;
+  e.preventDefault();e.stopPropagation();if(target)select(target);
+}
+// The text screen has no terminal to type into, so the keys an agent's menu needs (digits, arrows, Enter,
+// Esc, Tab) go to the session, like the on-screen keys, while nothing else has the focus.
+const SCREEN_KEYS={Enter:"Enter",Escape:"Escape",Tab:"Tab",ArrowUp:"Up",ArrowDown:"Down",ArrowLeft:"Left",ArrowRight:"Right"};
+function screenKey(e){
+  if(e.isComposing||!cur()||curMode()!=="screen")return false;
+  const focus=document.activeElement;
+  if(focus&&focus!==document.body&&!$("pre_wrap").contains(focus))return false;
+  if(document.querySelector("dialog[open]:not(.docked)")||$("sheet").classList.contains("on")||!$("search_pop").hidden||!$("viewer").hidden)return false;
+  const digit=/^(Digit|Numpad)[1-9]$/.test(e.code)&&!e.shiftKey?e.code.slice(-1):"";
+  const name=digit||(e.key==="Tab"&&e.shiftKey?"BTab":e.shiftKey?"":SCREEN_KEYS[e.key]);
+  if(!name)return false;
+  e.preventDefault();e.stopPropagation();key(name);return true;
+}
+// The numbers on a question card's options answer it, as they would in the terminal, unless you are typing.
+function answerByDigit(e){
+  const data=question.name===active?question.data:null,target=e.target;
+  if(!data||!/^Digit[1-9]$/.test(e.code)||question.busy!==null||document.querySelector("dialog[open]:not(.docked)"))return false;
+  if(target&&(target.closest?.("input,textarea,select,[contenteditable]")||target.tagName==="IFRAME"))return false;
+  const index=+e.code.slice(5)-1,option=data.options[index];
+  if(!option||option.text)return false;
+  e.preventDefault();e.stopPropagation();answerQuestion(index);return true;
+}
 // Sending without typing or waiting: quick prompts (one tap), prompts held for later (a time, a free
 // session, a limit reset) and continuing by itself after a subscription limit. Bundled before app.js.
 const later={session:null,data:null,seq:0,timer:null,failed:false,opened:null};
@@ -5373,8 +5558,10 @@ function sheet(on){
     panel.style.setProperty("--sheet-right",Math.max(8,Math.round(innerWidth-anchor.right))+"px");
     $("sheetCap").textContent=s?sessionTitle(s):"DeckAway";
     $("s_session").hidden=$("s_manage").hidden=!s;
-    // Update and closed drafts appear only when there is something to do; an empty group would be a stray line.
-    $("s_app").hidden=$("s_update").style.display==="none"&&$("s_drafts").style.display==="none";
+    // A phone has no help button in the bar: it is here. Update and closed drafts appear only when there is
+    // something to do; an empty group would be a stray line.
+    $("s_help").hidden=!isMobile();
+    $("s_app").hidden=$("s_help").hidden&&$("s_update").style.display==="none"&&$("s_drafts").style.display==="none";
   }
   const wasOpen=$("sheet").classList.contains("on");
   $("sheet").classList.toggle("on",on);
@@ -5626,58 +5813,6 @@ async function loadSessions(){
     loadQuestion();
   }catch(e){if(e.offline)setConnection("offline");else toast(e.message)}
 }
-let question={name:null,data:null,expanded:false,busy:null,textIndex:null},loadingQuestion=false,questionCard="";
-async function loadQuestion(){
-  const s=cur();
-  if(!s||agentOf(s)==="shell"||!s.running){if(question.data)setQuestion(s?.name||null,null);return}
-  if(loadingQuestion||question.busy!==null||document.hidden)return;
-  loadingQuestion=true;const name=s.name;
-  try{const data=await api("/api/question?name="+encodeURIComponent(name));if(active===name)setQuestion(name,data.question)}
-  catch(e){/* Questions are an optional shortcut; the key row still works. */}
-  finally{loadingQuestion=false}
-}
-function setQuestion(name,data){
-  const same=question.name===name&&JSON.stringify(question.data)===JSON.stringify(data);
-  if(same)return;
-  const keepExpanded=question.name===name&&question.data?.id===data?.id;
-  const saved=data?answerDraft(answerKey(name,data.id)):null;
-  question={name,data,expanded:keepExpanded&&question.expanded,busy:null,
-    textIndex:saved?saved.index:keepExpanded?question.textIndex:null,textDraft:saved?saved.text:keepExpanded?question.textDraft:""};
-  renderQuestion();
-}
-const answerKey=(name,id)=>selectedDeck+"/"+name+"/"+id;
-function saveQuestionDraft(){
-  if(question.data)saveAnswerDraft(answerKey(question.name,question.data.id),{index:question.textIndex,text:question.textDraft});
-}
-function renderQuestion(){
-  const data=question.name===active?question.data:null;
-  // The card's own buttons answer; the 1/2/3 keys would only repeat them on a short screen.
-  document.body.classList.toggle("has-question",Boolean(data));
-  // Typing an answer must not be wiped by the 2.5 s refresh, so an open text field pauses re-rendering.
-  // Only while the card is still this question: its buttons answer the one known now, not the one drawn.
-  const card=data?question.name+"\n"+data.id:"";
-  if($("question").querySelector(".q-text textarea:focus")&&questionCard===card)return;
-  questionCard=card;
-  renderQuestionCard({box:$("question"),question:data,expanded:question.expanded,busyIndex:question.busy,textIndex:question.textIndex,textDraft:question.textDraft||"",translate:tr,
-    onTextInput:value=>{question.textDraft=value;saveQuestionDraft()},
-    onToggle:()=>{question.expanded=!question.expanded;renderQuestion()},onAnswer:answerQuestion,
-    // Focus inside the tap itself: iOS opens the keyboard only for a user gesture, and a
-    // refocus on every refresh would pop the keyboard back after the user dismissed it.
-    onTextOption:index=>{question.textIndex=question.textIndex===index?null:index;renderQuestion();$("question").querySelector(".q-text textarea")?.focus()},
-    onSubmitText:(index,text)=>answerQuestion(index,text)});
-}
-async function answerQuestion(index,text){
-  const name=active,data=question.data;
-  if(!data||question.busy!==null||panelUpdating)return;
-  question.busy=index;$("question").querySelector(".q-text textarea")?.blur();renderQuestion();
-  try{
-    await api("/api/answer",text===undefined?{name,id:data.id,index}:{name,id:data.id,index,text});
-    saveAnswerDraft(answerKey(name,data.id),null);
-    sendStates.set(name,{text:tr("Ответ отправлен: {0}",[text===undefined?data.options[index].label:text.slice(0,80)]),phase:"success"});
-    question={name,data:null,expanded:false,busy:null,textIndex:null};
-  }catch(e){toast(e.message);question.busy=null}
-  renderQuestion();renderSendState();await load();loadQuestion();
-}
 async function post(path,body,ask){
   if(panelUpdating){toast(tr("Панель обновляется. Дождитесь завершения."));return false}
   if(ask&&!await confirmAction(ask.title,ask))return false;
@@ -5813,26 +5948,34 @@ watchFileDrops(window);
 
 let sending=false;
 const sendStates=new Map();
+// "Sent", "Files attached": read for a few seconds, then the limits line comes back in their place.
+const CONFIRMATION_MS=4000;
+function confirmationSeen(status){
+  if(!status)return true;
+  if(status.phase!=="success")return false;
+  if(!status.until){status.until=Date.now()+CONFIRMATION_MS;setTimeout(renderSendState,CONFIRMATION_MS+50)}
+  return Date.now()>=status.until;
+}
 function renderSendState(){
   const status=sendStates.get(active),d=$("send_state"),shown=d.dataset.line;
   delete d.dataset.line;  // Set again only while the limits are what is shown.
-  const session=cur();
+  const session=cur(),settled=confirmationSeen(status);
   if(isLocal(session)&&!session.running){d.textContent=agentLabel(session)+tr(" не запущен")}
-  else if(isLocal(session)&&(!status||status.phase==="success")){
+  else if(isLocal(session)&&settled){
     const profile=lmData.profiles.find(p=>p.id===session.source.profile);
     if(profile){
       const metrics=localUsage({...profile,activity:(profile.activity||[]).filter(a=>!a.binding||a.binding===session.source.binding),performance:profile.measurements?.session?.[session.source.model]||profile.performance});
       d.replaceChildren(el("span","composer-model",shortModel(session.source.model)),metrics);
     }else d.textContent=shortModel(session.source.model);
   }else{
-    const line=session&&(!status||status.phase==="success")?sessionStatus(session):null;
+    const line=session&&settled?sessionStatus(session):null;
     // The status is live for screen readers; re-rendering identical text every second would be re-announced.
     if(line){if(shown!==line.outerHTML)d.replaceChildren(line);d.dataset.line=line.outerHTML;fitQuotas()}
     else d.textContent=status?status.text:(isMobile()?tr("Enter ↵ · ↑ отправить"):tr("Enter отправить · ⇧Enter ↵"));
   }
   d.classList.toggle("error",Boolean(status&&status.error));
   d.classList.toggle("pending",Boolean(status&&status.phase==="pending"));
-  d.classList.toggle("success",Boolean(status&&status.phase==="success"));
+  d.classList.toggle("success",Boolean(status&&status.phase==="success"&&!settled));
 }
 async function send(){
   const t=$("msg");if(sending||uploading||panelUpdating||!active||(!t.value.trim()&&!attachmentsFor(active).length))return;
@@ -5980,83 +6123,14 @@ async function checkGithubFoot(force){
 }
 async function loadUsage(){if(document.hidden)return;try{usageData=await api("/api/usage");keepShown(deckLocalStorage,selectedDeck,"usage",usageData)}catch(e){}integReady.usage=true;renderInteg()}
 
-function fmtReset(ts){
-  if(!ts)return"";
-  const ms=ts*1000-Date.now();if(ms<=0)return tr("сбрасывается…");
-  const m=Math.round(ms/60000),d=new Date(ts*1000);
-  const rel=m<60?tr("{0} мин",[m]):m<1440?tr("{0} ч {1} мин",[Math.floor(m/60),m%60]):tr("{0} д {1} ч",[Math.floor(m/1440),Math.floor(m%1440/60)]);
-  const hm=d.toLocaleTimeString(DATE_LOCALE,{hour:"2-digit",minute:"2-digit"});
-  const abs=m<1440&&d.getDate()===new Date().getDate()?hm:d.toLocaleDateString(DATE_LOCALE,{weekday:"short",day:"numeric",month:"short"})+" "+hm;
-  return tr("сброс через {0} · {1}",[rel,abs]);
-}
-function compactDuration(minutes){
-  const days=Math.floor(minutes/1440),hours=Math.floor(minutes%1440/60);
-  return days?tr("{0}д {1}ч",[days,hours]):hours?tr("{0}ч {1}м",[hours,minutes%60]):tr("{0}м",[minutes]);
-}
-const QUOTA_OF={claude:"claude",codex:"codex","claude-kimi":"kimi",kimi:"kimi"};
-// Days while days are left, then hours: the line holds every subscription, so each gets a few characters.
-function shortReset(ts){
-  const minutes=Math.max(0,Math.round((ts*1000-Date.now())/60000));
-  return "↻ "+(minutes>=1440?tr("{0}д",[Math.round(minutes/1440)]):minutes>=60?tr("{0}ч",[Math.round(minutes/60)]):tr("{0}м",[minutes]));
-}
-function quotaItem(name,w,used){
-  const percent=Number.isFinite(w.percent)?Math.round(Math.max(0,Math.min(100,100-w.percent))):null,plan=plannedRemaining(w,now());
-  const item=el("span","quota-item"+(used?" on":""),agentIcon({agent:name}),
-    el("span","quota-percent "+quotaTone(percent,plan),percent===null?"—":percent+"%"),el("span","quota-plan",plan===null?"—":plan+"%"),
-    el("span","quota-reset",w.resets_at?shortReset(w.resets_at):"↻ —"));
-  item.title=AGENTS[name].label+" · "+tr(w.label||"")+" · "+tr("Остаток")+" / "+tr("По плану к концу текущих суток лимита")+" · "+fmtReset(w.resets_at)+(usageData[name].stale?" · "+tr("⚠ данные устарели"):"");
-  item.setAttribute("role","img");item.setAttribute("aria-label",item.title+": "+item.textContent);
-  return item;
-}
-// Under the message field: what is left of every subscription, the one this session spends standing out.
-function sessionStatus(session){
-  const used=QUOTA_OF[agentOf(session)];
-  const items=["claude","codex","kimi"].map(name=>[name,primaryQuota(usageData[name])]).filter(([,w])=>w).map(([name,w])=>quotaItem(name,w,name===used));
-  if(!items.length)return null;
-  const more=el("button","quota-more","…");more.type="button";more.hidden=true;more.title=tr("Все лимиты");more.setAttribute("aria-label",more.title);
-  more.onclick=()=>{quotaOpen=!quotaOpen;fitQuotas()};
-  return el("span","session-status",...items,more);
-}
-// A narrow screen keeps the limits that fit in one line and a button for the rest.
-let quotaOpen=false;
 // The room changes without the window: the sidebar folds, the project panel docks, the keyboard closes.
 if(window.ResizeObserver)new ResizeObserver(()=>fitQuotas()).observe($("send_state").parentElement);
 else addEventListener("resize",()=>fitQuotas());
-function fitQuotas(){
-  const line=$("send_state").querySelector(".session-status"),more=line?.querySelector(".quota-more");
-  if(!more||!line.getClientRects().length)return;  // A hidden line has no widths to go by.
-  const items=[...line.querySelectorAll(".quota-item")];
-  for(const item of items)item.hidden=false;
-  more.hidden=false;line.classList.toggle("open",quotaOpen);more.setAttribute("aria-expanded",String(quotaOpen));
-  const gap=parseFloat(getComputedStyle(line).columnGap)||0,widths=items.map(item=>item.offsetWidth);
-  const kept=quotaFit(widths,gap,$("send_state").parentElement.clientWidth,more.offsetWidth,items.findIndex(item=>item.classList.contains("on")));
-  more.hidden=kept.length===items.length;
-  if(more.hidden)quotaOpen=false;
-  if(!quotaOpen)items.forEach((item,index)=>{item.hidden=!kept.includes(index)});
-}
 let hubSignature="";
 function renderInteg(){
   renderSendState();
   const signature=JSON.stringify([lastAg,ghLogin,telegramConfig,lmData.profiles,panelVersion]);
   if($("settings_dlg").open&&signature!==hubSignature&&!$("settings_dlg").contains(document.activeElement)){hubSignature=signature;renderHub()}
-}
-// The speed of a local model, shown under the message field of a session that runs on it.
-function localUsage(profile){
-  const activity=profile.activity||[],live=activity[0],sample=profile.performance||{};
-  const labels={waiting:"Ожидание первого токена",thinking:"Модель рассуждает",tool:"Готовит вызов инструмента",generating:"Генерирует ответ"};
-  const line=el("div","local-live-line");
-  const seconds=Math.floor(live?.request_time_seconds||0),elapsed=Math.floor(seconds/60)+":"+String(seconds%60).padStart(2,"0");
-  const state=el("span","local-state",live?(live.phase==="waiting"?"◌ TTFT "+elapsed:(live.phase==="tool"?"⚙ ":"✦ ")+elapsed+(live.chunks?" · "+live.chunks+" Δ":"")):"✓ "+(Number.isFinite(sample.output_tokens)?sample.output_tokens+" tok":"—"));
-  state.title=live?tr(labels[live.phase]||labels.waiting):(lmMetrics(sample)||tr("Нет замеров"));
-  if(live)state.classList.add("local-active");
-  line.append(state);
-  const m=Number.isFinite(live?.tokens_per_second)?live:sample;
-  const exact=Number.isFinite(m.tokens_per_second),average=!exact&&m.output_tokens>0&&m.request_time_seconds>0;
-  const rate=exact?m.tokens_per_second:average?m.output_tokens/m.request_time_seconds:null;
-  const speed=el("span","local-rate",rate===null?"— tok/s":(average?"≈":"")+rate.toFixed(1)+" tok/s"+(average?tr(" сред."):""));
-  speed.title=(m===sample?tr("Последний ответ")+" · ":"")+(average?tr("Средняя скорость с учётом ожидания"):"tok/s");
-  line.append(speed);
-  return line;
 }
 hubInit();
 async function saveProjectDirectory(){
@@ -6362,54 +6436,6 @@ function renderAdvanced(){
 }
 $("n_git").addEventListener("input",renderAdvanced);
 
-/* ⌥1..9 — табы, ⌥↑/⌥↓ — пред./след., ⌥T — новая, ⌥K — быстрый переход (работает и внутри терминала) */
-function hotkeys(e){
-  if(!e.altKey&&!e.ctrlKey&&!e.metaKey&&(answerByDigit(e)||screenKey(e)))return;
-  // Ctrl+K is kill-line in a shell (and in Mac text fields), so inside the terminal only Alt+K opens the
-  // switcher, and a Mac uses Cmd+K.
-  const commandKey=/Mac|iPhone|iPad/.test(navigator.platform||"")?e.metaKey&&!e.ctrlKey:e.ctrlKey&&!e.metaKey;
-  if(commandKey&&!e.altKey&&!e.shiftKey&&e.code==="KeyK"&&e.target?.ownerDocument===document){e.preventDefault();e.stopPropagation();openPalette();return}
-  if(!e.altKey||e.ctrlKey||e.metaKey)return;
-  // An open dialog belongs to the session under it: a shortcut must not put another one there.
-  if(document.querySelector("dialog[open]:not(.docked)"))return;
-  const vis=[...$("tabs").querySelectorAll(".tab:not(.remote)")].map(t=>t.dataset.session);
-  let target=null;
-  if(/^Digit[1-9]$/.test(e.code)&&!e.shiftKey){
-    // Non-US Mac layouts type [ ] { } | etc. with Option+digit; keep those characters.
-    if(/^[!-\/:-@\[-`{-~]$/.test(e.key))return;
-    target=vis[+e.code.slice(5)-1];
-  }
-  else if(e.code==="ArrowUp"||e.code==="ArrowDown"){const i=vis.indexOf(active);target=vis[(i+(e.code==="ArrowUp"?-1:1)+vis.length)%vis.length]}
-  else if(e.code==="KeyT"){e.preventDefault();e.stopPropagation();openNew();return}
-  else if(e.code==="KeyK"){
-    if(/^[^\x00-\x7f]$/.test(e.key))return;  // Option+K types "˚" on a Mac; that keeps working, Cmd+K opens the switcher there.
-    e.preventDefault();e.stopPropagation();openPalette();return;
-  }
-  else return;
-  e.preventDefault();e.stopPropagation();if(target)select(target);
-}
-// The text screen has no terminal to type into, so the keys an agent's menu needs (digits, arrows, Enter,
-// Esc, Tab) go to the session, like the on-screen keys, while nothing else has the focus.
-const SCREEN_KEYS={Enter:"Enter",Escape:"Escape",Tab:"Tab",ArrowUp:"Up",ArrowDown:"Down",ArrowLeft:"Left",ArrowRight:"Right"};
-function screenKey(e){
-  if(e.isComposing||!cur()||curMode()!=="screen")return false;
-  const focus=document.activeElement;
-  if(focus&&focus!==document.body&&!$("pre_wrap").contains(focus))return false;
-  if(document.querySelector("dialog[open]:not(.docked)")||$("sheet").classList.contains("on")||!$("search_pop").hidden||!$("viewer").hidden)return false;
-  const digit=/^(Digit|Numpad)[1-9]$/.test(e.code)&&!e.shiftKey?e.code.slice(-1):"";
-  const name=digit||(e.key==="Tab"&&e.shiftKey?"BTab":e.shiftKey?"":SCREEN_KEYS[e.key]);
-  if(!name)return false;
-  e.preventDefault();e.stopPropagation();key(name);return true;
-}
-// The numbers on a question card's options answer it, as they would in the terminal, unless you are typing.
-function answerByDigit(e){
-  const data=question.name===active?question.data:null,target=e.target;
-  if(!data||!/^Digit[1-9]$/.test(e.code)||question.busy!==null||document.querySelector("dialog[open]:not(.docked)"))return false;
-  if(target&&(target.closest?.("input,textarea,select,[contenteditable]")||target.tagName==="IFRAME"))return false;
-  const index=+e.code.slice(5)-1,option=data.options[index];
-  if(!option||option.text)return false;
-  e.preventDefault();e.stopPropagation();answerQuestion(index);return true;
-}
 addEventListener("keydown",hotkeys,true);
 // Wide layouts can fold the sidebar away for more room; remembered in this browser.
 function toggleSidebar(){

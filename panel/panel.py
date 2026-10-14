@@ -109,6 +109,8 @@ except ModuleNotFoundError:
     LMStudio = None
 
 from integrations.names import unique_name
+from integrations import macos_metrics
+from integrations.sign_outs import SignOuts
 from integrations.decks import RemoteDecks, UnavailableDecks, remote_path, terminal_query_ok
 from integrations.preferences import ProjectDirectory, NetworkSettings
 project_directory = ProjectDirectory(os.path.expanduser('~'), PROJECTS)
@@ -335,7 +337,9 @@ def mac_server_metrics(result):
         memory = psutil.virtual_memory()
         result.update(cpu_percent=metrics_cpu_percent, memory_total=memory.total,
                       memory_used=max(0, min(memory.total, memory.total - memory.available)))
-    except (ImportError, OSError):
+    except ImportError:
+        return macos_metrics.add(result)
+    except OSError:
         pass
     return result
 
@@ -352,14 +356,46 @@ def _cookie_key():
 
 
 COOKIE_KEY = _cookie_key()
+sign_outs = SignOuts(os.path.expanduser("~/.config/cc-panel/sign-outs.json"))
 failed_logins = {}  # ip -> (count, last_ts), reservations include in-flight attempts
 login_lock = threading.Lock()
 input_locks = {}
 input_locks_lock = threading.Lock()
 
 
+def reserve_login(ip):
+    """One attempt counted before the request body is read (it may arrive slowly): 5 a minute per address,
+    100 a minute in all. False when the limit is reached."""
+    with login_lock:
+        now = time.time()
+        for old_ip, (_, timestamp) in list(failed_logins.items()):
+            if now - timestamp >= 60:
+                failed_logins.pop(old_ip, None)
+        count, _ = failed_logins.get(ip, (0, 0))
+        if count >= 5 or sum(value[0] for value in failed_logins.values()) >= 100:
+            return False
+        failed_logins[ip] = (count + 1, now)
+        return True
+
+
+def release_login(ip):
+    """A successful attempt gives its place back; reservations of concurrent requests stay."""
+    with login_lock:
+        count, last = failed_logins.get(ip, (1, time.time()))
+        if count <= 1:
+            failed_logins.pop(ip, None)
+        else:
+            failed_logins[ip] = (count - 1, last)
+
+
+last_expiry = [0]
+
+
 def make_token():
-    exp = str(int(time.time()) + COOKIE_DAYS * 86400)
+    # Each sign-in gets its own expiry second, so that logging out ends only that one cookie.
+    with login_lock:
+        last_expiry[0] = max(int(time.time()) + COOKIE_DAYS * 86400, last_expiry[0] + 1)
+        exp = str(last_expiry[0])
     sig = hmac.new(COOKIE_KEY, exp.encode(), hashlib.sha256).hexdigest()
     return f"{exp}.{sig}"
 
@@ -369,7 +405,14 @@ def token_valid(token):
     # Cookie bytes arrive as latin-1; compare_digest refuses non-ASCII text with a TypeError (a 500).
     if not exp.isdigit() or len(exp) > 12 or int(exp) < time.time() or not re.fullmatch(r"[0-9a-f]{64}", sig):
         return False
-    return hmac.compare_digest(sig, hmac.new(COOKIE_KEY, exp.encode(), hashlib.sha256).hexdigest())
+    return (hmac.compare_digest(sig, hmac.new(COOKIE_KEY, exp.encode(), hashlib.sha256).hexdigest())
+            and not sign_outs.ended_token(token))
+
+
+def end_sign_in(token):
+    """Logging out ends this cookie everywhere it was copied; other devices stay signed in."""
+    if token_valid(token):
+        sign_outs.end(token, int(token.partition(".")[0]))
 
 # Isolated remote terminals (Settings -> Network): a connected computer's ttyd page is served under a
 # signed capability path with `CSP: sandbox`, so its scripts run in an opaque origin and cannot reach
@@ -478,8 +521,8 @@ def list_sessions(preview_name=None):
             if model := session_model(agent, sid):
                 item["model"] = model
             preview_ansi = tmux("capture-pane", "-p", "-e", "-J", "-t", f"={sname}:", "-S", "-2000", check=False)
-            preview = re.sub(r"\x1b\[[0-?]*[ -/]*[@-~]", "", preview_ansi).rstrip().splitlines()
-            item.update(preview="\n".join(preview[-2000:]), preview_ansi=preview_ansi)
+            # Only the coloured copy: every page since 0.1.0 reads it first, and a plain one doubled each answer.
+            item.update(preview_ansi=preview_ansi)
         result.append(item)
     return sorted(result, key=lambda s: (s["group"], s["name"]))
 
@@ -725,20 +768,28 @@ def create_session(name, path, agent, skip, sid=None, command=None, source=None)
 
 
 session_creation_lock = threading.Lock()
+creating_names = set()  # Names taken by sessions still being made, under session_creation_lock.
 
 
 def action_new(d):
-    with session_creation_lock:
-        return _action_new(d)
-
-
-def _action_new(d):
     name, agent = d.get("name", ""), d.get("agent") or "claude"
     if not isinstance(name, str) or not NAME_RE.fullmatch(name):
         raise ValueError("имя сессии: латиница, цифры, - и _, до 32 символов")
     if agent not in AGENTS:
         raise ValueError("неизвестный агент")
-    name = unique_name(name, session_exists, 32)
+    # The name is reserved under the lock, the rest runs outside it: a clone can take minutes, and other
+    # new sessions and renames must not wait for it.
+    with session_creation_lock:
+        name = unique_name(name, lambda value: value in creating_names or session_exists(value), 32)
+        creating_names.add(name)
+    try:
+        return _action_new(d, name, agent)
+    finally:
+        with session_creation_lock:
+            creating_names.discard(name)
+
+
+def _action_new(d, name, agent):
     path = resolve_path(d, name)
     skip = bool(d.get("skip")) and agent not in ("shell", "pi")
     sid = str(uuid.uuid4()) if agent in (*CLAUDE_FAMILY, "pi") or cli_agents.keeps_id(agent) else None
@@ -771,7 +822,7 @@ def action_rename(d):
     if not isinstance(title, str) or not title.strip() or len(title) > 100 or not title.isprintable():
         raise ValueError('Invalid session title')
     with session_creation_lock:
-        used = {(s.get('title') or s['name']).casefold() for s in list_sessions() if s['name'] != name}
+        used = {(s.get('title') or s['name']).casefold() for s in list_sessions() if s['name'] != name} | {n.casefold() for n in creating_names}
         title = unique_name(title.strip(), lambda value: value.casefold() in used, 100)
         tmux('set-option', '-t', f'={PREFIX}{name}:', '@cc_title', title)
     return {'name': name, 'title': title}
@@ -1425,7 +1476,7 @@ def scan_questions():
         with lock:
             # Notifications, Telegram and the inbox show the name the user gave the session.
             label = session.get('title') or session['name']
-            structured = pending_questions(session['name'])
+            structured = pending_questions(session['name'], session['agent'], session.get('sid'))
             if structured:
                 result.extend(dataclasses.replace(q, label=label) for q in structured)
                 continue
@@ -1487,9 +1538,14 @@ def session_model(agent, sid):
         return None
 
 
-def pending_questions(name):
-    agent = opt(name, '@cc_agent') or 'claude'
-    sid = opt(name, '@cc_sid')
+transcript_answers = {}  # (path, name, agent, instance) -> ((mtime, size), questions)
+transcript_answers_lock = threading.Lock()
+
+
+def pending_questions(name, agent=None, sid=None):
+    """agent and sid: as the session list just read them, so the 2 s scan does not ask tmux again."""
+    agent = agent or opt(name, '@cc_agent') or 'claude'
+    sid = sid if sid is not None else opt(name, '@cc_sid')
     if agent not in ('codex', *CLAUDE_FAMILY) or not valid_sid(sid):
         return []
     path = transcript_path(agent, sid)
@@ -1497,7 +1553,18 @@ def pending_questions(name):
         return []
     instance = tmux('display-message', '-p', '-t', f'={PREFIX}{name}:', '#{pane_id}:#{pane_pid}:#{@cc_sid}').strip()
     try:
-        return transcript_questions(path, name, agent, instance)
+        # The tail of a conversation file is megabytes of JSON: parsed again only when the file changed.
+        stat, key = path.stat(), (path, name, agent, instance)
+        with transcript_answers_lock:
+            kept = transcript_answers.get(key)
+        if kept and kept[0] == (stat.st_mtime_ns, stat.st_size):
+            return list(kept[1])
+        questions = transcript_questions(path, name, agent, instance)
+        with transcript_answers_lock:
+            if len(transcript_answers) > 200:
+                transcript_answers.clear()  # Ended sessions; live ones are parsed again once.
+            transcript_answers[key] = ((stat.st_mtime_ns, stat.st_size), list(questions))
+        return questions
     except (OSError, ValueError, TypeError, AttributeError, KeyError):
         return []
 
@@ -2365,12 +2432,12 @@ class Handler(BaseHTTPRequestHandler):
             return locales.render_html(page, self.language())
         return page.replace('__PANEL_I18N__', '{"language":"ru","messages":{}}')
 
-    def login_page(self, error=""):
+    def login_page(self, error="", typed=""):
         with open(os.path.join(HERE, "login.html"), encoding="utf-8") as login_file:
             html = login_file.read()
         html = self.localized_page(html)
         error = locales.translate(error, self.language()) if locales is not None else error
-        html = html.replace("{{ERROR}}", escape_html(error)).replace("{{USER}}", escape_html(PANEL_USER))
+        html = html.replace("{{ERROR}}", escape_html(error)).replace("{{USER}}", escape_html(typed[:100]))  # Never the real name: it is half of the sign-in.
         self.send_body(200 if not error else 401, html.encode(), "text/html; charset=utf-8")
 
     def do_login(self):
@@ -2385,30 +2452,16 @@ class Handler(BaseHTTPRequestHandler):
         except ValueError:
             self.close_connection = True
             return self.send_json(400, {"error": "неверный размер запроса"})
-        with login_lock:
-            now = time.time()
-            for old_ip, (_, timestamp) in list(failed_logins.items()):
-                if now - timestamp >= 60:
-                    failed_logins.pop(old_ip, None)
-            count, _ = failed_logins.get(ip, (0, 0))
-            if count >= 5 or sum(value[0] for value in failed_logins.values()) >= 100:
-                self.close_connection = True
-                return self.login_page("Слишком много попыток. Подождите минуту.")
-            # Reserve before reading a possibly delayed request body.
-            failed_logins[ip] = (count + 1, now)
+        if not reserve_login(ip):
+            self.close_connection = True
+            return self.login_page("Слишком много попыток. Подождите минуту.")
         form = parse_qs(self.read_body(length).decode("utf-8", "replace"))
         user, pwd = form.get("username", [""])[0], form.get("password", [""])[0]
         ok = hmac.compare_digest(user.encode(), PANEL_USER.encode()) & hmac.compare_digest(pwd.encode(), PANEL_PASSWORD.encode())
         if not ok:
             time.sleep(1)
-            return self.login_page("Неверный логин или пароль")
-        with login_lock:
-            # Release only this successful attempt, not reservations of concurrent requests.
-            count, last = failed_logins.get(ip, (1, time.time()))
-            if count <= 1:
-                failed_logins.pop(ip, None)
-            else:
-                failed_logins[ip] = (count - 1, last)
+            return self.login_page("Неверный логин или пароль", user if isinstance(user, str) else "")
+        release_login(ip)
         secure = "; Secure" if self.is_https() else ""
         self.redirect("/", f"{COOKIE}={make_token()}; Path=/; Max-Age={COOKIE_DAYS * 86400}; HttpOnly; SameSite=Lax{secure}")
 
@@ -2452,16 +2505,9 @@ class Handler(BaseHTTPRequestHandler):
         if not self.same_origin() or not 0 <= length <= 1000:
             self.close_connection = True
             return self.send_json(403, {'error': 'неверный источник запроса'})
-        with login_lock:
-            now = time.time()
-            for old_ip, (_, timestamp) in list(failed_logins.items()):
-                if now - timestamp >= 60:
-                    failed_logins.pop(old_ip, None)
-            count, _ = failed_logins.get(ip, (0, 0))
-            if count >= 5 or sum(value[0] for value in failed_logins.values()) >= 100:
-                self.close_connection = True
-                return self.send_json(429, {'error': 'Слишком много попыток. Подождите минуту.'})
-            failed_logins[ip] = (count + 1, now)
+        if not reserve_login(ip):
+            self.close_connection = True
+            return self.send_json(429, {'error': 'Слишком много попыток. Подождите минуту.'})
         try:
             data = json.loads(self.read_body(length))
             ok = isinstance(data, dict) and bool(accept(data))
@@ -2469,12 +2515,7 @@ class Handler(BaseHTTPRequestHandler):
             ok = False
         if not ok:
             return self.send_json(401, {'error': 'login required'})
-        with login_lock:
-            count, last = failed_logins.get(ip, (1, time.time()))
-            if count <= 1:
-                failed_logins.pop(ip, None)
-            else:
-                failed_logins[ip] = (count - 1, last)
+        release_login(ip)
         body = b'{"ok": true}'
         self.send_response(200)
         self.send_header('Content-Type', 'application/json')
@@ -2827,6 +2868,7 @@ class Handler(BaseHTTPRequestHandler):
                 # Only the signed-in owner ends the links: anyone who reaches the port can call this.
                 if token_valid(self.cookie(COOKIE)):
                     revoke_terminal_links()
+                    end_sign_in(self.cookie(COOKIE))
             except (OSError, ValueError):
                 pass  # Logging out must work even when the settings folder is read-only.
             return self.redirect("/login", f"{COOKIE}=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax")

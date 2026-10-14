@@ -295,22 +295,27 @@ if [ "$WITH_CODEX" = 1 ] && ! as_user bash -lc 'command -v codex' >/dev/null 2>&
         || say "Codex CLI could not be installed now; run the installer again later"
 fi
 
-if [ "$WITH_DOCKER" = 1 ]; then
-    say "rootless Docker"
-    apt-get install -y -q uidmap dbus-user-session slirp4netns >/dev/null
+# Optional steps that fail are reported here and again after the summary: stopping the installation at
+# this point would leave the new panel files with no service started (and a new password never shown).
+LATER=()
+warn() { say "$*"; LATER+=("$*"); }
+
+# Called with ||, where errexit is off inside the function: every step returns on its own failure.
+rootless_docker() {
+    apt-get install -y -q uidmap dbus-user-session slirp4netns >/dev/null || return 1
     if ! command -v dockerd-rootless-setuptool.sh >/dev/null; then
         if command -v dockerd >/dev/null; then
             apt-get install -y -q docker-ce-rootless-extras >/dev/null \
-                || die "Docker is installed but docker-ce-rootless-extras is unavailable; install it or use WITH_DOCKER=0"
+                || { say "Docker is installed but docker-ce-rootless-extras is unavailable"; return 1; }
         else
             # fresh box: install Docker CE, then switch the root daemon off (only the rootless one is used)
-            curl -fsSL https://get.docker.com | sh >/dev/null
-            systemctl disable --now docker.service docker.socket
+            curl -fsSL https://get.docker.com | sh >/dev/null || return 1
+            systemctl disable --now docker.service docker.socket || return 1
         fi
     fi
     if [ "$(cat /proc/sys/kernel/apparmor_restrict_unprivileged_userns 2>/dev/null)" = 1 ]; then
         # Ubuntu 24.04+: allow user namespaces for rootlesskit only (as documented by Docker)
-        cat > /etc/apparmor.d/usr.bin.rootlesskit <<'EOF'
+        cat > /etc/apparmor.d/usr.bin.rootlesskit <<'EOF' || return 1
 abi <abi/4.0>,
 include <tunables/global>
 
@@ -320,17 +325,22 @@ include <tunables/global>
   include if exists <local/usr.bin.rootlesskit>
 }
 EOF
-        apparmor_parser -r /etc/apparmor.d/usr.bin.rootlesskit
+        apparmor_parser -r /etc/apparmor.d/usr.bin.rootlesskit || return 1
     fi
-    as_user install -d "$H/.config/docker"
-    [ -f "$H/.config/docker/daemon.json" ] || echo "{\"ip\": \"$BIND_HOST\"}" | as_user tee "$H/.config/docker/daemon.json" >/dev/null
-    as_user systemctl --user is-active -q docker || as_user dockerd-rootless-setuptool.sh install
-    as_user grep -q 'DOCKER_HOST' "$H/.bashrc" || as_user tee -a "$H/.bashrc" >/dev/null <<'EOF'
+    as_user install -d "$H/.config/docker" || return 1
+    [ -f "$H/.config/docker/daemon.json" ] || echo "{\"ip\": \"$BIND_HOST\"}" | as_user tee "$H/.config/docker/daemon.json" >/dev/null || return 1
+    as_user systemctl --user is-active -q docker || as_user dockerd-rootless-setuptool.sh install || return 1
+    as_user grep -q 'DOCKER_HOST' "$H/.bashrc" || as_user tee -a "$H/.bashrc" >/dev/null <<'EOF' || return 1
 
 # rootless docker
 export XDG_RUNTIME_DIR=/run/user/$(id -u)
 export DOCKER_HOST=unix://$XDG_RUNTIME_DIR/docker.sock
 EOF
+}
+
+if [ "$WITH_DOCKER" = 1 ]; then
+    say "rootless Docker"
+    rootless_docker || warn "rootless Docker could not be set up (see the error above); the panel works without it. Fix the cause and run the installer again (sudo /opt/agent-deck/update.sh), or skip Docker with WITH_DOCKER=0"
 fi
 
 if [ -n "$MEM_MAX$CPU_QUOTA" ]; then
@@ -341,7 +351,8 @@ if [ -n "$MEM_MAX$CPU_QUOTA" ]; then
     props=(MemoryHigh=infinity CPUWeight=50)
     [ -n "$MEM_MAX" ] && props+=("MemoryMax=$MEM_MAX")
     [ -n "$CPU_QUOTA" ] && props+=("CPUQuota=$CPU_QUOTA")
-    systemctl set-property "user-$UID_.slice" "${props[@]}"
+    systemctl set-property "user-$UID_.slice" "${props[@]}" \
+        || warn "resource limits were NOT applied: systemctl set-property user-$UID_.slice failed (see the error above), so the panel's sessions run without MEM_MAX/CPU_QUOTA. Check the values and retry: sudo systemctl set-property user-$UID_.slice ${props[*]}"
 fi
 
 say "services"
@@ -428,3 +439,4 @@ else
     echo "    password: grep PANEL_PASSWORD $ENV"
 fi
 echo "    first run: sign in to your agents in Settings -> Agents, connect GitHub in Settings -> Connections"
+for note in ${LATER[@]+"${LATER[@]}"}; do echo "    not done: $note"; done

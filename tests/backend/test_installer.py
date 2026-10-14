@@ -131,6 +131,49 @@ class RootOwnershipTests(unittest.TestCase):
             self.assertEqual(protected.stat().st_mode & 0o777, 0o600)
 
 
+class OptionalStepTests(unittest.TestCase):
+    """Docker and resource limits fail without stopping the installation (the panel files are already new)."""
+
+    def run_steps(self, stubs, env):
+        source = block("install.sh", "LATER=()", '${props[*]}"\nfi\n')
+        script = ('say() { echo "$*"; }\ndie() { echo "$*" >&2; exit 1; }\ncat() { echo 0; }\n' + stubs + "\n" + source
+                  + '\necho reached\nfor note in ${LATER[@]+"${LATER[@]}"}; do echo "not done: $note"; done\n')
+        with tempfile.TemporaryDirectory() as home:
+            return subprocess.run(["bash", "-c", "set -euo pipefail\n" + script], capture_output=True, text=True,
+                                  env={**os.environ, "H": home, "UID_": "1000", "BIND_HOST": "127.0.0.1",
+                                       "MEM_MAX": "", "CPU_QUOTA": "", "WITH_DOCKER": "0", **env})
+
+    def test_failed_docker_and_limits_are_reported_and_the_installation_goes_on(self):
+        stubs = ('apt-get() { return 100; }\nsystemctl() { echo "systemctl $*" >&2; return 1; }\n'
+                 'curl() { echo "curl must not run" >&2; return 1; }\nas_user() { echo "as_user must not run" >&2; return 1; }')
+        result = self.run_steps(stubs, {"WITH_DOCKER": "1", "MEM_MAX": "8G", "CPU_QUOTA": "200%"})
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertNotIn("must not run", result.stderr)
+        lines = result.stdout.splitlines()
+        self.assertIn("reached", lines)
+        notes = [line for line in lines if line.startswith("not done: ")]
+        self.assertEqual(len(notes), 2, result.stdout)
+        self.assertIn("rootless Docker could not be set up", notes[0])
+        self.assertIn("WITH_DOCKER=0", notes[0])
+        self.assertIn("sudo systemctl set-property user-1000.slice MemoryHigh=infinity CPUWeight=50 MemoryMax=8G CPUQuota=200%",
+                      notes[1])
+
+    def test_a_docker_step_failing_midway_skips_the_rest_of_docker(self):
+        stubs = ('apt-get() { :; }\ndockerd-rootless-setuptool.sh() { :; }\n'
+                 'as_user() { case "$1" in install) return 1;; *) echo "as_user $* must not run" >&2; return 1;; esac; }')
+        result = self.run_steps(stubs, {"WITH_DOCKER": "1"})
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertNotIn("must not run", result.stderr)
+        self.assertIn("not done: rootless Docker could not be set up", result.stdout)
+
+    def test_successful_steps_leave_nothing_to_report(self):
+        stubs = ('apt-get() { :; }\ndockerd-rootless-setuptool.sh() { :; }\nsystemctl() { :; }\n'
+                 'as_user() { if [ "$1" = tee ]; then "$@" >/dev/null; else "$@"; fi; }')
+        result = self.run_steps(stubs, {"WITH_DOCKER": "1", "MEM_MAX": "8G"})
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertNotIn("not done:", result.stdout)
+
+
 class CodexInstallTests(unittest.TestCase):
     def test_codex_is_installed_without_its_start_now_question_everywhere(self):
         # The question waits for a key and stopped the Windows (WSL) installation halfway.

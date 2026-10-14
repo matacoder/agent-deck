@@ -248,6 +248,20 @@ class TelegramTests(unittest.TestCase):
         self.service.deliver()
         self.assertEqual(acquired, [True])
 
+    def test_a_slow_telegram_does_not_hold_status_or_buttons_while_a_question_is_sent(self):
+        import threading
+        self.pair()
+        free, call = [], self.api.call
+        def slow(token, method, **data):
+            if method == 'sendMessage':
+                worker = threading.Thread(target=lambda: free.append(self.service.lock.acquire(timeout=1) and self.service.lock.release() is None))
+                worker.start(); worker.join()
+            return call(token, method, **data)
+        self.api.call = slow
+        self.service.deliver()
+        self.assertEqual(free, [True])
+        self.assertEqual([row['status'] for row in self.service.database().pending()], ['sent'])  # Recorded after the call.
+
     def reply(self, row, text, user=100, chat=100):
         return {'message': {'message_id': 900, 'text': text, 'chat': {'id': chat, 'type': 'private'}, 'from': {'id': user},
                             'reply_to_message': {'message_id': row['message_id']}}}

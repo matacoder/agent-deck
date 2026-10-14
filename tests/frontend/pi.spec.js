@@ -22,12 +22,12 @@ test('Pi has an installer in settings without cloud login',async({app,page})=>{
 });
 
 
-test('settings gear stays readable with a full height click target',async({app,page})=>{
+test('settings gear in the header has the shared icon size and a full height click target',async({app,page})=>{
  await app.open({width:1280,height:900});
- const button=page.locator('.settingsbtn'),icon=button.locator('svg');
+ const button=page.locator('#b_settings'),icon=button.locator('svg');
  await expect(icon).toBeVisible();
  const mark=await icon.boundingBox(),target=await button.boundingBox();
- expect(mark.width).toBe(16);expect(mark.height).toBe(16);expect(target.height).toBeGreaterThanOrEqual(44);
+ expect(mark.width).toBe(18);expect(mark.height).toBe(18);expect(target.height).toBeGreaterThanOrEqual(44);
  await button.click();await expect(page.locator('#settings_dlg')).toBeVisible();
 });
 
@@ -38,12 +38,14 @@ test('interface icons share the same scale on desktop and phone',async({app,page
   for(const selector of ['.srv-row .iconbtn.accent svg','#b_attach svg','#b_send svg']){
    const icon=page.locator(selector);
    const size=await icon.evaluate(e=>({width:getComputedStyle(e).width,height:getComputedStyle(e).height}));
-   expect(size).toEqual({width:'18px',height:'18px'});
+   expect(size, selector).toEqual({width:'18px',height:'18px'});
   }
-  expect(await page.locator('.settingsbtn svg').evaluate(e=>getComputedStyle(e).width)).toBe('16px');
+  // The gear is drawn like the other header buttons (larger on a phone).
+  const header=await page.evaluate(()=>['b_settings','b_actions'].map(id=>getComputedStyle(document.querySelector('#'+id+' svg')).width));
+  expect(header[0]).toBe(header[1]);
   await page.evaluate(()=>openSettings('agents'));
-  const close=page.locator('.hub-heading button svg');await expect(close).toBeVisible();
+  const close=page.locator('#settings_dlg .hub-heading button svg');await expect(close).toBeVisible();
   expect(await close.evaluate(e=>getComputedStyle(e).width)).toBe('18px');
-  await page.locator('.hub-heading button').click();await expect(page.locator('#settings_dlg')).toBeHidden();
+  await page.locator('#settings_dlg .hub-heading button').click();await expect(page.locator('#settings_dlg')).toBeHidden();
  }
 });

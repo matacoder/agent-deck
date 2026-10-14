@@ -28,7 +28,7 @@ test('both Kimi session modes fit the iPhone dialog and expose correct permissio
   for(const agent of ['claude','kimi']) {
     await page.locator(`#agsel [data-a="${agent}"]`).click();
     await expect(page.locator(`#agsel [data-a="${agent}"]`)).toHaveClass('on');
-    await expect(page.locator('#n_skip_lbl')).toContainText(agent==='kimi'?'--auto':'--dangerously-skip-permissions');
+    await expect(page.locator('#n_skip_flag')).toHaveText(agent==='kimi'?'--auto':'--dangerously-skip-permissions');
   }
   expect(await page.locator('#dlg').evaluate(el => el.scrollWidth<=el.clientWidth)).toBe(true);
 });
@@ -53,7 +53,7 @@ test('Kimi compact quota shows overall monthly remainder and a calendar plan', a
     {label:'5 часов',percent:1,period:'hours',secs:18000,resets_at:Date.now()/1000+17000}
   ]};
   await app.open();
-  const row=page.locator('.quota-strip').filter({has:page.locator('.ag.kimi')});
+  const row=page.locator('#send_state .quota-item').filter({has:page.locator('.ag.kimi')});
   await expect(row.locator('.quota-percent')).toHaveText('68%');
   await expect(row.locator('.quota-plan')).toHaveText(/^[0-9]+%$/);
   await expect(row).toHaveAttribute('aria-label',/месяц/);

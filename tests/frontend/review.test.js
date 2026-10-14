@@ -71,3 +71,17 @@ test('a file that failed to attach is reported after the others are done',async(
     expect(state.classList.contains('error')).toBe(false);
   }finally{window.close()}
 });
+
+test('a confirmation is read for a few seconds, then the limits come back',async()=>{
+  const window=await open({'/api/usage':()=>({codex:{windows:[{label:'Week',percent:40,resets_at:Date.now()/1000+86400,window_seconds:604800}]}})});
+  try{
+    window.eval('select("alpha")');await settle();
+    window.eval('loadUsage()');await settle();
+    window.eval('sendStates.set("alpha",{text:"Sent to Codex",phase:"success"});renderSendState()');
+    const state=window.document.getElementById('send_state');
+    expect(state.textContent).toBe('Sent to Codex');
+    window.eval('sendStates.get("alpha").until=Date.now()-1;renderSendState()');
+    expect(state.querySelector('.quota-item')).not.toBeNull();
+    expect(state.classList.contains('success')).toBe(false);
+  }finally{window.close()}
+});

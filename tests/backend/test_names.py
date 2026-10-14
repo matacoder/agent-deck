@@ -23,6 +23,27 @@ class NamingTests(PanelCase):
         self.assertEqual(result, {'name':'demo-1017'})
         self.assertEqual(self.panel.create_session.call_args.args[0], 'demo-1017')
 
+    def test_a_slow_clone_does_not_hold_other_new_sessions_and_names_stay_unique(self):
+        import threading
+        cloning, done = threading.Event(), threading.Event()
+        def resolve(d, name):
+            if d.get('slow'):
+                cloning.set()
+                done.wait(5)
+            return str(self.home)
+        self.panel.session_exists = Mock(return_value=False)
+        self.panel.resolve_path = Mock(side_effect=resolve)
+        self.panel.create_session = Mock()
+        slow = threading.Thread(target=self.panel.action_new, args=({'name': 'demo', 'agent': 'shell', 'slow': True},))
+        slow.start()
+        self.assertTrue(cloning.wait(5))
+        with patch('integrations.names.secrets.randbelow', return_value=17):
+            self.assertEqual(self.panel.action_new({'name': 'demo', 'agent': 'shell'}), {'name': 'demo-1017'})
+        done.set()
+        slow.join(5)
+        self.assertEqual(sorted(call.args[0] for call in self.panel.create_session.call_args_list), ['demo', 'demo-1017'])
+        self.assertEqual(self.panel.creating_names, set())
+
     def test_duplicate_connections_and_edits_keep_ids_and_credentials(self):
         service = LMStudio(self.home / 'models')
         first = service.save({'name':'Mac', 'url':'http://127.0.0.1:1234', 'key':'test-only'})

@@ -17,7 +17,7 @@ for (const width of [320, 390]) {
     const enter = await page.getByRole('button', { name: 'Подтвердить выбор', exact: true }).boundingBox();
     expect(first.y).toBe(enter.y);
     await page.getByRole('button', { name: 'Другие клавиши' }).click();
-    await expect(page.getByRole('button', { name: '⇧Tab', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Назад по полям (Shift+Tab)', exact: true })).toBeVisible();
     await expect(page.locator('#b_wrap')).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   });

@@ -143,14 +143,16 @@ class Telegram:
                 self.database().reset()
                 return self.status()
             token = data.get('token', '').strip() or self.config.get('token', '')
-            if not TOKEN.fullmatch(token):
-                raise ValueError('Вставьте токен бота из @BotFather')
-            bot = self.api.call(token, 'getMe')
-            webhook = self.api.call(token, 'getWebhookInfo')
-            if webhook.get('url'):
-                raise ValueError('У бота уже настроен webhook. Используйте отдельного бота или отключите webhook самостоятельно.')
-            if not bot.get('is_bot') or not re.fullmatch(r'[A-Za-z0-9_]{5,32}', bot.get('username', '')):
-                raise ValueError('Telegram не вернул имя бота')
+        if not TOKEN.fullmatch(token):
+            raise ValueError('Вставьте токен бота из @BotFather')
+        # Telegram is asked outside the lock: status polls and button taps must not wait for it.
+        bot = self.api.call(token, 'getMe')
+        webhook = self.api.call(token, 'getWebhookInfo')
+        if webhook.get('url'):
+            raise ValueError('У бота уже настроен webhook. Используйте отдельного бота или отключите webhook самостоятельно.')
+        if not bot.get('is_bot') or not re.fullmatch(r'[A-Za-z0-9_]{5,32}', bot.get('username', '')):
+            raise ValueError('Telegram не вернул имя бота')
+        with self.lock:
             language = data.get('language', self.config.get('language', os.environ.get('PANEL_LANGUAGE', 'en')))
             if locales is not None and language not in {item['code'] for item in locales.available()}:
                 raise ValueError('Invalid language')
@@ -261,26 +263,27 @@ class Telegram:
             # Open rows get a 6 s grace for redraw flicker. Closed rows retire after ~2 missed scans
             # (scans run every 2 s), so one flickering scan never re-sends an answered prompt.
             recent = {key for key, at in self.seen.items() if now - at < 3}
-            for old in db.expire(set(self.seen), recent):
-                if old['message_id']:
-                    self.api.call(self.config['token'], 'editMessageReplyMarkup',
-                                  chat_id=self.config['chat_id'], message_id=old['message_id'],
-                                  reply_markup={'inline_keyboard': []})
-            for q in questions:
-                row = db.remember(q)
-                if row['status'] != 'pending':
-                    continue
-                options = [f'{i + 1}. {label[:180]}' for i, label in enumerate(q.options)]
-                keyboard = [[{'text': f'{i + 1}. {label[:90]}', 'callback_data': f"q:{row['id']}:{i}"}]
-                            for i, label in enumerate(q.options)
-                            if not FREE_TEXT.match(label)]
-                hint = ('\n\n' + self.translate('Свой ответ: ответьте на это сообщение текстом')
-                        if any(FREE_TEXT.match(label) for label in q.options) else '')
-                result = self.api.call(self.config['token'], 'sendMessage', chat_id=self.config['chat_id'],
-                    # The chat list shows only the first words: the question, then where it comes from.
-                    text=f'{q.title}\n\n' + '\n'.join(options) + '\n\n' + ' · '.join(filter(None, (q.label or q.session, q.origin, q.agent))) + hint,
-                    reply_markup={'inline_keyboard': keyboard})
-                db.set_status(row['id'], 'sent', result['message_id'])
+            token, chat = self.config['token'], self.config['chat_id']
+            closed = [old['message_id'] for old in db.expire(set(self.seen), recent) if old['message_id']]
+            waiting = [(row['id'], q) for row, q in ((db.remember(q), q) for q in questions) if row['status'] == 'pending']
+        # Sent outside the lock, like the scan: a slow Telegram must not hold button taps and status polls.
+        for message_id in closed:
+            self.api.call(token, 'editMessageReplyMarkup', chat_id=chat, message_id=message_id,
+                          reply_markup={'inline_keyboard': []})
+        for row_id, q in waiting:
+            options = [f'{i + 1}. {label[:180]}' for i, label in enumerate(q.options)]
+            keyboard = [[{'text': f'{i + 1}. {label[:90]}', 'callback_data': f"q:{row_id}:{i}"}]
+                        for i, label in enumerate(q.options)
+                        if not FREE_TEXT.match(label)]
+            hint = ('\n\n' + self.translate('Свой ответ: ответьте на это сообщение текстом')
+                    if any(FREE_TEXT.match(label) for label in q.options) else '')
+            result = self.api.call(token, 'sendMessage', chat_id=chat,
+                # The chat list shows only the first words: the question, then where it comes from.
+                text=f'{q.title}\n\n' + '\n'.join(options) + '\n\n' + ' · '.join(filter(None, (q.label or q.session, q.origin, q.agent))) + hint,
+                reply_markup={'inline_keyboard': keyboard})
+            with self.lock:
+                if self.config.get('token') == token:  # Not a bot that was replaced meanwhile.
+                    self.database().set_status(row_id, 'sent', result['message_id'])
 
     def wants_finished(self):
         with self.lock:

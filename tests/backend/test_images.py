@@ -34,6 +34,14 @@ class ImageTests(unittest.TestCase):
         self.assertFalse(I.visible('/private/tmp/other.png', SCREEN))
         self.assertFalse(I.visible('', SCREEN))
 
+    def test_only_a_whole_path_on_screen_counts(self):
+        screen = 'Saved docs/home/u/x/shot.png\nScreenshot saved to\n/tmp/a.png and /tmp/b.png.'
+        self.assertFalse(I.visible('/home/u/x/shot.png', screen))
+        self.assertFalse(I.visible('ot.png', screen))
+        self.assertTrue(I.visible('docs/home/u/x/shot.png', screen))
+        self.assertTrue(I.visible('/tmp/a.png', screen))
+        self.assertTrue(I.visible('/tmp/b.png', screen))  # A full stop after it ends a sentence.
+
     def test_relative_and_home_paths_resolve_against_session_and_user(self):
         self.assertEqual(self.read('shots/home.png'), ('image/png', PNG))
         self.assertEqual(self.read('~/Desktop/report.jpg')[0], 'image/jpeg')

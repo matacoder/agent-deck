@@ -39,9 +39,9 @@ Self-hosted panel (Python stdlib + static JS) for tmux sessions running Claude C
 - `/api/*` errors: JSON 4xx/5xx, no tracebacks.
 
 ## Security
-- Keep the signed-cookie HMAC scheme; new endpoints use the same auth.
+- Keep the signed-cookie HMAC scheme; new endpoints use the same auth. Logging out records the cookie's hash until its expiry (`integrations/sign_outs.py`, `sign-outs.json`); each sign-in gets its own expiry second. The login page never shows `PANEL_USER`.
 - Origin check on all mutations and WebSocket upgrades; reject sibling origins.
-- Login rate limit per IP + global; reserve slot under lock before reading body.
+- Login rate limit per IP + global (`reserve_login`/`release_login`); reserve slot under lock before reading body.
 - Trust `X-Forwarded-For` only from private/same host; never inside a container (`AGENT_DECK_TRUSTED_PROXIES` to opt in).
 - Root never writes into user-owned paths (`as_user` for every write under `$PREFIX`/home; open user files read-only).
 - `/api/image`: path must be on the session screen; PNG/JPEG/WebP/GIF by content, max 25 MB, `nosniff` + `CSP: sandbox`; check content before thumbnails. Gateway passes non-JSON `/api/*` only for these.

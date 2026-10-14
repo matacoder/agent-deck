@@ -2,8 +2,7 @@ const { test, expect } = require('./fixtures');
 
 test('phone integration setup keeps token private and shows the pairing link', async ({ app, page }) => {
   await app.open({ width:390 });
-  await page.getByRole('button', { name:'Действия', exact:true }).click();
-  await page.locator('#sheet').getByRole('button', { name:'Настройки', exact:true }).click();
+  await page.locator('main > .bar').getByRole('button', { name:'Настройки', exact:true }).click();
   await page.locator('.hub-nav').getByRole('tab',{name:'Уведомления'}).click();
   await page.locator('#telegram_cards .hub-card').filter({hasText:'Telegram'}).getByRole('button',{name:'Настроить',exact:true}).click();
   const dialog=page.locator('#integrations_dlg');
@@ -21,7 +20,7 @@ test('phone integration setup keeps token private and shows the pairing link', a
 test('paired Telegram can be paused and a draft token is cleared on close', async ({ app,page }) => {
   app.telegramConfig={available:true,configured:true,paired:true,enabled:true,bot:'deck_test_bot',account:'tester'};
   await app.open({width:1000});
-  await page.locator('.settingsbtn').click();
+  await page.locator('#b_settings').click();
   await page.locator('.hub-nav').getByRole('tab',{name:'Уведомления'}).click();
   await page.locator('#telegram_cards .hub-card').filter({hasText:'Telegram'}).getByRole('button',{name:'Настроить',exact:true}).click();
   const dialog=page.locator('#integrations_dlg');
@@ -41,8 +40,7 @@ test('paired Telegram can be paused and a draft token is cleared on close', asyn
 test('compact integration card fits a 320px phone without a full-height dialog', async ({app,page})=>{
   app.telegramConfig={available:true,configured:true,paired:true,enabled:true,bot:'deck_test_bot',account:'tester'};
   await app.open({width:320});
-  await page.getByRole('button',{name:'Действия',exact:true}).click();
-  await page.locator('#sheet').getByRole('button',{name:'Настройки',exact:true}).click();
+  await page.locator('main > .bar').getByRole('button',{name:'Настройки',exact:true}).click();
   await page.locator('.hub-nav').getByRole('tab',{name:'Уведомления'}).click();
   await page.locator('#telegram_cards .hub-card').filter({hasText:'Telegram'}).getByRole('button',{name:'Настроить',exact:true}).click();
   const dialog=page.locator('#integrations_dlg');

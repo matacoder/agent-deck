@@ -24,8 +24,9 @@ test('disappearing active session never transfers its draft into the fallback se
 
 test('closing a session immediately keeps another session visible', async ({ app, page }) => {
   await app.open();
-  page.once('dialog', dialog => dialog.accept());
-  await page.evaluate(() => kill());
+  await page.evaluate(() => { kill(); });
+  await expect(page.locator('#confirm_dlg')).toBeVisible();
+  await page.locator('#confirm_ok').click();
   await expect(page.locator('#title b')).toHaveText('other');
   await expect(page.locator('#screen')).toBeVisible();
   await expect(page.locator('#empty')).toBeHidden();

@@ -4,7 +4,7 @@ function localProfile(){return {id:'abcdef012345abcdef012345',name:'Workstation'
 
 test('desktop settings has one labelled entry and separates runtime, sources and connections',async({app,page})=>{
   app.lmstudio.profiles=[localProfile()];await app.open({width:1280,height:900});
-  await page.locator('.settingsbtn').click();
+  await page.locator('#b_settings').click();
   await expect(page.locator('#hub_agents')).toBeVisible();
   await expect(page.locator('#hub_agents')).toContainText('Codex');
   await page.locator('.hub-nav').getByRole('tab',{name:'Локальные модели'}).click();
@@ -73,16 +73,6 @@ test('native Kimi source defaults to the saved model instead of always K3',async
  await page.locator('#agsel [data-a="kimi"]').click();
  await expect(page.locator('#n_source')).toHaveValue(JSON.stringify({kind:'kimi',model:'kimi-for-coding-highspeed'}));
  await expect(page.locator('#agsel [data-a="claude-kimi"]')).toHaveCount(0);
-});
-
-test('drawer keeps a long local model compact and lets the user reveal its full name',async({app,page})=>{
- const p=localProfile();p.name='RED';p.performance={...p.performance,source:'benchmark',model:'qwen-coder-'+ 'long-model-name-'.repeat(12)};app.lmstudio.profiles=[p];
- await app.open({width:320});await page.evaluate(()=>{drawer(true);integOpen=true;renderInteg()});
- const block=page.locator('.local-usage');await expect(block).toContainText('39.5');
- const bounds=await block.boundingBox();expect(bounds.height).toBeLessThan(160);
- const summary=block.locator('summary');await expect(summary).toHaveAttribute("title",p.performance.model+" · "+p.name);await expect(summary).toContainText("…");
- await summary.click();await expect(block.locator('.local-model div')).toHaveText(p.performance.model);
- expect(await page.locator('aside').evaluate(e=>e.scrollWidth<=e.clientWidth)).toBe(true);
 });
 
 test('phone settings scroll content inside a fixed header and short navigation bar',async({app,page})=>{

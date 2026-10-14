@@ -182,20 +182,21 @@ __PANEL_STYLE__</style></head><body>
 <div id="sheet"><div class="scrim" onclick="sheet(false)"></div><div class="panel" role="menu" aria-labelledby="sheetCap">
   <div class="cap" id="sheetCap"></div>
   <div class="sheet-group" id="s_session">
-    <button class="agent-only" onclick="sheet(false);restart('new')"><svg class="ui-icon"><use href="#i-chat-plus"/></svg><span>Перезапустить — новый разговор</span></button>
-    <button class="agent-only" onclick="sheet(false);restart('continue')"><svg class="ui-icon"><use href="#i-restart"/></svg><span>Перезапустить — продолжить разговор</span></button>
-    <button class="agent-only" onclick="sheet(false);openConversation()"><svg class="ui-icon"><use href="#i-chat"/></svg><span>Разговор</span></button>
-    <button id="s_paste" onclick="sheet(false);openRichPaste()"><svg class="ui-icon"><use href="#i-image"/></svg><span>Вставить с картинками</span></button>
-    <button id="s_later" onclick="sheet(false);openLater()"><svg class="ui-icon"><use href="#i-clock"/></svg><span id="s_later_label">Отправить позже</span></button>
-    <button onclick="sheet(false);duplicateSession()"><svg class="ui-icon"><use href="#i-copy"/></svg><span>Дублировать сессию — новый разговор</span></button>
+    <button role="menuitem" class="agent-only" onclick="sheet(false);restart('new')"><svg class="ui-icon"><use href="#i-chat-plus"/></svg><span>Перезапустить — новый разговор</span></button>
+    <button role="menuitem" class="agent-only" onclick="sheet(false);restart('continue')"><svg class="ui-icon"><use href="#i-restart"/></svg><span>Перезапустить — продолжить разговор</span></button>
+    <button role="menuitem" class="agent-only" onclick="sheet(false);openConversation()"><svg class="ui-icon"><use href="#i-chat"/></svg><span>Разговор</span></button>
+    <button role="menuitem" id="s_paste" onclick="sheet(false);openRichPaste()"><svg class="ui-icon"><use href="#i-image"/></svg><span>Вставить с картинками</span></button>
+    <button role="menuitem" id="s_later" onclick="sheet(false);openLater()"><svg class="ui-icon"><use href="#i-clock"/></svg><span id="s_later_label">Отправить позже</span></button>
+    <button role="menuitem" onclick="sheet(false);duplicateSession()"><svg class="ui-icon"><use href="#i-copy"/></svg><span>Дублировать сессию — новый разговор</span></button>
   </div>
   <div class="sheet-group" id="s_manage">
-    <button onclick="sheet(false);openRename()"><svg class="ui-icon"><use href="#i-pencil"/></svg><span>Переименовать сессию</span></button>
-    <button class="dng" onclick="sheet(false);kill()"><svg class="ui-icon"><use href="#i-x"/></svg><span>Закрыть сессию</span></button>
+    <button role="menuitem" onclick="sheet(false);openRename()"><svg class="ui-icon"><use href="#i-pencil"/></svg><span>Переименовать сессию</span></button>
+    <button role="menuitem" class="dng" onclick="sheet(false);kill()"><svg class="ui-icon"><use href="#i-x"/></svg><span>Закрыть сессию</span></button>
   </div>
   <div class="sheet-group" id="s_app">
-    <button id="s_update" onclick="updatePanel()" style="display:none"><svg class="ui-icon"><use href="#i-download"/></svg><span id="s_update_label"></span></button>
-    <button id="s_drafts" onclick="showClosedDrafts()" style="display:none"><svg class="ui-icon"><use href="#i-file"/></svg><span>Черновики закрытых сессий</span></button>
+    <button role="menuitem" id="s_update" onclick="updatePanel()" style="display:none"><svg class="ui-icon"><use href="#i-download"/></svg><span id="s_update_label"></span></button>
+    <button role="menuitem" id="s_drafts" onclick="showClosedDrafts()" style="display:none"><svg class="ui-icon"><use href="#i-file"/></svg><span>Черновики закрытых сессий</span></button>
+    <button role="menuitem" id="s_help" onclick="sheet(false);openHelp()" hidden><svg class="ui-icon"><use href="#i-help"/></svg><span>Как это работает</span></button>
   </div>
 </div><button class="sheet-cancel" onclick="sheet(false)">Отмена</button></div>
 <div id="toast" role="status" aria-live="polite"></div>

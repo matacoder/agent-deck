@@ -7,8 +7,8 @@ test('English covers dynamic controls and dialogs without translating agent outp
   await expect(page.locator('#send_state')).toContainText('send');
   await expect(page.locator('#pre')).toContainText('Ответ агента остаётся на русском');
   await page.evaluate(()=>openIntegrations());
-  await expect(page.locator('#integrations_dlg')).toContainText('Questions and answers in your bot chat');
-  await expect(page.locator('#telegram_state')).toHaveText('No bot connected yet');
+  await expect(page.locator('#integrations_dlg')).toContainText('Questions from every connected computer arrive in this bot');
+  await expect(page.locator('#telegram_state')).toHaveText('Not set up');
   await page.locator('#integrations_dlg').getByRole('button',{name:'Close',exact:true}).click();
   await page.evaluate(()=>{$('settings_dlg').close();openNew()});
   await expect(page.locator('#dlg')).toContainText('Session name');
@@ -18,15 +18,14 @@ test('English covers dynamic controls and dialogs without translating agent outp
 test('changing language preserves draft, active session and mode',async({app,page})=>{
   await app.open();await page.locator('#msg').fill('Несохранённый draft');
   await page.evaluate(()=>openSettings("app"));
+  // Choosing a language applies it at once: the page reloads under the new cookie.
   await page.locator('#ui_language').selectOption('en');
-  await page.locator('#settings_dlg').getByRole('button',{name:'Применить'}).click();
   await expect(page.locator('html')).toHaveAttribute('lang','en');
   await expect(page.locator('#msg')).toHaveValue('Несохранённый draft');
   await expect(page.locator('#title b')).toHaveText('tmux');
   await expect(page.locator('#screen')).toBeVisible();
   await page.evaluate(()=>openSettings("app"));
   await page.locator('#ui_language').selectOption('ru');
-  await page.locator('#settings_dlg').getByRole('button',{name:'Apply'}).click();
   await expect(page.locator('html')).toHaveAttribute('lang','ru');
   await expect(page.locator('#msg')).toHaveValue('Несохранённый draft');
 });
@@ -43,7 +42,7 @@ for(const code of pack){
   await expect(page.locator('#msg')).toHaveAttribute('placeholder',app.catalogs[code]['Сообщение в ']+'Codex…');
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
   await page.evaluate(()=>openSettings("app"));
-  await expect(page.locator('.hub-heading h3')).toHaveText(app.catalogs[code]['Настройки']);
+  await expect(page.locator('#hub_title')).toHaveText(app.catalogs[code]['Настройки']);
   await expect(page.locator('#ui_language option')).toHaveCount(Object.keys(app.catalogs).length);
   await expect(page.locator('#ui_language')).toHaveValue(code);
   await page.evaluate(()=>{$('settings_dlg').close();openIntegrations()});
@@ -57,8 +56,8 @@ for(const code of pack){
   await page.evaluate(()=>{closeIntegrations();$('settings_dlg').close()});
   await page.locator('#msg').fill('Unsent draft 原文');
   await page.evaluate(()=>openSettings("app"));
+  await expect(page.locator('#hub_general #ui_language')).toBeVisible();
   await page.locator('#ui_language').selectOption('en');
-  await page.locator('#hub_app form.language-settings button.pri').tap();
   await expect.poll(async()=> (await page.context().cookies('https://panel.test/')).find(x=>x.name==='cc_lang')?.value).toBe('en');
   await expect(page.locator('html')).toHaveAttribute('lang','en');
   await expect(page.locator('#msg')).toHaveValue('Unsent draft 原文');

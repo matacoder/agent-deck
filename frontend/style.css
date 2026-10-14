@@ -27,6 +27,8 @@ button:disabled{cursor:default}
 button:focus-visible,[role=button]:focus-visible,summary:focus-visible,a:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
 input,textarea,select{font:inherit}
 [hidden]{display:none!important}
+/* A plain terminal has no agent to attach files to, restart or read a conversation of. */
+body.is-shell .agent-only{display:none!important}
 .ui-icon{display:block;width:var(--icon-md);height:var(--icon-md);flex:none;fill:none;stroke:currentColor;stroke-width:var(--icon-stroke);stroke-linecap:round;stroke-linejoin:round}
 .m-only{display:none!important}
 #app{display:flex;height:var(--app-h)}
@@ -55,6 +57,9 @@ aside{position:relative;width:min(var(--side-w,248px),40vw);flex:none;background
 #srv .deck-count{margin-left:0}
 /* With computers connected the selector already names this one. */
 .srv-row:has(.deck-switch:not([hidden])) :is(.hn,.deck-count){display:none}.srv-row:has(.deck-switch:not([hidden])) #srv{flex:none}
+/* A narrow sidebar or phone drawer: the computer's name in the selector matters more than its flag. */
+.srv-row{container-type:inline-size}
+@container (max-width:300px){.srv-row:has(.deck-switch:not([hidden])) #srv{display:none}.deck-switch{margin-left:0}}
 .side-top{display:flex;gap:6px;padding:8px 8px 0}.side-top[hidden]{display:none}
 .search{flex:1;min-width:0;background:var(--bg);border:1px solid var(--bd);border-radius:var(--r-sm);color:var(--fg);padding:6px 9px;outline:none}
 .search:focus{border-color:var(--acc)}
@@ -107,7 +112,10 @@ aside{position:relative;width:min(var(--side-w,248px),40vw);flex:none;background
 .quota-percent.over{color:var(--warn)}.quota-percent.crit{color:var(--bad-text)}
 .quota-reset{white-space:nowrap;color:var(--mut)}
 /* Every subscription in one line under the message field; the one this session spends is at full strength. */
-.quota-item{display:inline-flex;align-items:baseline;gap:6px;opacity:.55}.quota-item.on{opacity:1}
+/* The one this session spends is brighter and bold; the others stay readable (no opacity over muted text). */
+.quota-item{display:inline-flex;align-items:baseline;gap:6px}
+.quota-item:not(.on) .quota-percent{font-weight:400}.quota-item:not(.on) .quota-percent.good{color:var(--fg)}
+.quota-item:not(.on) .ag{opacity:.6}
 .quota-item .ag{align-self:center}.quota-plan{color:var(--mut)}.quota-item .quota-reset{margin-left:2px;color:var(--dim)}
 .quota-item .ag{width:14px;height:14px;font-size:14px}
 .good{color:var(--ok)}.dim{color:var(--dim)}
@@ -189,9 +197,10 @@ iframe[inert]{pointer-events:none}
 .img-thumb{flex:none;display:block;height:120px;max-width:240px;padding:0;border:1px solid var(--bd);border-radius:8px;overflow:hidden;background:var(--side2);cursor:zoom-in}
 .img-thumb img{display:block;height:100%;width:auto;max-width:240px;object-fit:cover}
 @media (hover:hover){.img-thumb:hover{border-color:var(--bd-hover)}}
-.viewer{position:fixed;inset:0;z-index:70;display:grid;place-items:center;background:rgba(10,10,12,.94);padding:calc(var(--sat) + 56px) 12px calc(var(--sab) + 64px)}
+/* Flex, not grid: a grid row sizes to the picture, so a tall screenshot ignored max-height and ran off the screen. */
+.viewer{position:fixed;inset:0;z-index:70;display:flex;align-items:center;justify-content:center;background:rgba(10,10,12,.94);padding:calc(var(--sat) + 56px) 12px calc(var(--sab) + 64px)}
 .viewer[hidden]{display:none}
-.viewer img{max-width:100%;max-height:100%;object-fit:contain;border-radius:6px;box-shadow:0 10px 40px #000a;touch-action:pinch-zoom;background:#fff1}
+.viewer img{flex:none;width:auto;height:auto;max-width:min(100%,calc(100vw - 24px));max-height:min(100%,calc(var(--app-h) - var(--sat) - var(--sab) - 120px));object-fit:contain;border-radius:6px;box-shadow:0 10px 40px #000a;touch-action:pinch-zoom;background:#fff1}
 .viewer-close{position:absolute;top:calc(var(--sat) + 10px);right:12px;display:grid;place-items:center;width:var(--tap);height:var(--tap);border-radius:50%;background:#ffffff1a;color:#fff}
 .viewer-close svg,.viewer-step svg{width:20px;height:20px}
 .viewer-step{position:absolute;top:50%;display:grid;place-items:center;width:var(--tap);height:var(--tap);margin-top:-22px;border-radius:50%;background:#ffffff1a;color:#fff}
@@ -494,7 +503,8 @@ dialog:focus,dialog:focus-visible{outline:none}
 .hub-card label{display:block;font-size:12px;color:var(--mut);margin:12px 0 6px}
 .hub-card label.toggle,.hub-card label.integration-toggle{display:flex;margin:0;font-size:13px;color:var(--fg2)}
 .hub-card input:not([type=checkbox]):not([type=radio]){width:100%}
-.hub-card select{width:100%;min-width:0;margin:12px 0 0}
+/* WebKit counts a long option text past the box as page width: the settings scrolled sideways on an iPhone. */
+.hub-card select{width:100%;min-width:0;max-width:100%;margin:12px 0 0;overflow:hidden;text-overflow:ellipsis}
 .hub-card .acts{padding:12px 0 0;margin-top:12px;flex-wrap:wrap}
 .hub-card details{margin-top:10px}
 .hub-card summary{font-size:12.5px;color:var(--mut);padding:10px 0;cursor:pointer}
@@ -811,7 +821,7 @@ body.resizing iframe{pointer-events:none}
   body.drawer #scrim{display:block}
   .deck-switch select{font-size:16px;min-height:var(--tap)}
   .deck-switch button{height:var(--tap)}
-  .srv-row{height:auto;padding:6px 8px 6px 14px}#srv{font-size:13px}#srv .fl{font-size:16px}
+  .srv-row{height:auto;gap:0;padding:6px 4px 6px 10px}#srv{font-size:13px}#srv .fl{font-size:16px}
   .side-top{padding:8px 12px 0}
   .search{font-size:16px;padding:9px 12px;border-radius:var(--r)}
   .iconbtn{min-width:var(--tap);height:var(--tap);border-radius:var(--r)}

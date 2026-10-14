@@ -22,7 +22,7 @@ test('falls back when the saved session was deleted and handles an empty list', 
   app.sessions = [];
   await page.evaluate(() => load());
   await expect(page.locator('#empty')).toBeVisible();
-  await expect(page.locator('#empty')).toContainText('Нет сессий');
+  await expect(page.locator('#empty')).toContainText('Сессий пока нет');
   await expect(page.locator('#session_meta')).toBeHidden();
 });
 

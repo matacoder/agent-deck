@@ -2,6 +2,7 @@ import base64
 import hashlib
 import http.client
 import json
+import os
 import socket
 import threading
 from urllib.parse import urlencode
@@ -284,6 +285,19 @@ class HTTPTests(PanelCase):
         status, headers, _ = self.request("POST", "/logout", headers={"Cookie": cookie})
         self.assertEqual(status, 303)
         self.assertIn("Max-Age=0", headers["Set-Cookie"])
+        # A copy of the cookie kept elsewhere stops working too; another sign-in does not.
+        self.assertEqual(self.request("GET", "/api/sessions", headers={"Cookie": cookie})[0], 401)
+        other = self.login()
+        self.assertEqual(self.request("GET", "/api/sessions", headers={"Cookie": other})[0], 200)
+        self.assertEqual(os.stat(self.panel.sign_outs.path).st_mode & 0o777, 0o600)
+
+    def test_the_login_page_does_not_tell_the_account_name(self):
+        status, _, body = self.request("GET", "/login")
+        self.assertEqual(status, 200)
+        self.assertNotIn(b"test-user", body)
+        status, _, body = self.request("POST", "/login", "username=guess&password=wrong", {"Content-Type": "application/x-www-form-urlencoded"})
+        self.assertIn(b'value="guess"', body)
+        self.assertNotIn(b"test-user", body)
 
     def test_logout_without_a_cookie_does_not_end_isolated_terminal_links(self):
         epoch = self.panel.terminal_epoch()

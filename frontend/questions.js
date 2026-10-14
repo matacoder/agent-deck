@@ -61,3 +61,57 @@ function askConfirm(dialog,{title,text="",confirm,danger=false}){
 }
 
 if(typeof module!=="undefined")module.exports={svgIcon,renderQuestionCard,askConfirm,answerDraft,saveAnswerDraft};
+
+// The open session's question: fetched with the screen, drawn as a card, answered by its buttons.
+let question={name:null,data:null,expanded:false,busy:null,textIndex:null},loadingQuestion=false,questionCard="";
+async function loadQuestion(){
+  const s=cur();
+  if(!s||agentOf(s)==="shell"||!s.running){if(question.data)setQuestion(s?.name||null,null);return}
+  if(loadingQuestion||question.busy!==null||document.hidden)return;
+  loadingQuestion=true;const name=s.name;
+  try{const data=await api("/api/question?name="+encodeURIComponent(name));if(active===name)setQuestion(name,data.question)}
+  catch(e){/* Questions are an optional shortcut; the key row still works. */}
+  finally{loadingQuestion=false}
+}
+function setQuestion(name,data){
+  const same=question.name===name&&JSON.stringify(question.data)===JSON.stringify(data);
+  if(same)return;
+  const keepExpanded=question.name===name&&question.data?.id===data?.id;
+  const saved=data?answerDraft(answerKey(name,data.id)):null;
+  question={name,data,expanded:keepExpanded&&question.expanded,busy:null,
+    textIndex:saved?saved.index:keepExpanded?question.textIndex:null,textDraft:saved?saved.text:keepExpanded?question.textDraft:""};
+  renderQuestion();
+}
+const answerKey=(name,id)=>selectedDeck+"/"+name+"/"+id;
+function saveQuestionDraft(){
+  if(question.data)saveAnswerDraft(answerKey(question.name,question.data.id),{index:question.textIndex,text:question.textDraft});
+}
+function renderQuestion(){
+  const data=question.name===active?question.data:null;
+  // The card's own buttons answer; the 1/2/3 keys would only repeat them on a short screen.
+  document.body.classList.toggle("has-question",Boolean(data));
+  // Typing an answer must not be wiped by the 2.5 s refresh, so an open text field pauses re-rendering.
+  // Only while the card is still this question: its buttons answer the one known now, not the one drawn.
+  const card=data?question.name+"\n"+data.id:"";
+  if($("question").querySelector(".q-text textarea:focus")&&questionCard===card)return;
+  questionCard=card;
+  renderQuestionCard({box:$("question"),question:data,expanded:question.expanded,busyIndex:question.busy,textIndex:question.textIndex,textDraft:question.textDraft||"",translate:tr,
+    onTextInput:value=>{question.textDraft=value;saveQuestionDraft()},
+    onToggle:()=>{question.expanded=!question.expanded;renderQuestion()},onAnswer:answerQuestion,
+    // Focus inside the tap itself: iOS opens the keyboard only for a user gesture, and a
+    // refocus on every refresh would pop the keyboard back after the user dismissed it.
+    onTextOption:index=>{question.textIndex=question.textIndex===index?null:index;renderQuestion();$("question").querySelector(".q-text textarea")?.focus()},
+    onSubmitText:(index,text)=>answerQuestion(index,text)});
+}
+async function answerQuestion(index,text){
+  const name=active,data=question.data;
+  if(!data||question.busy!==null||panelUpdating)return;
+  question.busy=index;$("question").querySelector(".q-text textarea")?.blur();renderQuestion();
+  try{
+    await api("/api/answer",text===undefined?{name,id:data.id,index}:{name,id:data.id,index,text});
+    saveAnswerDraft(answerKey(name,data.id),null);
+    sendStates.set(name,{text:tr("Ответ отправлен: {0}",[text===undefined?data.options[index].label:text.slice(0,80)]),phase:"success"});
+    question={name,data:null,expanded:false,busy:null,textIndex:null};
+  }catch(e){toast(e.message);question.busy=null}
+  renderQuestion();renderSendState();await load();loadQuestion();
+}

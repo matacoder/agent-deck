@@ -56,7 +56,41 @@ WantedBy=default.target
 UNIT
 }
 
+# Re-running is the update (also what Settings shows), so the checkout is brought up to date first.
+update_checkout() {
+    [ "${AGENT_DECK_NO_PULL:-}" != 1 ] || return 0
+    command -v git >/dev/null && git -C "$SRC" rev-parse --is-inside-work-tree >/dev/null 2>&1 || return 0
+    git -C "$SRC" rev-parse --abbrev-ref --symbolic-full-name '@{u}' >/dev/null 2>&1 \
+        || { say "$SRC follows no remote branch; building it as it is"; return 0; }
+    [ -z "$(git -C "$SRC" status --porcelain --untracked-files=no)" ] \
+        || die "$SRC has local changes; commit or stash them (git -C $SRC stash), or run with AGENT_DECK_NO_PULL=1 to build it as it is"
+    local before
+    before=$(git -C "$SRC" rev-parse HEAD)
+    say "updating $SRC (git pull --ff-only)"
+    git -C "$SRC" pull --ff-only -q \
+        || die "git pull --ff-only failed in $SRC (offline, or the branch has diverged from its remote); fix it, or run with AGENT_DECK_NO_PULL=1 to build it as it is"
+    # Bash reads a running script as it goes: a pulled change to this file runs as a fresh process.
+    [ "$(git -C "$SRC" rev-parse HEAD)" = "$before" ] || exec env AGENT_DECK_NO_PULL=1 "$SRC/install-steamos.sh" "$@"
+}
+
+panel_answers() {
+    for _ in $(seq "$1"); do
+        curl -fsS -o /dev/null --max-time 2 "http://127.0.0.1:$PORT/login" 2>/dev/null && return 0
+        sleep 2
+    done
+    return 1
+}
+
 main() {
+    update_checkout "$@"
+    # The running image is kept under its own name until the new one has answered.
+    local previous=0 older=""
+    # The image kept from the update before this one: removed by its id once the new one answers.
+    older=$("$PODMAN" image inspect --format '{{.Id}}' localhost/agent-deck:previous 2>/dev/null || true)
+    if "$PODMAN" image exists localhost/agent-deck:latest; then
+        "$PODMAN" tag localhost/agent-deck:latest localhost/agent-deck:previous
+        previous=1
+    fi
     say "building the DeckAway image (first time: a few minutes)"
     "$PODMAN" build --format docker -t localhost/agent-deck:latest -f "$SRC/docker/Dockerfile" "$SRC"
     "$PODMAN" volume exists agent-deck-home || "$PODMAN" volume create agent-deck-home >/dev/null
@@ -69,12 +103,18 @@ main() {
     systemctl --user restart agent-deck.service
 
     say "waiting for the panel (the first start also installs Claude Code and Codex)"
-    for _ in $(seq 180); do
-        curl -fsS -o /dev/null --max-time 2 "http://127.0.0.1:$PORT/login" 2>/dev/null && break
-        sleep 2
-    done
-    curl -fsS -o /dev/null --max-time 2 "http://127.0.0.1:$PORT/login" \
-        || die "the panel did not start; logs: journalctl --user -u agent-deck -n 50"
+    if ! panel_answers 180; then
+        local logs="journalctl --user -u agent-deck -n 50"
+        [ "$previous" = 1 ] || die "the panel did not start; logs: $logs"
+        say "the new image did not answer; putting the previous one back"
+        "$PODMAN" tag localhost/agent-deck:previous localhost/agent-deck:latest
+        systemctl --user restart agent-deck.service
+        panel_answers 60 || die "the new image did not start and the previous one, put back, does not answer either; logs: $logs"
+        die "the new image did not start, so it was rolled back: the previous image is running again; logs: $logs"
+    fi
+    # Only DeckAway's own image from two updates ago, and only once nothing names it (no -f): other images
+    # of this user, named or not, are never touched. :previous stays for the next update.
+    [ -z "$older" ] || "$PODMAN" rmi "$older" >/dev/null 2>&1 || true
     password=$("$PODMAN" exec agent-deck sed -n 's/^PANEL_PASSWORD=//p' /home/dev/.config/cc-panel/env)
     echo
     echo "DeckAway is ready: http://$([ "$BIND" = 0.0.0.0 ] && echo "<this machine's address>" || echo "$BIND"):$PORT"
