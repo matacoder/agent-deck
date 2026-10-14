@@ -39,6 +39,7 @@ One command on a Linux server. [macOS, Windows, Docker, SteamOS](#install-anywhe
 - **Models:** your subscriptions, any Anthropic-compatible service, or local models from LM Studio with no quota.
 - **Limits at a glance:** what is left of each subscription and whether you are ahead of plan.
 - **Send later:** hold a prompt until a set time, a free session or a limit reset.
+- **Dictation:** speak instead of typing; whisper.cpp on your own Mac recognises it, and a ten-minute dictation survives a lost connection.
 - **Review:** changes, commits grouped by feature, a file browser with an editor; tap a line to comment on it for the agent.
 - **Yours to keep:** encrypted backups of settings and sessions; 16 interface languages.
 

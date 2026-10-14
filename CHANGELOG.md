@@ -2,6 +2,13 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.56.0 — 2026-10-14
+
+Dictation.
+
+- **A microphone next to the message field.** What you say is recognised by whisper.cpp on one of your own computers and put into the draft; nothing goes to another service. A copy already installed is used (whisper.cpp from Homebrew or built by hand, a model in a `whisper.cpp/models` folder or inside Audio Hijack or MacWhisper); a long press shows each computer's state, the copies it uses, and on a Mac with Homebrew installs only what is missing (`brew install whisper-cpp`, and an 870 MB model, resumed and hash-checked, only if none was found).
+- **A long dictation is not lost.** It is cut at pauses into pieces of up to 18 seconds, each kept in the browser until its text is in the draft; a closed tab, a reload or a sleeping computer costs at most the last three seconds. The text of every dictation is kept for a week.
+
 ## 1.55.0 — 2026-10-14
 
 Claude Code's permission prompts reach Telegram, and an architecture review.

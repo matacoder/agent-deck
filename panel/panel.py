@@ -156,6 +156,18 @@ def provider_store():
         return _providers
 
 
+_voice, _voice_lock = None, threading.Lock()
+
+
+def voice_service():
+    global _voice
+    from integrations.voice import Voice
+    with _voice_lock:
+        if _voice is None:
+            _voice = Voice()
+        return _voice
+
+
 def action_provider_save(d):
     return {"id": provider_store().save(d), "providers": provider_store().public()}
 
@@ -1455,7 +1467,9 @@ ACTIONS = {
     'lm_benchmark': lambda d: model_service().benchmark(d),
     'lm_discover': lambda d: {'discovery':model_service().discover(d)},
     'lm_remove': action_lm_remove,
-    "kimi_config": lambda d: {"kimi": kimi_config.save(d)}, "provider_save": action_provider_save, "provider_remove": action_provider_remove, "agent_install": action_agent_install, "agent_login": action_agent_login, "github_login": action_github_login, "new": action_new, "restart": action_restart, "kill": action_kill, "send": action_send, "upload": action_upload, "update": action_update, "discard_upload": action_discard_upload}
+    "kimi_config": lambda d: {"kimi": kimi_config.save(d)}, "provider_save": action_provider_save, "provider_remove": action_provider_remove, "agent_install": action_agent_install, "agent_login": action_agent_login, "github_login": action_github_login, "new": action_new, "restart": action_restart, "kill": action_kill, "send": action_send, "upload": action_upload, "update": action_update, "discard_upload": action_discard_upload,
+    "voice_status": lambda d: voice_service().status(), "voice_install": lambda d: voice_service().install(),
+    "transcribe": lambda d: {"text": voice_service().transcribe(d.get("audio"), d.get("language"), d.get("prompt"))}}
 
 
 def current_question(name):
@@ -2967,8 +2981,10 @@ class Handler(BaseHTTPRequestHandler):
                 status, headers, payload = remote_decks.request_stream(identity, path, self.rfile, length, self.language())
                 self.body_pending = False
             else:
+                # Recognising a long piece of speech on a computer without a GPU takes longer than a page answer.
+                slow = {'timeout': 120} if urlsplit(path).path == '/api/transcribe' else {}
                 status, headers, payload = remote_decks.request(identity,self.command,path,body,self.language(),
-                    content_type='application/json')
+                    content_type='application/json', **slow)
             ctype = next((v for k,v in headers.items() if k.lower()=='content-type'), 'application/octet-stream')
             # Remote HTML/JS under /api/* would run with the gateway origin; only JSON, and raster
             # images from the screenshot endpoint, are passed through.

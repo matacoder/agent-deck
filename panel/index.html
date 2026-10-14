@@ -325,6 +325,17 @@ body.is-codex .question-key{display:inline-flex!important;align-items:center;jus
 .composer-status{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 8px;margin:6px 4px 0;font-size:12px;color:var(--mut)}
 .send-state{min-height:1.4em}
 .send-state.error{color:var(--bad-text)}
+.voice-state{border:0;background:none;padding:0;font:inherit;color:var(--mut);cursor:pointer;text-align:left}
+.voice-state[hidden]{display:none}.voice-state.error{color:var(--bad-text)}.voice-state.rec{color:var(--bad-text);font-variant-numeric:tabular-nums}
+.micbtn.on{color:#fff;background:var(--bad,#d33);border-color:transparent;animation:mic-pulse 1.6s ease-in-out infinite}
+@keyframes mic-pulse{50%{opacity:.7}}
+@media (prefers-reduced-motion:reduce){.micbtn.on{animation:none}}
+.voice-computer{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;padding:10px 0;border-bottom:1px solid var(--bd)}
+.voice-computer span{flex:1;min-width:12em;color:var(--mut);overflow-wrap:anywhere}
+.voice-uses{flex-basis:100%;color:var(--mut);font-family:var(--mono,monospace);overflow-wrap:anywhere}
+.voice-text{padding:12px 0;border-bottom:1px solid var(--bd)}
+.voice-text p{margin:4px 0;white-space:pre-wrap;overflow-wrap:anywhere;max-height:7.5em;overflow:auto}
+.voice-text .acts{padding:0;justify-content:flex-start;border:0}
 #send_state .local-live-line{display:inline-flex;margin:0;font-size:11.5px;gap:10px}
 #send_state .composer-model{margin-right:8px}
 #send_state .session-status.open{flex-wrap:wrap}.quota-more{flex:none;min-width:28px;height:20px;padding:0 6px;border-radius:var(--r-sm);color:var(--mut);background:var(--side2)}.quota-more[aria-expanded=true]{color:var(--fg)}
@@ -1079,6 +1090,7 @@ body.resizing iframe{pointer-events:none}
   <symbol id="i-compact" viewBox="0 0 24 24"><path d="M12 22v-6M12 8V2M4 12H2M10 12H8M16 12h-2M22 12h-2M15 19l-3-3-3 3M15 5l-3 3-3-3"/></symbol>
   <symbol id="i-restart" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></symbol>
   <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+  <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></symbol>
   <symbol id="i-chat" viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.4A8 8 0 1 1 21 12z"/></symbol>
   <symbol id="i-chat-plus" viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.4A8 8 0 1 1 21 12z"/><path d="M12 9v6M9 12h6"/></symbol>
   <symbol id="i-external" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></symbol>
@@ -1172,11 +1184,13 @@ body.resizing iframe{pointer-events:none}
           <div class="inrow">
             <button class="attachbtn agent-only" id="b_attach" onclick="chooseImages()" aria-label="Приложить файл" title="Приложить файл до 200 МБ · хранится 7 дней"><svg class="ui-icon"><use href="#i-paperclip"/></svg></button>
             <textarea id="msg" rows="1" aria-label="Сообщение агенту…" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" placeholder="Сообщение агенту…" enterkeyhint="enter"></textarea>
+            <button class="attachbtn micbtn agent-only" id="b_mic" onclick="toggleVoice()" aria-pressed="false" aria-label="Диктовать" title="Диктовать: нажмите, чтобы начать и закончить; удерживайте — компьютеры и последние записи"><svg class="ui-icon"><use href="#i-mic"/></svg></button>
             <button class="attachbtn laterbtn" id="b_later" hidden onclick="openLater()" aria-label="Отправить позже" title="Отправить позже: в указанное время, когда агент освободится или когда сбросится лимит"><svg class="ui-icon"><use href="#i-clock"/></svg><span id="later_count" class="later-count" aria-hidden="true"></span></button>
             <button class="sendbtn" id="b_send" onclick="send()" aria-label="Отправить" title="Enter — отправить, Shift+Enter — новая строка"><svg class="ui-icon" style="stroke-width:2.6"><use href="#i-arrow-up"/></svg></button>
           </div>
           <div class="composer-status">
           <div id="send_state" class="send-state" role="status" aria-live="polite">Enter ↵ · ↑ отправить</div>
+          <button type="button" id="voice_state" class="voice-state" onclick="openVoice()" hidden></button>
           </div>
         </div>
       </div>
@@ -1266,6 +1280,7 @@ body.resizing iframe{pointer-events:none}
   <button type="button" id="viewer_next" class="viewer-step next" onclick="stepViewer(1)" aria-label="Следующая картинка"><svg class="ui-icon"><use href="#i-chevron-right"/></svg></button>
   <div class="viewer-bar"><span id="viewer_caption"></span><a id="viewer_open" target="_blank" rel="noopener">Открыть оригинал</a></div>
 </div>
+<dialog id="voice_dlg"><div class="dlg"><div class="hub-heading"><h3 tabindex="-1" autofocus>Голосовой ввод</h3><button type="button" onclick="$('voice_dlg').close()" aria-label="Закрыть"><svg class="ui-icon"><use href="#i-x"/></svg></button></div><div class="dlg-body"><p class="hint">Речь распознаёт whisper.cpp на одном из ваших компьютеров; запись никуда больше не уходит. Лучше всего — Mac с Apple Silicon.</p><div id="voice_computers" class="voice-computers"></div><h4 id="voice_texts_title" hidden>Последние записи</h4><div id="voice_texts" class="voice-texts"></div></div></div></dialog>
 <dialog id="confirm_dlg"><form class="dlg" method="dialog"><div class="dlg-body"><h3 id="confirm_title"></h3><p id="confirm_text"></p></div><div class="acts"><button value="cancel">Отмена</button><button value="ok" class="pri" id="confirm_ok">OK</button></div></form></dialog>
 <dialog id="palette_dlg" class="palette"><div class="dlg"><input id="palette_q" type="text" placeholder="Сессия или действие" aria-label="Сессия или действие" autocomplete="off" autocapitalize="off" spellcheck="false" role="combobox" aria-controls="palette_list"><div class="palette-list" id="palette_list" role="listbox"></div></div></dialog>
 <dialog id="inbox_dlg"><div class="dlg"><div class="hub-heading"><h3 tabindex="-1" autofocus>Ждут ответа</h3><button type="button" onclick="$('inbox_dlg').close()" aria-label="Закрыть"><svg class="ui-icon"><use href="#i-x"/></svg></button></div><div class="dlg-body" id="inbox_list"></div></div></dialog>
@@ -5331,6 +5346,308 @@ function watchRichPaste(){
 }
 
 if(typeof module!=="undefined")module.exports={pastedImageSources,isPasteKey,mentionsPictures};
+// Speech is recorded as plain 16 kHz samples and cut into pieces at pauses, so a piece never splits a word,
+// fits one request to the computer that recognises it, and a long dictation is never one fragile upload.
+const VOICE_RATE=16000,VOICE_PIECE_MIN=10,VOICE_PIECE_MAX=18,VOICE_WINDOW=VOICE_RATE/10;
+
+function downsample(samples,from,to=VOICE_RATE){
+  if(from===to)return Float32Array.from(samples);
+  const ratio=from/to,out=new Float32Array(Math.floor(samples.length/ratio));
+  for(let i=0;i<out.length;i++){
+    // Averaging the samples a target sample stands for keeps high frequencies from folding back as noise.
+    const start=Math.floor(i*ratio),end=Math.min(samples.length,Math.floor((i+1)*ratio));
+    let sum=0;for(let j=start;j<end;j++)sum+=samples[j];
+    out[i]=end>start?sum/(end-start):0;
+  }
+  return out;
+}
+function windowLevel(samples,start){
+  let sum=0;const end=Math.min(samples.length,start+VOICE_WINDOW);
+  for(let i=start;i<end;i++)sum+=samples[i]*samples[i];
+  return end>start?Math.sqrt(sum/(end-start)):0;
+}
+// The quietest tenth of a second between the shortest and the longest piece: most likely a pause.
+function cutPoint(samples,min=VOICE_PIECE_MIN*VOICE_RATE,max=VOICE_PIECE_MAX*VOICE_RATE){
+  let best=Math.min(max,samples.length),level=Infinity;
+  for(let start=min;start+VOICE_WINDOW<=Math.min(max,samples.length);start+=VOICE_WINDOW/2){
+    const here=windowLevel(samples,start);
+    if(here<level){level=here;best=start+VOICE_WINDOW/2}
+  }
+  return best;
+}
+// Whisper invents sentences for silence, so a piece nobody spoke in is never sent.
+function hasSpeech(samples,threshold=0.01){
+  for(let start=0;start<samples.length;start+=VOICE_WINDOW)if(windowLevel(samples,start)>threshold)return true;
+  return false;
+}
+function encodeWav(samples){
+  const bytes=new Uint8Array(44+samples.length*2),view=new DataView(bytes.buffer);
+  const text=(at,value)=>{for(let i=0;i<value.length;i++)bytes[at+i]=value.charCodeAt(i)};
+  text(0,"RIFF");view.setUint32(4,36+samples.length*2,true);text(8,"WAVEfmt ");
+  view.setUint32(16,16,true);view.setUint16(20,1,true);view.setUint16(22,1,true);
+  view.setUint32(24,VOICE_RATE,true);view.setUint32(28,VOICE_RATE*2,true);view.setUint16(32,2,true);view.setUint16(34,16,true);
+  text(36,"data");view.setUint32(40,samples.length*2,true);
+  for(let i=0;i<samples.length;i++){const s=Math.max(-1,Math.min(1,samples[i]));view.setInt16(44+i*2,s<0?s*0x8000:s*0x7fff,true)}
+  return bytes;
+}
+function joinDictation(current,text){
+  if(!text)return current;
+  return current&&!/\s$/.test(current)?current+" "+text:current+text;
+}
+// Pieces wait here until their text is in the message field: a closed tab, a reload or a lost
+// connection loses at most the last few seconds, never the dictation.
+const VOICE_DB="deckaway-voice",VOICE_PIECES="pieces",VOICE_TEXTS="texts";
+function voiceDb(){
+  return new Promise((resolve,reject)=>{
+    const request=indexedDB.open(VOICE_DB,1);
+    request.onupgradeneeded=()=>{const db=request.result;db.createObjectStore(VOICE_PIECES,{keyPath:"key"});db.createObjectStore(VOICE_TEXTS,{keyPath:"rec"})};
+    request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);
+  });
+}
+async function voiceStore(store,mode,work){
+  const db=await voiceDb();
+  return new Promise((resolve,reject)=>{
+    const tx=db.transaction(store,mode),request=work(tx.objectStore(store));
+    tx.oncomplete=()=>{db.close();resolve(request?.result)};tx.onerror=tx.onabort=()=>{db.close();reject(tx.error)};
+  });
+}
+const voicePieces=()=>voiceStore(VOICE_PIECES,"readonly",s=>s.getAll());
+const voicePut=piece=>voiceStore(VOICE_PIECES,"readwrite",s=>s.put(piece));
+const voiceRemove=key=>voiceStore(VOICE_PIECES,"readwrite",s=>s.delete(key));
+const voiceTexts=()=>voiceStore(VOICE_TEXTS,"readonly",s=>s.getAll());
+const voicePieceKey=(rec,seq)=>rec+"-"+String(seq).padStart(5,"0");
+// Every dictation's text is kept for a week, so a draft lost with a closed tab can be put back.
+const VOICE_KEEP_MS=7*86400000;
+const voiceKeep=(entry,text)=>voiceStore(VOICE_TEXTS,"readwrite",s=>{
+  const read=s.get(entry.rec);
+  read.onsuccess=()=>s.put({...entry,text:joinDictation(read.result?.text||"",text),at:Date.now()});
+  return read;
+});
+const voicePrune=()=>voiceStore(VOICE_TEXTS,"readwrite",s=>{
+  const read=s.getAll();
+  read.onsuccess=()=>{for(const t of read.result)if(Date.now()-t.at>VOICE_KEEP_MS)s.delete(t.rec)};
+  return read;
+});
+function bytesToBase64(bytes){
+  let text="";
+  for(let i=0;i<bytes.length;i+=0x8000)text+=String.fromCharCode.apply(null,bytes.subarray(i,i+0x8000));
+  return btoa(text);
+}
+
+if(typeof module!=="undefined")module.exports={downsample,cutPoint,hasSpeech,encodeWav,joinDictation,voicePieceKey,bytesToBase64,VOICE_RATE};
+// Dictation: the microphone button records, a computer with whisper.cpp turns each piece into text, and the
+// text joins the draft of the session it was spoken to. Pieces wait in IndexedDB until their text is there.
+const voice={rec:null,working:false,engine:undefined,engineAt:0,computers:[],retry:null,failures:0,error:"",pending:0,prompts:new Map(),held:false};
+const VOICE_ENGINE_MS=300000,VOICE_RETRY=[5,15,30,60];
+
+// The first ready computer answers the question; a sleeping one is not waited for.
+function voiceEngine(force=false){
+  if(!force&&voice.engine!==undefined&&Date.now()-voice.engineAt<VOICE_ENGINE_MS)return Promise.resolve(voice.engine);
+  const ids=["",...deckDirectory.decks.map(d=>d.id)];
+  voice.computers=ids.map(id=>({id,checking:true}));
+  return new Promise(resolve=>{
+    let left=ids.length,found=false;
+    const settle=(index,state)=>{
+      voice.computers[index]=state;left--;renderVoiceDialog();
+      if(state.ready&&!found){found=true;voice.engine=state.id;voice.engineAt=Date.now();resolve(state.id)}
+      if(!left&&!found){voice.engine=null;voice.engineAt=Date.now();resolve(null)}
+    };
+    ids.forEach((id,index)=>gatewayApi(instancePath(id,"/api/voice_status"),{})
+      .then(j=>settle(index,{id,...j.voice}),e=>settle(index,{id,unreachable:e.message})));
+  });
+}
+async function toggleVoice(){
+  if(voice.held){voice.held=false;return}  // A long press opened the dialog instead.
+  if(voice.rec)return stopVoice();
+  if(!active)return;
+  if(!window.isSecureContext||!navigator.mediaDevices?.getUserMedia){toast(tr("Микрофон работает только по https: откройте панель по её https-адресу"));return}
+  // Created inside the tap: Safari keeps an audio context made later silent.
+  const context=new (window.AudioContext||window.webkitAudioContext)();
+  const engine=await voiceEngine();
+  if(engine===null){context.close();openVoice();return}
+  let stream;
+  try{stream=await navigator.mediaDevices.getUserMedia({audio:{channelCount:1,echoCancellation:true,noiseSuppression:true,autoGainControl:true}})}
+  catch(e){context.close();toast(tr("Нет доступа к микрофону: разрешите его для этого сайта в настройках браузера"));return}
+  // Not awaited: WebKit settles it only once audio runs, which the recording itself starts.
+  context.resume().catch(()=>{});
+  startRecording(context,stream);
+}
+function startRecording(context,stream){
+  const source=context.createMediaStreamSource(stream),node=context.createScriptProcessor(4096,1,1);
+  const rec={id:String(Date.now()),seq:0,deck:selectedDeck,session:active,context,stream,source,node,
+    chunks:[],length:0,rate:context.sampleRate,started:Date.now(),ticks:0,saving:Promise.resolve(),lock:null};
+  node.onaudioprocess=e=>{const data=e.inputBuffer.getChannelData(0);rec.chunks.push(new Float32Array(data));rec.length+=data.length};
+  source.connect(node);node.connect(context.destination);
+  rec.tick=setInterval(()=>voiceTick(rec),1000);
+  for(const track of stream.getAudioTracks())track.onended=()=>{if(voice.rec===rec)stopVoice(tr("Запись прервалась; всё, что успело записаться, сохранено"))};
+  // A phone that locks its screen stops the microphone.
+  navigator.wakeLock?.request("screen").then(lock=>{if(voice.rec===rec)rec.lock=lock;else lock.release()},()=>{});
+  voice.rec=rec;renderVoice();
+}
+function voiceSamples(rec){
+  const all=new Float32Array(rec.length);let at=0;
+  for(const chunk of rec.chunks){all.set(chunk,at);at+=chunk.length}
+  return all;
+}
+function voiceTick(rec){
+  rec.ticks++;renderVoice();
+  if(rec.length>=VOICE_PIECE_MAX*rec.rate)return cutPiece(rec,false);
+  // The piece being spoken is saved every few seconds, so a killed tab loses only those seconds.
+  if(rec.ticks%3===0){const samples=downsample(voiceSamples(rec),rec.rate);queueSave(rec,rec.seq,samples,true)}
+}
+function cutPiece(rec,last){
+  const all=voiceSamples(rec),samples=downsample(all,rec.rate),cut=last?samples.length:cutPoint(samples);
+  const keep=Math.round(cut*rec.rate/VOICE_RATE);
+  rec.chunks=[all.slice(keep)];rec.length=rec.chunks[0].length;
+  queueSave(rec,rec.seq,samples.slice(0,cut),false);rec.seq++;
+  return rec.saving.then(runVoice);
+}
+// Saves of one recording run in order: a late save of the open piece must never replace the finished one.
+function queueSave(rec,seq,samples,open){
+  rec.saving=rec.saving.then(async()=>{
+    const key=voicePieceKey(rec.id,seq);
+    if(!hasSpeech(samples)){if(!open)await voiceRemove(key);return}
+    await voicePut({key,rec:rec.id,seq,deck:rec.deck,session:rec.session,open,wav:encodeWav(samples).buffer});
+  }).catch(()=>{voice.error=tr("Не удалось сохранить запись в браузере");renderVoice()});
+}
+function stopVoice(message){
+  const rec=voice.rec;if(!rec)return;
+  voice.rec=null;clearInterval(rec.tick);
+  rec.node.onaudioprocess=null;rec.source.disconnect();rec.node.disconnect();
+  for(const track of rec.stream.getTracks())track.stop();
+  rec.context.close().catch(()=>{});rec.lock?.release().catch(()=>{});
+  if(rec.length)cutPiece(rec,true);else rec.saving.then(runVoice);
+  if(message)toast(message,true);
+  renderVoice();
+}
+async function transcribePiece(piece,engine){
+  const answer=await gatewayApi(instancePath(engine,"/api/transcribe"),
+    {audio:bytesToBase64(new Uint8Array(piece.wav)),language:"auto",prompt:voice.prompts.get(piece.rec)||""});
+  const text=(answer.text||"").trim();
+  if(text)voice.prompts.set(piece.rec,text);
+  await voicePut({...piece,text});
+  return {...piece,text};
+}
+// The text goes to the end of the draft; the cursor and a selection in the field stay where they are.
+function deliverDictation(piece){
+  if(!piece.text)return;
+  if(piece.session!==active){messageDrafts.set(piece.session,joinDictation(messageDrafts.get(piece.session)||"",piece.text));return}
+  const box=$("msg"),end=box.value.length;
+  box.setRangeText(joinDictation(box.value,piece.text).slice(end),end,end,"preserve");
+  box.dispatchEvent(new Event("input"));
+}
+async function voiceStep(){
+  const live=voice.rec?.id;
+  const pieces=(await voicePieces()).filter(p=>!(p.open&&p.rec===live)).sort((a,b)=>a.key<b.key?-1:1);
+  voice.pending=pieces.length;renderVoice();
+  // A piece is put in the draft only after every earlier piece of its recording, and only on its own computer.
+  const first=new Map();for(const p of pieces)if(!first.has(p.rec))first.set(p.rec,p);
+  const ready=[...first.values()].find(p=>typeof p.text==="string"&&p.deck===selectedDeck);
+  if(ready){
+    deliverDictation(ready);
+    if(ready.text)await voiceKeep({rec:ready.rec,deck:ready.deck,session:ready.session},ready.text);
+    await voiceRemove(ready.key);return true;
+  }
+  const next=pieces.find(p=>typeof p.text!=="string");
+  if(!next)return false;
+  const engine=await voiceEngine();
+  if(engine===null)throw new Error(tr("Ни один компьютер не распознаёт речь"));
+  try{await transcribePiece(next,engine)}catch(e){voice.engine=undefined;throw e}
+  return true;
+}
+async function runVoice(){
+  if(voice.working||document.hidden)return;
+  voice.working=true;clearTimeout(voice.retry);
+  try{
+    while(await voiceStep()){voice.failures=0;voice.error=""}
+    // Text for another computer's session waits until that computer is chosen again.
+    if(voice.pending)voice.retry=setTimeout(runVoice,30000);
+  }catch(e){
+    voice.error=e.message;
+    voice.retry=setTimeout(runVoice,VOICE_RETRY[Math.min(voice.failures++,VOICE_RETRY.length-1)]*1000);
+  }finally{voice.working=false;renderVoice()}
+}
+function renderVoice(){
+  const rec=voice.rec,button=$("b_mic"),state=$("voice_state");
+  button.classList.toggle("on",Boolean(rec));button.setAttribute("aria-pressed",rec?"true":"false");
+  const seconds=rec?Math.floor((Date.now()-rec.started)/1000):0;
+  const text=rec?"● "+Math.floor(seconds/60)+":"+String(seconds%60).padStart(2,"0")
+    :voice.error&&voice.pending?tr("Запись сохранена, распознать пока не удалось: {0}",[voice.error])
+    :voice.pending?tr("Распознаётся: {0}",[voice.pending]):"";
+  state.hidden=!text;state.textContent=text;state.classList.toggle("error",Boolean(!rec&&voice.error&&voice.pending));state.classList.toggle("rec",Boolean(rec));
+}
+function watchVoice(){
+  const button=$("b_mic");let timer=null;
+  // A long press opens the computers that recognise speech and the last dictations.
+  button.addEventListener("pointerdown",()=>{timer=setTimeout(()=>{voice.held=true;openVoice()},600)});
+  for(const name of ["pointerup","pointercancel","pointerleave"])button.addEventListener(name,()=>clearTimeout(timer));
+  button.addEventListener("contextmenu",e=>{e.preventDefault();clearTimeout(timer);if(!voice.held)openVoice()});
+  document.addEventListener("visibilitychange",()=>{if(!document.hidden)runVoice()});
+  addEventListener("online",runVoice);
+  voicePrune().catch(()=>{});runVoice();
+}
+function voiceComputerState(c){
+  if(c.checking)return tr("Проверяется…");
+  if(c.unreachable)return c.unreachable;
+  if(c.ready)return tr("Готово");
+  if(c.phase==="binary")return tr("Устанавливается whisper.cpp…");
+  if(c.phase==="model")return tr("Загружается модель: {0}%",[Math.floor(100*(c.done||0)/(c.total||c.size||1))]);
+  if(c.phase==="error")return c.error;
+  if(c.model&&!c.binary)return tr("Модель есть, нет программы whisper-cli");
+  return c.can_install?tr("Не установлено"):tr("Нужен whisper.cpp: установите его, чтобы команда whisper-cli была доступна");
+}
+function renderVoiceComputers(){
+  const box=$("voice_computers");if(!box)return;
+  box.replaceChildren(...voice.computers.map(c=>{
+    const row=el("div","voice-computer",el("b","",deckName(c.id)),el("span","",voiceComputerState(c)));
+    // The copy already installed is named, so nobody installs a second one.
+    if(c.uses?.length)row.append(el("small","voice-uses",c.uses.join(" · ")));
+    if(!c.ready&&c.can_install&&!["binary","model"].includes(c.phase)){
+      const install=el("button","",c.model?tr("Установить whisper.cpp"):tr("Установить (≈{0} МБ)",[Math.round((c.size||0)/1e6)]));
+      install.onclick=()=>installVoice(c.id);row.append(install);
+    }
+    return row;
+  }));
+}
+async function renderVoiceTexts(){
+  const box=$("voice_texts");
+  let texts=[];try{texts=(await voiceTexts()).sort((a,b)=>b.at-a.at).slice(0,10)}catch(e){}
+  box.replaceChildren(...texts.map(t=>{
+    const copy=el("button","",tr("Копировать")),put=el("button","",tr("Вставить"));
+    copy.onclick=()=>navigator.clipboard.writeText(t.text).then(()=>toast(tr("Скопировано"),true),()=>toast(tr("Не удалось скопировать")));
+    put.onclick=()=>{if(!active)return;deliverDictation({session:active,text:t.text});$("voice_dlg").close()};
+    return el("div","voice-text",el("small","",new Date(t.at).toLocaleString(DATE_LOCALE)+" · "+t.session),el("p","",t.text),el("div","acts",copy,put));
+  }));
+  $("voice_texts_title").hidden=!texts.length;
+}
+function renderVoiceDialog(){if($("voice_dlg").open)renderVoiceComputers()}
+function openVoice(){
+  const dialog=$("voice_dlg");
+  if(!dialog.open)dialog.showModal();
+  renderVoiceComputers();renderVoiceTexts();
+  if(!voice.computers.length||Date.now()-voice.engineAt>5000)voiceEngine(true).then(watchVoiceInstall);
+}
+async function installVoice(id){
+  try{const j=await gatewayApi(instancePath(id,"/api/voice_install"),{});updateVoiceComputer(id,j.voice)}
+  catch(e){toast(e.message)}
+  watchVoiceInstall();
+}
+function updateVoiceComputer(id,state){
+  const index=voice.computers.findIndex(c=>c.id===id);
+  if(index>=0)voice.computers[index]={id,...state};
+  if(state.ready){voice.engine=undefined;runVoice()}
+  renderVoiceDialog();
+}
+// Progress is read only while the dialog is open.
+function watchVoiceInstall(){
+  clearTimeout(voice.installTimer);
+  const busy=voice.computers.filter(c=>["binary","model"].includes(c.phase));
+  if(!busy.length||!$("voice_dlg").open)return;
+  voice.installTimer=setTimeout(async()=>{
+    await Promise.all(busy.map(c=>gatewayApi(instancePath(c.id,"/api/voice_status"),{}).then(j=>updateVoiceComputer(c.id,j.voice),()=>{})));
+    watchVoiceInstall();
+  },2000);
+}
 const I18N=__PANEL_I18N__;
 const DATE_LOCALE=(()=>{try{return Intl.getCanonicalLocales(I18N.language)[0]}catch(e){return "en"}})();
 const $=id=>document.getElementById(id);
@@ -6577,7 +6894,7 @@ loadInbox();setInterval(loadInbox,5000);
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)loadInbox()});
 // Last: everything above is declared. What this browser showed before is on screen before the first answer.
 showRemembered();showRememberedDecks();renderTabs();show();renderInteg();
-addEventListener("pagehide",keepScreens);watchRichPaste();
+addEventListener("pagehide",keepScreens);watchRichPaste();watchVoice();
 // A row that appears above or below the screen (summary, context, a question) makes it shorter: text that
 // was being followed stays followed instead of losing its last lines.
 {

@@ -179,6 +179,39 @@ the panel cannot confirm it, the dialog says so and nothing is repeated. Message
 that runs the session, in `~/.config/cc-panel/integrations/schedule.json`, and survive a panel restart;
 closing a session removes its waiting messages. Attachments cannot be held for later.
 
+## Dictation
+
+The microphone next to the message field records what you say and puts the text into the draft; nothing is
+sent until you send it. Tap it to start and again to stop. Speech is recognised by
+[whisper.cpp](https://github.com/ggml-org/whisper.cpp) on one of your own computers: the page asks this
+DeckAway first, then each connected computer, and uses the first one that is ready. The recording goes
+nowhere else. A Mac with Apple Silicon is the fastest choice: whisper.cpp runs there on its GPU.
+
+**What is used.** A copy already on the computer comes first: `whisper-cli` on the PATH or from Homebrew,
+or built in a `whisper.cpp` folder of your home (or one level deeper, such as `~/projects/whisper.cpp`);
+a `ggml-*.bin` model in such a `whisper.cpp/models` folder, or a whisper.cpp model inside Audio Hijack's
+(`~/Library/Application Support/Rogue Amoeba/Transcription Models`) or MacWhisper's folder, found by its content. The largest multilingual
+model wins. Documents, Desktop and Downloads are never looked into, since macOS would ask you for
+permission. Models of faster-whisper (noScribe, for one) are another format and cannot be used.
+
+**Installing.** A tap on the microphone with no computer ready, or a long press on it, opens **Voice input**:
+every computer with its state, the copies it uses and, on a Mac with Homebrew, **Install** for what is
+missing: `brew install whisper-cpp` for the program, and the `large-v3-turbo` model (about 870 MB, resumed
+after a broken connection and checked against its hash) into `~/.cache/agent-deck/whisper/` only if no model
+was found. On Linux, install whisper.cpp so that `whisper-cli` is on the PATH.
+
+**A long dictation is not lost.** The recording is cut into pieces of 10 to 18 seconds at a pause, so a
+word is never split. Each piece is kept in the browser (IndexedDB) and sent on its own; its text joins
+the draft in the order it was spoken. The piece being spoken is saved every three seconds, so a closed
+tab, a reload or a lock screen loses at most those seconds. A piece that cannot be recognised (the computer
+is asleep, no connection) waits and is sent again, after a reload too; the line under the field says how
+many wait. Text meant for a session of another computer waits until that computer is chosen again.
+The screen is kept awake while recording, since a phone that locks stops the microphone. **Voice input**
+also keeps the text of every dictation for a week, so a draft lost with a tab can be copied back.
+
+The browser allows the microphone only over https (or `localhost`): open the panel at its https address,
+not at a plain `http://100.x.y.z:8790`.
+
 ## Containers on another computer
 
 Agents can run on one computer while their containers run on another: for example a small server

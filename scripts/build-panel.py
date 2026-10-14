@@ -40,6 +40,8 @@ SCRIPTS = (
     "here.js",
     "remember.js",
     "richpaste.js",
+    "voice-audio.js",
+    "voice.js",
 )
 TOP_LEVEL = re.compile(r"^(?:async\s+)?(?:function\*?|const|let|var|class)\s+([A-Za-z_$][\w$]*)", re.M)
 
