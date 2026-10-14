@@ -81,7 +81,8 @@ test('phone settings scroll content inside a fixed header and short navigation b
  const heading=await page.locator('#settings_dlg .hub-heading').boundingBox();
  await page.locator('.hub-content').evaluate(e=>e.scrollTop=e.scrollHeight);
  await expect(page.locator('#lm_ports')).toBeInViewport();
- expect((await page.locator('#settings_dlg .hub-heading').boundingBox()).y).toBe(heading.y);
+ // Within a pixel: the sheet may still be settling from its opening animation; a scrolled header moves by hundreds.
+ expect(Math.abs((await page.locator('#settings_dlg .hub-heading').boundingBox()).y-heading.y)).toBeLessThan(1);
  expect(await page.locator('.hub-content').evaluate(e=>e.scrollWidth<=e.clientWidth)).toBe(true);
 });
 
