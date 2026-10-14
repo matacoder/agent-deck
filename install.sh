@@ -283,13 +283,16 @@ as_user python3 "$SRC/claude/register-hooks.py"
 
 if ! as_user bash -lc 'command -v claude' >/dev/null 2>&1; then
     say "Claude Code"
-    as_user bash -c 'curl -fsSL https://claude.ai/install.sh | bash'
+    # pipefail: a failed download would otherwise pass as an installed agent. Not fatal: the panel works without it.
+    as_user bash -o pipefail -c 'curl -fsSL https://claude.ai/install.sh | bash' \
+        || say "Claude Code could not be installed now; run the installer again later"
 fi
 
 if [ "$WITH_CODEX" = 1 ] && ! as_user bash -lc 'command -v codex' >/dev/null 2>&1; then
     say "Codex CLI"
     # Non-interactive: its "Start Codex now?" question would stop the whole installation.
-    as_user bash -c 'curl -fsSL https://chatgpt.com/codex/install.sh | CODEX_NON_INTERACTIVE=1 sh'
+    as_user bash -o pipefail -c 'curl -fsSL https://chatgpt.com/codex/install.sh | CODEX_NON_INTERACTIVE=1 sh' \
+        || say "Codex CLI could not be installed now; run the installer again later"
 fi
 
 if [ "$WITH_DOCKER" = 1 ]; then
@@ -424,4 +427,4 @@ if [ -n "$NEW_PASS" ]; then
 else
     echo "    password: grep PANEL_PASSWORD $ENV"
 fi
-echo "    first run: open a session and do /login inside Claude, then 'Connect GitHub' in the sidebar"
+echo "    first run: sign in to your agents in Settings -> Agents, connect GitHub in Settings -> Connections"

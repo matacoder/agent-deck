@@ -31,7 +31,7 @@ Check 'non-tailnet addresses are ignored' ($null -eq (Select-TailscaleIPv4 @('19
 
 $options = @{ Language = 'pt-BR'; Distro = 'Ubuntu-24.04'; Port = 8790; WithDocker = $false; GetSh = 'https://raw.githubusercontent.com/matacoder/deckaway/main/get.sh' }
 Test-InstallOptions $options
-Check 'linux command carries only validated values' ((Get-LinuxCommand $options '100.64.0.9') -eq 'curl -fsSL https://raw.githubusercontent.com/matacoder/deckaway/main/get.sh | BIND_HOST=100.64.0.9 PANEL_PORT=8790 PANEL_LANGUAGE=pt-BR WITH_DOCKER=0 bash')
+Check 'linux command carries only validated values' ((Get-LinuxCommand $options '100.64.0.9') -eq 'set -o pipefail; curl -fsSL https://raw.githubusercontent.com/matacoder/deckaway/main/get.sh | BIND_HOST=100.64.0.9 PANEL_PORT=8790 PANEL_LANGUAGE=pt-BR WITH_DOCKER=0 bash')
 foreach ($bad in @(@{ Language = 'en; rm -rf /' }, @{ Distro = 'Ubuntu; calc' }, @{ Port = 80 })) {
     $copy = $options.Clone(); foreach ($k in $bad.Keys) { $copy[$k] = $bad[$k] }
     $rejected = $false

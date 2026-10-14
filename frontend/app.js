@@ -336,7 +336,6 @@ function renderTitle(){
   $("msg").placeholder=s?tr("Сообщение в ")+(s.source?.kind==="provider"&&s.source.label?s.source.label:agentLabel(s))+"…":tr("Сообщение агенту…");
   $("bar_tools").hidden=!s;
   if(!s){t.textContent=isMobile()?"DeckAway":"";return}
-  const st=state(s);
   t.append(el("b","",sessionTitle(s)),el("span","path"," — "+s.path.replace(/^\/(?:home|Users)\/[^/]+/,"~")),// The model's source goes before the folder: a narrow header cuts the end, and "which model" matters more.
     el("span","st",stateText(s)+(s.source?.label?" · "+s.source.label:"")+" · "+shortPath(s.path)));
 }
@@ -424,7 +423,7 @@ function showClosedDrafts(){
 function saveClosedDrafts(){
   try{deckSessionStorage.setItem("cc.closed-drafts",JSON.stringify([...closedDrafts]))}catch(e){}
   $("s_drafts").style.display=closedDrafts.size?"flex":"none";
-  $("b_drafts").style.display=closedDrafts.size?"block":"none";
+  $("b_drafts").style.display=closedDrafts.size?"flex":"none";
 }
 
 let loadingSessions=null,sessionsQueued=false,queuedSessions=null;
@@ -479,7 +478,7 @@ async function loadSessions(){
     loadQuestion();
   }catch(e){if(e.offline)setConnection("offline");else toast(e.message)}
 }
-let question={name:null,data:null,expanded:false,busy:null,textIndex:null},loadingQuestion=false;
+let question={name:null,data:null,expanded:false,busy:null,textIndex:null},loadingQuestion=false,questionCard="";
 async function loadQuestion(){
   const s=cur();
   if(!s||agentOf(s)==="shell"||!s.running){if(question.data)setQuestion(s?.name||null,null);return}
@@ -507,7 +506,10 @@ function renderQuestion(){
   // The card's own buttons answer; the 1/2/3 keys would only repeat them on a short screen.
   document.body.classList.toggle("has-question",Boolean(data));
   // Typing an answer must not be wiped by the 2.5 s refresh, so an open text field pauses re-rendering.
-  if($("question").querySelector(".q-text textarea:focus"))return;
+  // Only while the card is still this question: its buttons answer the one known now, not the one drawn.
+  const card=data?question.name+"\n"+data.id:"";
+  if($("question").querySelector(".q-text textarea:focus")&&questionCard===card)return;
+  questionCard=card;
   renderQuestionCard({box:$("question"),question:data,expanded:question.expanded,busyIndex:question.busy,textIndex:question.textIndex,textDraft:question.textDraft||"",translate:tr,
     onTextInput:value=>{question.textDraft=value;saveQuestionDraft()},
     onToggle:()=>{question.expanded=!question.expanded;renderQuestion()},onAnswer:answerQuestion,
@@ -634,7 +636,7 @@ async function uploadImages(files){
   if(attachmentsFor(name).length+files.length>4){toast(tr("Можно приложить до 4 файлов"));return}
   uploading=true;renderAttachments();
   sendStates.set(name,{text:tr("Загружаю файлы…"),phase:"pending"});renderSendState();
-  let failed=false;
+  let failed="";
   for(const file of files){
     try{
       const isImage=file.type.startsWith("image/");
@@ -646,10 +648,11 @@ async function uploadImages(files){
         sendStates.set(name,{text:tr("Загружаю файлы…")+" "+percent+"%",phase:"pending"});if(active===name)renderSendState();
       });
       imageAttachments.set(name,[...attachmentsFor(name),{attachment:result.attachment,label:file.name||tr("Файл"),preview:result.kind==="image"||(result.kind===undefined&&isImage)?URL.createObjectURL(image):null}]);
-    }catch(e){failed=true;toast(e.message);sendStates.set(name,{text:tr("Не удалось приложить: ")+e.message,error:true})}
+    }catch(e){failed=e.message;toast(e.message)}
   }
   uploading=false;
-  if(!failed)sendStates.set(name,{text:tr("Файлы приложены · нажмите ↑ для отправки"),phase:"success"});
+  // After the loop: the next file's progress would otherwise leave "uploading" on screen for good.
+  sendStates.set(name,failed?{text:tr("Не удалось приложить: ")+failed,error:true}:{text:tr("Файлы приложены · нажмите ↑ для отправки"),phase:"success"});
   renderAttachments();renderSendState();
 }
 $("image_files").addEventListener("cancel",()=>{choosingImages=false});
@@ -671,7 +674,7 @@ function renderSendState(){
     const profile=lmData.profiles.find(p=>p.id===session.source.profile);
     if(profile){
       const metrics=localUsage({...profile,activity:(profile.activity||[]).filter(a=>!a.binding||a.binding===session.source.binding),performance:profile.measurements?.session?.[session.source.model]||profile.performance});
-      d.replaceChildren(el("span","composer-model",shortModel(session.source.model)),metrics.querySelector(".local-live-line"));
+      d.replaceChildren(el("span","composer-model",shortModel(session.source.model)),metrics);
     }else d.textContent=shortModel(session.source.model);
   }else{
     const line=session&&(!status||status.phase==="success")?sessionStatus(session):null;
@@ -724,7 +727,7 @@ function key(k){if(active&&!sending&&!uploading&&!panelUpdating)post("/api/send"
 async function logout(){
   try{stashDrafts()}catch(e){}
   try{await fetch("/logout",{method:"POST"})}catch(e){toast(tr("Нет связи с панелью"));return}
-  forgetShown(localStore);forgetShown(sessionStore);
+  signedOut=true;forgetShown(localStore);forgetShown(sessionStore);
   location.href="/login";
 }
 function toggleKeys(){const expanded=$("keys").classList.toggle("expanded");$("b_keymore").setAttribute("aria-expanded",String(expanded));fitKeyRow()}
@@ -785,7 +788,11 @@ function fitMessage(box){
   const border=box.offsetHeight-box.clientHeight,next=Math.min(box.scrollHeight+border,160)+"px";
   if(box.style.height!==next&&(box.scrollHeight>box.clientHeight||!box.style.height))box.style.height=next;
 }
-$("msg").addEventListener("input",e=>{if(active)messageDrafts.set(active,e.target.value);fitMessage(e.target)});
+$("msg").addEventListener("input",e=>{
+  if(active)messageDrafts.set(active,e.target.value);fitMessage(e.target);
+  // A failure is about the last attempt; it must not stand over the next one.
+  if(active&&sendStates.get(active)?.error){sendStates.delete(active);renderSendState()}
+});
 $("msg").addEventListener("keydown",e=>{
   if(e.key==="Enter"&&!e.shiftKey&&(isMobile()?false:true)&&!e.isComposing){e.preventDefault();send()}
   else if(e.key==="Enter"&&(e.metaKey||e.ctrlKey)){e.preventDefault();send()}
@@ -864,10 +871,12 @@ function sessionStatus(session){
 }
 // A narrow screen keeps the limits that fit in one line and a button for the rest.
 let quotaOpen=false;
-addEventListener("resize",()=>fitQuotas());
+// The room changes without the window: the sidebar folds, the project panel docks, the keyboard closes.
+if(window.ResizeObserver)new ResizeObserver(()=>fitQuotas()).observe($("send_state").parentElement);
+else addEventListener("resize",()=>fitQuotas());
 function fitQuotas(){
   const line=$("send_state").querySelector(".session-status"),more=line?.querySelector(".quota-more");
-  if(!more)return;
+  if(!more||!line.getClientRects().length)return;  // A hidden line has no widths to go by.
   const items=[...line.querySelectorAll(".quota-item")];
   for(const item of items)item.hidden=false;
   more.hidden=false;line.classList.toggle("open",quotaOpen);more.setAttribute("aria-expanded",String(quotaOpen));
@@ -884,30 +893,22 @@ function renderInteg(){
   if($("settings_dlg").open&&signature!==hubSignature&&!$("settings_dlg").contains(document.activeElement)){hubSignature=signature;renderHub()}
 }
 // The speed of a local model, shown under the message field of a session that runs on it.
-const openLocalModels=new Set();
 function localUsage(profile){
   const activity=profile.activity||[],live=activity[0],sample=profile.performance||{};
-  const model=live?.model||sample.model||profile.models?.find(m=>m.loaded)?.id||profile.name;
-  const box=el("div","local-usage compact-local");
   const labels={waiting:"Ожидание первого токена",thinking:"Модель рассуждает",tool:"Готовит вызов инструмента",generating:"Генерирует ответ"};
-  const details=el("details","local-model"),summary=el("summary","",agentIcon({source:{kind:"lmstudio"}}),el("span","local-name",shortModel(model)));
-  summary.title=model+" · "+profile.name;summary.setAttribute("aria-label",summary.title);
-  details.open=openLocalModels.has(profile.id);
-  details.addEventListener("toggle",()=>{if(details.open)openLocalModels.add(profile.id);else openLocalModels.delete(profile.id)});
-  const full=el("div","",model);details.append(summary,full,el("p","",profile.name+" · "+(lmMetrics(sample)||tr("Нет замеров"))));box.append(details);
   const line=el("div","local-live-line");
   const seconds=Math.floor(live?.request_time_seconds||0),elapsed=Math.floor(seconds/60)+":"+String(seconds%60).padStart(2,"0");
   const state=el("span","local-state",live?(live.phase==="waiting"?"◌ TTFT "+elapsed:(live.phase==="tool"?"⚙ ":"✦ ")+elapsed+(live.chunks?" · "+live.chunks+" Δ":"")):"✓ "+(Number.isFinite(sample.output_tokens)?sample.output_tokens+" tok":"—"));
   state.title=live?tr(labels[live.phase]||labels.waiting):(lmMetrics(sample)||tr("Нет замеров"));
-  if(live){box.setAttribute("aria-busy","true");state.classList.add("local-active")}
+  if(live)state.classList.add("local-active");
   line.append(state);
   const m=Number.isFinite(live?.tokens_per_second)?live:sample;
   const exact=Number.isFinite(m.tokens_per_second),average=!exact&&m.output_tokens>0&&m.request_time_seconds>0;
   const rate=exact?m.tokens_per_second:average?m.output_tokens/m.request_time_seconds:null;
   const speed=el("span","local-rate",rate===null?"— tok/s":(average?"≈":"")+rate.toFixed(1)+" tok/s"+(average?tr(" сред."):""));
   speed.title=(m===sample?tr("Последний ответ")+" · ":"")+(average?tr("Средняя скорость с учётом ожидания"):"tok/s");
-  line.append(speed);box.append(line);
-  return box;
+  line.append(speed);
+  return line;
 }
 hubInit();
 async function saveProjectDirectory(){
@@ -1029,6 +1030,8 @@ setInterval(pollChanges,15000);
 function switchDeck(identity){
   if(identity===selectedDeck)return;
   if(uploading||choosingImages||question.busy!==null){$("deck_select").value=selectedDeck;toast(tr("Дождитесь окончания отправки или загрузки"));return}
+  // An unsaved file would otherwise be saved under the same path on the computer chosen now.
+  if(filesDirty()){$("deck_select").value=selectedDeck;toast(tr("Сохраните или закройте файл: он открыт на этом компьютере"));return}
   keepScreens();
   try{stashDrafts();localStore.setItem("cc.deck",identity)}catch(e){$("deck_select").value=selectedDeck;toast(tr("Не удалось сохранить черновик. Очистите поле перед обновлением."));return}
   for(const dialog of document.querySelectorAll("dialog[open]"))dialog.close();
@@ -1058,7 +1061,7 @@ function resetInstanceState(known){
   question={name:null,data:null,expanded:false,busy:null,textIndex:null};loadingQuestion=false;
   loadingSessions=null;queuedSessions=null;sessionsQueued=false;load.done=false;
   lastAg={};usageData={};ghLogin=null;lastGh=0;repos=[];integReady.usage=integReady.lm=false;
-  lmData={profiles:[],discovery:{}};lmRefreshPending=null;openLocalModels.clear();
+  lmData={profiles:[],discovery:{}};lmRefreshPending=null;
   telegramConfig={};panelVersion=null;UI_PANEL_VERSION=null;panelUpdating=false;hubSignature="";
   // Backups, the recovery code and the update entry belong to the computer we leave.
   backupStatus=null;backupSources=new Map();$("backup_code").textContent="";$("backup_code_card").hidden=true;$("backup_join_card").hidden=true;
@@ -1327,17 +1330,16 @@ async function checkInterfaceVersion(){
 // Manual reloads and iOS page eviction skip the explicit stash paths.
 addEventListener("pagehide",()=>{try{stashDrafts()}catch(e){}});
 setInterval(checkInterfaceVersion,30000);
-checkInterfaceVersion();setInterval(checkInterfaceVersion,300000);
+checkInterfaceVersion();
 
 let loadingMetrics=false;
 async function loadMetrics(){
   if(document.hidden||loadingMetrics)return;
   loadingMetrics=true;
   const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),8000);
-  const node=$("server_metrics");
-  const render=showMetrics;
+  const epoch=deckEpoch,render=showMetrics;
   try{
-    const epoch=deckEpoch,response=await fetch(activePath("/api/server-metrics"),{cache:"no-store",signal:controller.signal});
+    const response=await fetch(activePath("/api/server-metrics"),{cache:"no-store",signal:controller.signal});
     if(!response.ok)throw new Error("metrics unavailable");
     const data=await response.json();
     if(epoch!==deckEpoch)return;
@@ -1346,7 +1348,7 @@ async function loadMetrics(){
     const ram=hasMemory?Math.round(data.memory_used/data.memory_total*100)+"%":"—";
     const detail=hasMemory?" ("+(data.memory_used/1073741824).toFixed(1)+" / "+(data.memory_total/1073741824).toFixed(1)+tr(" ГиБ)"):"";
     render(cpu,ram,detail);keepShown(deckLocalStorage,selectedDeck,"metrics",{cpu,ram,detail});
-  }catch(e){render("—","—")}
+  }catch(e){if(epoch===deckEpoch)render("—","—")}
   finally{clearTimeout(timeout);loadingMetrics=false}
 }
 /* Per-computer browser state: the same code runs on page load and on a computer switch. */

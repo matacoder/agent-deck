@@ -17,6 +17,13 @@ class KimiTests(PanelCase):
         cfg.save({'clear': True})
         self.assertFalse(cfg.status()['configured'])
 
+    def test_a_damaged_settings_file_reads_as_not_set_up(self):
+        cfg = self.panel.kimi_config
+        Path(cfg.config_path()).parent.mkdir(parents=True, exist_ok=True)
+        for content in ('{broken', '[1, 2]'):
+            Path(cfg.config_path()).write_text(content)
+            self.assertFalse(cfg.status()['configured'])
+
     def test_import_existing_cc_kimi_and_explicit_clear_blocks_fallback(self):
         env = self.home / '.config/cc-kimi/env'
         env.parent.mkdir(parents=True)

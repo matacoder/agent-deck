@@ -22,13 +22,27 @@ SLOTS = threading.BoundedSemaphore(2)  # A pasted page may name a dozen; they wa
 AGENT = 'Mozilla/5.0 (compatible; DeckAway picture fetch)'
 
 
+NAT64 = ipaddress.ip_network('64:ff9b::/96')
+
+
+def public(address):
+    """An IPv6 address that only carries an IPv4 one is judged by that one: it is where the connection ends."""
+    if address.version == 6:
+        inner = address.ipv4_mapped or address.sixtofour or (address.teredo or (None, None))[1]
+        if address in NAT64:
+            inner = ipaddress.ip_address(int(address) & 0xffffffff)
+        if inner is not None:
+            return inner.is_global
+    return address.is_global
+
+
 def public_addresses(host, resolve=socket.getaddrinfo):
     """Every address the name has, when all of them are on the public internet; ValueError otherwise."""
     try:
         found = {info[4][0] for info in resolve(host, 443, type=socket.SOCK_STREAM)}
     except (OSError, UnicodeError):
         raise ValueError('The picture address could not be found') from None
-    if not found or not all(ipaddress.ip_address(address.split('%')[0]).is_global for address in found):
+    if not found or not all(public(ipaddress.ip_address(address.split('%')[0])) for address in found):
         raise ValueError('The picture address is not on the public internet')
     return sorted(found)
 

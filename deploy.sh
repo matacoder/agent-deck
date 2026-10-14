@@ -7,6 +7,7 @@ set -euo pipefail
 SRC=$(cd "$(dirname "$0")" && pwd)
 PREFIX=/opt/cc-panel
 [ "$(id -u)" != 0 ] || { echo "run as the panel user, not root (root: use install.sh)" >&2; exit 1; }
+python3 "$SRC/scripts/build-panel.py" --check || { echo "panel/index.html is stale: run scripts/build-panel.py first" >&2; exit 1; }
 [ -w "$PREFIX" ] || { echo "$PREFIX is not writable by $(id -un); run once: sudo ./install.sh" >&2; exit 1; }
 export XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}
 export DBUS_SESSION_BUS_ADDRESS=${DBUS_SESSION_BUS_ADDRESS:-unix:path=$XDG_RUNTIME_DIR/bus}
@@ -52,4 +53,9 @@ python3 "$SRC/claude/register-hooks.py"
 [ "$units_changed" = 0 ] || systemctl --user daemon-reload
 systemctl --user restart cc-ttyd.service cc-panel.service
 sleep 1
-systemctl --user is-active -q cc-panel cc-ttyd && echo "deployed: panel and ttyd restarted (sessions untouched)"
+if systemctl --user is-active -q cc-panel cc-ttyd; then
+    echo "deployed: panel and ttyd restarted (sessions untouched)"
+else
+    echo "deployed, but the panel or ttyd is not running: journalctl --user -u cc-panel -u cc-ttyd -n 50" >&2
+    exit 1
+fi

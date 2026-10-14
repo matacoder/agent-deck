@@ -28,6 +28,11 @@ class PictureFetchTest(unittest.TestCase):
         for address in ('127.0.0.1', '10.0.0.5', '192.168.1.1', '172.16.3.4', '100.109.113.79', '169.254.169.254', '::1', 'fd00::1'):
             with self.assertRaises(ValueError):
                 pictures.fetch('https://router.example/logo.png', resolver(address), ask)
+        # An IPv6 address that only wraps a private IPv4 one (NAT64, mapped, 6to4) ends inside the network too.
+        for address in ('64:ff9b::a00:5', '::ffff:10.0.0.5', '2002:a00:5::1'):
+            with self.assertRaises(ValueError):
+                pictures.fetch('https://router.example/logo.png', resolver(address), ask)
+        self.assertEqual(pictures.public_addresses('cdn.example', resolver('64:ff9b::5db8:d822')), ['64:ff9b::5db8:d822'])
         # One private address among public ones is enough to refuse: the name may answer differently next time.
         with self.assertRaises(ValueError):
             pictures.fetch('https://mixed.example/a.png', resolver('93.184.216.34', '10.0.0.5'), ask)

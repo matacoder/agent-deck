@@ -70,7 +70,7 @@ class Discovery:
                 results = self.merged(found)
                 self.remember(found)
                 self.discovery = {'phase':'done','results':results}
-        except (OSError, subprocess.SubprocessError, ValueError, TypeError, AttributeError):
+        except Exception:  # A search left "running" could never be started again.
             with self.lock:self.discovery = {'phase':'error','results':[], 'error':'Could not discover DeckAway instances; check Tailscale or the local network on the gateway'}
 
     def merged(self, found):

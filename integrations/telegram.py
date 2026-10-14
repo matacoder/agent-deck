@@ -22,6 +22,8 @@ from .push import AGENT_LABELS
 from .store import Store
 
 TOKEN = re.compile(r"\d{5,20}:[A-Za-z0-9_-]{20,100}")
+# A batch is read up to 1 MB: 100 long messages are more and would be fetched again forever.
+UPDATES = 25
 FREE_TEXT = re.compile(r'(?:Other\b|Type something|Другое\b|Свой ответ)', re.I)
 
 
@@ -202,7 +204,7 @@ class Telegram:
                 continue
             try:
                 updates = self.api.call(c['token'], 'getUpdates', offset=self.database().offset(),
-                                       timeout=20, allowed_updates=['message', 'callback_query'])
+                                       timeout=20, limit=UPDATES, allowed_updates=['message', 'callback_query'])
                 problem = ''
                 for update in updates:
                     with self.lock:

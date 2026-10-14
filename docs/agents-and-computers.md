@@ -14,7 +14,7 @@
    (its `/24`); a server found both ways is listed once, under its Tailscale address.
 3. Add a discovered server, or use **Add server** with a custom HTTP/HTTPS URL
    and optional API key. Saving checks the connection and lists available models.
-4. **Test tools** explicitly verifies a synthetic tool call. **Measure speed**
+4. **Check tools** explicitly verifies a synthetic tool call. **Measure speed**
    runs a small synthetic benchmark; neither test sends an existing conversation.
 5. In **New session**, select **Claude** and the local server/model as its source.
    Install Claude Code under **Settings → Agents** if needed.

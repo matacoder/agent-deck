@@ -18,6 +18,8 @@ services:
       # PANEL_PASSWORD: set in .env to choose the password instead of a generated one
       PANEL_PASSWORD: ${PANEL_PASSWORD:-}
       WITH_CODEX: ${WITH_CODEX:-1}
+      WITH_CLAUDE: ${WITH_CLAUDE:-1}
+      PANEL_USER: ${PANEL_USER:-dev}
     volumes:
       # Settings, password, agent logins, sessions and the agents themselves.
       - agent-deck-home:/home/dev

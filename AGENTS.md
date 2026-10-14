@@ -61,7 +61,7 @@ Self-hosted panel (Python stdlib + static JS) for tmux sessions running Claude C
 - Mobile-first (iOS keyboard, inputs >= 16px); keep desktop Alt+1..9; no polling on hidden tabs.
 
 ## Installers
-- `install.sh` root-only, rejects user-owned/group-writable/symlinked sources; `update.sh` without root.
+- `install.sh` root-only, rejects user-owned/group-writable/symlinked sources; `update.sh` root-only too; the in-panel updater and `deploy.sh` run without root.
 - Fixed layout: `/opt/agent-deck`, `~/.config/cc-panel/` (never delete; changes need MAJOR + migration), `~/.config/systemd/user/`, `/etc/agent-deck/install.conf`.
 - Keep `KillMode=process`. macOS: no sudo.
 

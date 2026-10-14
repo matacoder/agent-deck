@@ -2,6 +2,25 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.53.4 — 2026-10-14
+
+Fixes from a review of the whole code.
+
+- **An unsaved file stays on its computer.** Choosing another computer with an unsaved file open in the editor is refused with a message; Save used to write the file under the same path on the computer chosen later.
+- **A question card answers the question it shows.** A card with a typed answer was not redrawn when another session was opened or the question was replaced, while its buttons answered the new one.
+- **Signing out leaves nothing behind.** Leaving the page wrote the screens, summaries and commit lists back after sign-out; the computer's name and addresses were kept too.
+- **Limits are shown on short phones.** A rule from before the limits line hid it on screens up to 720 px high, together with its "…" button. The line is also measured again when the sidebar folds, the project panel docks or the keyboard closes, not only when the window changes.
+- **Attaching.** A file that failed among others no longer leaves "Uploading… 100%" for good, and an error under the message field goes away with the next typed character.
+- **Smaller ones on the page.** A quick prompt sent just before a computer switch no longer marks a session of the other computer; processor and memory load of the previous computer no longer overwrite the new one's with "—"; the closed-drafts button keeps its icon beside the text; lines around a hit in the output search are no longer pushed to the right; the port field and the worktree list no longer zoom the page on iOS.
+- **One session that cannot be restored does not keep the others away.** After a reboot, a session of an agent this version does not know stopped the restore of every session after it, every five seconds, and the session list was never saved.
+- **A stalled tmux no longer hangs requests.** Three commands had no time limit.
+- **Summaries: two models at a time.** Ten sessions finishing together started a model process each, per language.
+- **Telegram:** a batch of very long messages could exceed what is read at once and be fetched again forever; batches are smaller now.
+- **Security, all low.** `POST /logout` without a sign-in no longer ends isolated terminal links; the cookie of a sign-in by a one-time link or a pair key is `Secure` behind https; `sessions.json`, `uploads/` and `backups/` are created private (their folder already was); the file browser refuses the settings folder by identity too (a file system that ignores case reached it as `~/.Config/cc-panel`); the picture fetch refuses IPv6 addresses that wrap a private IPv4 one.
+- **Kimi settings:** a damaged file reads as "not set up" instead of failing the agents list.
+- **Installers.** Windows: a failed download inside WSL is reported instead of "running", and the WSL restart notice stops the script as intended. Linux: a failed Claude Code or Codex download is said and does not undo the installation; the closing hint names Settings instead of a sidebar button that is gone. Docker: `WITH_CLAUDE` and `PANEL_USER` from `.env` reach the container.
+- **For maintainers.** `release.sh` checks the built page and can be run again after a failed publish; `deploy.sh` says when the panel did not start; the installer tests that need no root run with the others; README screenshots show the current interface; unused styles are removed.
+
 ## 1.53.3 — 2026-10-13
 
 - **Limits that do not fit the line fold behind "…".** On a narrow screen the line under the message field keeps the subscriptions that fit (the one the open session spends always among them) and a "…" button that shows the rest on a second line; a second tap folds them back.

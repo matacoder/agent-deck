@@ -194,12 +194,13 @@ def parse_summary(answer):
 
 
 class Summaries:
-    """Per conversation and language, on disk; a stale one is rewritten in the background, one at a time."""
+    """Per conversation and language, on disk; a stale one is rewritten in the background, two at a time."""
 
     def __init__(self, root, clock=time.time, start=None):
         self.root, self.clock = Path(root), clock
         self.lock = threading.Lock()
         self.busy = set()
+        self.slots = threading.BoundedSemaphore(2)  # Each rewrite is a model process; ten sessions finish together.
         self.start = start or (lambda job: threading.Thread(target=job, daemon=True, name='agent-deck-summary').start())
 
     def file(self, sid, language):
@@ -249,7 +250,8 @@ class Summaries:
     def rewrite(self, sid, language, size, turns, model, kept):
         record = dict(kept, tried=self.clock())
         try:
-            answer = model['complete'](summary_prompt(turns, language, kept.get('title', '')))
+            with self.slots:
+                answer = model['complete'](summary_prompt(turns, language, kept.get('title', '')))
             line, text = parse_summary(answer)
             title, done, asks = extras_of(answer)
             # An older "done" would describe another moment: it goes when the model sends none.

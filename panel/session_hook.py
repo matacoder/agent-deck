@@ -193,7 +193,10 @@ def config_path():
 def read():
     try:
         with open(config_path()) as stream:
-            return json.load(stream)
+            data = json.load(stream)
+            return data if isinstance(data, dict) else {}
+    except ValueError:
+        return {}  # A damaged file reads as "not set up", not as a failed page.
     except FileNotFoundError:
         # Existing cc-kimi installations can be used without re-entering their key.
         try:

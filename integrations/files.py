@@ -25,8 +25,20 @@ def _private(home):
     return {home / p for p in PRIVATE} | {Path(os.path.realpath(home / p)) for p in PRIVATE}
 
 
+def _same(path, other):
+    try:
+        return os.path.samefile(path, other)
+    except OSError:
+        return False
+
+
 def _blocked(real, home):
-    return any(real == blocked or blocked in real.parents for blocked in _private(home))
+    """By identity as well as by name: a file system that ignores case reaches the folder as ~/.Config too."""
+    private = _private(home)
+    if any(real == blocked or blocked in real.parents for blocked in private):
+        return True
+    inside = [folder for folder in (real, *real.parents) if home in folder.parents]
+    return any(_same(folder, blocked) for folder in inside for blocked in private)
 
 
 def _resolve(home, path):

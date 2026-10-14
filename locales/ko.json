@@ -999,6 +999,7 @@
     "Модель, которая пишет пересказ, даёт сессии короткое название латиницей и меняет его, когда меняется задача. Оно видно в списке и в уведомлениях. Сессию, переименованную вручную, не трогает.": "The model that writes the summary gives the session a short name in Latin letters and changes it when the task changes. It is shown in the list and in notifications. A session you renamed yourself is left alone.",
     "{0}д": "{0}일",
     "{0}ч": "{0}시간",
-    "Все лимиты": "모든 한도"
+    "Все лимиты": "모든 한도",
+    "Сохраните или закройте файл: он открыт на этом компьютере": "먼저 파일을 저장하거나 닫으세요. 이 컴퓨터에서 열려 있습니다"
   }
 }

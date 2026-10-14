@@ -131,8 +131,8 @@ agents' own tokens from `~/.claude/.credentials.json` and `~/.codex/auth.json`. 
 documented** and may change; the panel then shows "no data". Tokens are only read, never refreshed (the
 agents rotate refresh tokens; a second refresher would log them out), and never sent anywhere else.
 
-The pace line compares the share of the limit used with the share of the week elapsed (the marker on the
-bar) and extrapolates linearly to the reset.
+The limits line shows two numbers per subscription: what is left, and the plan, which is what would be left
+now if the limit were spent evenly until the reset.
 
 ## Updates and releases
 

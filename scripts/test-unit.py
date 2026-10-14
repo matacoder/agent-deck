@@ -10,7 +10,7 @@ DIRECTORY = ROOT / 'tests/backend'
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(DIRECTORY))
 warnings.simplefilter('error', ResourceWarning)
-EXCLUDED = {'test_http.py', 'test_tmux.py', 'test_installer.py'}
+EXCLUDED = {'test_http.py', 'test_tmux.py'}
 suite = unittest.TestSuite()
 loader = unittest.TestLoader()
 for path in sorted(DIRECTORY.glob('test_*.py')):

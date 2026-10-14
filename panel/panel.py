@@ -428,7 +428,7 @@ def tmux(*args, check=True):
 def session_exists(name):
     if not isinstance(name, str) or not NAME_RE.fullmatch(name):
         return False
-    return subprocess.run([*TMUX_COMMAND, "has-session", "-t", f"={PREFIX}{name}:"], capture_output=True).returncode == 0
+    return subprocess.run([*TMUX_COMMAND, "has-session", "-t", f"={PREFIX}{name}:"], capture_output=True, timeout=10).returncode == 0
 
 
 def opt(name, key):
@@ -650,7 +650,7 @@ def process_exists(pid):
 def stop_children(name):
     """Terminate whatever runs in the pane's shell (normally claude)."""
     shell = int(tmux("display-message", "-p", "-t", f"={PREFIX}{name}:", "#{pane_pid}").strip())
-    kids = subprocess.run(["pgrep", "-P", str(shell)], capture_output=True, text=True).stdout.split()
+    kids = subprocess.run(["pgrep", "-P", str(shell)], capture_output=True, text=True, timeout=10).stdout.split()
     pids = [int(p) for p in kids]
     for sig, wait in ((signal.SIGTERM, 8), (signal.SIGKILL, 2)):
         for p in pids:
@@ -675,7 +675,7 @@ def add_worktree(repo, project, name, branch):
     if os.path.exists(wt):
         return wt
     exists = subprocess.run(["git", "-C", repo, "rev-parse", "--verify", "--quiet", f"refs/heads/{branch}"],
-                            capture_output=True).returncode == 0
+                            capture_output=True, timeout=30).returncode == 0
     args = ["git", "-C", repo, "worktree", "add", wt] + ([branch] if exists else ["-b", branch])
     r = subprocess.run(args, capture_output=True, text=True, timeout=120)
     if r.returncode:
@@ -839,6 +839,7 @@ def upload_folder(name, filename):
     if filename is not None and (not isinstance(filename, str) or not filename or len(filename) > 255
                                  or any(c in filename for c in ("/", "\\", "\0", "\n", "\r"))):
         raise ValueError("неверное имя файла")
+    os.makedirs(UPLOAD_DIR, mode=0o700, exist_ok=True)  # makedirs gives the mode to the last folder only.
     os.makedirs(folder, mode=0o700, exist_ok=True)
     if os.path.islink(UPLOAD_DIR) or os.path.islink(folder):
         raise ValueError("папка загрузок не должна быть символической ссылкой")
@@ -2478,7 +2479,8 @@ class Handler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header('Content-Type', 'application/json')
         self.send_header('Content-Length', str(len(body)))
-        self.send_header('Set-Cookie', f'{COOKIE}={make_token()}; Path=/; Max-Age={COOKIE_DAYS * 86400}; HttpOnly; SameSite=Lax')
+        secure = "; Secure" if self.is_https() else ""
+        self.send_header('Set-Cookie', f'{COOKIE}={make_token()}; Path=/; Max-Age={COOKIE_DAYS * 86400}; HttpOnly; SameSite=Lax{secure}')
         self.end_headers()
         self.wfile.write(body)
 
@@ -2822,7 +2824,9 @@ class Handler(BaseHTTPRequestHandler):
                 self.close_connection = True
                 return self.send_json(403, {"error": "неверный источник запроса"})
             try:
-                revoke_terminal_links()
+                # Only the signed-in owner ends the links: anyone who reaches the port can call this.
+                if token_valid(self.cookie(COOKIE)):
+                    revoke_terminal_links()
             except (OSError, ValueError):
                 pass  # Logging out must work even when the settings folder is read-only.
             return self.redirect("/login", f"{COOKIE}=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax")
@@ -3126,7 +3130,9 @@ def load_state():
 
 def save_state(state):
     tmp = STATE_FILE + ".tmp"
-    with open(tmp, "w", encoding="utf-8") as f:
+    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w", encoding="utf-8") as f:
+        os.fchmod(fd, 0o600)  # A temporary file left by an earlier version keeps its wider mode otherwise.
         json.dump(state, f, ensure_ascii=False, indent=1)
     os.replace(tmp, STATE_FILE)
 
@@ -3158,7 +3164,7 @@ def restore_session(name, info):
             raise ValueError("Invalid saved model source")
         # The agent comes back with the Docker it had: the session's own choice, else this computer's default.
         resume = with_containers(agent_cmd(agent, sid, True, skip, source=source), choice) if info.get("running") else None
-    except ValueError as error:
+    except (ValueError, KeyError) as error:  # KeyError: an agent this version does not know.
         print(f"restore {name}: {error}; shell only", flush=True)
         resume = None
     if source is None:
@@ -3197,8 +3203,8 @@ def sync_state():
                 if name not in live:
                     try:
                         restore_session(name, info)
-                    except (RuntimeError, subprocess.TimeoutExpired) as e:
-                        print(f"restore {name} failed: {e}", flush=True)
+                    except Exception as e:  # One session must not keep the others from coming back.
+                        print(f"restore {name} failed: {type(e).__name__}: {e}", flush=True)
         new = {"server_pid": pid, "sessions": live_sessions()}
         for info in new["sessions"].values():
             info.pop("created", None)

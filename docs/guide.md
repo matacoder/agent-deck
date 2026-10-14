@@ -73,7 +73,7 @@ The **?** next to the search field in the session bar shows the same picture ins
 - Telegram bot: questions with answer buttons and "finished" messages in your private chat; reply to send the next prompt.
 - A one-line summary of each conversation and how full its context is.
 - The conversation itself, readable after a restart or a compaction left only a few screens in the terminal.
-- Subscription limits with a pace forecast, always visible — also under the message field on a phone.
+- Subscription limits (what is left and the even-spending plan) in one line under the message field; on a narrow screen the ones that do not fit fold behind "…".
 
 **Seeing the work**
 
@@ -318,7 +318,7 @@ recognized active terminal menus. Custom text and multiple selections use the pa
 
 1. Open **Settings → Connections → Telegram → Configure** on desktop or phone.
 2. Paste your existing bot token from [@BotFather](https://t.me/BotFather) and save.
-3. Follow **Link my Telegram** and press **Start** in the bot's private chat.
+3. Follow **Pair my Telegram** and press **Start** in the bot's private chat.
 4. Answer a question using its buttons. The bot confirms when the answer reaches the agent. For a
    custom answer (*Other* / *Type something*), reply to the question message with your text.
 

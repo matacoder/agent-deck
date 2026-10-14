@@ -160,6 +160,7 @@ async function sendQuick(prompt){
   sendStates.set(name,{text:tr("Отправляю…"),phase:"pending"});renderSendState();
   try{
     await api(instancePath(deck,"/api/send"),{name,text:prompt.text},true);
+    if(selectedDeck!==deck)return;
     sendStates.set(name,{text:tr("Отправлено в ")+agentLabel(sessions.find(s=>s.name===name))+" · "+new Date().toLocaleTimeString(DATE_LOCALE,{hour:"2-digit",minute:"2-digit"}),phase:"success"});
     await load();
   }catch(e){

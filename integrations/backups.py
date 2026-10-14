@@ -287,7 +287,8 @@ class Backups:
             # Copies are bounded per machine (KEEP) and in machines, so a client cannot fill the disk.
             if not folder.is_dir() and self.store_dir.is_dir() and sum(1 for p in self.store_dir.iterdir() if p.is_dir()) >= MAX_ORIGINS:
                 raise ValueError('Слишком много компьютеров в хранилище бэкапов')
-            folder.mkdir(parents=True, exist_ok=True, mode=0o700)
+            self.store_dir.mkdir(parents=True, exist_ok=True, mode=0o700)  # mkdir gives the mode to the last folder only.
+            folder.mkdir(exist_ok=True, mode=0o700)
             write_private(folder / f"{meta['created']}.adbk", blob)
             for old in sorted(folder.glob('*.adbk'), key=_created)[:-KEEP]:
                 old.unlink()

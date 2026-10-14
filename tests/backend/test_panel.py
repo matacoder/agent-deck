@@ -1,4 +1,5 @@
 import json
+import os
 import base64
 from pathlib import Path
 import tempfile
@@ -252,9 +253,23 @@ class SessionTests(PanelCase):
         self.panel.restore_session.assert_called_once_with("missing", {"path": "x"})
         self.assertNotIn("created", self.panel.save_state.call_args.args[0]["sessions"]["kept"])
 
+    def test_one_session_that_cannot_be_restored_does_not_keep_the_others_away(self):
+        self.panel.tmux_server_pid = Mock(return_value=20)
+        self.panel.load_state = Mock(return_value={"server_pid": 10, "sessions": {"broken": {}, "fine": {}}})
+        self.panel.live_sessions = Mock(return_value={})
+        self.panel.containers_ready = Mock()
+        self.panel.restore_session = Mock(side_effect=[KeyError("agent-from-a-newer-version"), None])
+        self.panel.save_state = Mock()
+        self.panel.sync_state()
+        self.assertEqual([call.args[0] for call in self.panel.restore_session.call_args_list], ["broken", "fine"])
+        self.panel.save_state.assert_called_once()
+
     def test_atomic_state_round_trip_and_corrupt_state_fallback(self):
         state = {"server_pid": 1, "sessions": {"demo": {"agent": "codex"}}}
+        Path(self.panel.STATE_FILE + ".tmp").write_text("left by an earlier version")
+        os.chmod(self.panel.STATE_FILE + ".tmp", 0o664)
         self.panel.save_state(state)
+        self.assertEqual(os.stat(self.panel.STATE_FILE).st_mode & 0o777, 0o600)
         self.assertEqual(self.panel.load_state(), state)
         self.assertFalse(Path(self.panel.STATE_FILE + ".tmp").exists())
         Path(self.panel.STATE_FILE).write_text("broken json")

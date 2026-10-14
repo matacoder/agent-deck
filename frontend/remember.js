@@ -26,8 +26,10 @@ function decksToKeep(data,network){
   return {name:network?.name||"",network:{name:network?.name||"",bind_host:network?.bind_host||"",bind_port:network?.bind_port||"",public_url:network?.public_url||"",instance:network?.instance||""},
     decks:(data?.decks||[]).map(({id,name,url,instance})=>({id,name,url,instance}))};
 }
+let signedOut=false;
 function forgetShown(storage){
-  try{for(const key of Object.keys(storage))if(key.includes(SHOWN))storage.removeItem(key)}catch(e){}
+  // "cc.server" names the computer, its addresses and its city.
+  try{for(const key of Object.keys(storage))if(key.includes(SHOWN)||key.endsWith("cc.server"))storage.removeItem(key)}catch(e){}
   shownWritten.clear();
 }
 // The last answer per computer and session, in memory: a switch back shows it while the fresh one is on its way.
@@ -69,6 +71,7 @@ function screenToKeep(screen){
   return {preview_ansi:text.slice(cut),model:screen.model};
 }
 function keepScreens(){
+  if(signedOut)return;  // Leaving the page after signing out must not put the screens back.
   const kept=[...previewCache].slice(-SCREENS).map(([name,screen])=>[name,screenToKeep(screen)]).filter(entry=>entry[1]);
   try{deckSessionStorage.setItem(SHOWN+"screens",JSON.stringify(kept))}catch(e){try{deckSessionStorage.removeItem(SHOWN+"screens")}catch(e){}}
   // Summaries and context sizes go the same way: their keys already name the computer.

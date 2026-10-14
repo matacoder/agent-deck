@@ -68,13 +68,13 @@ class HTTPTests(PanelCase):
                 self.assertIn(('<html lang="' + code + '"').encode(), body)
                 self.assertIn(self.panel.locales.translate('Пароль', code).encode(), body)
                 _, _, body = self.request('GET', '/', headers={'Cookie': cookie})
-                self.assertIn(('<h3>' + self.panel.locales.translate('Настройки', code) + '</h3>').encode(), body)
+                self.assertIn(('id="hub_title">' + self.panel.locales.translate('Настройки', code) + '</h3>').encode(), body)
                 status, _, body = self.request('POST', '/api/send', '{}', {'Cookie': cookie})
                 self.assertEqual(status, 400)
                 self.assertEqual(json.loads(body)['error'], self.panel.locales.translate('неверное имя сессии', code))
         cookie = authenticated + '; cc_lang=en'
         _, _, body = self.request('GET', '/', headers={'Cookie': cookie})
-        self.assertIn(b'<h3>Settings</h3>', body)
+        self.assertIn(b'id="hub_title">Settings</h3>', body)
         self.assertNotIn(b'__PANEL_I18N__', body)
         status, _, body = self.request('POST', '/api/send', '{}', {'Cookie': cookie})
         self.assertEqual(status, 400)
@@ -284,6 +284,13 @@ class HTTPTests(PanelCase):
         status, headers, _ = self.request("POST", "/logout", headers={"Cookie": cookie})
         self.assertEqual(status, 303)
         self.assertIn("Max-Age=0", headers["Set-Cookie"])
+
+    def test_logout_without_a_cookie_does_not_end_isolated_terminal_links(self):
+        epoch = self.panel.terminal_epoch()
+        self.assertEqual(self.request("POST", "/logout")[0], 303)
+        self.assertEqual(self.panel.terminal_epoch(), epoch)
+        self.request("POST", "/logout", headers={"Cookie": self.login()})
+        self.assertEqual(self.panel.terminal_epoch(), epoch + 1)
 
     def test_login_over_trusted_https_proxy_sets_secure_cookie(self):
         status, headers, _ = self.request("POST", "/login", urlencode({

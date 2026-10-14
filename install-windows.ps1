@@ -108,7 +108,8 @@ function Test-InstallOptions($Options) {
 
 function Get-LinuxCommand($Options, [string]$Address) {
     $docker = if ($Options.WithDocker) { '1' } else { '0' }
-    return "curl -fsSL $($Options.GetSh) | BIND_HOST=$Address PANEL_PORT=$($Options.Port) PANEL_LANGUAGE=$($Options.Language) WITH_DOCKER=$docker bash"
+    # pipefail: without it a failed download ends in an empty script, and bash reports success.
+    return "set -o pipefail; curl -fsSL $($Options.GetSh) | BIND_HOST=$Address PANEL_PORT=$($Options.Port) PANEL_LANGUAGE=$($Options.Language) WITH_DOCKER=$docker bash"
 }
 
 function Invoke-Wsl([string[]]$Arguments) {
@@ -132,7 +133,7 @@ function Install-Wsl {
     # Returns $false when Windows must restart before WSL can be used.
     if ((Invoke-Wsl @('--status')).Code -ne 0) {
         Write-Step 'Installing WSL (Windows Subsystem for Linux)'
-        & wsl.exe --install --no-distribution
+        & wsl.exe --install --no-distribution | Out-Host  # Its text must not join the returned value.
         Write-Host ''
         Write-Host 'Restart Windows, then open PowerShell as administrator and run the same command again.' -ForegroundColor Yellow
         return $false
