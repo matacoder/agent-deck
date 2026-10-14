@@ -54,12 +54,13 @@ test('401 redirects to login and restores text, attachments and active session a
 
 test('session polls never overlap and a queued poll observes fresh session data', async ({ app, page }) => {
   await app.open();
-  const before = app.sessionRequests.length;
   const gate = app.holdSessions();
   await page.evaluate(() => { load(); });
   await expect.poll(() => app.sessionCaptured).toBe(true);
+  // Counted only once a poll is held: on a slow machine the page's own start-up polls can still arrive before.
+  const held = app.sessionRequests.length;
   await page.evaluate(() => { load();load(); });
-  expect(app.sessionRequests.length).toBe(before + 1);
+  expect(app.sessionRequests.length).toBe(held);
   app.sessions = app.sessions.filter(s => s.name !== 'tmux');
   gate.release();
   await expect(page.locator('#title b')).toHaveText('other');
