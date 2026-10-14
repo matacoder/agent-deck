@@ -3,7 +3,7 @@ import json
 from pathlib import Path
 import threading
 
-from .backups import write_private
+from .private_files import write_private
 
 MAX_PROMPTS, MAX_LABEL, MAX_TEXT = 24, 30, 4000
 

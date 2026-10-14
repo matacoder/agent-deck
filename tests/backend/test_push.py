@@ -3,7 +3,6 @@ from pathlib import Path
 import sys
 import tempfile
 import unittest
-from unittest.mock import Mock
 
 from support import ROOT, PanelCase, require_crypto
 sys.path.insert(0, str(ROOT))

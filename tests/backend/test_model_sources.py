@@ -1,5 +1,4 @@
 import json
-from pathlib import Path
 from unittest.mock import Mock, patch
 from support import PanelCase
 from integrations.relay import Bindings, private_write

@@ -32,7 +32,11 @@ class Question:
 
 
 OPTION = re.compile(r"^\s*([›❯>●]?)\s*(\d{1,2})[.)]\s+(.+)$")
-FOOTER = re.compile(r"(?:enter|return|⏎)\s+(?:to\s+)?(?:submit(?: (?:answer|all))?|select|confirm|continue|proceed)\b", re.I)
+FOOTER = re.compile(r"(?:enter|return|⏎)\s+(?:to\s+)?(?:submit(?: (?:answer|all))?|select|confirm|continue|proceed)\b"
+                    # Claude Code's permission dialog since 2.1 names no Enter key: "Esc to cancel · Tab to amend".
+                    r"|^esc to cancel\b", re.I)
+SOLID = re.compile(r"^[─━═╭╰┌└][─━═╌┄╭╰┌└┐┘╮╯\s]*$")
+RULE = re.compile(r"^[─━═╌┄╭╰┌└][─━═╌┄╭╰┌└┐┘╮╯\s]*$")
 
 
 class QuestionNotReady(ValueError):
@@ -78,13 +82,13 @@ def parse_question(session, agent, instance, screen):
         return None
     first = rows[0][0]
     if not headers and not async_form:
-        # Separators bound the dialog and keep preceding conversation out of notifications.
-        separators = [i for i in range(start, first) if re.match(r"^[─━═╌┄╭╰┌└][─━═╌┄╭╰┌└┐┘╮╯\s]*$", lines[i])]
-        if separators:
-            start = separators[-1] + 1
-        else:
-            start = max(start, first - 6)
-    title = "\n".join(line for line in lines[start:first] if line).strip()
+        # A solid rule bounds the dialog and keeps the conversation out of notifications; dashed rules inside
+        # it frame the command a permission dialog asks about, which the answer must not be given without.
+        solid = [i for i in range(start, first) if SOLID.match(lines[i])]
+        dashed = [i for i in range(start, first) if RULE.match(lines[i])]
+        start = solid[-1] + 1 if solid else dashed[-1] + 1 if dashed else max(start, first - 6)
+    title = "\n".join(line for line in lines[start:first] if line and not RULE.match(line)
+                      and not line.startswith("Tip: ")).strip()
     if not title:
         return None
     if not headers and not async_form and not re.search(r"\?|would you|do you|allow|proceed|choose|выберите|разрешить", title, re.I):

@@ -18,6 +18,8 @@ from . import lan
 from .lan import is_lan, neighbours
 from .relay import IDENTITY, private_write, read_json
 
+TAILNET_IPV6 = ipaddress.ip_network('fd7a:115c:a1e0::/48')
+
 
 class RemoteError(ValueError):
     def __init__(self, status):
@@ -267,7 +269,7 @@ class LMStudio:
         binary = binary or (str(mac) if mac.is_file() else None)
         if not binary:
             raise ValueError('Tailscale is not installed')
-        result = subprocess.run([binary, 'status', '--json'], capture_output=True, text=True, timeout=5, check=True)
+        result = subprocess.run([binary, 'status', '--json'], capture_output=True, text=True, timeout=5, check=True, input="")
         nodes = json.loads(result.stdout)
         return [nodes.get('Self', {})] + list((nodes.get('Peer') or {}).values())
 
@@ -280,7 +282,7 @@ class LMStudio:
             for raw in node.get('TailscaleIPs', []):
                 try:
                     ip = ipaddress.ip_address(raw)
-                    if ip not in ipaddress.ip_network('100.64.0.0/10') and ip not in ipaddress.ip_network('fd7a:115c:a1e0::/48'):
+                    if ip not in lan.TAILNET and ip not in TAILNET_IPV6:
                         continue
                 except ValueError:
                     continue

@@ -26,6 +26,7 @@ import subprocess
 import sys
 import threading
 import time
+import traceback
 import uuid
 from html import escape as escape_html
 from urllib.parse import parse_qs, quote, urlencode
@@ -104,12 +105,13 @@ except ModuleNotFoundError:
     Telegram = None  # A pre-0.7 updater installs core files first; its next run repairs packages.
 try:
     from integrations.lmstudio import LMStudio
-    from integrations.relay import Relay, Bindings
+    from integrations.relay import Relay
 except ModuleNotFoundError:
     LMStudio = None
 
 from integrations.names import unique_name
 from integrations import macos_metrics
+from integrations import private_files
 from integrations.sign_outs import SignOuts
 from integrations.decks import RemoteDecks, UnavailableDecks, remote_path, terminal_query_ok
 from integrations.preferences import ProjectDirectory, NetworkSettings
@@ -462,7 +464,7 @@ os.makedirs(project_directory.get(), exist_ok=True)
 
 
 def tmux(*args, check=True):
-    r = subprocess.run([*TMUX_COMMAND, *args], capture_output=True, text=True, timeout=10)
+    r = subprocess.run([*TMUX_COMMAND, *args], capture_output=True, text=True, timeout=10, input="")
     if check and r.returncode:
         raise RuntimeError(r.stderr.strip() or f"tmux {args[0]} failed")
     return r.stdout
@@ -471,7 +473,7 @@ def tmux(*args, check=True):
 def session_exists(name):
     if not isinstance(name, str) or not NAME_RE.fullmatch(name):
         return False
-    return subprocess.run([*TMUX_COMMAND, "has-session", "-t", f"={PREFIX}{name}:"], capture_output=True, timeout=10).returncode == 0
+    return subprocess.run([*TMUX_COMMAND, "has-session", "-t", f"={PREFIX}{name}:"], capture_output=True, timeout=10, input=b"").returncode == 0
 
 
 def opt(name, key):
@@ -693,7 +695,7 @@ def process_exists(pid):
 def stop_children(name):
     """Terminate whatever runs in the pane's shell (normally claude)."""
     shell = int(tmux("display-message", "-p", "-t", f"={PREFIX}{name}:", "#{pane_pid}").strip())
-    kids = subprocess.run(["pgrep", "-P", str(shell)], capture_output=True, text=True, timeout=10).stdout.split()
+    kids = subprocess.run(["pgrep", "-P", str(shell)], capture_output=True, text=True, timeout=10, input="").stdout.split()
     pids = [int(p) for p in kids]
     for sig, wait in ((signal.SIGTERM, 8), (signal.SIGKILL, 2)):
         for p in pids:
@@ -718,9 +720,9 @@ def add_worktree(repo, project, name, branch):
     if os.path.exists(wt):
         return wt
     exists = subprocess.run(["git", "-C", repo, "rev-parse", "--verify", "--quiet", f"refs/heads/{branch}"],
-                            capture_output=True, timeout=30).returncode == 0
+                            capture_output=True, timeout=30, input=b"").returncode == 0
     args = ["git", "-C", repo, "worktree", "add", wt] + ([branch] if exists else ["-b", branch])
-    r = subprocess.run(args, capture_output=True, text=True, timeout=120)
+    r = subprocess.run(args, capture_output=True, text=True, timeout=120, input="")
     if r.returncode:
         raise ValueError("git worktree: " + r.stderr.strip()[-500:])
     return wt
@@ -745,7 +747,7 @@ def resolve_path(d, name):
         if not GIT_RE.match(git):
             raise ValueError("неверный git URL")
         r = subprocess.run(["git", "clone", "--", git, path], capture_output=True, text=True, timeout=300,
-                           env={**os.environ, "GIT_TERMINAL_PROMPT": "0"})
+                           env={**os.environ, "GIT_TERMINAL_PROMPT": "0"}, input="")
         if r.returncode:
             raise ValueError("git clone: " + r.stderr.strip()[-500:])
     os.makedirs(path, exist_ok=True)
@@ -1117,7 +1119,7 @@ _gh_cache = {"t": 0, "repos": None}
 
 
 def gh(*args, timeout=30):
-    return subprocess.run(["gh", *args], capture_output=True, text=True, timeout=timeout)
+    return subprocess.run(["gh", *args], capture_output=True, text=True, timeout=timeout, input="")
 
 
 def github_status():
@@ -1407,7 +1409,7 @@ def claude_credentials():
         if sys.platform != "darwin":
             return {}
         result = subprocess.run(["security", "find-generic-password", "-s", "Claude Code-credentials", "-w"],
-                                capture_output=True, text=True, timeout=5)
+                                capture_output=True, text=True, timeout=5, input="")
         return json.loads(result.stdout) if result.returncode == 0 else {}
 
 
@@ -2355,6 +2357,13 @@ class Handler(BaseHTTPRequestHandler):
         # The isolated terminal path is a credential; logs keep the route, never the signature.
         print(f"{self.client_ip()} {CAPABILITY_IN_LOG.sub('/c/***/', fmt % args)}", flush=True)
 
+    def log_failure(self, error):
+        # Frames and the type only: an exception's text can carry a token or a password from the request.
+        frames = " < ".join(f"{os.path.basename(f.filename)}:{f.lineno} {f.name}"
+                            for f in reversed(traceback.extract_tb(error.__traceback__)))
+        path = CAPABILITY_IN_LOG.sub("/c/***/", urlsplit(self.path).path)
+        print(f"500 {self.command} {path}: {type(error).__name__} at {frames}", file=sys.stderr, flush=True)
+
     def via_proxy(self):
         try:
             addr = ipaddress.ip_address(self.client_address[0])
@@ -2687,7 +2696,8 @@ class Handler(BaseHTTPRequestHandler):
             return handler()
         except (BrokenPipeError, ConnectionResetError):
             pass
-        except Exception:
+        except Exception as error:
+            self.log_failure(error)
             self.close_connection = True
             self.send_json(500, {"error": "не удалось обработать запрос"})
         finally:
@@ -2915,7 +2925,8 @@ class Handler(BaseHTTPRequestHandler):
         except (ValueError, RuntimeError, subprocess.TimeoutExpired) as e:
             self.close_connection = True
             self.send_json(400, {"error": str(e)})
-        except Exception:
+        except Exception as error:
+            self.log_failure(error)
             self.close_connection = True
             self.send_json(500, {"error": "не удалось выполнить операцию"})
 
@@ -3171,12 +3182,11 @@ def load_state():
 
 
 def save_state(state):
-    tmp = STATE_FILE + ".tmp"
-    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-    with os.fdopen(fd, "w", encoding="utf-8") as f:
-        os.fchmod(fd, 0o600)  # A temporary file left by an earlier version keeps its wider mode otherwise.
-        json.dump(state, f, ensure_ascii=False, indent=1)
-    os.replace(tmp, STATE_FILE)
+    private_files.write_json(STATE_FILE, state, ensure_ascii=False, indent=1)
+    try:
+        os.unlink(STATE_FILE + ".tmp")  # Versions before 1.55 wrote through this fixed name; one may be left.
+    except FileNotFoundError:
+        pass
 
 
 def transcript_exists(sid):

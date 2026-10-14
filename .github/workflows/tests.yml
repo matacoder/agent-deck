@@ -1,4 +1,4 @@
-name: Unit tests
+name: Tests
 
 on:
   push:
@@ -8,6 +8,16 @@ permissions:
   contents: read
 
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Python (ruff, settings in pyproject.toml)
+        run: pipx run ruff==0.17.0 check .
+      - name: Shell scripts (ShellCheck)
+        run: pipx run --spec shellcheck-py==0.11.0.1 shellcheck -S warning $(git ls-files '*.sh')
+
   backend:
     runs-on: ubuntu-latest
     strategy:
@@ -48,3 +58,22 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - name: Jest frontend unit tests
         run: npm test
+
+  browser:
+    # The built page in Chromium and in WebKit sized as an iPhone, every API answered by the test itself.
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    container: mcr.microsoft.com/playwright:v1.55.0-noble
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm ci --no-audit --no-fund
+      - name: Playwright
+        env:
+          HOME: /root
+        run: npx playwright test
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7

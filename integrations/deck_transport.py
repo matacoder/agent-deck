@@ -5,9 +5,8 @@ import re
 import time
 from urllib.parse import parse_qsl, urlsplit, unquote
 
-from .lan import is_lan
+from .lan import TAILNET, is_lan
 
-TAILNET = ipaddress.ip_network('100.64.0.0/10')
 BAD_URL = ('Use an http:// URL with a Tailscale or local network IPv4 address and port; '
            'https:// is not supported for bare addresses')
 

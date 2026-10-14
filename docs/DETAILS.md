@@ -14,7 +14,10 @@ systemd --user (linger):  cc-tmux  (owns the tmux server: restarts of the panel 
                           cc-panel (KillMode=process)
 ```
 
-- tmux sessions are named `cc-<name>`; options `@cc_agent` (claude|codex|shell), `@cc_sid` (Claude/Codex
+The component diagram, the trust boundaries and the names in use are in [ARCHITECTURE.md](ARCHITECTURE.md).
+
+- tmux sessions are named `cc-<name>`; options `@cc_agent` (a key of `AGENTS` in `panel.py`, such as
+  `claude`, `codex`, `kimi`, `pi` or `shell`, or one of the agents in `integrations/agents.py`), `@cc_sid` (the agent's
   conversation id) and `@cc_skip` (skip-permissions / bypass-approvals) live on the session.
 - Persistence: sessions are saved to `~/.config/cc-panel/sessions.json` every 5 s. If the tmux server PID
   changes (reboot, crash), missing sessions are recreated and agents resumed (`claude --resume <id>`,
@@ -199,8 +202,10 @@ model request must finish before restarting the backend, which owns the relay.
 
 ## Panel source files
 
-Edit `frontend/index.html`, `frontend/style.css` and `frontend/app.js`, then run
-`python3 scripts/build-panel.py`. Commit the generated `panel/index.html` together
+Edit `frontend/index.html`, `frontend/style.css` and the scripts in `frontend/`, then run
+`python3 scripts/build-panel.py`. The scripts share one scope and are joined in the order of `SCRIPTS` in
+that file, `app.js` last; the build fails when a file is missing from the list or a top-level name is
+declared in two files. Commit the generated `panel/index.html` together
 with the sources. CI checks that the bundle is current. Releases retain a single
 HTML file so installed updaters can validate and install them without new asset
 allowlists or separate browser cache invalidation.

@@ -4,6 +4,7 @@ set -euo pipefail
 CONFIG="$HOME/.config/cc-panel"
 ENV_FILE="$CONFIG/env"
 SOCK=/tmp/agent-deck/cc-ttyd.sock
+# shellcheck disable=SC2174 # only the two leaf folders must be private; their parents are ordinary
 mkdir -p -m 700 "$CONFIG" /tmp/agent-deck
 mkdir -p "$HOME/dev" "$HOME/.claude"
 

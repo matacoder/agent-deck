@@ -8,7 +8,6 @@ from unittest.mock import Mock, patch
 from support import PanelCase, ROOT
 sys.path.insert(0, str(ROOT))
 from integrations.questions import parse_question, transcript_questions, transcript_model, matches_screen, QuestionNotReady
-from integrations.store import Store
 from integrations.telegram import API, Telegram, TelegramError
 
 TOKEN = '1234567890:' + 'test_token_only_' * 3
@@ -70,6 +69,22 @@ enter submit   ctrl+] skip   shift+→ main prompt
         screen = 'Choose a model\n❯ 1. Fast\n  2. Slow\nEnter to select'
         # Generic settings menu without a question is not a notification.
         self.assertIsNone(parse_question('demo', 'claude', '%1:123', screen.replace('Choose', 'Model:')))
+
+    def test_claude_permission_dialog_without_an_enter_hint_carries_its_command(self):
+        # Captured from Claude Code 2.1.299: the footer names no Enter key and dashed rules frame the command.
+        screen = ('● Bash(date > stamp.txt && echo done)\n  ⎿  Waiting…\n' + '─' * 60 + '\n Bash command\n'
+                  ' Tip: auto mode handles these prompts for you — choose "switch to auto mode" below\n'
+                  ' Write current date to stamp.txt\n' + '╌' * 60 + '\n date > stamp.txt && echo done\n'
+                  + '╌' * 60 + '\n Do you want to proceed?\n ❯ 1. Yes\n'
+                  '   2. Yes, and always allow access to /tmp/permtest from this project\n'
+                  '   3. Yes, and switch to auto mode · auto mode handles these prompts for you\n   4. No\n\n'
+                  ' Esc to cancel · Tab to amend\n\n\n')
+        found = parse_question('demo', 'claude', '%1:123', screen)
+        self.assertEqual(found.title, 'Bash command\nWrite current date to stamp.txt\n'
+                                      'date > stamp.txt && echo done\nDo you want to proceed?')
+        self.assertEqual((found.options[0], found.options[3], found.selected), ('Yes', 'No', 0))
+        # Only a line that begins with the hint is a footer; the words inside other text are not.
+        self.assertIsNone(parse_question('demo', 'claude', '%1:123', screen.replace(' Esc to cancel', ' Press Esc to cancel')))
 
     def transcript(self, records, agent='codex'):
         with tempfile.TemporaryDirectory(dir='/tmp') as directory:

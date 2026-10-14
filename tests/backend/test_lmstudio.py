@@ -1,12 +1,12 @@
 import http.client
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from http.server import BaseHTTPRequestHandler
 import json
 from pathlib import Path
 import tempfile
 import threading
 import unittest
 from unittest.mock import patch
-from integrations.lmstudio import LMStudio, endpoint, RemoteError, request
+from integrations.lmstudio import LMStudio, endpoint
 from integrations.relay import Relay, LoopbackHTTPServer, read_json, normalize_system_messages
 
 

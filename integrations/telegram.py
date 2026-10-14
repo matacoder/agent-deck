@@ -6,7 +6,6 @@ import os
 from pathlib import Path
 import re
 import secrets
-import tempfile
 import threading
 import time
 import urllib.error
@@ -20,6 +19,7 @@ except ModuleNotFoundError:
 from .questions import Question
 from .push import AGENT_LABELS
 from .store import Store
+from .private_files import write_json
 
 TOKEN = re.compile(r"\d{5,20}:[A-Za-z0-9_-]{20,100}")
 # A batch is read up to 1 MB: 100 long messages are more and would be fetched again forever.
@@ -61,18 +61,7 @@ class API:
 
 
 def atomic_json(path, data):
-    path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-    if path.is_symlink():
-        raise ValueError('Integration settings must not be a symlink')
-    fd, temporary = tempfile.mkstemp(dir=path.parent)
-    try:
-        with os.fdopen(fd, 'w') as stream:
-            json.dump(data, stream, ensure_ascii=False, indent=2)
-        os.replace(temporary, path)
-        path.chmod(0o600)
-    finally:
-        if os.path.exists(temporary):
-            os.unlink(temporary)
+    write_json(path, data, ensure_ascii=False, indent=2)
 
 
 class Telegram:

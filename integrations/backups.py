@@ -9,18 +9,17 @@ import hashlib
 import hmac
 import io
 import json
-import os
 from pathlib import Path
 import re
 import secrets
 import subprocess
 import sys
 import tarfile
-import tempfile
 import threading
 import time
 
 from .dependencies import require
+from .private_files import write_private
 
 MAGIC = b'ADBK2\n'
 LEGACY_MAGIC = b'ADBK1\n'
@@ -196,21 +195,6 @@ def unpack(data):
                 raise ValueError('Бэкап содержит неожиданный файл: ' + member.name[:80])
             files[member.name] = archive.extractfile(member).read()
     return files
-
-
-def write_private(path, data):
-    path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-    if path.is_symlink():
-        raise ValueError(f'{path} is a symlink; remove it and retry')
-    fd, temporary = tempfile.mkstemp(dir=path.parent)
-    try:
-        with os.fdopen(fd, 'wb') as stream:
-            stream.write(data)
-        os.chmod(temporary, 0o600)
-        os.replace(temporary, path)
-    finally:
-        if os.path.exists(temporary):
-            os.unlink(temporary)
 
 
 class Backups:

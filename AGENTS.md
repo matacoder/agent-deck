@@ -8,7 +8,7 @@ Self-hosted panel (Python stdlib + static JS) for tmux sessions running Claude C
 - tmux session `cc-<name>`, options `@cc_agent`, `@cc_sid`, `@cc_skip`; persisted in `~/.config/cc-panel/sessions.json`.
 
 ## Files (read only what you touch)
-- `panel/panel.py`: HTTP backend (~2800 lines), no unrelated refactors.
+- `panel/panel.py`: HTTP backend and the wiring of every service, no unrelated refactors.
 - `panel/updater.py`: update job, release validation (syntax + imports), rollback. `PACKAGES` lists every `integrations/*.py`.
 - `panel/session_hook.py`, `claude/*`: conversation-id hooks; nested agents must not overwrite `@cc_sid`; the hook's output asks the top-level agent to show finished work (`show_results` in `network.json`).
 - `integrations/agents.py`: agents that are only a program in a terminal (Cursor, Gemini CLI, Copilot, OpenCode, Qwen Code), one entry each: install, sign-in, switches, how the conversation is continued; `frontend/agents.js` lists the same ones for the page and a test keeps both in step. A new such agent is an entry in each, never new branches in `panel.py`. `leader_note` is the one line the session hook gives Claude Code about the others.
@@ -34,7 +34,7 @@ Self-hosted panel (Python stdlib + static JS) for tmux sessions running Claude C
 - 3.10+ (CI 3.10 + 3.12, no 3.11-only APIs). Deps: stdlib, `tmux`, `gh`, and pinned `cryptography` only (wheels from `dependency_lock.py` via `dependencies.py`, never pip; regenerate with `scripts/lock-dependencies.py`; call `dependencies.require()`, degrade clearly). Use `urllib`.
 - Never add files to `panel/` (installed updaters reject them); new code in `integrations/`.
 - Threaded server: lock shared mutable state.
-- Secrets: files 0600, dirs 0700; never in logs, JSON, URLs, tmux commands.
+- Secrets: files 0600, dirs 0700, written by `integrations/private_files.py`; never in logs, JSON, URLs, tmux commands. A logged failure names the place and type of an error, never its text.
 - `subprocess.run` with explicit `input`; no `shell=True`.
 - `/api/*` errors: JSON 4xx/5xx, no tracebacks.
 
@@ -67,7 +67,7 @@ Self-hosted panel (Python stdlib + static JS) for tmux sessions running Claude C
 
 ## Tests (before every commit)
 `npm ci && python3 scripts/build-panel.py --check && npm run test:all`
-Python unit + Jest/jsdom only, no browser E2E. Temp dirs for settings/secrets; mock commands and network; new behavior needs tests.
+Python unit + Jest/jsdom; CI also runs `ruff check .`, ShellCheck and the Playwright specs. `tests/backend/test_code_rules.py` checks the subprocess and import rules on the source. Temp dirs for settings/secrets; mock commands and network; new behavior needs tests.
 
 ## Release
 `panel/VERSION` is the source of truth (semver). Behavior change -> `CHANGELOG.md`; breaking installer/config/API -> MAJOR or `BREAKING`. Never commit `sessions.json`, `env`, `secret/`, `node_modules/`, `test-results/`, `playwright-report/`, `__pycache__/`.

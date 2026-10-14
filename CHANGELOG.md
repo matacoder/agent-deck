@@ -2,6 +2,17 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.55.0 — 2026-10-14
+
+Claude Code's permission prompts reach Telegram, and an architecture review.
+
+- **Claude Code's "Do you want to proceed?" is a question again.** Since Claude Code 2.1 the permission dialog ends in "Esc to cancel · Tab to amend" and names no Enter key, so the panel did not see it: no Telegram message, no notification, no answer buttons. It now does, and the question carries the command it asks about (with its description), not only "Do you want to proceed?". A connected computer needs this version too for its own prompts.
+- **Unexpected server errors are logged.** A 500 answer left nothing in the journal; now the method, the path and where the error happened are written there, never the error's text, which can carry a token.
+- **Settings and secrets are written by one helper**: always mode 0600, through a symlink never, flushed to disk before the rename. Five slightly different copies had grown; the sessions file used a fixed temporary name, and a leftover one from an earlier version is removed.
+- **No child process inherits the panel's standard input**, so `gh` or `git` can never wait for an answer that does not come; a test checks every call.
+- **CI also runs ruff, ShellCheck and the browser tests** (Chromium and WebKit at an iPhone size). The page build fails when a script is missing from the bundle list or a top-level name is declared in two files.
+- **New documents:** [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) (components, the path of a question, trust boundaries, design choices, the three names in use), [SECURITY.md](SECURITY.md), [CONTRIBUTING.md](CONTRIBUTING.md); outdated passages of DETAILS.md and TESTING.md updated.
+
 ## 1.54.0 — 2026-10-14
 
 The rest of the review, and the picture viewer.

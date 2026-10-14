@@ -431,7 +431,6 @@ class RemoteDeckTests(PanelCase):
 
     def test_a_screenshot_that_left_the_screen_is_served_from_the_gallery(self):
         import tempfile
-        from pathlib import Path
         from integrations.gallery import Gallery
         tmp=tempfile.TemporaryDirectory(dir='/tmp');self.addCleanup(tmp.cleanup)
         home=Path(tmp.name);shot=home/'shot.png';shot.write_bytes(b'\x89PNG\r\n\x1a\n'+b'1'*10)
@@ -457,7 +456,6 @@ class RemoteDeckTests(PanelCase):
 
     def test_the_conversation_is_served_from_the_agents_file_for_an_existing_session_only(self):
         import json,tempfile
-        from pathlib import Path
         tmp=tempfile.TemporaryDirectory(dir='/tmp');self.addCleanup(tmp.cleanup)
         transcript=Path(tmp.name)/'t.jsonl'
         transcript.write_text(json.dumps({'type':'user','message':{'role':'user','content':'Fix payments'}})+'\n')
@@ -475,7 +473,6 @@ class RemoteDeckTests(PanelCase):
 
     def test_session_info_reads_the_conversation_and_summarizes_with_the_sessions_own_provider(self):
         import json,tempfile
-        from pathlib import Path
         from integrations.session_info import Summaries
         tmp=tempfile.TemporaryDirectory(dir='/tmp');self.addCleanup(tmp.cleanup)
         transcript=Path(tmp.name)/'t.jsonl'

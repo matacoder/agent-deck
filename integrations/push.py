@@ -1,6 +1,5 @@
 """Phone/desktop notifications: device subscriptions and agent events (question asked, work finished)."""
 import json
-import os
 from pathlib import Path
 import re
 import secrets
@@ -9,7 +8,7 @@ import time
 
 from . import webpush
 from .agents import CLI
-from .backups import write_private
+from .private_files import write_private
 from .dependencies import require
 
 try:

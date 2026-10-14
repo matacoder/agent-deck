@@ -2,7 +2,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import Mock,patch
+from unittest.mock import Mock
 from integrations.updates import AutoUpdates
 from test_updater import updater
 from support import PanelCase

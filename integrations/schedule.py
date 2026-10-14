@@ -9,7 +9,7 @@ import secrets
 import threading
 import time
 
-from .backups import write_private
+from .private_files import write_private
 from .limits import detect
 
 TRIGGERS = ("time", "idle", "limit")

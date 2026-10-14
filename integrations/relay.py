@@ -10,10 +10,11 @@ import os
 from pathlib import Path
 import re
 import secrets
-import tempfile
 import threading
 import time
 from urllib.parse import urlsplit
+
+from .private_files import read_json, write_json  # noqa: F401 (read_json: imported from here by pi and session_hook)
 
 # Large local prompts can take several minutes to prefill before the first token.
 UPSTREAM_IDLE_TIMEOUT = 600
@@ -22,30 +23,14 @@ IDENTITY = re.compile(r'^[0-9a-f]{24}$')
 _lock = threading.RLock()
 
 
-def read_json(path, default):
-    path = Path(path)
-    if path.is_symlink():
-        raise ValueError('Private provider configuration must not be a symlink')
-    try:
-        return json.loads(path.read_text())
-    except FileNotFoundError:
-        return default
-
-
 def private_write(path, data):
     path = Path(path)
-    if path.parent.is_symlink() or path.is_symlink():
-        raise ValueError('Private provider configuration must not be a symlink')
+    # These folders hold keys of model services and are this module's own, so they may be tightened.
+    if path.parent.is_symlink():
+        raise ValueError(f'{path.parent} is a symbolic link; remove it and retry')
     path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
     os.chmod(path.parent, 0o700)
-    fd, temporary = tempfile.mkstemp(dir=path.parent)
-    try:
-        with os.fdopen(fd, 'w') as stream:
-            json.dump(data, stream)
-        os.replace(temporary, path)
-    finally:
-        if os.path.exists(temporary):
-            os.unlink(temporary)
+    write_json(path, data)
 
 
 class Bindings:

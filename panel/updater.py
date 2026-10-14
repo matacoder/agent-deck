@@ -19,7 +19,7 @@ REPO_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]*/[A-Za-z0-9][A-Za-z0-9_.-]*")
 TAG_RE = re.compile(r"v?(\d+)\.(\d+)\.(\d+)")
 REQUIRED = {"panel.py", "index.html", "login.html", "VERSION", "updater.py", "session_hook.py"}
 PACKAGES = {"integrations/" + name for name in ("__init__.py", "questions.py", "store.py", "telegram.py", "lmstudio.py", "relay.py", "pi.py", "preferences.py", "names.py", "decks.py", "deck_transport.py", "deck_discovery.py", "updates.py", "backups.py",
-                                                              "dependencies.py", "dependency_lock.py", "macos_metrics.py", "sign_outs.py", "push.py", "webpush.py", "images.py", "gateway.py", "usage.py", "files.py", "git.py", "feature_groups.py", "gallery.py", "session_info.py", "scrollback.py", "limits.py", "schedule.py", "quick_prompts.py", "containers.py", "lan.py", "here.py", "agents.py", "providers.py", "pictures.py", "direct.py")}
+                                                              "dependencies.py", "dependency_lock.py", "macos_metrics.py", "sign_outs.py", "push.py", "webpush.py", "images.py", "gateway.py", "usage.py", "files.py", "git.py", "feature_groups.py", "gallery.py", "session_info.py", "scrollback.py", "limits.py", "schedule.py", "quick_prompts.py", "containers.py", "lan.py", "here.py", "agents.py", "providers.py", "pictures.py", "direct.py", "private_files.py")}
 LOCALES = {"locales/__init__.py", "locales/en.json", "locales/ru.json"}
 REQUIRED |= PACKAGES | LOCALES
 ALLOWED = REQUIRED | {"icon-180.png", "icon-192.png", "icon-512.png", "manifest.webmanifest", "make_icons.py"}
@@ -153,16 +153,16 @@ def service(action):
         plist = str(Path.home() / "Library/LaunchAgents" / (label + ".plist"))
         command = (["launchctl", "bootout", domain + "/" + label] if action == "stop"
                    else ["launchctl", "bootstrap", domain, plist])
-        result = subprocess.run(command, timeout=30, capture_output=True)
+        result = subprocess.run(command, timeout=30, capture_output=True, input=b"")
         if result.returncode:
             # Stopping a service already absent is harmless during rollback.
             if action == "stop" and subprocess.run(["launchctl", "print", domain + "/" + label],
-                                                   capture_output=True, timeout=10).returncode:
+                                                   capture_output=True, timeout=10, input=b"").returncode:
                 return
             result.check_returncode()
         return
     subprocess.run(["systemctl", "--user", action, "cc-panel.service"],
-                   check=True, timeout=30, capture_output=True)
+                   check=True, timeout=30, capture_output=True, input=b"")
 
 
 def healthy(url):

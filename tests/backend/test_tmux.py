@@ -1,5 +1,4 @@
 """Real tmux integration on a private socket; no agents or live sessions are started."""
-from pathlib import Path
 import json
 import shlex
 import shutil

@@ -1,0 +1,9 @@
+# Tool settings only: DeckAway is not a Python package and has no dependencies to install.
+[tool.ruff]
+target-version = "py310"
+line-length = 120
+extend-exclude = ["node_modules"]
+
+[tool.ruff.lint]
+# Syntax errors and pyflakes (unused names, undefined names, shadowed imports).
+select = ["E9", "F"]

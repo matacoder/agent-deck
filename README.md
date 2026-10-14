@@ -1,5 +1,7 @@
 # DeckAway
 
+[![Tests](https://github.com/matacoder/deckaway/actions/workflows/tests.yml/badge.svg)](https://github.com/matacoder/deckaway/actions/workflows/tests.yml)
+
 **Your coding agents keep working. You check in from anywhere.**
 
 Start a task at your desk, close the laptop, and answer the agent's next question from your phone with one
@@ -64,7 +66,8 @@ Your own domain with HTTPS, a Russian interface from the first launch, memory li
 - [Using DeckAway](docs/guide.md): how it works, the phone, notifications, Telegram, the project panel, backups, security.
 - [Agents, models and several computers](docs/agents-and-computers.md): LM Studio, other agents, connecting your machines into one list.
 - [Installing and updating](docs/install.md): every platform in detail.
-- [Architecture, troubleshooting, development](docs/DETAILS.md) · [Tests](docs/TESTING.md) · [Changelog](CHANGELOG.md)
+- [Architecture](docs/ARCHITECTURE.md): components, trust boundaries, design choices.
+- [Details and troubleshooting](docs/DETAILS.md) · [Tests](docs/TESTING.md) · [Contributing](CONTRIBUTING.md) · [Security policy](SECURITY.md) · [Changelog](CHANGELOG.md)
 
 **Security.** The panel gives a shell to whoever logs in. Keep the password private and prefer the default
 Tailscale-only setup unless you need public access. [More](docs/guide.md#security)

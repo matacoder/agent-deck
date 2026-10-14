@@ -6,7 +6,7 @@ from pathlib import Path
 import tarfile
 import tempfile
 import unittest
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 from support import ROOT, PanelCase
 
