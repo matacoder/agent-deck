@@ -78,11 +78,12 @@ test('native Kimi source defaults to the saved model instead of always K3',async
 test('phone settings scroll content inside a fixed header and short navigation bar',async({app,page})=>{
  app.lmstudio.profiles=[localProfile()];await app.open({width:320});await page.evaluate(()=>openSettings('models'));
  const nav=await page.locator('.hub-nav').boundingBox();expect(nav.height).toBeLessThan(90);
+ // The sheet slides in: measured before its animation ends, the header would seem to move on its own.
+ await page.evaluate(()=>Promise.all(document.getAnimations().filter(a=>a.effect?.getTiming().iterations!==Infinity).map(a=>a.finished)));
  const heading=await page.locator('#settings_dlg .hub-heading').boundingBox();
  await page.locator('.hub-content').evaluate(e=>e.scrollTop=e.scrollHeight);
  await expect(page.locator('#lm_ports')).toBeInViewport();
- // Within a pixel: the sheet may still be settling from its opening animation; a scrolled header moves by hundreds.
- expect(Math.abs((await page.locator('#settings_dlg .hub-heading').boundingBox()).y-heading.y)).toBeLessThan(1);
+ expect((await page.locator('#settings_dlg .hub-heading').boundingBox()).y).toBe(heading.y);
  expect(await page.locator('.hub-content').evaluate(e=>e.scrollWidth<=e.clientWidth)).toBe(true);
 });
 
