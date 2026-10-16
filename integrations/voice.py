@@ -124,7 +124,7 @@ class Voice:
     def __init__(self, root=None, home=None, opener=None, run=subprocess.run, system=platform.system, retry_pause=5):
         self.home = Path(home or Path.home())
         self.folder = Path(root or self.home / MODEL_FOLDERS[0])
-        self.found = (0, None, None)
+        self.found = None
         self.opener = opener or urllib.request.urlopen
         self.run = run
         self.system = system
@@ -136,12 +136,12 @@ class Voice:
     def look(self, again=False):
         """What is installed, looked up at most once a minute: the folders are walked, not only checked."""
         with self.lock:
-            at, binary, model = self.found
-            if again or time.monotonic() - at > LOOK_AGAIN:
+            # Never a time 0: a computer up for less than a minute would otherwise never look.
+            if again or self.found is None or time.monotonic() - self.found[0] > LOOK_AGAIN:
                 models = find_models(self.home, self.folder)
                 binary, model = find_binary(self.home), models[0] if models else None
                 self.found = (time.monotonic(), binary, model)
-            return binary, model
+            return self.found[1:]
 
     def binary(self):
         return self.look()[0]

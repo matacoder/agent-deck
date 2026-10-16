@@ -325,17 +325,31 @@ body.is-codex .question-key{display:inline-flex!important;align-items:center;jus
 .composer-status{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 8px;margin:6px 4px 0;font-size:12px;color:var(--mut)}
 .send-state{min-height:1.4em}
 .send-state.error{color:var(--bad-text)}
-.voice-state{border:0;background:none;padding:0;font:inherit;color:var(--mut);cursor:pointer;text-align:left}
-.voice-state[hidden]{display:none}.voice-state.error{color:var(--bad-text)}.voice-state.rec{color:var(--bad-text);font-variant-numeric:tabular-nums}
-.micbtn.on{color:#fff;background:var(--bad,#d33);border-color:transparent;animation:mic-pulse 1.6s ease-in-out infinite}
-@keyframes mic-pulse{50%{opacity:.7}}
-@media (prefers-reduced-motion:reduce){.micbtn.on{animation:none}}
-.voice-computer{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;padding:10px 0;border-bottom:1px solid var(--bd)}
-.voice-computer span{flex:1;min-width:12em;color:var(--mut);overflow-wrap:anywhere}
-.voice-uses{flex-basis:100%;color:var(--mut);font-family:var(--mono,monospace);overflow-wrap:anywhere}
-.voice-text{padding:12px 0;border-bottom:1px solid var(--bd)}
-.voice-text p{margin:4px 0;white-space:pre-wrap;overflow-wrap:anywhere;max-height:7.5em;overflow:auto}
-.voice-text .acts{padding:0;justify-content:flex-start;border:0}
+.voice-state{display:flex;align-items:center;gap:8px;width:100%;margin:0 0 8px;padding:6px 10px;border:0;border-radius:10px;background:var(--side2);font:inherit;font-size:13px;color:var(--fg2);text-align:left;cursor:pointer}
+.voice-state[hidden]{display:none}
+.voice-state i{flex:none;width:8px;height:8px;border-radius:50%;background:var(--mut)}
+.voice-state span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.voice-state.rec i{background:var(--bad)}.voice-state.rec span{font-variant-numeric:tabular-nums}
+.voice-state.busy i{background:var(--acc);animation:mic-pulse 1s ease-in-out infinite}
+.voice-state.done i{background:var(--ok)}
+.voice-state.error{color:var(--bad-text)}.voice-state.error i{background:var(--bad)}
+.voice-state.error span{white-space:normal}
+.micbtn.on{color:#fff;background:var(--bad);border-color:transparent;animation:mic-pulse 1.6s ease-in-out infinite}
+.micbtn.busy{color:var(--acc-text);border-color:var(--acc)}
+@keyframes mic-pulse{50%{opacity:.6}}
+@media (prefers-reduced-motion:reduce){.micbtn.on,.voice-state.busy i{animation:none}}
+.voice-summary{display:flex;flex-direction:column;gap:2px;margin:0 0 8px;padding:12px 14px;border:1px solid var(--bd);border-radius:12px}
+.voice-summary.ready{border-color:var(--ok)}
+.voice-summary small{color:var(--mut);font-family:var(--mono)}
+.voice-more{margin-top:12px}.voice-more>summary{cursor:pointer;color:var(--fg2);padding:8px 0}
+.voice-computer{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;padding:8px 0;border-top:1px solid var(--bd)}
+.voice-computer span{flex:1;min-width:10em;color:var(--mut);overflow-wrap:anywhere}
+.voice-text{padding:10px 0;border-top:1px solid var(--bd)}
+.voice-text p{margin:0 0 4px;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;cursor:pointer}
+.voice-text p.open{display:block;white-space:pre-wrap}
+.voice-text-foot{display:flex;align-items:center;gap:14px}
+.voice-text-foot small{flex:1;color:var(--mut)}
+.voice-link{border:0;background:none;padding:6px 0;font:inherit;font-size:13px;color:var(--acc-text);cursor:pointer}
 #send_state .local-live-line{display:inline-flex;margin:0;font-size:11.5px;gap:10px}
 #send_state .composer-model{margin-right:8px}
 #send_state .session-status.open{flex-wrap:wrap}.quota-more{flex:none;min-width:28px;height:20px;padding:0 6px;border-radius:var(--r-sm);color:var(--mut);background:var(--side2)}.quota-more[aria-expanded=true]{color:var(--fg)}
@@ -744,6 +758,9 @@ body.resizing iframe{pointer-events:none}
 .md blockquote{padding-left:12px;border-left:3px solid var(--bd);color:var(--mut)}
 .md-table{overflow-x:auto}.md table{border-collapse:collapse}.md th,.md td{padding:5px 10px;border:1px solid var(--bd);text-align:left}
 .md a{color:var(--acc-text)}.md hr{border:0;border-top:1px solid var(--bd);margin:16px 0}
+/* The conversation reuses the reader, inside its own turn: no frame, the dialog's size, words kept whole in tables. */
+.talk-text.md{padding:0;border:0;border-radius:0;background:none;white-space:normal}.talk-md>:first-child{margin-top:0}.talk-md>:last-child{margin-bottom:0}
+.dlg .talk-md p{font-size:inherit;line-height:inherit}.talk-md h1,.talk-md h2,.talk-md h3,.talk-md h4{font-size:1.1em;font-weight:600;margin:14px 0 6px}.talk-md th,.talk-md td{overflow-wrap:normal}
 #inbox_dlg .hub-heading{border-bottom:1px solid var(--bd)}
 #inbox_list{display:grid;gap:18px;align-content:start}
 .inbox-item{display:grid;gap:8px}
@@ -1181,6 +1198,7 @@ body.resizing iframe{pointer-events:none}
           <div id="quick_prompts" class="quick-prompts" role="group" aria-label="Быстрые сообщения" hidden></div>
           <div id="attachments" aria-label="Приложенные файлы"></div>
           <input type="file" id="image_files" multiple hidden>
+          <button type="button" id="voice_state" class="voice-state" onclick="openVoice()" hidden><i aria-hidden="true"></i><span></span></button>
           <div class="inrow">
             <button class="attachbtn agent-only" id="b_attach" onclick="chooseImages()" aria-label="Приложить файл" title="Приложить файл до 200 МБ · хранится 7 дней"><svg class="ui-icon"><use href="#i-paperclip"/></svg></button>
             <textarea id="msg" rows="1" aria-label="Сообщение агенту…" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" placeholder="Сообщение агенту…" enterkeyhint="enter"></textarea>
@@ -1190,7 +1208,6 @@ body.resizing iframe{pointer-events:none}
           </div>
           <div class="composer-status">
           <div id="send_state" class="send-state" role="status" aria-live="polite">Enter ↵ · ↑ отправить</div>
-          <button type="button" id="voice_state" class="voice-state" onclick="openVoice()" hidden></button>
           </div>
         </div>
       </div>
@@ -1280,7 +1297,7 @@ body.resizing iframe{pointer-events:none}
   <button type="button" id="viewer_next" class="viewer-step next" onclick="stepViewer(1)" aria-label="Следующая картинка"><svg class="ui-icon"><use href="#i-chevron-right"/></svg></button>
   <div class="viewer-bar"><span id="viewer_caption"></span><a id="viewer_open" target="_blank" rel="noopener">Открыть оригинал</a></div>
 </div>
-<dialog id="voice_dlg"><div class="dlg"><div class="hub-heading"><h3 tabindex="-1" autofocus>Голосовой ввод</h3><button type="button" onclick="$('voice_dlg').close()" aria-label="Закрыть"><svg class="ui-icon"><use href="#i-x"/></svg></button></div><div class="dlg-body"><p class="hint">Речь распознаёт whisper.cpp на одном из ваших компьютеров; запись никуда больше не уходит. Лучше всего — Mac с Apple Silicon.</p><div id="voice_computers" class="voice-computers"></div><h4 id="voice_texts_title" hidden>Последние записи</h4><div id="voice_texts" class="voice-texts"></div></div></div></dialog>
+<dialog id="voice_dlg"><div class="dlg"><div class="hub-heading"><h3 tabindex="-1" autofocus>Голосовой ввод</h3><button type="button" onclick="$('voice_dlg').close()" aria-label="Закрыть"><svg class="ui-icon"><use href="#i-x"/></svg></button></div><div class="dlg-body"><p id="voice_summary" class="voice-summary"></p><p class="hint">Текст добавляется в конец поля сообщения, к тому, что там уже есть; отправляете его вы. Запись распознаёт whisper.cpp на вашем компьютере и никуда больше не уходит.</p><details id="voice_more" class="voice-more" hidden><summary>Компьютеры · <span id="voice_more_count"></span></summary><div id="voice_computers"></div></details><h4 id="voice_texts_title" hidden>Последние записи</h4><div id="voice_texts" class="voice-texts"></div></div></div></dialog>
 <dialog id="confirm_dlg"><form class="dlg" method="dialog"><div class="dlg-body"><h3 id="confirm_title"></h3><p id="confirm_text"></p></div><div class="acts"><button value="cancel">Отмена</button><button value="ok" class="pri" id="confirm_ok">OK</button></div></form></dialog>
 <dialog id="palette_dlg" class="palette"><div class="dlg"><input id="palette_q" type="text" placeholder="Сессия или действие" aria-label="Сессия или действие" autocomplete="off" autocapitalize="off" spellcheck="false" role="combobox" aria-controls="palette_list"><div class="palette-list" id="palette_list" role="listbox"></div></div></dialog>
 <dialog id="inbox_dlg"><div class="dlg"><div class="hub-heading"><h3 tabindex="-1" autofocus>Ждут ответа</h3><button type="button" onclick="$('inbox_dlg').close()" aria-label="Закрыть"><svg class="ui-icon"><use href="#i-x"/></svg></button></div><div class="dlg-body" id="inbox_list"></div></div></dialog>
@@ -3330,12 +3347,17 @@ async function loadSessionInfo(){
 // The terminal of a restarted or shortened conversation holds only its last screens; the agent's own file
 // still has what was said before. Kept per computer and session and shown while it is read again.
 const conversationKnown=new Map();
+// The agent writes Markdown (tables, headings, lists); the owner's own messages stay as typed.
+function talkText(turn){
+  if(turn.role==="user")return el("div","talk-text",turn.text);
+  const md=renderMarkdown(turn.text||"");md.className="talk-text md talk-md";return md;
+}
 function renderConversation(data,failed){
   const box=$("talk_list"),stick=!box.querySelector(".talk-turn")||atBottom(box);
   if(!data){box.replaceChildren(failed?el("p","hint",failed):listSkeleton());return}
   const turns=data.supported?data.turns||[]:[];
   if(!turns.length){box.replaceChildren(el("p","hint",tr(data.supported?"В этом разговоре пока нет сообщений.":"У этой сессии нет разговора, который можно прочитать.")));return}
-  box.replaceChildren(...turns.map(turn=>el("div","talk-turn"+(turn.role==="user"?" mine":""),el("div","talk-who",tr(turn.role==="user"?"Вы":"Агент")),el("div","talk-text",turn.text))));
+  box.replaceChildren(...turns.map(turn=>el("div","talk-turn"+(turn.role==="user"?" mine":""),el("div","talk-who",tr(turn.role==="user"?"Вы":"Агент")),talkText(turn))));
   if(stick)box.scrollTop=box.scrollHeight;
 }
 async function openConversation(){
@@ -5437,12 +5459,13 @@ function bytesToBase64(bytes){
 if(typeof module!=="undefined")module.exports={downsample,cutPoint,hasSpeech,encodeWav,joinDictation,voicePieceKey,bytesToBase64,VOICE_RATE};
 // Dictation: the microphone button records, a computer with whisper.cpp turns each piece into text, and the
 // text joins the draft of the session it was spoken to. Pieces wait in IndexedDB until their text is there.
-const voice={rec:null,working:false,engine:undefined,engineAt:0,computers:[],retry:null,failures:0,error:"",pending:0,prompts:new Map(),held:false};
-const VOICE_ENGINE_MS=300000,VOICE_RETRY=[5,15,30,60];
+const voice={doneAt:0,rec:null,working:false,engine:undefined,engineAt:0,computers:[],retry:null,failures:0,error:"",pending:0,prompts:new Map(),held:false};
+const VOICE_ENGINE_MS=300000,VOICE_ASK_MS=8000,VOICE_RETRY=[5,15,30,60],VOICE_DONE_MS=4000;
 
 // The first ready computer answers the question; a sleeping one is not waited for.
 function voiceEngine(force=false){
-  if(!force&&voice.engine!==undefined&&Date.now()-voice.engineAt<VOICE_ENGINE_MS)return Promise.resolve(voice.engine);
+  // Only a found computer is remembered: "none" is asked again, since it changes with an install.
+  if(!force&&voice.engine!=null&&Date.now()-voice.engineAt<VOICE_ENGINE_MS)return Promise.resolve(voice.engine);
   const ids=["",...deckDirectory.decks.map(d=>d.id)];
   voice.computers=ids.map(id=>({id,checking:true}));
   return new Promise(resolve=>{
@@ -5452,7 +5475,9 @@ function voiceEngine(force=false){
       if(state.ready&&!found){found=true;voice.engine=state.id;voice.engineAt=Date.now();resolve(state.id)}
       if(!left&&!found){voice.engine=null;voice.engineAt=Date.now();resolve(null)}
     };
-    ids.forEach((id,index)=>gatewayApi(instancePath(id,"/api/voice_status"),{})
+    // A sleeping computer would hold the answer for as long as the gateway waits for it.
+    const late=new Promise((_,reject)=>setTimeout(()=>reject(new Error(tr("Не отвечает"))),VOICE_ASK_MS));
+    ids.forEach((id,index)=>Promise.race([gatewayApi(instancePath(id,"/api/voice_status"),{}),late])
       .then(j=>settle(index,{id,...j.voice}),e=>settle(index,{id,unreachable:e.message})));
   });
 }
@@ -5545,6 +5570,7 @@ async function voiceStep(){
   const ready=[...first.values()].find(p=>typeof p.text==="string"&&p.deck===selectedDeck);
   if(ready){
     deliverDictation(ready);
+    if(ready.text&&ready.session===active){voice.doneAt=Date.now();setTimeout(renderVoice,VOICE_DONE_MS+50)}
     if(ready.text)await voiceKeep({rec:ready.rec,deck:ready.deck,session:ready.session},ready.text);
     await voiceRemove(ready.key);return true;
   }
@@ -5567,14 +5593,23 @@ async function runVoice(){
     voice.retry=setTimeout(runVoice,VOICE_RETRY[Math.min(voice.failures++,VOICE_RETRY.length-1)]*1000);
   }finally{voice.working=false;renderVoice()}
 }
+// Under the field, visible with the keyboard open too: what happens to the speech, and where its text goes.
+function voiceStatus(){
+  const rec=voice.rec;
+  if(rec){
+    const seconds=Math.floor((Date.now()-rec.started)/1000);
+    return ["rec",Math.floor(seconds/60)+":"+String(seconds%60).padStart(2,"0")+" · "+tr("текст появляется в конце поля по ходу записи")];
+  }
+  if(voice.pending&&voice.error)return ["error",tr("Запись сохранена, распознать пока не удалось: {0}",[voice.error])];
+  if(voice.pending)return ["busy",tr("Распознаётся… текст встанет в конец поля")];
+  if(Date.now()-voice.doneAt<VOICE_DONE_MS)return ["done",tr("Текст добавлен в конец поля")];
+  return ["",""];
+}
 function renderVoice(){
-  const rec=voice.rec,button=$("b_mic"),state=$("voice_state");
-  button.classList.toggle("on",Boolean(rec));button.setAttribute("aria-pressed",rec?"true":"false");
-  const seconds=rec?Math.floor((Date.now()-rec.started)/1000):0;
-  const text=rec?"● "+Math.floor(seconds/60)+":"+String(seconds%60).padStart(2,"0")
-    :voice.error&&voice.pending?tr("Запись сохранена, распознать пока не удалось: {0}",[voice.error])
-    :voice.pending?tr("Распознаётся: {0}",[voice.pending]):"";
-  state.hidden=!text;state.textContent=text;state.classList.toggle("error",Boolean(!rec&&voice.error&&voice.pending));state.classList.toggle("rec",Boolean(rec));
+  const button=$("b_mic"),state=$("voice_state"),[kind,text]=voiceStatus();
+  button.classList.toggle("on",Boolean(voice.rec));button.classList.toggle("busy",kind==="busy");
+  button.setAttribute("aria-pressed",voice.rec?"true":"false");
+  state.hidden=!text;state.className="voice-state "+kind;state.querySelector("span").textContent=text;
 }
 function watchVoice(){
   const button=$("b_mic");let timer=null;
@@ -5594,29 +5629,45 @@ function voiceComputerState(c){
   if(c.phase==="model")return tr("Загружается модель: {0}%",[Math.floor(100*(c.done||0)/(c.total||c.size||1))]);
   if(c.phase==="error")return c.error;
   if(c.model&&!c.binary)return tr("Модель есть, нет программы whisper-cli");
-  return c.can_install?tr("Не установлено"):tr("Нужен whisper.cpp: установите его, чтобы команда whisper-cli была доступна");
+  return tr("Нет whisper.cpp");
 }
+// The model's file name says which one recognises ("whisper-large-v2"), the folder only clutters.
+const voiceModelName=c=>(c.uses?.[1]||"").split("/").pop().replace(/\.bin$/,"").replace(/^ggml-/,"");
+function voiceComputerRow(c){
+  const row=el("div","voice-computer",el("b","",deckName(c.id)),el("span","",voiceComputerState(c)));
+  if(c.uses?.length)row.title=c.uses.join("\n");  // The full paths, for whoever needs to know.
+  if(!c.ready&&c.can_install&&!["binary","model"].includes(c.phase)){
+    const install=el("button","",c.model?tr("Установить whisper.cpp"):tr("Установить (≈{0} МБ)",[Math.round((c.size||0)/1e6)]));
+    install.onclick=()=>installVoice(c.id);row.append(install);
+  }
+  return row;
+}
+// One line says who recognises; the other computers matter only to install it somewhere.
 function renderVoiceComputers(){
-  const box=$("voice_computers");if(!box)return;
-  box.replaceChildren(...voice.computers.map(c=>{
-    const row=el("div","voice-computer",el("b","",deckName(c.id)),el("span","",voiceComputerState(c)));
-    // The copy already installed is named, so nobody installs a second one.
-    if(c.uses?.length)row.append(el("small","voice-uses",c.uses.join(" · ")));
-    if(!c.ready&&c.can_install&&!["binary","model"].includes(c.phase)){
-      const install=el("button","",c.model?tr("Установить whisper.cpp"):tr("Установить (≈{0} МБ)",[Math.round((c.size||0)/1e6)]));
-      install.onclick=()=>installVoice(c.id);row.append(install);
-    }
-    return row;
-  }));
+  const summary=$("voice_summary"),more=$("voice_more"),engine=voice.computers.find(c=>c.ready);
+  const checking=voice.computers.some(c=>c.checking);
+  summary.classList.toggle("ready",Boolean(engine));
+  summary.replaceChildren(engine?el("b","",tr("Распознаёт: {0}",[deckName(engine.id)])):el("b","",checking?tr("Ищу компьютер с whisper.cpp…"):tr("Ни на одном компьютере нет whisper.cpp")),
+    ...(engine&&voiceModelName(engine)?[el("small","",voiceModelName(engine))]:[]));
+  const others=voice.computers.filter(c=>c!==engine);
+  more.hidden=!others.length;
+  if(!engine&&!checking)more.open=true;
+  $("voice_more_count").textContent=others.length;
+  $("voice_computers").replaceChildren(...others.map(voiceComputerRow));
+}
+function voiceWhen(at){
+  const date=new Date(at),today=new Date().toDateString()===date.toDateString();
+  return date.toLocaleString(DATE_LOCALE,today?{hour:"2-digit",minute:"2-digit"}:{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"});
 }
 async function renderVoiceTexts(){
   const box=$("voice_texts");
   let texts=[];try{texts=(await voiceTexts()).sort((a,b)=>b.at-a.at).slice(0,10)}catch(e){}
   box.replaceChildren(...texts.map(t=>{
-    const copy=el("button","",tr("Копировать")),put=el("button","",tr("Вставить"));
+    const copy=el("button","voice-link",tr("Копировать")),put=el("button","voice-link",tr("В поле"));
     copy.onclick=()=>navigator.clipboard.writeText(t.text).then(()=>toast(tr("Скопировано"),true),()=>toast(tr("Не удалось скопировать")));
     put.onclick=()=>{if(!active)return;deliverDictation({session:active,text:t.text});$("voice_dlg").close()};
-    return el("div","voice-text",el("small","",new Date(t.at).toLocaleString(DATE_LOCALE)+" · "+t.session),el("p","",t.text),el("div","acts",copy,put));
+    const text=el("p","",t.text);text.onclick=()=>text.classList.toggle("open");
+    return el("div","voice-text",text,el("div","voice-text-foot",el("small","",voiceWhen(t.at)+" · "+t.session),copy,put));
   }));
   $("voice_texts_title").hidden=!texts.length;
 }
@@ -6346,8 +6397,10 @@ function fitKeys(keepMore){
   more.classList.remove("all-fit");
   if(box.classList.contains("expanded")||!box.clientWidth)return;
   if(!keepMore&&box.scrollWidth<=box.clientWidth){more.classList.add("all-fit");return}
-  // Hide from the end so the answer keys (↑ ↓ ⏎) stay reachable on the narrowest screens.
-  for(const k of keys.reverse()){if(box.scrollWidth<=box.clientWidth)break;if(k.offsetParent)k.classList.add("key-overflow")}
+  // Extra keys go first, then Codex's question keys, so the answer keys (↑ ↓ ⏎) stay on the narrowest screens.
+  const primary=k=>k.classList.contains("key-primary"),question=k=>k.classList.contains("question-key");
+  const order=[keys.filter(k=>!primary(k)),keys.filter(question),keys.filter(k=>primary(k)&&!question(k))].flatMap(g=>g.reverse());
+  for(const k of order){if(box.scrollWidth<=box.clientWidth)break;if(k.offsetParent)k.classList.add("key-overflow")}
 }
 // The quick prompts follow: they share "…" with the keys whenever the keys show it.
 // In a wide window the keys and the quick prompts share a row. Decided once, in order, so neither depends on
@@ -6381,8 +6434,9 @@ function hideKeyboard(){
   document.body.classList.remove("message-focused");
   requestAnimationFrame(fitViewport);
 }
-$("msg").addEventListener("focus",()=>document.body.classList.add("message-focused"));
-$("msg").addEventListener("blur",()=>document.body.classList.remove("message-focused"));
+// The keyboard button shown while typing takes room from the keys, so they are fitted again.
+$("msg").addEventListener("focus",()=>{document.body.classList.add("message-focused");fitKeyRow()});
+$("msg").addEventListener("blur",()=>{document.body.classList.remove("message-focused");fitKeyRow()});
 
 // The field grows with its text. Its height includes the border (border-box), otherwise it stays 2 px
 // short and Safari scrolls it on every key. It is collapsed and measured again only when the text got

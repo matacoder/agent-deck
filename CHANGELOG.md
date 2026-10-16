@@ -2,6 +2,16 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.56.1 — 2026-10-16
+
+Dictation says what it does.
+
+- **A line above the message field follows each dictation**: the recording's time, then "Recognising… the text will go at the end of the field", then "Text added at the end of the field". It stays visible with the keyboard open. What you typed is kept, and the dictated text goes after it.
+- **Voice input is one line about who recognises** (the computer and its model); the other computers are folded under "Computers", and recent dictations are two lines each with "Copy" and "To the field".
+- **A computer where whisper.cpp was just installed is used at once.** "No computer" was remembered for five minutes, and a computer up for less than a minute counted as having none; a sleeping computer no longer holds the search.
+- **The answer keys stay on a 320 px screen while typing.** The keyboard button took their room and ⏎ could be pushed out; Codex's question keys now go under "…" first.
+- **The agent's replies in "Conversation" are drawn as Markdown**: tables, headings, lists and code instead of pipes and hashes. Your own messages stay as typed.
+
 ## 1.56.0 — 2026-10-14
 
 Dictation.

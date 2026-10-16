@@ -41,6 +41,8 @@ test('dictated speech is recognised and joins the draft', async ({ app }) => {
   await page.locator('#msg').fill('Готово?');
   await dictate(page, 2500);
   await expect(page.locator('#msg')).toHaveValue('Готово? запушь в main');
+  // The line under the field says where the text went, then steps aside.
+  await expect(page.locator('#voice_state')).toContainText('Текст добавлен в конец поля');
   expect(pieces).toHaveLength(1);
   const wav = Buffer.from(pieces[0].audio, 'base64');
   expect(wav.subarray(0, 4).toString()).toBe('RIFF');

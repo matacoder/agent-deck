@@ -314,17 +314,31 @@ body.is-codex .question-key{display:inline-flex!important;align-items:center;jus
 .composer-status{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 8px;margin:6px 4px 0;font-size:12px;color:var(--mut)}
 .send-state{min-height:1.4em}
 .send-state.error{color:var(--bad-text)}
-.voice-state{border:0;background:none;padding:0;font:inherit;color:var(--mut);cursor:pointer;text-align:left}
-.voice-state[hidden]{display:none}.voice-state.error{color:var(--bad-text)}.voice-state.rec{color:var(--bad-text);font-variant-numeric:tabular-nums}
-.micbtn.on{color:#fff;background:var(--bad,#d33);border-color:transparent;animation:mic-pulse 1.6s ease-in-out infinite}
-@keyframes mic-pulse{50%{opacity:.7}}
-@media (prefers-reduced-motion:reduce){.micbtn.on{animation:none}}
-.voice-computer{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;padding:10px 0;border-bottom:1px solid var(--bd)}
-.voice-computer span{flex:1;min-width:12em;color:var(--mut);overflow-wrap:anywhere}
-.voice-uses{flex-basis:100%;color:var(--mut);font-family:var(--mono,monospace);overflow-wrap:anywhere}
-.voice-text{padding:12px 0;border-bottom:1px solid var(--bd)}
-.voice-text p{margin:4px 0;white-space:pre-wrap;overflow-wrap:anywhere;max-height:7.5em;overflow:auto}
-.voice-text .acts{padding:0;justify-content:flex-start;border:0}
+.voice-state{display:flex;align-items:center;gap:8px;width:100%;margin:0 0 8px;padding:6px 10px;border:0;border-radius:10px;background:var(--side2);font:inherit;font-size:13px;color:var(--fg2);text-align:left;cursor:pointer}
+.voice-state[hidden]{display:none}
+.voice-state i{flex:none;width:8px;height:8px;border-radius:50%;background:var(--mut)}
+.voice-state span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.voice-state.rec i{background:var(--bad)}.voice-state.rec span{font-variant-numeric:tabular-nums}
+.voice-state.busy i{background:var(--acc);animation:mic-pulse 1s ease-in-out infinite}
+.voice-state.done i{background:var(--ok)}
+.voice-state.error{color:var(--bad-text)}.voice-state.error i{background:var(--bad)}
+.voice-state.error span{white-space:normal}
+.micbtn.on{color:#fff;background:var(--bad);border-color:transparent;animation:mic-pulse 1.6s ease-in-out infinite}
+.micbtn.busy{color:var(--acc-text);border-color:var(--acc)}
+@keyframes mic-pulse{50%{opacity:.6}}
+@media (prefers-reduced-motion:reduce){.micbtn.on,.voice-state.busy i{animation:none}}
+.voice-summary{display:flex;flex-direction:column;gap:2px;margin:0 0 8px;padding:12px 14px;border:1px solid var(--bd);border-radius:12px}
+.voice-summary.ready{border-color:var(--ok)}
+.voice-summary small{color:var(--mut);font-family:var(--mono)}
+.voice-more{margin-top:12px}.voice-more>summary{cursor:pointer;color:var(--fg2);padding:8px 0}
+.voice-computer{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;padding:8px 0;border-top:1px solid var(--bd)}
+.voice-computer span{flex:1;min-width:10em;color:var(--mut);overflow-wrap:anywhere}
+.voice-text{padding:10px 0;border-top:1px solid var(--bd)}
+.voice-text p{margin:0 0 4px;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;cursor:pointer}
+.voice-text p.open{display:block;white-space:pre-wrap}
+.voice-text-foot{display:flex;align-items:center;gap:14px}
+.voice-text-foot small{flex:1;color:var(--mut)}
+.voice-link{border:0;background:none;padding:6px 0;font:inherit;font-size:13px;color:var(--acc-text);cursor:pointer}
 #send_state .local-live-line{display:inline-flex;margin:0;font-size:11.5px;gap:10px}
 #send_state .composer-model{margin-right:8px}
 #send_state .session-status.open{flex-wrap:wrap}.quota-more{flex:none;min-width:28px;height:20px;padding:0 6px;border-radius:var(--r-sm);color:var(--mut);background:var(--side2)}.quota-more[aria-expanded=true]{color:var(--fg)}
@@ -733,6 +747,9 @@ body.resizing iframe{pointer-events:none}
 .md blockquote{padding-left:12px;border-left:3px solid var(--bd);color:var(--mut)}
 .md-table{overflow-x:auto}.md table{border-collapse:collapse}.md th,.md td{padding:5px 10px;border:1px solid var(--bd);text-align:left}
 .md a{color:var(--acc-text)}.md hr{border:0;border-top:1px solid var(--bd);margin:16px 0}
+/* The conversation reuses the reader, inside its own turn: no frame, the dialog's size, words kept whole in tables. */
+.talk-text.md{padding:0;border:0;border-radius:0;background:none;white-space:normal}.talk-md>:first-child{margin-top:0}.talk-md>:last-child{margin-bottom:0}
+.dlg .talk-md p{font-size:inherit;line-height:inherit}.talk-md h1,.talk-md h2,.talk-md h3,.talk-md h4{font-size:1.1em;font-weight:600;margin:14px 0 6px}.talk-md th,.talk-md td{overflow-wrap:normal}
 #inbox_dlg .hub-heading{border-bottom:1px solid var(--bd)}
 #inbox_list{display:grid;gap:18px;align-content:start}
 .inbox-item{display:grid;gap:8px}

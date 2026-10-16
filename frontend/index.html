@@ -111,6 +111,7 @@ __PANEL_STYLE__</style></head><body>
           <div id="quick_prompts" class="quick-prompts" role="group" aria-label="Быстрые сообщения" hidden></div>
           <div id="attachments" aria-label="Приложенные файлы"></div>
           <input type="file" id="image_files" multiple hidden>
+          <button type="button" id="voice_state" class="voice-state" onclick="openVoice()" hidden><i aria-hidden="true"></i><span></span></button>
           <div class="inrow">
             <button class="attachbtn agent-only" id="b_attach" onclick="chooseImages()" aria-label="Приложить файл" title="Приложить файл до 200 МБ · хранится 7 дней"><svg class="ui-icon"><use href="#i-paperclip"/></svg></button>
             <textarea id="msg" rows="1" aria-label="Сообщение агенту…" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" placeholder="Сообщение агенту…" enterkeyhint="enter"></textarea>
@@ -120,7 +121,6 @@ __PANEL_STYLE__</style></head><body>
           </div>
           <div class="composer-status">
           <div id="send_state" class="send-state" role="status" aria-live="polite">Enter ↵ · ↑ отправить</div>
-          <button type="button" id="voice_state" class="voice-state" onclick="openVoice()" hidden></button>
           </div>
         </div>
       </div>
@@ -210,7 +210,7 @@ __PANEL_STYLE__</style></head><body>
   <button type="button" id="viewer_next" class="viewer-step next" onclick="stepViewer(1)" aria-label="Следующая картинка"><svg class="ui-icon"><use href="#i-chevron-right"/></svg></button>
   <div class="viewer-bar"><span id="viewer_caption"></span><a id="viewer_open" target="_blank" rel="noopener">Открыть оригинал</a></div>
 </div>
-<dialog id="voice_dlg"><div class="dlg"><div class="hub-heading"><h3 tabindex="-1" autofocus>Голосовой ввод</h3><button type="button" onclick="$('voice_dlg').close()" aria-label="Закрыть"><svg class="ui-icon"><use href="#i-x"/></svg></button></div><div class="dlg-body"><p class="hint">Речь распознаёт whisper.cpp на одном из ваших компьютеров; запись никуда больше не уходит. Лучше всего — Mac с Apple Silicon.</p><div id="voice_computers" class="voice-computers"></div><h4 id="voice_texts_title" hidden>Последние записи</h4><div id="voice_texts" class="voice-texts"></div></div></div></dialog>
+<dialog id="voice_dlg"><div class="dlg"><div class="hub-heading"><h3 tabindex="-1" autofocus>Голосовой ввод</h3><button type="button" onclick="$('voice_dlg').close()" aria-label="Закрыть"><svg class="ui-icon"><use href="#i-x"/></svg></button></div><div class="dlg-body"><p id="voice_summary" class="voice-summary"></p><p class="hint">Текст добавляется в конец поля сообщения, к тому, что там уже есть; отправляете его вы. Запись распознаёт whisper.cpp на вашем компьютере и никуда больше не уходит.</p><details id="voice_more" class="voice-more" hidden><summary>Компьютеры · <span id="voice_more_count"></span></summary><div id="voice_computers"></div></details><h4 id="voice_texts_title" hidden>Последние записи</h4><div id="voice_texts" class="voice-texts"></div></div></div></dialog>
 <dialog id="confirm_dlg"><form class="dlg" method="dialog"><div class="dlg-body"><h3 id="confirm_title"></h3><p id="confirm_text"></p></div><div class="acts"><button value="cancel">Отмена</button><button value="ok" class="pri" id="confirm_ok">OK</button></div></form></dialog>
 <dialog id="palette_dlg" class="palette"><div class="dlg"><input id="palette_q" type="text" placeholder="Сессия или действие" aria-label="Сессия или действие" autocomplete="off" autocapitalize="off" spellcheck="false" role="combobox" aria-controls="palette_list"><div class="palette-list" id="palette_list" role="listbox"></div></div></dialog>
 <dialog id="inbox_dlg"><div class="dlg"><div class="hub-heading"><h3 tabindex="-1" autofocus>Ждут ответа</h3><button type="button" onclick="$('inbox_dlg').close()" aria-label="Закрыть"><svg class="ui-icon"><use href="#i-x"/></svg></button></div><div class="dlg-body" id="inbox_list"></div></div></dialog>

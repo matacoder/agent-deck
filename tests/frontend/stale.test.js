@@ -57,7 +57,7 @@ test('a sent picture leaves the field at once, before the session list comes bac
 test('the conversation dialog shows what was said, from the agent\'s file, and again at once the next time',async()=>{
   let hold=false;const never=()=>new Promise(()=>{});
   const routes={...routesFor({local:()=>({sessions:[session('alpha')]})}),
-    '/api/conversation':()=>hold?never():({supported:true,turns:[{role:'user',text:'Which option?'},{role:'assistant',text:'A or B\nsecond line'}]})};
+    '/api/conversation':()=>hold?never():({supported:true,turns:[{role:'user',text:'Which option?'},{role:'assistant',text:'## Options\n\n| A | B |\n|---|---|\n| one | two |'}]})};
   const window=boot(routes,null,w=>{w.localStorage.setItem('cc.active','alpha');w.localStorage.setItem('cc.mode.d','screen')});
   try{
     await settle();await settle();
@@ -67,6 +67,9 @@ test('the conversation dialog shows what was said, from the agent\'s file, and a
     await settle();await settle();
     expect([...list.querySelectorAll('.talk-who')].map(n=>n.textContent)).toEqual(['Вы','Агент']);
     expect(list.querySelector('.talk-turn.mine .talk-text').textContent).toBe('Which option?');
+    // The agent's Markdown is drawn, not shown as pipes and hashes.
+    expect(list.querySelector('.talk-md h2').textContent).toBe('Options');
+    expect([...list.querySelectorAll('.talk-md td')].map(n=>n.textContent)).toEqual(['one','two']);
     doc.getElementById('talk_dlg').close();hold=true;
     window.eval('openConversation()');
     expect(list.querySelectorAll('.talk-turn').length).toBe(2);

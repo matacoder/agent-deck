@@ -4,7 +4,10 @@ for (const width of [320, 390]) {
   test(`Codex questions can be answered by touch at ${width}px`, async ({ app, page }) => {
     await app.open({ width });
     await page.locator('#msg').focus();
-    for (const [name, key] of [['Предыдущий вопрос', 'S-Left'], ['Следующий вопрос', 'S-Right'], ['Вариант ниже', 'Down'], ['Вариант выше', 'Up'], ['Подтвердить выбор', 'Enter']]) {
+    // While typing, the keyboard button takes room: at 320px Codex's question keys move under "…", the answer keys stay.
+    const keys = [['Вариант ниже', 'Down'], ['Вариант выше', 'Up'], ['Подтвердить выбор', 'Enter']];
+    if (width > 320) keys.unshift(['Предыдущий вопрос', 'S-Left'], ['Следующий вопрос', 'S-Right']);
+    for (const [name, key] of keys) {
       const button = page.getByRole('button', { name, exact: true });
       await expect(button).toBeVisible();
       const box = await button.boundingBox();
@@ -13,11 +16,12 @@ for (const width of [320, 390]) {
       await button.click();
       await expect.poll(() => app.sends.at(-1)?.key).toBe(key);
     }
-    const first = await page.getByRole('button', { name: 'Предыдущий вопрос', exact: true }).boundingBox();
+    const first = await page.getByRole('button', { name: keys[0][0], exact: true }).boundingBox();
     const enter = await page.getByRole('button', { name: 'Подтвердить выбор', exact: true }).boundingBox();
     expect(first.y).toBe(enter.y);
     await page.getByRole('button', { name: 'Другие клавиши' }).click();
     await expect(page.getByRole('button', { name: 'Назад по полям (Shift+Tab)', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Предыдущий вопрос', exact: true })).toBeVisible();
     await expect(page.locator('#b_wrap')).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   });

@@ -59,12 +59,17 @@ async function loadSessionInfo(){
 // The terminal of a restarted or shortened conversation holds only its last screens; the agent's own file
 // still has what was said before. Kept per computer and session and shown while it is read again.
 const conversationKnown=new Map();
+// The agent writes Markdown (tables, headings, lists); the owner's own messages stay as typed.
+function talkText(turn){
+  if(turn.role==="user")return el("div","talk-text",turn.text);
+  const md=renderMarkdown(turn.text||"");md.className="talk-text md talk-md";return md;
+}
 function renderConversation(data,failed){
   const box=$("talk_list"),stick=!box.querySelector(".talk-turn")||atBottom(box);
   if(!data){box.replaceChildren(failed?el("p","hint",failed):listSkeleton());return}
   const turns=data.supported?data.turns||[]:[];
   if(!turns.length){box.replaceChildren(el("p","hint",tr(data.supported?"В этом разговоре пока нет сообщений.":"У этой сессии нет разговора, который можно прочитать.")));return}
-  box.replaceChildren(...turns.map(turn=>el("div","talk-turn"+(turn.role==="user"?" mine":""),el("div","talk-who",tr(turn.role==="user"?"Вы":"Агент")),el("div","talk-text",turn.text))));
+  box.replaceChildren(...turns.map(turn=>el("div","talk-turn"+(turn.role==="user"?" mine":""),el("div","talk-who",tr(turn.role==="user"?"Вы":"Агент")),talkText(turn))));
   if(stick)box.scrollTop=box.scrollHeight;
 }
 async function openConversation(){

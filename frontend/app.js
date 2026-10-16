@@ -696,8 +696,10 @@ function fitKeys(keepMore){
   more.classList.remove("all-fit");
   if(box.classList.contains("expanded")||!box.clientWidth)return;
   if(!keepMore&&box.scrollWidth<=box.clientWidth){more.classList.add("all-fit");return}
-  // Hide from the end so the answer keys (↑ ↓ ⏎) stay reachable on the narrowest screens.
-  for(const k of keys.reverse()){if(box.scrollWidth<=box.clientWidth)break;if(k.offsetParent)k.classList.add("key-overflow")}
+  // Extra keys go first, then Codex's question keys, so the answer keys (↑ ↓ ⏎) stay on the narrowest screens.
+  const primary=k=>k.classList.contains("key-primary"),question=k=>k.classList.contains("question-key");
+  const order=[keys.filter(k=>!primary(k)),keys.filter(question),keys.filter(k=>primary(k)&&!question(k))].flatMap(g=>g.reverse());
+  for(const k of order){if(box.scrollWidth<=box.clientWidth)break;if(k.offsetParent)k.classList.add("key-overflow")}
 }
 // The quick prompts follow: they share "…" with the keys whenever the keys show it.
 // In a wide window the keys and the quick prompts share a row. Decided once, in order, so neither depends on
@@ -731,8 +733,9 @@ function hideKeyboard(){
   document.body.classList.remove("message-focused");
   requestAnimationFrame(fitViewport);
 }
-$("msg").addEventListener("focus",()=>document.body.classList.add("message-focused"));
-$("msg").addEventListener("blur",()=>document.body.classList.remove("message-focused"));
+// The keyboard button shown while typing takes room from the keys, so they are fitted again.
+$("msg").addEventListener("focus",()=>{document.body.classList.add("message-focused");fitKeyRow()});
+$("msg").addEventListener("blur",()=>{document.body.classList.remove("message-focused");fitKeyRow()});
 
 // The field grows with its text. Its height includes the border (border-box), otherwise it stays 2 px
 // short and Safari scrolls it on every key. It is collapsed and measured again only when the text got
