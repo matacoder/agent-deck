@@ -1316,6 +1316,29 @@ test('the line-number column is sized for the longer of the two numbers',async()
   }finally{window.close()}
 });
 
+test('the screen draws the newest lines and more of them when scrolled to the top',async()=>{
+  const state={local:()=>({sessions:[session('alpha'),session('beta')]})};
+  const window=boot(routesFor(state));
+  try{
+  await settle();await settle();
+  const doc=window.document,text=Array.from({length:900},(_,i)=>'line '+i).join('\n');
+  const draw=name=>window.eval(`updateScreen({name:'${name}',preview:${JSON.stringify(text+'\n'+name)}},true)`);
+  const shown=()=>[...doc.querySelectorAll('#pre .ln')].map(n=>n.textContent);
+  draw('alpha');
+  expect(shown()).toHaveLength(200);
+  expect(shown()[0]).toBe('line 701');
+  window.eval('screenMore()');
+  expect(shown()).toHaveLength(800);
+  expect(shown()[0]).toBe('line 101');
+  window.eval('screenMore()');
+  expect(shown()[0]).toBe('line 0');
+  expect(window.eval('screenView.cut')).toBe(false);
+  // Another session starts again from its newest lines.
+  draw('beta');
+  expect(shown()).toHaveLength(200);
+  }finally{window.close()}
+});
+
 test('a redraw of the screen keeps the thumbnails already drawn; a failed one is drawn anew',async()=>{
   const state={local:()=>({sessions:[session('alpha')]})};
   const window=boot(routesFor(state));

@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.56.2 — 2026-10-17
+
+- **The screen keeps more of the conversation.** It drew only the last 200 lines, often less than one long answer; scrolling to the top now draws earlier lines, up to the 2000 the computer sends, and the place you were reading stays put.
+
 ## 1.56.1 — 2026-10-16
 
 Dictation says what it does.

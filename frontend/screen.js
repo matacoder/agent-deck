@@ -29,7 +29,7 @@ function ansiColor(n){
   n-=16;const level=v=>v===0?0:55+40*v;
   return `rgb(${level(Math.floor(n/36))},${level(Math.floor(n/6)%6)},${level(n%6)})`;
 }
-function ansiLines(text){
+function ansiLines(text,depth=SCREEN_LINES){
   let style={},line=[],lines=[];
   const write=t=>{
     const parts=t.replace(/\r/g,"").split("\n");
@@ -82,7 +82,7 @@ function ansiLines(text){
   write(text.slice(start));lines.push(line);
   // Parse before trimming so styles spanning lines remain intact.
   while(lines.length&&!lines[lines.length-1].some(r=>r.text.trim()))lines.pop();
-  return lines.slice(-200);
+  return lines.slice(-depth);
 }
 function styledText(text,s){
   const span=el("span","",text);
@@ -122,6 +122,22 @@ function joinUrlLines(lines){
   }
   return out;
 }
+// The panel sends the last 2000 lines; the newest are drawn, since every change rebuilds them and a phone
+// would stall on thousands. Scrolling to the top draws more of the same answer, the reading place kept.
+const SCREEN_LINES=200,SCREEN_MORE=600;
+const screenView={name:null,depth:SCREEN_LINES,cut:false,shown:null};
+function screenMore(){
+  const p=$("pre");
+  if(!screenView.cut||!screenView.shown||p.scrollTop>120)return;
+  const below=p.scrollHeight-p.scrollTop;
+  screenView.depth+=SCREEN_MORE;p.dataset.raw="";updateScreen(screenView.shown);
+  p.scrollTop=p.scrollHeight-below;
+}
+function screenLines(raw,name){
+  if(screenView.name!==name)Object.assign(screenView,{name,depth:SCREEN_LINES});
+  const all=ansiLines(raw,Infinity);screenView.cut=all.length>screenView.depth;
+  return joinImageLines(joinUrlLines(all.slice(-screenView.depth)));
+}
 const atBottom=p=>p.scrollTop+p.clientHeight>=p.scrollHeight-40;
 function updateJump(fresh){
   const p=$("pre"),j=$("jump"),away=!atBottom(p);
@@ -131,6 +147,7 @@ function updateJump(fresh){
 function jumpToLatest(){const p=$("pre");p.scrollTo({top:p.scrollHeight,behavior:"smooth"});$("jump").classList.remove("on","fresh")}
 function updateScreen(s,force){
   const p=$("pre"),stick=force||atBottom(p);
+  screenView.shown=s;
   // Nothing known about this session's screen yet: keep the skeleton instead of a blank or stale view.
   if(s.preview===undefined&&s.preview_ansi===undefined){
     if(!p.querySelector(".screen-skeleton")){p.dataset.raw="\u0000";p.replaceChildren(screenSkeleton())}
@@ -143,7 +160,7 @@ function updateScreen(s,force){
   if(changed){
     const strips=keptStrips(p);
     p.dataset.raw=raw;p.replaceChildren();
-    const lines=joinImageLines(joinUrlLines(ansiLines(raw)));screenImages=[];
+    const lines=screenLines(raw,s.name);screenImages=[];
     // A session known only from another computer's list has no preview yet: show nothing, not "empty".
     if(!lines.length&&(s.preview!==undefined||s.preview_ansi!==undefined))p.append(el("div","preview-empty",tr("В tmux пока нет текста. Терминал открывается в меню ⋯.")));
     for(const runs of lines){

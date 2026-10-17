@@ -392,7 +392,7 @@ function toggleWrap(){
   applyWrap();
 }
 
-$("pre").addEventListener("scroll",()=>updateJump(false),{passive:true});
+$("pre").addEventListener("scroll",()=>{updateJump(false);screenMore()},{passive:true});
 function activate(name){
   if(name===active)return;
   if(active)messageDrafts.set(active,$("msg").value);
