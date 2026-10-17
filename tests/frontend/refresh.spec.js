@@ -40,7 +40,14 @@ test('reading older output blocks auto update and polling preserves reading posi
   app.revision = 'next-version';
   await page.evaluate(() => checkInterfaceVersion());
   expect(app.navigations).toBe(1);
+  // What is read is the line at the top: earlier lines drawn above it move the scroll, not the text in view.
+  const topLine = () => page.locator('#pre').evaluate(el => {
+    const top = el.getBoundingClientRect().top;
+    return [...el.querySelectorAll('.ln')].find(line => line.getBoundingClientRect().bottom > top).textContent;
+  });
+  const reading = await topLine();
   app.sessions[0].preview += '\nNew output';
   await page.evaluate(() => load());
-  expect(await page.locator('#pre').evaluate(el => el.scrollTop)).toBeCloseTo(100, 0);
+  expect(await topLine()).toBe(reading);
+  expect(await page.locator('#pre').evaluate(el => el.scrollTop + el.clientHeight < el.scrollHeight - 40)).toBe(true);
 });
