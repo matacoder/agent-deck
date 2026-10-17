@@ -395,6 +395,7 @@ function toggleWrap(){
 $("pre").addEventListener("scroll",()=>{updateJump(false);screenMore()},{passive:true});
 function activate(name){
   if(name===active)return;
+  closeConversation();
   if(active)messageDrafts.set(active,$("msg").value);
   active=name;attention.delete(name);
   $("msg").value=messageDrafts.get(name)||"";$("msg").style.height="";
@@ -547,8 +548,17 @@ function uploadRequest(path,contentType,payload,progress){
     xhr.send(payload);
   });
 }
+// A photo picked from the iPhone library is exported as it is read, and its size can differ from what is
+// then sent; the computer would see a cut-off upload at 100%. Read whole first, it is sent exactly as read.
+const UPLOAD_READ_FIRST=64*1024*1024;
+async function uploadBody(file){
+  if(file.size>UPLOAD_READ_FIRST)return file;
+  try{return new Blob([await file.arrayBuffer()],{type:file.type})}
+  catch(e){throw new Error(tr("Не удалось прочитать файл"))}
+}
 async function uploadFile(name,file,image,progress){
   const query="?name="+encodeURIComponent(name)+"&filename="+encodeURIComponent(file.name||"file");
+  image=await uploadBody(image);
   try{return await uploadRequest("/api/upload_raw"+query,"application/octet-stream",image,progress)}
   catch(error){
     if(error.status!==404)throw error;

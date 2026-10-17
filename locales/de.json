@@ -887,6 +887,7 @@
     "Текст добавлен в конец поля": "Text am Ende des Feldes eingefügt",
     "Текст добавляется в конец поля сообщения, к тому, что там уже есть; отправляете его вы. Запись распознаёт whisper.cpp на вашем компьютере и никуда больше не уходит.": "Der Text kommt ans Ende des Nachrichtenfelds, nach dem, was schon dort steht; senden tun Sie. whisper.cpp auf Ihrem eigenen Computer erkennt die Aufnahme, sie geht nirgendwo sonst hin.",
     "Компьютеры · ": "Computer · ",
-    "Распознаёт: {0}": "Erkennung auf: {0}"
+    "Распознаёт: {0}": "Erkennung auf: {0}",
+    "Показать весь разговор": "Ganzes Gespräch zeigen"
   }
 }

@@ -86,7 +86,7 @@ __PANEL_STYLE__</style></head><body>
       <div id="term_loading" class="term-loading" role="status" hidden><span class="spinner" aria-hidden="true"></span><span>Подключаюсь к терминалу…</span></div>
       <div id="empty"><span id="empty_text">Загружаю сессии…</span><button type="button" class="pri" id="empty_new" onclick="openNew()" hidden><svg class="ui-icon"><use href="#i-plus"/></svg><span>Новая сессия</span></button></div>
       <div id="screen">
-        <div id="pre_wrap"><div id="pre"></div><button type="button" id="jump" onclick="jumpToLatest()"><svg class="ui-icon"><use href="#i-arrow-down"/></svg><span>К новому выводу</span></button></div>
+        <div id="pre_wrap"><div id="pre"></div><section id="talk_view" class="talk-view" hidden aria-label="Разговор"><div class="hub-heading"><h3 tabindex="-1">Разговор</h3><button type="button" onclick="closeConversation()" aria-label="Закрыть"><svg class="ui-icon"><use href="#i-x"/></svg></button></div><div id="talk_list"></div></section><button type="button" id="jump" onclick="jumpToLatest()"><svg class="ui-icon"><use href="#i-arrow-down"/></svg><span>К новому выводу</span></button></div>
         <div class="composer" id="session_composer">
           <div id="question" hidden></div>
           <div id="screen_keys"><div class="keys-row" id="session_keys">
@@ -243,7 +243,6 @@ __PANEL_STYLE__</style></head><body>
 </form></dialog>
 
 <div id="paste_catch" contenteditable="true" aria-hidden="true" tabindex="-1"></div>
-<dialog id="talk_dlg" class="talk"><div class="dlg"><div class="hub-heading"><h3 tabindex="-1">Разговор</h3><button type="button" onclick="$('talk_dlg').close()" aria-label="Закрыть"><svg class="ui-icon"><use href="#i-x"/></svg></button></div><div class="dlg-body" id="talk_list"></div></div></dialog>
 <dialog id="paste_dlg"><form class="dlg" method="dialog"><div class="dlg-body"><h3>Вставить с картинками</h3>
 <p class="hint">Вставьте сюда скопированные сообщения: текст попадёт в поле сообщения, картинки приложатся.</p>
 <div id="paste_box" class="paste-box" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Вставить с картинками"></div>

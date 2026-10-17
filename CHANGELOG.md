@@ -2,6 +2,12 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.56.4 — 2026-10-17
+
+- **"Conversation" opens in place of the screen**, no longer as a window over everything: the message field, the answer keys and the microphone stay usable, so you can read an answer and reply to it, by voice too. The same button closes it.
+- **The top of the screen offers the whole conversation** when tmux holds nothing earlier. tmux forgets what was above when the agent clears the screen (as Claude Code does on a full redraw); the agent's own file still has all of it.
+- **Photos from the iPhone library attach to another computer again.** Safari exports such a photo while sending it, and what it sent could differ from the size it declared; the gateway took it for a cut-off upload and failed at 100%. The page now reads a file of up to 64 MB whole before sending it, and a gateway logs how far a failed relayed upload got.
+
 ## 1.56.3 — 2026-10-17
 
 - **Older output you are reading stays in place while new output arrives.** The screen dropped its top line for each new one, so the text crept up under your eyes.

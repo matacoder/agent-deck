@@ -174,7 +174,9 @@ main{flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;backgrou
 #metric_cpu,#metric_ram{display:inline-block;min-width:3ch;text-align:right}
 /* Receives a paste out of sight; it must stay focusable, so it is moved away, not hidden. */
 #paste_catch{position:fixed;left:-9999px;top:0;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none}
-dialog.talk{width:min(820px,calc(100vw - 32px))}
+.talk-view{position:absolute;inset:0;z-index:3;display:flex;flex-direction:column;background:var(--bg)}.talk-view[hidden]{display:none}
+.talk-view .hub-heading{padding:6px 8px 6px 16px}#talk_list{flex:1;min-height:0;overflow:auto;padding:12px 16px;-webkit-overflow-scrolling:touch}
+#talk_list>*{max-width:820px;margin-left:auto;margin-right:auto}
 .talk-turn{margin:0 0 16px}.talk-who{margin:0 0 4px;font-size:12px;color:var(--mut)}
 .talk-text{font-size:14px;line-height:1.5;color:var(--fg2);white-space:pre-wrap;overflow-wrap:anywhere}
 .talk-turn.mine .talk-text{padding:8px 12px;border-radius:var(--r);background:var(--bg);border:1px solid var(--bd)}
@@ -219,6 +221,7 @@ iframe[inert]{pointer-events:none}
 .viewer-bar{position:absolute;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px calc(var(--sab) + 12px);color:var(--viewer-fg);font-size:12.5px}
 .viewer-bar span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--mono)}
 .viewer-bar a{flex:none;color:#fff;text-decoration:none;padding:8px 12px;border-radius:8px;background:#ffffff1a}
+#pre .screen-earlier{display:block;margin:4px 0 12px;padding:6px 12px;border:1px solid var(--bd);border-radius:var(--r);background:var(--side2);color:var(--acc-text);font:13px -apple-system,BlinkMacSystemFont,system-ui,sans-serif;white-space:normal;cursor:pointer}
 #pre .preview-empty{color:var(--mut);white-space:normal;padding:16px 0}
 #jump{position:absolute;right:14px;bottom:12px;display:none;align-items:center;gap:6px;height:36px;padding:0 14px 0 10px;border-radius:18px;background:var(--sel);border:1px solid var(--bd);color:var(--fg2);font-size:12.5px;box-shadow:0 6px 20px #0008}
 #jump.on{display:inline-flex}
@@ -760,7 +763,7 @@ body.resizing iframe{pointer-events:none}
 .md a{color:var(--acc-text)}.md hr{border:0;border-top:1px solid var(--bd);margin:16px 0}
 /* The conversation reuses the reader, inside its own turn: no frame, the dialog's size, words kept whole in tables. */
 .talk-text.md{padding:0;border:0;border-radius:0;background:none;white-space:normal}.talk-md>:first-child{margin-top:0}.talk-md>:last-child{margin-bottom:0}
-.dlg .talk-md p{font-size:inherit;line-height:inherit}.talk-md h1,.talk-md h2,.talk-md h3,.talk-md h4{font-size:1.1em;font-weight:600;margin:14px 0 6px}.talk-md th,.talk-md td{overflow-wrap:normal}
+.talk-md p{font-size:inherit;line-height:inherit}.talk-md h1,.talk-md h2,.talk-md h3,.talk-md h4{font-size:1.1em;font-weight:600;margin:14px 0 6px}.talk-md th,.talk-md td{overflow-wrap:normal}
 #inbox_dlg .hub-heading{border-bottom:1px solid var(--bd)}
 #inbox_list{display:grid;gap:18px;align-content:start}
 .inbox-item{display:grid;gap:8px}
@@ -949,7 +952,7 @@ body.resizing iframe{pointer-events:none}
   .later-remove{width:var(--tap);height:var(--tap)}
   .acts{padding:12px 16px calc(12px + var(--sab))}
   .acts button{flex:1;min-height:var(--tap);padding:12px;font-size:16px;border-radius:var(--r)}
-  #inbox_dlg,#project_dlg,#help_dlg,dialog.talk,.palette{width:100vw}
+  #inbox_dlg,#project_dlg,#help_dlg,.palette{width:100vw}
   #inbox_dlg .dlg,#project_dlg .dlg,.palette .dlg{padding-top:var(--sat)}
   .palette{margin-top:0}.palette-list{max-height:none;flex:1}
   /* Phone: the search icon swaps the title and bar icons for the field; × puts them back. */
@@ -1173,7 +1176,7 @@ body.resizing iframe{pointer-events:none}
       <div id="term_loading" class="term-loading" role="status" hidden><span class="spinner" aria-hidden="true"></span><span>Подключаюсь к терминалу…</span></div>
       <div id="empty"><span id="empty_text">Загружаю сессии…</span><button type="button" class="pri" id="empty_new" onclick="openNew()" hidden><svg class="ui-icon"><use href="#i-plus"/></svg><span>Новая сессия</span></button></div>
       <div id="screen">
-        <div id="pre_wrap"><div id="pre"></div><button type="button" id="jump" onclick="jumpToLatest()"><svg class="ui-icon"><use href="#i-arrow-down"/></svg><span>К новому выводу</span></button></div>
+        <div id="pre_wrap"><div id="pre"></div><section id="talk_view" class="talk-view" hidden aria-label="Разговор"><div class="hub-heading"><h3 tabindex="-1">Разговор</h3><button type="button" onclick="closeConversation()" aria-label="Закрыть"><svg class="ui-icon"><use href="#i-x"/></svg></button></div><div id="talk_list"></div></section><button type="button" id="jump" onclick="jumpToLatest()"><svg class="ui-icon"><use href="#i-arrow-down"/></svg><span>К новому выводу</span></button></div>
         <div class="composer" id="session_composer">
           <div id="question" hidden></div>
           <div id="screen_keys"><div class="keys-row" id="session_keys">
@@ -1330,7 +1333,6 @@ body.resizing iframe{pointer-events:none}
 </form></dialog>
 
 <div id="paste_catch" contenteditable="true" aria-hidden="true" tabindex="-1"></div>
-<dialog id="talk_dlg" class="talk"><div class="dlg"><div class="hub-heading"><h3 tabindex="-1">Разговор</h3><button type="button" onclick="$('talk_dlg').close()" aria-label="Закрыть"><svg class="ui-icon"><use href="#i-x"/></svg></button></div><div class="dlg-body" id="talk_list"></div></div></dialog>
 <dialog id="paste_dlg"><form class="dlg" method="dialog"><div class="dlg-body"><h3>Вставить с картинками</h3>
 <p class="hint">Вставьте сюда скопированные сообщения: текст попадёт в поле сообщения, картинки приложатся.</p>
 <div id="paste_box" class="paste-box" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Вставить с картинками"></div>
@@ -2513,6 +2515,13 @@ function screenMore(){
   p.scrollTop=p.scrollHeight-below;
 }
 // While older output is read, new lines are added below and none is dropped above, so the text stays put.
+// tmux forgets what was above when the agent clears the screen (ESC[3J on a full redraw); the agent's own
+// file still holds the whole conversation, so the top of the screen points there.
+function screenEarlier(p,name){
+  if(screenView.cut||!p.querySelector(".ln")||p.querySelector(".screen-earlier")||active!==name||sessionInfo.session!==sessionInfoKey()||!sessionInfo.data?.supported)return;
+  const b=el("button","screen-earlier",tr("Показать весь разговор"));b.type="button";b.onclick=openConversation;
+  p.prepend(b);
+}
 function screenLines(raw,name,reading){
   const lines=ansiLines(raw,Infinity);
   if(screenView.name!==name)Object.assign(screenView,{name,depth:SCREEN_LINES,from:0});
@@ -2571,6 +2580,7 @@ function updateScreen(s,force){
       }
     }
   }
+  if(changed)screenEarlier(p,s.name);
   if(stick)p.scrollTop=p.scrollHeight;
   updateJump(changed&&!stick);
 }
@@ -3362,6 +3372,7 @@ async function loadSessionInfo(){
   }
   sessionInfo.doubt=false;
   sessionInfo.data=data;keepAnswer(sessionInfoKnown,key,data);renderSessionInfo();
+  if(curMode()==="screen")screenEarlier($("pre"),active);
   // A summary being written is asked for again soon; otherwise the conversation changes slowly.
   if(!document.hidden)sessionInfo.timer=setTimeout(loadSessionInfo,data?.summary?.updating?8000:SESSION_INFO_POLL);
 }
@@ -3381,15 +3392,21 @@ function renderConversation(data,failed){
   box.replaceChildren(...turns.map(turn=>el("div","talk-turn"+(turn.role==="user"?" mine":""),el("div","talk-who",tr(turn.role==="user"?"Вы":"Агент")),talkText(turn))));
   if(stick)box.scrollTop=box.scrollHeight;
 }
+// Drawn in place of the screen, not as a dialog: the message field and the microphone stay usable, so an
+// answer can be read and replied to at once.
+const conversationOpen=()=>!$("talk_view").hidden;
+function closeConversation(){$("talk_view").hidden=true}
 async function openConversation(){
   if(!active)return;
+  if(conversationOpen()){closeConversation();return}
   const key=sessionInfoKey(),known=knownAnswer(conversationKnown,key);
   $("talk_list").replaceChildren();
-  if(!$("talk_dlg").open)$("talk_dlg").showModal();
+  if(curMode()!=="screen")setMode("screen");
+  $("talk_view").hidden=false;
   renderConversation(known);
   try{
     const data=await api("/api/conversation?name="+encodeURIComponent(active));
-    if(key!==sessionInfoKey()||!$("talk_dlg").open)return;
+    if(key!==sessionInfoKey()||!conversationOpen())return;
     keepAnswer(conversationKnown,key,data,8);renderConversation(data);
   }catch(e){if(e.message!==STALE&&!known)renderConversation(null,e.message)}
 }
@@ -6117,6 +6134,7 @@ function toggleWrap(){
 $("pre").addEventListener("scroll",()=>{updateJump(false);screenMore()},{passive:true});
 function activate(name){
   if(name===active)return;
+  closeConversation();
   if(active)messageDrafts.set(active,$("msg").value);
   active=name;attention.delete(name);
   $("msg").value=messageDrafts.get(name)||"";$("msg").style.height="";
@@ -6269,8 +6287,17 @@ function uploadRequest(path,contentType,payload,progress){
     xhr.send(payload);
   });
 }
+// A photo picked from the iPhone library is exported as it is read, and its size can differ from what is
+// then sent; the computer would see a cut-off upload at 100%. Read whole first, it is sent exactly as read.
+const UPLOAD_READ_FIRST=64*1024*1024;
+async function uploadBody(file){
+  if(file.size>UPLOAD_READ_FIRST)return file;
+  try{return new Blob([await file.arrayBuffer()],{type:file.type})}
+  catch(e){throw new Error(tr("Не удалось прочитать файл"))}
+}
 async function uploadFile(name,file,image,progress){
   const query="?name="+encodeURIComponent(name)+"&filename="+encodeURIComponent(file.name||"file");
+  image=await uploadBody(image);
   try{return await uploadRequest("/api/upload_raw"+query,"application/octet-stream",image,progress)}
   catch(error){
     if(error.status!==404)throw error;

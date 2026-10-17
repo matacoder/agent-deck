@@ -70,7 +70,7 @@ test('the conversation dialog shows what was said, from the agent\'s file, and a
     // The agent's Markdown is drawn, not shown as pipes and hashes.
     expect(list.querySelector('.talk-md h2').textContent).toBe('Options');
     expect([...list.querySelectorAll('.talk-md td')].map(n=>n.textContent)).toEqual(['one','two']);
-    doc.getElementById('talk_dlg').close();hold=true;
+    window.eval('closeConversation()');hold=true;
     window.eval('openConversation()');
     expect(list.querySelectorAll('.talk-turn').length).toBe(2);
   }finally{window.close()}

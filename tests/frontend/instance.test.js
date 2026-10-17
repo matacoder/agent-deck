@@ -1339,6 +1339,26 @@ test('the screen draws the newest lines and more of them when scrolled to the to
   }finally{window.close()}
 });
 
+test('a screen tmux has forgotten the top of points to the conversation',async()=>{
+  const state={local:()=>({sessions:[session('alpha')]})};
+  const window=boot({...routesFor(state),'/api/session_info':()=>({supported:true}),'/api/conversation':()=>({supported:true,turns:[]})});
+  try{
+  await settle();await settle();
+  const doc=window.document,draw=text=>window.eval(`updateScreen({name:'alpha',preview:${JSON.stringify(text)}},true)`);
+  window.eval("activate('alpha')");await settle();await settle();
+  draw('only the last answer');
+  const link=doc.querySelector('#pre .screen-earlier');
+  expect(link.textContent).toBe('Показать весь разговор');
+  link.click();await settle();await settle();
+  expect(doc.getElementById('talk_view').hidden).toBe(false);
+  // The message field stays usable beside it.
+  expect(doc.getElementById('talk_view').contains(doc.getElementById('msg'))).toBe(false);
+  // While older lines are still to be drawn, there is no link yet.
+  draw(Array.from({length:300},(_,i)=>'line '+i).join('\n'));
+  expect(doc.querySelector('#pre .screen-earlier')).toBeNull();
+  }finally{window.close()}
+});
+
 test('a redraw of the screen keeps the thumbnails already drawn; a failed one is drawn anew',async()=>{
   const state={local:()=>({sessions:[session('alpha')]})};
   const window=boot(routesFor(state));

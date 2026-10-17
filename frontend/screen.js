@@ -134,6 +134,13 @@ function screenMore(){
   p.scrollTop=p.scrollHeight-below;
 }
 // While older output is read, new lines are added below and none is dropped above, so the text stays put.
+// tmux forgets what was above when the agent clears the screen (ESC[3J on a full redraw); the agent's own
+// file still holds the whole conversation, so the top of the screen points there.
+function screenEarlier(p,name){
+  if(screenView.cut||!p.querySelector(".ln")||p.querySelector(".screen-earlier")||active!==name||sessionInfo.session!==sessionInfoKey()||!sessionInfo.data?.supported)return;
+  const b=el("button","screen-earlier",tr("Показать весь разговор"));b.type="button";b.onclick=openConversation;
+  p.prepend(b);
+}
 function screenLines(raw,name,reading){
   const lines=ansiLines(raw,Infinity);
   if(screenView.name!==name)Object.assign(screenView,{name,depth:SCREEN_LINES,from:0});
@@ -192,6 +199,7 @@ function updateScreen(s,force){
       }
     }
   }
+  if(changed)screenEarlier(p,s.name);
   if(stick)p.scrollTop=p.scrollHeight;
   updateJump(changed&&!stick);
 }

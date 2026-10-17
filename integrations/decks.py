@@ -10,6 +10,7 @@ import json
 import re
 import secrets
 import socket
+import sys
 import time
 import threading
 from pathlib import Path
@@ -364,11 +365,15 @@ class RemoteDecks(Discovery):
         path = remote_path(path)
         self.request(identity, 'GET', '/api/version', language=language, timeout=10)
         profile, cookie = self.authentication(identity, language)
+        body = LimitedReader(stream, length)
         try:
-            result = transport.http_request(profile['url'], 'POST', path, LimitedReader(stream, length),
+            result = transport.http_request(profile['url'], 'POST', path, body,
                 {'Cookie': cookie, 'Origin': profile['url'], 'Content-Type': 'application/octet-stream',
                  'Content-Length': str(length), 'Accept-Encoding': 'identity'}, timeout=timeout, limit=1024*1024)
-        except (OSError, http.client.HTTPException):
+        except (OSError, http.client.HTTPException) as error:
+            # How far it got tells a browser that sent less than it declared from a computer that stopped reading.
+            print(f'deck upload: {type(error).__name__} after {length - body.remaining} of {length} bytes',
+                  file=sys.stderr, flush=True)
             raise ValueError('Remote DeckAway did not respond; retry the upload') from None
         if result[0] in (301,302,303,307,308,401):
             raise ValueError('Remote DeckAway did not accept the upload; retry it')

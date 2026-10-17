@@ -229,6 +229,19 @@ class RemoteDeckTests(PanelCase):
                 service.request_stream(ID,'/api/upload_raw?name=a&filename=b.png',io.BytesIO(b'x'),1)
         transport.assert_called_once()
 
+    def test_a_cut_off_upload_is_logged_with_how_far_it_got_never_its_text(self):
+        from integrations import deck_transport as module
+        service=RemoteDecks(self.home,'http://100.64.0.1:8790')
+        service.authentication=Mock(return_value=({'url':'http://100.64.0.2:8790'},'cc_auth=remote'))
+        service.request=Mock(return_value=(200,{},b'{}'))
+        def fake(url,method,path,body=None,headers=None,timeout=30,limit=0):
+            while body.read(3):pass
+        log=io.StringIO()
+        with patch.object(module,'http_request',side_effect=fake), patch('sys.stderr',log), \
+                self.assertRaisesRegex(ValueError,'did not respond'):
+            service.request_stream(ID,'/api/upload_raw?name=a&filename=b.png',io.BytesIO(b'0123'),10)
+        self.assertEqual(log.getvalue(),'deck upload: OSError after 4 of 10 bytes\n')
+
     def isolation(self, on):
         settings=Mock();settings.get.return_value={'name':'gw','public_url':'','isolate_terminals':on}
         self.enterContext(patch.object(self.panel,'network_settings',settings))

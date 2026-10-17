@@ -53,6 +53,7 @@ async function loadSessionInfo(){
   }
   sessionInfo.doubt=false;
   sessionInfo.data=data;keepAnswer(sessionInfoKnown,key,data);renderSessionInfo();
+  if(curMode()==="screen")screenEarlier($("pre"),active);
   // A summary being written is asked for again soon; otherwise the conversation changes slowly.
   if(!document.hidden)sessionInfo.timer=setTimeout(loadSessionInfo,data?.summary?.updating?8000:SESSION_INFO_POLL);
 }
@@ -72,15 +73,21 @@ function renderConversation(data,failed){
   box.replaceChildren(...turns.map(turn=>el("div","talk-turn"+(turn.role==="user"?" mine":""),el("div","talk-who",tr(turn.role==="user"?"Вы":"Агент")),talkText(turn))));
   if(stick)box.scrollTop=box.scrollHeight;
 }
+// Drawn in place of the screen, not as a dialog: the message field and the microphone stay usable, so an
+// answer can be read and replied to at once.
+const conversationOpen=()=>!$("talk_view").hidden;
+function closeConversation(){$("talk_view").hidden=true}
 async function openConversation(){
   if(!active)return;
+  if(conversationOpen()){closeConversation();return}
   const key=sessionInfoKey(),known=knownAnswer(conversationKnown,key);
   $("talk_list").replaceChildren();
-  if(!$("talk_dlg").open)$("talk_dlg").showModal();
+  if(curMode()!=="screen")setMode("screen");
+  $("talk_view").hidden=false;
   renderConversation(known);
   try{
     const data=await api("/api/conversation?name="+encodeURIComponent(active));
-    if(key!==sessionInfoKey()||!$("talk_dlg").open)return;
+    if(key!==sessionInfoKey()||!conversationOpen())return;
     keepAnswer(conversationKnown,key,data,8);renderConversation(data);
   }catch(e){if(e.message!==STALE&&!known)renderConversation(null,e.message)}
 }
